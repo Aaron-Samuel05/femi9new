@@ -347,7 +347,28 @@
         }
 
         this._layout();
-        this._loadFrames();
+
+        /* The frame set is a few MB. Kicking it off here would put it in flight
+           during first paint, competing with the hero image for bandwidth even
+           though this section is usually several screens down. Instead wait
+           until the section is within ~2.5 viewports and preload then, which
+           still lands well before the user arrives. The loader/progress UI
+           covers the case where they scroll straight down. */
+        if (typeof IntersectionObserver !== 'undefined') {
+          var self = this;
+          this._io = new IntersectionObserver(function (entries) {
+            for (var i = 0; i < entries.length; i++) {
+              if (entries[i].isIntersecting) {
+                if (self._io) { self._io.disconnect(); self._io = null; }
+                if (!self._destroyed) self._loadFrames();
+                return;
+              }
+            }
+          }, { rootMargin: '250% 0px' });
+          this._io.observe(this);
+        } else {
+          this._loadFrames();
+        }
       }
 
       disconnectedCallback() {
@@ -360,6 +381,7 @@
         if (reduceMotion.removeEventListener) reduceMotion.removeEventListener('change', this._onMotionPref);
         else if (reduceMotion.removeListener) reduceMotion.removeListener(this._onMotionPref);
         if (this._ro) { this._ro.disconnect(); this._ro = null; }
+        if (this._io) { this._io.disconnect(); this._io = null; }
         if (this._raf) { cancelAnimationFrame(this._raf); this._raf = 0; }
         if (this._resizeTimer) { clearTimeout(this._resizeTimer); this._resizeTimer = 0; }
         /* Release image memory: abort in-flight loads and drop references. */

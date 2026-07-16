@@ -34,7 +34,7 @@ export function Hero() {
         <div className="hero-art">
           <div className="hero-frame">
             <img
-              src="/assets/img/hero.jpg"
+              src="/assets/img/hero.webp"
               alt="Femi9 330mm double-wing sanitary pad and pack on a bright dressing table with a plant"
               width={920}
               height={1150}

@@ -8,6 +8,15 @@
   <meta name="description" content="Femi9 makes ultra-thin, breathable organic cotton sanitary pads with a mood-lifting anion strip. Toxin-free, biodegradable, and made for real life." />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <!-- The LCP element is the hero photo, but it is rendered by React, so the
+       browser cannot discover it until the bundle has downloaded, parsed and
+       run. Preloading it here puts it in flight with the HTML instead and takes
+       roughly a second off LCP. Keep this in sync with Hero.tsx. -->
+  <link rel="preload" as="image" type="image/webp" href="/assets/img/hero.webp" fetchpriority="high" />
+  <!-- The nav logo paints before the hero has finished fading in, which makes it
+       the LCP element. It is also React-rendered, so it was not discovered until
+       the bundle ran. 4KB, so preloading it is free. -->
+  <link rel="preload" as="image" href="/assets/img/logo.png" fetchpriority="high" />
   <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap" rel="stylesheet" />
 </head>
 <body>

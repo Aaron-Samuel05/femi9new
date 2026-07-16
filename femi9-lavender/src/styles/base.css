@@ -109,14 +109,20 @@ p{margin:0}
 .reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
 
 @keyframes floatUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+/* Entrance timings are deliberately tight. These elements start at opacity:0,
+   and an invisible element is not "contentful" - so a long fade holds back both
+   the perceived load and the LCP measurement no matter how fast the bytes
+   arrive. The hero photo is preloaded and lands ~180ms in; a 1s fade starting
+   at .3s meant it was not fully on screen until ~1.3s. The stagger is kept,
+   just roughly halved. */
 @media (prefers-reduced-motion: no-preference){
-  .hero-copy>*{opacity:0;animation:floatUp .9s var(--ease) forwards}
-  .hero-copy>*:nth-child(1){animation-delay:.05s}
-  .hero-copy>*:nth-child(2){animation-delay:.15s}
-  .hero-copy>*:nth-child(3){animation-delay:.25s}
-  .hero-copy>*:nth-child(4){animation-delay:.35s}
-  .hero-copy>*:nth-child(5){animation-delay:.45s}
-  .hero-art{opacity:0;animation:floatUp 1s var(--ease) .3s forwards}
+  .hero-copy>*{opacity:0;animation:floatUp .5s var(--ease) forwards}
+  .hero-copy>*:nth-child(1){animation-delay:.03s}
+  .hero-copy>*:nth-child(2){animation-delay:.08s}
+  .hero-copy>*:nth-child(3){animation-delay:.13s}
+  .hero-copy>*:nth-child(4){animation-delay:.18s}
+  .hero-copy>*:nth-child(5){animation-delay:.23s}
+  .hero-art{opacity:0;animation:floatUp .55s var(--ease) .06s forwards}
 }
 @media (prefers-reduced-motion: reduce){
   .reveal{opacity:1;transform:none;transition:none}

@@ -7,8 +7,8 @@ export interface ProductExtra {
   specs: { k: string; v: string }[]
 }
 
-const PAD_1 = '/assets/img/pad-detail-1.jpg'
-const PAD_2 = '/assets/img/pad-detail-2.jpg'
+const PAD_1 = '/assets/img/pad-detail-1.webp'
+const PAD_2 = '/assets/img/pad-detail-2.webp'
 
 const commonFeatures = [
   { title: 'Anion comfort strip', body: 'A functional strip that helps control odour and eases cramps through the day.' },
@@ -18,7 +18,7 @@ const commonFeatures = [
 
 export const EXTRAS: Record<string, ProductExtra> = {
   p330dw: {
-    gallery: ['/assets/img/prod-330-double.jpg', PAD_1, PAD_2],
+    gallery: ['/assets/img/prod-330-double.webp', PAD_1, PAD_2],
     rating: 4.8,
     reviews: 214,
     long: 'Our overnight hero. Extra 330mm length with double wings locks everything in place while you sleep, so you wake up fresh and worry-free. Ultra-thin, breathable, and made for the heaviest nights.',
@@ -32,7 +32,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     ],
   },
   p290l9: {
-    gallery: ['/assets/img/prod-290-large9.jpg', PAD_1, PAD_2],
+    gallery: ['/assets/img/prod-290-large9.webp', PAD_1, PAD_2],
     rating: 4.7,
     reviews: 168,
     long: 'The everyday large. Nine soft, breathable pads that carry you comfortably through a full, regular-flow day without the bulk.',
@@ -46,7 +46,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     ],
   },
   p330cw: {
-    gallery: ['/assets/img/prod-330-centre.jpg', PAD_2, PAD_1],
+    gallery: ['/assets/img/prod-330-centre.webp', PAD_2, PAD_1],
     rating: 4.8,
     reviews: 141,
     long: 'Extra 330mm length with centre wings and a wider back panel for confident, leak-free heavier nights. Soft, thin, and reassuringly secure.',
@@ -60,7 +60,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     ],
   },
   p290l3: {
-    gallery: ['/assets/img/prod-290-large3.jpg', PAD_1, PAD_2],
+    gallery: ['/assets/img/prod-290-large3.webp', PAD_1, PAD_2],
     rating: 4.6,
     reviews: 96,
     long: 'A three-pad starter so you can feel the Femi9 difference before you switch fully. Same organic cotton, same anion strip, no commitment.',

@@ -57,7 +57,7 @@ export const POSTS: BlogPost[] = [
     date: 'July 2, 2026',
     readTime: 5,
     tone: CATEGORY_META['Product Guides'].tint,
-    image: '/assets/img/hero.jpg',
+    image: '/assets/img/hero.webp',
     featured: true,
     body: [
       'If you have ever unwrapped a Femi9 pad and wondered about the soft green strip running down the centre, you are not alone. It is our most-asked-about feature, and also our most misunderstood.',
@@ -104,7 +104,7 @@ export const POSTS: BlogPost[] = [
     date: 'June 18, 2026',
     readTime: 4,
     tone: CATEGORY_META['Product Guides'].tint,
-    image: '/assets/img/prod-330-double.jpg',
+    image: '/assets/img/prod-330-double.webp',
     featured: true,
     body: [
       'The single most common message we get is some version of: "I wake up to check." Broken sleep on your period is exhausting, and it is almost always a coverage-and-position problem rather than anything you are doing wrong.',
@@ -127,7 +127,7 @@ export const POSTS: BlogPost[] = [
     date: 'June 11, 2026',
     readTime: 6,
     tone: CATEGORY_META['Skin & Body'].tint,
-    image: '/assets/img/pad-detail-2.jpg',
+    image: '/assets/img/pad-detail-2.webp',
     featured: true,
     body: [
       'Skin on this part of the body is thin, sensitive and in contact with a pad for many hours at a time. So the top sheet — the layer against you — is worth being fussy about.',
@@ -193,7 +193,7 @@ export const POSTS: BlogPost[] = [
     date: 'May 19, 2026',
     readTime: 4,
     tone: CATEGORY_META['Product Guides'].tint,
-    image: '/assets/img/pad-detail-1.jpg',
+    image: '/assets/img/pad-detail-1.webp',
     body: [
       'For a long time, more protection meant more bulk. That trade-off is largely gone, and it comes down to what the absorbent core is made of.',
       '## It is about the core, not the thickness',
@@ -232,7 +232,7 @@ export const POSTS: BlogPost[] = [
     date: 'May 4, 2026',
     readTime: 5,
     tone: CATEGORY_META['Comfort & Care'].tint,
-    image: '/assets/img/prod-290-large9.jpg',
+    image: '/assets/img/prod-290-large9.webp',
     body: [
       'A first period can feel like a lot at once. The good news is that choosing a pad does not have to be complicated, and the right first pad is simply one that feels comfortable and easy.',
       '## Start regular, start soft',
@@ -296,7 +296,7 @@ export const POSTS: BlogPost[] = [
     date: 'April 9, 2026',
     readTime: 5,
     tone: CATEGORY_META.Community.tint,
-    image: '/assets/img/prod-290-large3.jpg',
+    image: '/assets/img/prod-290-large3.webp',
     featured: true,
     body: [
       'Femi9 began with a simple belief: period care should be safe, honest and genuinely comfortable. Somewhere along the way it also became a livelihood for thousands of women.',

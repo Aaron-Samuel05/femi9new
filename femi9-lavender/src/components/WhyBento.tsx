@@ -14,9 +14,15 @@ export function WhyBento() {
 
         <div className="bento">
           <Reveal className="cell cell-img">
+            {/* This section sits ~6000px down the page, so there is no reason
+                to fetch these on load. */}
             <img
-              src="/assets/img/pad-detail-1.jpg"
+              src="/assets/img/pad-detail-1.webp"
               alt="Close-up of a Femi9 double-wing pad on a soft textured surface"
+              width={760}
+              height={1013}
+              loading="lazy"
+              decoding="async"
             />
             <div className="cell-cap">Double-wing security, barely-there feel.</div>
           </Reveal>
@@ -53,8 +59,12 @@ export function WhyBento() {
 
           <Reveal className="cell cell-img" delay={2}>
             <img
-              src="/assets/img/pad-detail-2.jpg"
+              src="/assets/img/pad-detail-2.webp"
               alt="Close-up of a Femi9 centre-wing pad styled with soft accessories"
+              width={760}
+              height={1013}
+              loading="lazy"
+              decoding="async"
             />
             <div className="cell-cap">Centre-wing fit for heavier nights.</div>
           </Reveal>

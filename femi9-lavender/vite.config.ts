@@ -6,15 +6,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   base: '/',
   plugins: [react()],
-  build: {
-    rollupOptions: {
-      output: {
-        // Keep the heavy immersive 3D stack (three + R3F + drei) in its own
-        // long-cached chunk so it doesn't bloat the main app bundle.
-        manualChunks: {
-          three: ['three', '@react-three/fiber', '@react-three/drei'],
-        },
-      },
-    },
-  },
+  // No manualChunks. There used to be a `three` chunk here pinning
+  // three/R3F/drei together, but naming a chunk that way puts it in the entry's
+  // graph, and Vite then emits <link rel="modulepreload"> for it — so the 968KB
+  // 3D bundle was downloaded eagerly on every page load even though its only
+  // consumer (LiquidBackground) is imported lazily.
+  //
+  // Letting Rollup split at the dynamic-import boundary instead means three
+  // lands in LiquidBackground's own chunk and is fetched only when that
+  // component actually mounts (on idle, after first paint).
 })
