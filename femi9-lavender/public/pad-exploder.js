@@ -62,23 +62,27 @@
    * anchors sit visually higher than left-side ones around them — correct.
    * -------------------------------------------------------------------- */
   var LABELS = [
-    { name: 'Soft Top Layer',     desc: 'Certified organic cotton. The only thing that touches your skin.', side: 'left',
+    { name: 'Soft Top Layer',     desc: 'Certified organic cotton, and nothing else.', side: 'left',
       track: [{ f: 60, x: 30, y: 27 }, { f: 75, x: 30, y: 26 }, { f: 90, x: 30, y: 24 }] },
-    { name: 'Side Leakage Guard', desc: 'Raised edges that keep the flow where it belongs when you move.', side: 'right',
+    { name: 'Side Leakage Guard', desc: 'Raised edges that hold the flow in place.', side: 'right',
       track: [{ f: 60, x: 70, y: 31 }, { f: 75, x: 70, y: 30 }, { f: 90, x: 70, y: 28 }] },
-    { name: '9 Smart Benefits',   desc: 'The anion strip, helping control odour through the day.', side: 'left',
+    { name: '9 Smart Benefits',   desc: 'The anion strip, at work.', side: 'left',
       track: [{ f: 60, x: 38, y: 46 }, { f: 75, x: 38, y: 44 }, { f: 90, x: 38, y: 41 }] },
-    { name: 'Cotton Layer',       desc: 'Organic cotton that spreads flow evenly instead of letting it pool.', side: 'left',
-      track: [{ f: 60, x: 31, y: 53 }, { f: 75, x: 31, y: 51 }, { f: 90, x: 30, y: 49 }] },
-    { name: 'Air Laid Paper',     desc: 'A breathable sheet that carries moisture down and away from you.', side: 'right',
+    /* y nudged 49 -> 51 at full expansion: labels 3 and 4 are the closest pair
+       on the left and their text boxes grazed. The cotton layer is thick enough
+       that the dot still sits on it; label 3 stays put because its dot has to
+       land on the thin anion strip exactly. */
+    { name: 'Cotton Layer',       desc: 'Spreads flow, never pools.', side: 'left',
+      track: [{ f: 60, x: 31, y: 53 }, { f: 75, x: 31, y: 52 }, { f: 90, x: 30, y: 51 }] },
+    { name: 'Air Laid Paper',     desc: 'Carries moisture down and away from you.', side: 'right',
       track: [{ f: 60, x: 70, y: 50 }, { f: 75, x: 70, y: 48 }, { f: 90, x: 70, y: 45 }] },
-    { name: 'Absorbent Gel',      desc: 'The core. Locks liquid into a gel so the surface stays dry.', side: 'right',
+    { name: 'Absorbent Gel',      desc: 'The core. Locks liquid into a gel.', side: 'right',
       track: [{ f: 60, x: 71, y: 60 }, { f: 75, x: 71, y: 59 }, { f: 90, x: 72, y: 58 }] },
-    { name: 'Air Laid Paper',     desc: 'The mirror sheet under the core, keeping the pad flat and even.', side: 'left',
+    { name: 'Air Laid Paper',     desc: 'Keeps the pad flat and even.', side: 'left',
       track: [{ f: 60, x: 27, y: 71 }, { f: 75, x: 27, y: 71 }, { f: 90, x: 27, y: 70 }] },
-    { name: 'Cotton Layer',       desc: 'The second cotton pass. It is why the pad stays thin, not stiff.', side: 'right',
+    { name: 'Cotton Layer',       desc: 'Why the pad stays thin, not stiff.', side: 'right',
       track: [{ f: 60, x: 64, y: 71 }, { f: 75, x: 65, y: 69 }, { f: 90, x: 66, y: 67 }] },
-    { name: 'Breathable Layer',   desc: 'The back sheet. Lets air through, then breaks back down after.', side: 'left',
+    { name: 'Breathable Layer',   desc: 'Lets air through, then breaks down after.', side: 'left',
       track: [{ f: 60, x: 30, y: 82 }, { f: 75, x: 30, y: 84 }, { f: 90, x: 30, y: 86 }] }
   ];
   /* Note: sides don't strictly alternate — layer 4 (cotton) shows its face
@@ -231,7 +235,11 @@
     '@media (max-width:' + (MOBILE_BP - 1) + 'px){' +
       '.overlay{display:none;}' +                      /* no connector lines on mobile */
       '.head p{display:none;}' +
-      '.grid{flex:none;align-self:stretch;display:grid;grid-template-columns:1fr 1fr;' +
+      /* minmax(0,1fr), NOT 1fr: `1fr` means minmax(auto,1fr), and the auto
+         minimum of a column holding `white-space:nowrap` text is that text's
+         full un-wrapped width - so the columns blow past the viewport and the
+         ellipsis below never gets a chance to apply. */
+      '.grid{flex:none;align-self:stretch;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);' +
         'gap:6px 8px;list-style:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom,0px));' +
         'max-height:38svh;overflow-y:auto;-webkit-overflow-scrolling:touch;}' +
       '.grid li{background:rgba(255,255,255,.30);border-radius:10px;padding:6px 10px;' +

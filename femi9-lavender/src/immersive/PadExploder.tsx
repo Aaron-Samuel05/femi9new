@@ -14,38 +14,49 @@ import { Fragment } from 'react'
  * ancestor with overflow hidden/auto/scroll. See the note on body in base.css.
  */
 const LAYERS: Array<[string, string]> = [
-  ['1. Soft Top Layer', 'Certified organic cotton. The only thing that touches your skin.'],
-  ['2. Side Leakage Guard', 'Raised edges that keep the flow where it belongs when you move.'],
-  ['3. 9 Smart Benefits', 'The anion strip, helping control odour through the day.'],
-  ['4. Cotton Layer', 'Organic cotton that spreads flow evenly instead of letting it pool.'],
-  ['5. Air Laid Paper', 'A breathable sheet that carries moisture down and away from you.'],
-  ['6. Absorbent Gel', 'The core. Locks liquid into a gel so the surface stays dry.'],
-  ['7. Air Laid Paper', 'The mirror sheet under the core, keeping the pad flat and even.'],
-  ['8. Cotton Layer', 'The second cotton pass. It is why the pad stays thin, not stiff.'],
-  ['9. Breathable Layer', 'The back sheet. Lets air through, then breaks back down after.'],
+  ['1. Soft Top Layer', 'Certified organic cotton, and nothing else.'],
+  ['2. Side Leakage Guard', 'Raised edges that hold the flow in place.'],
+  ['3. 9 Smart Benefits', 'The anion strip, at work.'],
+  ['4. Cotton Layer', 'Spreads flow, never pools.'],
+  ['5. Air Laid Paper', 'Carries moisture down and away from you.'],
+  ['6. Absorbent Gel', 'The core. Locks liquid into a gel.'],
+  ['7. Air Laid Paper', 'Keeps the pad flat and even.'],
+  ['8. Cotton Layer', 'Why the pad stays thin, not stiff.'],
+  ['9. Breathable Layer', 'Lets air through, then breaks down after.'],
 ]
 
 export function PadExploder() {
   return (
-    <pad-exploder
-      id="anatomy"
-      frames-path="/assets/pad-frames/"
-      frame-count="90"
-      reverse="true"
-      scroll-length="420vh"
-      heading="Every layer, in the open."
-      intro-text="Nine layers, each doing one job. Here is exactly what sits against your skin."
-    >
-      <h2>Every layer, in the open.</h2>
-      <p>Nine layers, each doing one job.</p>
-      <dl>
-        {LAYERS.map(([name, desc]) => (
-          <Fragment key={name}>
-            <dt>{name}</dt>
-            <dd>{desc}</dd>
-          </Fragment>
-        ))}
-      </dl>
-    </pad-exploder>
+    <>
+      {/* The pinned stage paints a solid lavender field, so without these the
+          page meets it on a hard horizontal line. Each band ramps between the
+          page and the field's own edge colour. They are only ever on screen
+          while the stage is entering or leaving; once it pins, it covers the
+          viewport and the bands sit off screen. */}
+      <div className="pe-fade pe-fade--in" aria-hidden="true" />
+
+      <pad-exploder
+        id="anatomy"
+        frames-path="/assets/pad-frames/"
+        frame-count="90"
+        reverse="true"
+        scroll-length="420vh"
+        heading="Every layer, in the open."
+        intro-text="Nine layers, each doing one job. Here is exactly what sits against your skin."
+      >
+        <h2>Every layer, in the open.</h2>
+        <p>Nine layers, each doing one job.</p>
+        <dl>
+          {LAYERS.map(([name, desc]) => (
+            <Fragment key={name}>
+              <dt>{name}</dt>
+              <dd>{desc}</dd>
+            </Fragment>
+          ))}
+        </dl>
+      </pad-exploder>
+
+      <div className="pe-fade pe-fade--out" aria-hidden="true" />
+    </>
   )
 }

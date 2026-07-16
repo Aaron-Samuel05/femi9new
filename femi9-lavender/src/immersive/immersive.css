@@ -240,6 +240,37 @@ body.has-fluid-cursor .fluid-dot { opacity: 1; }
    stage starts below it and shortens to match (see --pe-stick-top in
    public/pad-exploder.js). */
 pad-exploder { --pe-stick-top: 70px; display: block; }
+
+/* Fade bands that dissolve the seam between the page and the pinned lavender
+   field. The stage gradient runs #c4adda -> #af95c2 (sampled from the frames),
+   so each band starts from that exact edge colour and ramps to its own
+   TRANSPARENT version. Two reasons it fades to transparent rather than to a
+   site token: the section above has no background of its own (the liquid canvas
+   shows through it), and rgba(...,0) of the same hue avoids the grey cast you
+   get interpolating through the `transparent` keyword, which is transparent
+   BLACK. The extra midpoints stop the alpha ramp from banding.
+
+   Each band also holds its edge colour SOLID for the last stretch before it
+   meets the stage. Ramping all the way to the seam leaves a kink in the alpha
+   curve exactly at the join, which reads as a faint line (a Mach band) even
+   though both sides are the same colour.
+
+   The 1px overlap is not cosmetic padding: the stage height is a calc() on svh,
+   so it lands on a fractional pixel and leaves a hairline where the page shows
+   through. Measured as a full-width light line at the lower join. */
+.pe-fade { pointer-events: none; height: clamp(160px, 26vh, 300px); }
+.pe-fade--in {
+  margin-bottom: -1px;
+  background: linear-gradient(180deg,
+    rgba(196,173,218,0) 0%, rgba(196,173,218,.28) 42%, rgba(196,173,218,.75) 72%,
+    rgba(196,173,218,1) 88%, rgba(196,173,218,1) 100%);
+}
+.pe-fade--out {
+  margin-top: -1px;
+  background: linear-gradient(180deg,
+    rgba(175,149,194,1) 0%, rgba(175,149,194,1) 12%, rgba(175,149,194,.7) 34%,
+    rgba(175,149,194,.24) 66%, rgba(175,149,194,0) 100%);
+}
 /* Until the script upgrades the element it has no Shadow DOM, so it renders its
    light-DOM copy. Give that readable padding rather than a bare run of text. */
 pad-exploder:not(:defined) { padding: clamp(48px, 8vw, 96px) 24px; }
