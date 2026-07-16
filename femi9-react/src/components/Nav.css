@@ -1,0 +1,41 @@
+/* ===== NAV ===== */
+.nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(255,252,244,.82);
+  backdrop-filter:saturate(140%) blur(14px);
+  border-bottom:1px solid transparent;
+  transition:border-color .3s, box-shadow .3s;
+}
+.nav.scrolled{border-color:var(--line-soft);box-shadow:0 10px 30px -22px rgba(11,42,91,.5)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;gap:24px}
+.nav-logo img{height:30px;width:auto}
+.nav-links{display:flex;align-items:center;gap:30px}
+.nav-links a{font-size:.95rem;font-weight:400;color:var(--ink);position:relative;padding-block:4px}
+.nav-links a::after{
+  content:"";position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--yellow);
+  border-radius:2px;transition:width .3s var(--ease);
+}
+.nav-links a:hover{color:var(--navy)}
+.nav-links a:hover::after{width:100%}
+.nav-right{display:flex;align-items:center;gap:14px}
+.cart-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:var(--r-chip);border:1px solid var(--line);
+  color:var(--navy);transition:background .25s,border-color .25s}
+.cart-btn:hover{background:var(--butter-soft);border-color:var(--yellow)}
+.cart-btn svg{width:21px;height:21px}
+.cart-count{
+  position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;
+  background:var(--forest-2);color:#fff;border-radius:999px;
+  font-size:.68rem;font-weight:600;display:none;align-items:center;justify-content:center;
+}
+.cart-count.show{display:inline-flex}
+.nav-cta{display:inline-flex}
+.burger{display:none;width:44px;height:44px;border-radius:var(--r-chip);border:1px solid var(--line);
+  align-items:center;justify-content:center;color:var(--navy)}
+.burger svg{width:22px;height:22px}
+.mobile-menu{display:none;flex-direction:column;padding:8px 24px 22px;
+  border-top:1px solid var(--line-soft);background:rgba(255,252,244,.98)}
+.mobile-menu.open{display:flex}
+.mobile-menu a{padding:14px 2px;font-size:1.05rem;color:var(--ink);border-bottom:1px solid var(--line-soft)}
+.mobile-menu a.btn{border:none;margin-top:16px;justify-content:center}
+@media (min-width:861px){.mobile-menu{display:none !important}}

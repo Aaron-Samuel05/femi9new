@@ -1,0 +1,9 @@
+/* ===== IMPACT ===== */
+.impact{background:var(--sage-tint)}
+.impact-in{display:grid;grid-template-columns:.85fr 1.15fr;gap:clamp(30px,5vw,64px);align-items:center}
+.impact h2{font-size:clamp(2rem,3.6vw,2.9rem);font-weight:700}
+.impact .impact-copy p{color:var(--ink);margin-top:18px;max-width:42ch;opacity:.85}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat{background:#fff;border-radius:var(--r-card);padding:28px 22px;border:1px solid var(--line-soft)}
+.stat b{display:block;font-size:clamp(2.2rem,4vw,3rem);font-weight:700;color:var(--forest-2);letter-spacing:-.03em;line-height:1}
+.stat span{display:block;margin-top:10px;font-size:.9rem;color:var(--muted);font-weight:300}

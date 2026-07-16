@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>femi9 — What's inside</title>
+<style>
+  /* Demo page styles only — the component carries its own styles in its
+     shadow DOM and needs none of this. */
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: ui-rounded, "SF Pro Rounded", "Hiragino Maru Gothic ProN",
+                 Quicksand, Seravek, "Segoe UI", system-ui, sans-serif;
+    background: #faf7fd;
+    color: #3e2c56;
+  }
+  .band {
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    gap: 12px;
+  }
+  .band .kicker {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    color: #9a7fbf;
+  }
+  .band h1 { font-size: clamp(30px, 5vw, 52px); font-weight: 700; }
+  .band p  { max-width: 46ch; color: rgba(62,44,86,.68); line-height: 1.6; }
+
+  /* No-JS / pre-upgrade styling for the component's semantic content. */
+  pad-exploder:not(:defined) { display: block; padding: 48px 24px; }
+  pad-exploder dl dt { font-weight: 700; margin-top: 12px; }
+  pad-exploder dl dd { color: rgba(62,44,86,.68); margin-left: 0; }
+</style>
+</head>
+<body>
+
+  <section class="band">
+    <span class="kicker">femi9</span>
+    <h1>Comfort, engineered in layers.</h1>
+    <p>Keep scrolling — the pad below opens up layer by layer as you go.
+       This band exists to prove the component behaves inside a normal page flow.</p>
+  </section>
+
+  <!--
+    The component. Frames folder sits next to this file.
+    Handy while integrating:
+      demo.html?debug                 → shows magenta anchor dots for tuning
+      demo.html?debug&pe-progress=1   → freezes the view fully exploded
+  -->
+  <pad-exploder
+    frames-path="./frames/optimised/"
+    frame-count="90"
+    reverse="true"
+    scroll-length="400vh"
+    heading="What's inside"
+    intro-text="Nine thoughtful layers, working together. Scroll to pull them apart.">
+
+    <!-- Light-DOM fallback: real, indexable content that renders even with
+         JavaScript disabled and is what screen readers hear. -->
+    <h2>What's inside</h2>
+    <p>Nine thoughtful layers, working together.</p>
+    <dl>
+      <dt>1. Soft Top Layer</dt>        <dd>One-line description goes here.</dd>
+      <dt>2. Side Leakage Guard</dt>    <dd>One-line description goes here.</dd>
+      <dt>3. 9 Smart Benefits</dt>      <dd>One-line description goes here.</dd>
+      <dt>4. Cotton Layer</dt>          <dd>One-line description goes here.</dd>
+      <dt>5. Air Laid Paper</dt>        <dd>One-line description goes here.</dd>
+      <dt>6. Absorbent Gel</dt>         <dd>One-line description goes here.</dd>
+      <dt>7. Air Laid Paper</dt>        <dd>One-line description goes here.</dd>
+      <dt>8. Cotton Layer</dt>          <dd>One-line description goes here.</dd>
+      <dt>9. Breathable Layer</dt>      <dd>One-line description goes here.</dd>
+    </dl>
+  </pad-exploder>
+
+  <section class="band">
+    <h1>Softness you can study.</h1>
+    <p>…and the page carries on normally after the animation. The sticky stage
+       has released, and scrolling feels untouched.</p>
+  </section>
+
+  <script src="./pad-exploder.js"></script>
+</body>
+</html>

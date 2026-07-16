@@ -1,0 +1,18 @@
+/* ===== WHY / BENTO ===== */
+.why{background:linear-gradient(180deg,var(--cream),#FFF7E4)}
+.bento{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:18px}
+.bento .cell{border-radius:var(--r-card);padding:30px;display:flex;flex-direction:column;justify-content:flex-end;
+  min-height:230px;border:1px solid var(--line-soft);position:relative;overflow:hidden}
+.cell h3{font-size:1.4rem;font-weight:600;margin-bottom:8px}
+.cell p{font-size:.92rem;color:var(--muted)}
+.cell .ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+.cell .ico svg{width:24px;height:24px}
+.cell-butter{background:var(--butter-soft)} .cell-butter .ico{background:#FFE39A;color:#8a5a00}
+.cell-sage{background:var(--sage-tint)} .cell-sage .ico{background:#CFE6DA;color:var(--forest-2)}
+.cell-lilac{background:var(--lilac-tint)} .cell-lilac .ico{background:#E4D3F3;color:#5a3a80}
+.cell-img{padding:0;min-height:230px}
+.cell-img img{width:100%;height:100%;object-fit:cover}
+.cell-wide{grid-column:span 2}
+.cell-tall{grid-row:span 2}
+.cell-cap{position:absolute;left:0;right:0;bottom:0;padding:20px 22px;
+  background:linear-gradient(to top,rgba(1,63,45,.82),transparent);color:#fff;font-weight:400;font-size:.95rem}
