@@ -9,6 +9,11 @@
   /* surfaces (soft lavender + pale gold) */
   --cream:      #FBF9FF;
   --cream-2:    #F2ECFB;
+  /* Card/panel surface. Sits a touch above --cream so elevation still reads,
+     but tinted toward the lavender anchor rather than pure #fff, which renders
+     flat and synthetic against a tinted page. Every raised surface uses this;
+     no component should hardcode #fff. */
+  --surface:    #FEFCFF;
   --butter:     #FBEFC8;
   --butter-soft:#FCF6E1;
   --sage-tint:  #EDE7F9;   /* repurposed → lavender tint */

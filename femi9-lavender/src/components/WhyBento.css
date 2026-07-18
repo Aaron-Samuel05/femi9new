@@ -6,13 +6,16 @@
    dead zone above the icon whenever an image tile set the row height. */
 .bento .cell{border-radius:var(--r-card);padding:30px;display:flex;flex-direction:column;justify-content:center;
   min-height:230px;border:1px solid var(--line-soft);position:relative;overflow:hidden}
-.cell h3{font-size:1.4rem;font-weight:600;margin-bottom:8px}
+/* Icon sits inline with the heading, sized to the type, with no coloured tile
+   behind it. The tile-above-heading-above-two-lines stack is the universal
+   generated-feature-card shape; inline the mark reads as part of the heading. */
+.cell h3{font-size:1.4rem;font-weight:600;margin-bottom:8px;display:flex;align-items:baseline;gap:.45em}
 .cell p{font-size:.92rem;color:var(--muted)}
-.cell .ico{width:46px;height:46px;border-radius:14px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
-.cell .ico svg{width:24px;height:24px}
-.cell-butter{background:var(--butter-soft)} .cell-butter .ico{background:#FFE39A;color:#8a5a00}
-.cell-sage{background:var(--sage-tint)} .cell-sage .ico{background:#DBCEF2;color:var(--forest-2)}
-.cell-lilac{background:var(--lilac-tint)} .cell-lilac .ico{background:#E4D3F3;color:#5a3a80}
+.cell .ico{flex:none;width:.82em;height:.82em;display:block;transform:translateY(.04em)}
+.cell .ico svg{width:100%;height:100%}
+.cell-butter{background:var(--butter-soft)} .cell-butter .ico{color:#8a5a00}
+.cell-sage{background:var(--sage-tint)} .cell-sage .ico{color:var(--forest-2)}
+.cell-lilac{background:var(--lilac-tint)} .cell-lilac .ico{color:#5a3a80}
 /* Square keeps the photo from driving the row far taller than the text tiles
    beside it, which is what opened the dead zone in the first place.
    Needs `.bento` in the selector to outrank `.bento .cell{padding:30px}` -

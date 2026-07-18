@@ -100,7 +100,7 @@
 }
 .pt-step {
   position: relative;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(22px, 2.4vw, 30px);
@@ -191,7 +191,7 @@
 .pt-benefit {
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(20px, 2.2vw, 28px);
@@ -344,7 +344,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: clamp(16px, 1.8vw, 20px);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(22px, 3vw, 38px);
@@ -385,7 +385,7 @@
 .pt-field textarea:focus {
   outline: none;
   border-color: var(--yellow-deep);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 3px rgba(240, 193, 78, .28);
 }
 .pt-field input[aria-invalid="true"] { border-color: #c0392b; }
@@ -402,7 +402,7 @@
 }
 .pt-phone:focus-within {
   border-color: var(--yellow-deep);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 3px rgba(240, 193, 78, .28);
 }
 .pt-phone-cc {
@@ -442,7 +442,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(30px, 4vw, 48px);

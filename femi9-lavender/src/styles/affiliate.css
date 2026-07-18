@@ -129,7 +129,7 @@
 
 /* hero preview card */
 .af-preview {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(20px, 2.4vw, 28px);
@@ -270,7 +270,7 @@
 }
 .af-step {
   position: relative;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(22px, 2.6vw, 30px);
@@ -462,7 +462,7 @@
 }
 
 .af-join-panel {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   box-shadow: var(--shadow);
@@ -552,7 +552,7 @@
   padding: 10px 18px;
   border-radius: var(--r-chip);
   border: 1.5px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   font-weight: 500;
   font-size: 0.94rem;
@@ -792,7 +792,7 @@
   gap: 12px;
 }
 .af-faq {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-img);
   padding: 4px 22px;

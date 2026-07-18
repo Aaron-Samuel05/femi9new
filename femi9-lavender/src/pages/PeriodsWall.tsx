@@ -85,7 +85,7 @@ const SEED: Post[] = [
     product: 'First period',
     rating: 5,
     body:
-      "My first period came at school and I was so scared. Amma had kept a Femi9 pack in my bag 'just in case' and honestly it made everything feel less frightening. Nobody tells you it's okay to be nervous — it is, and you figure it out.",
+      "My first period came at school and I was so scared. Amma had kept a Femi9 pack in my bag ‘just in case’ and honestly it made everything feel less frightening. Nobody tells you it's okay to be nervous — it is, and you figure it out.",
     ts: NOW - 5 * DAY - 2 * HOUR,
     likes: 58,
     replies: 11,
@@ -97,7 +97,7 @@ const SEED: Post[] = [
     product: 'Femi9 290mm',
     rating: 4,
     body:
-      "Day-two cramps are brutal for me, so comfort really matters. The 290mm stays soft and doesn't bunch up when I'm running around at work in Madurai. Taking off one star only because I'd love a slimmer travel pack.",
+      "Day-two cramps are brutal for me, so comfort really matters. The 290mm stays soft and doesn’t bunch up when I'm running around at work in Madurai. Taking off one star only because I'd love a slimmer travel pack.",
     ts: NOW - 1 * DAY - 6 * HOUR,
     likes: 21,
     replies: 3,

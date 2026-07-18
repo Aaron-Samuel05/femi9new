@@ -60,7 +60,7 @@
   display: grid; place-items: center; cursor: pointer; box-shadow: var(--shadow-sm);
   transition: background .2s, transform .2s;
 }
-.hbanner-next:hover { background: #fff; transform: scale(1.08); }
+.hbanner-next:hover { background: var(--surface); transform: scale(1.08); }
 .hbanner-next svg { width: 18px; height: 18px; }
 
 @media (max-width: 860px) {

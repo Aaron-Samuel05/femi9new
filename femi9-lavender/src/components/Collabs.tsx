@@ -43,7 +43,7 @@ const FEATURED: Collab = {
   avatar: 'av-gold',
   tag: '▶ Reel',
   quote:
-    "I've tried every 'organic' pad on the shelf. Femi9 is the first that actually feels soft on a heavy day. And every pack backs women entrepreneurs across Tamil Nadu.",
+    "I’ve tried every ‘organic’ pad on the shelf. Femi9 is the first that actually feels soft on a heavy day. And every pack backs women entrepreneurs across Tamil Nadu.",
 }
 
 const COLLABS: Collab[] = [

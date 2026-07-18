@@ -229,7 +229,7 @@ export function ProductDetail() {
             {sampleReviews.map((r) => (
               <div className="review" key={r.name}>
                 <Stars rating={r.rating} />
-                <p>"{r.body}"</p>
+                <p>“{r.body}”</p>
                 <div className="who"><b>{r.name}</b> · {r.place} · {r.date}</div>
               </div>
             ))}
@@ -241,8 +241,8 @@ export function ProductDetail() {
         <div className="wrap">
           <div className="sec-head"><div><h2 className="display">You may also like</h2></div></div>
           <div className="grid-products">
-            {related.map((p, i) => (
-              <ProductCard key={p.id} product={p} delay={(i % 3 || undefined) as 1 | 2 | undefined} />
+            {related.map((p) => (
+              <ProductCard key={p.id} product={p} />
             ))}
           </div>
         </div>

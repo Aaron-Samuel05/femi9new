@@ -33,9 +33,12 @@
   letter-spacing: -.015em;
   line-height: 1.06;
 }
-/* Italic descenders (the "g" in "nothing") clip against a tight line-height,
-   so this line needs more room than the roman headline above it. */
-.hero h1 .accent { font-style: italic; font-weight: 500; line-height: 1.15; padding-bottom: .06em; }
+/* Roman, not italic. A roman headline with one word flipped to italic is a
+   reliable generated-UI tell; emphasis rides on the accent colour (--forest-2,
+   set in Hero.css) plus a small weight step instead. Matches how .story h2 em
+   already handles it. The line-height reserve stays: the "g" in "nothing" still
+   descends and would clip against the h1's tight 1.06. */
+.hero h1 .accent { font-style: normal; font-weight: 700; line-height: 1.12; padding-bottom: .04em; }
 
 /* ---------- liquid background (spec §1) ----------
    The fixed canvas sits at z-index:-1, so the page must be transparent for it
@@ -69,41 +72,9 @@ html.lenis { scroll-behavior: auto; }
     var(--cream);
 }
 
-/* ---------- fluid cursor (spec §1) ---------- */
-.fluid-ring,
-.fluid-dot {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 9998;
-  pointer-events: none;
-  opacity: 0;
-  will-change: transform;
-}
-body.has-fluid-cursor .fluid-ring,
-body.has-fluid-cursor .fluid-dot { opacity: 1; }
-.fluid-ring {
-  width: 34px;
-  height: 34px;
-  border: 1.6px solid rgba(86, 49, 132, .55);
-  border-radius: 50%;
-  mix-blend-mode: multiply;
-  transition: opacity .3s, width .3s var(--ease), height .3s var(--ease),
-    background .3s, border-color .3s;
-}
-.fluid-ring.is-hover {
-  width: 54px;
-  height: 54px;
-  background: rgba(201, 174, 228, .18);
-  border-color: rgba(86, 49, 132, .85);
-}
-.fluid-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--yellow-deep);
-}
-@media (hover: none) { .fluid-ring, .fluid-dot { display: none; } }
+/* The fluid-cursor rules lived here (spec §1). Removed with the component: a
+   trailing dot that lags the pointer is a named tell, it was hover-only, and it
+   was the page's only z-index: 9998. */
 
 /* ---------- cycle-mode toggle (spec §3) ---------- */
 .cycle-toggle {
@@ -112,7 +83,7 @@ body.has-fluid-cursor .fluid-dot { opacity: 1; }
   gap: 12px;
   padding: 8px 14px 8px 8px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-sm);
   transition: transform .25s var(--ease);
@@ -180,7 +151,7 @@ body.has-fluid-cursor .fluid-dot { opacity: 1; }
 .pad-thick { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; }
 .pad-thick-label { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .pad-thick-bar {
-  height: 30px; border-radius: 8px; background: #fff; border: 1px solid var(--line-soft);
+  height: 30px; border-radius: 8px; background: var(--surface); border: 1px solid var(--line-soft);
   display: flex; align-items: center; justify-content: center; padding: 0 8px;
 }
 .pad-thick-fill {
@@ -197,13 +168,13 @@ body.has-fluid-cursor .fluid-dot { opacity: 1; }
 .pad-slider input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 26px; height: 26px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--cycle-accent);
+  background: var(--surface); border: 3px solid var(--cycle-accent);
   box-shadow: var(--shadow-sm); cursor: grab; margin-top: -1px;
 }
 .pad-slider input[type="range"]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.06); }
 .pad-slider input[type="range"]::-moz-range-thumb {
   width: 24px; height: 24px; border-radius: 50%;
-  background: #fff; border: 3px solid var(--cycle-accent); box-shadow: var(--shadow-sm); cursor: grab;
+  background: var(--surface); border: 3px solid var(--cycle-accent); box-shadow: var(--shadow-sm); cursor: grab;
 }
 .pad-slider input[type="range"]::-moz-range-track { height: 8px; border-radius: 999px; background: var(--line); }
 .pad-slider-ends {
@@ -220,7 +191,8 @@ body.has-fluid-cursor .fluid-dot { opacity: 1; }
 .immersive-title {
   font-size: clamp(2.2rem, 5.6vw, 4rem); line-height: 1.02; margin-top: 14px; color: var(--navy);
 }
-.immersive-title em { font-style: italic; color: var(--cycle-accent); transition: color .45s var(--ease); }
+/* Roman + accent colour, not italic (see .hero h1 .accent above). */
+.immersive-title em { font-style: normal; font-weight: 700; color: var(--cycle-accent); transition: color .45s var(--ease); }
 
 .immersive-grid {
   display: grid; grid-template-columns: 1.5fr 1fr;
@@ -372,7 +344,7 @@ pad-exploder:not(:defined) dd { color: var(--muted); margin-left: 0; }
   box-shadow: 0 10px 26px -10px rgba(11,42,91,.6); transition: transform .3s var(--ease), background .3s;
 }
 .tvid-play svg { width: 22px; height: 22px; margin-left: 2px; }
-.tvid-card:hover .tvid-play { transform: translate(-50%, -50%) scale(1.12); background: #fff; }
+.tvid-card:hover .tvid-play { transform: translate(-50%, -50%) scale(1.12); background: var(--surface); }
 
 .tvid-meta {
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; padding: 16px 16px 15px;

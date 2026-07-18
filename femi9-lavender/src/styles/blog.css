@@ -72,7 +72,7 @@
 .bchips { display: flex; flex-wrap: wrap; gap: 8px; }
 .bchip {
   padding: 8px 15px; border-radius: 999px; font-size: .84rem; font-weight: 500;
-  color: var(--ink); background: #fff; border: 1px solid var(--line);
+  color: var(--ink); background: var(--surface); border: 1px solid var(--line);
   transition: background .2s, color .2s, border-color .2s, transform .2s var(--ease);
 }
 .bchip:hover { border-color: var(--navy); transform: translateY(-1px); }
@@ -82,7 +82,7 @@
 .bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(288px, 1fr)); gap: clamp(18px, 2vw, 26px); }
 
 .bcard {
-  display: flex; flex-direction: column; background: #fff; border: 1px solid var(--line-soft);
+  display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line-soft);
   border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow-sm);
   transition: transform .3s var(--ease), box-shadow .3s var(--ease);
 }
@@ -121,9 +121,9 @@
 
 /* ---------- home teaser: scroll-stack variant ---------- */
 .journal--stack { padding-bottom: 0; }
-.journal--stack .scroll-stack-card { height: clamp(300px, 46vh, 400px); background: #fff; }
+.journal--stack .scroll-stack-card { height: clamp(300px, 46vh, 400px); background: var(--surface); }
 
-.jstack { display: flex; height: 100%; width: 100%; background: #fff; }
+.jstack { display: flex; height: 100%; width: 100%; background: var(--surface); }
 .jstack-media { position: relative; flex: 0 0 44%; overflow: hidden; }
 .jstack-body {
   flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;

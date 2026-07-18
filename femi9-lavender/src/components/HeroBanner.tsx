@@ -102,6 +102,12 @@ export function HeroBanner() {
       aria-label="Featured"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
+      // Focus pause, not just hover: pausing on hover alone is a hover-only
+      // affordance, so keyboard users had no way to stop the rotation while
+      // tabbing through the slide's links (WCAG 2.2.2). Capture phase so focus
+      // anywhere inside the carousel counts.
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
       onPointerDown={onDown}
       onPointerUp={onUp}
     >

@@ -1,19 +1,18 @@
-import { Reveal } from './Reveal'
 import { Drop, Leaf, ShieldCheck } from './Icons'
 
 export function WhyBento() {
   return (
     <section className="section why" id="why">
       <div className="wrap">
-        <Reveal className="sec-head" >
+        <div className="sec-head">
           <div>
             <h2 className="display">Why it feels different.</h2>
             <p style={{ marginTop: 12 }}>Four things we got right, so your day stays yours.</p>
           </div>
-        </Reveal>
+        </div>
 
         <div className="bento">
-          <Reveal className="cell cell-img">
+          <div className="cell cell-img">
             {/* This section sits ~6000px down the page, so there is no reason
                 to fetch these on load. */}
             <img
@@ -25,39 +24,36 @@ export function WhyBento() {
               decoding="async"
             />
             <div className="cell-cap">Double-wing security, barely-there feel.</div>
-          </Reveal>
+          </div>
 
-          <Reveal className="cell cell-butter" delay={1}>
-            <span className="ico">
-              <Drop />
-            </span>
-            <h3>The anion strip</h3>
+          <div className="cell cell-butter">
+            <h3>
+              <span className="ico"><Drop /></span>The anion strip
+            </h3>
             <p>
               A functional strip that helps control odour and eases cramps, so you feel steadier
               through the day.
             </p>
-          </Reveal>
+          </div>
 
-          <Reveal className="cell cell-sage" delay={2}>
-            <span className="ico">
-              <Leaf />
-            </span>
-            <h3>Cotton-soft top</h3>
+          <div className="cell cell-sage">
+            <h3>
+              <span className="ico"><Leaf /></span>Cotton-soft top
+            </h3>
             <p>Ultra-thin, breathable layers that stay dry and gentle on sensitive skin.</p>
-          </Reveal>
+          </div>
 
-          <Reveal className="cell cell-lilac cell-wide" delay={1}>
-            <span className="ico">
-              <ShieldCheck />
-            </span>
-            <h3>Nothing nasty</h3>
+          <div className="cell cell-lilac cell-wide">
+            <h3>
+              <span className="ico"><ShieldCheck /></span>Nothing nasty
+            </h3>
             <p>
               Toxin-free, chlorine-free and hypoallergenic. Certified organic, through and through,
               for skin that deserves better.
             </p>
-          </Reveal>
+          </div>
 
-          <Reveal className="cell cell-img" delay={2}>
+          <div className="cell cell-img">
             <img
               src="/assets/img/pad-detail-2.webp"
               alt="Close-up of a Femi9 centre-wing pad styled with soft accessories"
@@ -67,7 +63,7 @@ export function WhyBento() {
               decoding="async"
             />
             <div className="cell-cap">Centre-wing fit for heavier nights.</div>
-          </Reveal>
+          </div>
         </div>
       </div>
     </section>

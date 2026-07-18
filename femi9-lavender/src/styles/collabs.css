@@ -91,7 +91,7 @@
 
 /* ---- card ------------------------------------------------------------ */
 .collab-card {
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   box-shadow: var(--shadow-sm);

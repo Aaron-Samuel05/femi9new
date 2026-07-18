@@ -7,7 +7,7 @@
 
 .grid-products{display:grid;grid-template-columns:repeat(4,1fr);gap:22px}
 .card{
-  background:#fff;border-radius:var(--r-card);overflow:hidden;
+  background: var(--surface);border-radius:var(--r-card);overflow:hidden;
   border:1px solid var(--line-soft);
   display:flex;flex-direction:column;
   transition:transform .35s var(--ease), box-shadow .35s var(--ease);

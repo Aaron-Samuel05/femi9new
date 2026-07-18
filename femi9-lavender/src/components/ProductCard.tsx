@@ -3,18 +3,15 @@ import { Link } from 'react-router-dom'
 import type { Product } from '../data/products'
 import { rupees } from '../data/products'
 import { useCart } from '../store/cart'
-import { useReveal, revealClass } from './Reveal'
 import { Plus } from './Icons'
 import { PantyArt } from './PantyArt'
 
 interface Props {
   product: Product
-  delay?: 1 | 2 | 3 | 4
 }
 
-export const ProductCard = memo(function ProductCard({ product, delay }: Props) {
+export const ProductCard = memo(function ProductCard({ product }: Props) {
   const { add } = useCart()
-  const { ref, inView } = useReveal<HTMLElement>()
   const { id, name, price, img, meta, flow, desc, tag, tagClass, type, packs, sizes } = product
 
   // "clearly display available sizes and pack types" — a small options row
@@ -26,7 +23,7 @@ export const ProductCard = memo(function ProductCard({ product, delay }: Props) 
   const optionSuffix = packs ? 'pcs' : sizes ? '' : ''
 
   return (
-    <article ref={ref} className={revealClass(inView, delay, 'card')}>
+    <article className="card">
       <Link to={`/product/${id}`} className="card-media" aria-label={name}>
         {tag && <span className={`tag${tagClass ? ` ${tagClass}` : ''}`}>{tag}</span>}
         {type === 'panty' ? (
