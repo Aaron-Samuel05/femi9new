@@ -130,6 +130,8 @@ COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
 # The Prisma schema + migration history — required by `prisma migrate deploy`.
 COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
+# Keep the static catalog available to the idempotent Prisma seed task.
+COPY --from=build --chown=nextjs:nodejs /app/src/data ./src/data
 COPY --from=build --chown=nextjs:nodejs /app/src/lib/cycle-crypto.ts ./src/lib/cycle-crypto.ts
 
 # Recreate the `.bin/prisma` shim so `npx prisma ...` resolves the locally-copied
