@@ -39,18 +39,24 @@ function Reveal({
   id?: string
 }) {
   const ref = useRef<HTMLElement>(null)
+  const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const node = ref.current
-    if (!node) return
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      node.dataset.visible = 'true'
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reducedMotion) {
+      setVisible(true)
       return
     }
+
+    const node = ref.current
+    if (!node) return
+    // Preserve Figma's pointer-entry trigger, but also reveal when a section
+    // enters the viewport. Scrolling does not consistently dispatch mouseenter,
+    // which otherwise leaves entire desktop sections in their hidden variant.
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          node.dataset.visible = 'true'
+          setVisible(true)
           observer.disconnect()
         }
       },
@@ -58,10 +64,17 @@ function Reveal({
     )
     observer.observe(node)
     return () => observer.disconnect()
-  }, [])
+  }, [id])
 
   return (
-    <section ref={ref} className={className} id={id}>
+    <section
+      ref={ref}
+      className={className}
+      id={id}
+      data-visible={visible ? 'true' : undefined}
+      onMouseEnter={() => setVisible(true)}
+      onFocusCapture={() => setVisible(true)}
+    >
       {children}
     </section>
   )
@@ -127,17 +140,36 @@ function LandingNav() {
 }
 
 function Hero() {
+  const [slide, setSlide] = useState<0 | 1>(0)
+
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    let timer = 0
+    const swap = () => {
+      setSlide((current) => (current === 0 ? 1 : 0))
+      timer = window.setTimeout(swap, 1667)
+    }
+    timer = window.setTimeout(swap, 5)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  const buyNow = () => document.querySelector('#products')?.scrollIntoView({ behavior: 'smooth' })
+
   return (
-    <section className="fl-hero" aria-labelledby="fl-hero-heading">
-      <img className="fl-hero__flower fl-hero__flower--ghost" src={`${ASSET}hero-imgGroup.svg`} alt="" />
-      <img className="fl-hero__flower fl-hero__flower--solid" src={`${ASSET}hero-imgGroup1.svg`} alt="" />
-      <img className="fl-hero__cloud fl-hero__cloud--top" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-      <img className="fl-hero__cloud fl-hero__cloud--bottom" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-      <img className="fl-hero__cloud fl-hero__cloud--edge" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-      <img className="fl-hero__pad" src={`${ASSET}hero-imgImage20.png`} alt="" />
-      <img className="fl-hero__model" src={`${ASSET}hero-imgImage19.png`} alt="Woman seated beside Femi9 pads" />
-      <div className="fl-shell fl-hero__inner">
-        <div className="fl-hero__copy">
+    <section className={`fl-hero${slide === 1 ? ' is-second' : ''}`} aria-labelledby="fl-hero-heading">
+      <div className="fl-hero__background fl-hero__background--first" />
+      <div className="fl-hero__background fl-hero__background--second" />
+
+      <div className="fl-hero__scene fl-hero__scene--first" aria-hidden={slide === 1}>
+        <img className="fl-hero__flower fl-hero__flower--ghost" src={`${ASSET}hero-imgGroup.svg`} alt="" />
+        <img className="fl-hero__flower fl-hero__flower--solid" src={`${ASSET}hero-imgGroup1.svg`} alt="" />
+        <img className="fl-hero__cloud fl-hero__cloud--top" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
+        <img className="fl-hero__cloud fl-hero__cloud--bottom" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
+        <img className="fl-hero__cloud fl-hero__cloud--edge" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
+        <img className="fl-hero__pad" src={`${ASSET}hero-imgImage20.png`} alt="" />
+        <img className="fl-hero__model" src={`${ASSET}hero-imgImage19.png`} alt="Woman seated beside Femi9 pads" />
+        <div className="fl-shell fl-hero__inner">
+          <div className="fl-hero__copy">
           <h1 id="fl-hero-heading"><strong>Organic Pads</strong> That Feel Like Nothing At All.</h1>
           <p>Ultra-Thin, Breathable Cotton Pads With A Mood-Lifting Anion Strip. Toxin-Free, Biodegradable, And Made For Real Life</p>
           <div className="fl-hero__proof">
@@ -145,18 +177,41 @@ function Hero() {
             <i />
             <span><img src={`${ASSET}hero-imgSeedling1.png`} alt="" />Biodegradable</span>
           </div>
-          <button type="button" className="fl-btn fl-btn--gold" onClick={() => document.querySelector('#products')?.scrollIntoView({ behavior: 'smooth' })}>Buy Now</button>
+            <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>Buy Now</button>
+          </div>
         </div>
       </div>
-      <div className="fl-hero__pager" aria-hidden="true"><span /><i /></div>
+
+      <div className="fl-hero__scene fl-hero__scene--second" aria-hidden={slide === 0}>
+        <img className="fl-hero__second-shape fl-hero__second-shape--top" src={`${ASSET}hero-imgRectangle18.svg`} alt="" />
+        <img className="fl-hero__second-shape fl-hero__second-shape--bottom" src={`${ASSET}hero-imgRectangle17.svg`} alt="" />
+        <img className="fl-hero__second-product" src={`${ASSET}hero-imgImage30.png`} alt="Femi9 organic pads displayed on a pedestal" />
+        <div className="fl-shell fl-hero__inner">
+          <div className="fl-hero__copy fl-hero__copy--second">
+            <h2><strong>Confidence</strong> That Lasts All Day.</h2>
+            <p>Stay protected through work, travel, workouts, and restful nights with ultra-absorbent organic pads designed to move with you—not against you.</p>
+            <div className="fl-hero__proof">
+              <span><img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />Certified Organic Cotton</span>
+              <i />
+              <span><img src={`${ASSET}hero-imgSeedling1.png`} alt="" />Biodegradable</span>
+            </div>
+            <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>Buy Now</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="fl-hero__pager" role="group" aria-label="Hero slides">
+        <button type="button" aria-label="Show first slide" className={slide === 0 ? 'is-active' : ''} onClick={() => setSlide(0)} />
+        <button type="button" aria-label="Show second slide" className={slide === 1 ? 'is-active' : ''} onClick={() => setSlide(1)} />
+      </div>
     </section>
   )
 }
 
 const FOUNDERS = [
-  { image: 'about-founder.png', label: 'FOUNDERS', variant: 'doctor' },
-  { image: 'about-woman.png', label: 'CO-FOUNDERS', variant: 'woman' },
-  { image: 'about-man.png', label: 'CO-FOUNDERS', variant: 'man' },
+  { image: 'about-founder.png', label: 'FOUNDERS', variant: 'doctor', name: 'Dr. Gomathi V', arrow: 'about-hover-gomathi.svg' },
+  { image: 'about-woman.png', label: 'CO-FOUNDERS', variant: 'woman', name: 'Vignesh Shivan', arrow: 'about-hover-vignesh.svg' },
+  { image: 'about-man.png', label: 'CO-FOUNDERS', variant: 'man', name: 'Nayanthara', arrow: 'about-hover-nayanthara.svg' },
 ] as const
 
 function About() {
@@ -168,7 +223,7 @@ function About() {
       <div className="fl-shell fl-about__layout">
         <div className="fl-about__people" aria-label="Femi9 founders">
           {FOUNDERS.map((person) => (
-            <figure className={`fl-founder fl-founder--${person.variant}`} key={person.variant}>
+            <figure className={`fl-founder fl-founder--${person.variant}`} key={person.variant} tabIndex={0}>
               <span className="fl-founder__portrait">
                 <img src={`${ASSET}${person.image}`} alt="Femi9 founder" />
               </span>
@@ -179,6 +234,8 @@ function About() {
                   <img src={`${ASSET}about-imgVector6.svg`} alt="" />
                 </span>
               )}
+              <span className="fl-founder__hover-name">{person.name}</span>
+              <img className="fl-founder__hover-arrow" src={`${ASSET}${person.arrow}`} alt="" />
               <figcaption>{person.label}</figcaption>
             </figure>
           ))}
@@ -198,7 +255,7 @@ function About() {
 const BENEFITS = [
   { image: 'why-imgImage23.png', title: 'Cotton-Soft Comfort', copy: 'Feels Soft Against Your Skin For All-Day Comfort With Zero Irritation.' },
   { image: 'why-imgImage24.png', title: 'Breathable Design', copy: 'Airflow-Friendly Layers Help Reduce Heat And Keep You Feeling Fresh.' },
-  { image: 'why-imgImage25.png', title: 'Anion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
+  { image: 'why-imgImage25.png', title: 'Onion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
   { image: 'why-imgImage26.png', title: 'Nothing Nasty', copy: 'Free From Harsh Chemicals, Chlorine And Toxins For Skin-Friendly Protection.' },
 ] as const
 
@@ -231,6 +288,7 @@ function Why() {
 
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
   const { add } = useCart()
+  const [hovered, setHovered] = useState<number | null>(null)
   const cards = Array.from({ length: 4 }, (_, index) => products[index] ?? products[0])
 
   return (
@@ -241,14 +299,27 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
           <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence—Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--outline fl-btn--arrow" to={products[0] ? `/product/${products[0].id}` : '/'}>View All <span>→</span></Link>
         </div>
-        <div className="fl-products__grid">
+        <div
+          className={`fl-products__grid${hovered === null ? '' : ` has-hover-${hovered + 1}`}`}
+          onMouseLeave={() => setHovered(null)}
+        >
           {cards.map((product, index) => {
             const slug = product?.id ?? 'p330dw'
             const variantId = product?.variants[0]?.id
             return (
-              <article className="fl-product" key={`${slug}-${index}`} style={{ '--card-index': index } as CSSProperties}>
+              <article
+                className={`fl-product${hovered === index ? ' is-active' : ''}`}
+                key={`${slug}-${index}`}
+                style={{ '--card-index': index } as CSSProperties}
+                onMouseEnter={() => setHovered(index)}
+                onFocusCapture={() => setHovered(index)}
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget)) setHovered(null)
+                }}
+              >
                 <Link className="fl-product__media" to={`/product/${slug}`}>
-                  <img src={`${ASSET}products-imgFrame206.png`} alt="Femi9 organic cotton pad pack" />
+                  <img className="fl-product__package" src={`${ASSET}products-imgFrame206.png`} alt="Femi9 organic cotton pad pack" />
+                  <img className="fl-product__hover-art" src={`${ASSET}products-imgFrame206-hover.png`} alt="" />
                 </Link>
                 <div className="fl-product__body">
                   <Link to={`/product/${slug}`}><h3>Femi9-330mm-Extra-Large 6 Pads</h3></Link>
@@ -284,7 +355,13 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
             <Link className="fl-blog" to={posts[index] ? `/blog/${posts[index].slug}` : '/blog'} key={item.title} style={{ '--blog-index': index } as CSSProperties}>
               <span className={`fl-blog__photo fl-blog__photo--${item.pos}`} />
               <span className="fl-blog__shade" />
-              <span className="fl-blog__meta"><b>{item.tag}</b><small>5mins Read</small></span>
+              <span className="fl-blog__meta">
+                <b>{item.tag}</b>
+                <span className="fl-blog__read">
+                  <small>5mins Read</small>
+                  <span className="fl-blog__arrow"><img src={`${ASSET}blogs-imgFrame.svg`} alt="" /></span>
+                </span>
+              </span>
               <h3>{item.title}</h3>
             </Link>
           ))}
