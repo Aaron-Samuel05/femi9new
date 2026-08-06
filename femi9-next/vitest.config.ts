@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url'
  */
 const TEST_DB =
   process.env.TEST_DATABASE_URL ||
-  'postgresql://aravindbaranitharan@localhost:5432/femi9_test?schema=public'
+  'postgresql://femi9:femi9@127.0.0.1:5432/femi9_test?schema=public'
 
 export default defineConfig({
   test: {
