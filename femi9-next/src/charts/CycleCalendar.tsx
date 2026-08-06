@@ -76,6 +76,7 @@ export function CycleCalendar({
           return (
             <button
               key={i}
+              type="button"
               className={`cal-day${isToday ? ' today' : ''}${phase ? ' has-phase' : ''}`}
               style={cellStyle(phase)}
               onMouseEnter={() => setHover({ date, phase })}

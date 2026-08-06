@@ -15,8 +15,8 @@ const SHIPPING_FEE = 49
 export default async function CheckoutPage() {
   const token = await getGuestToken()
   const [cart, { freeShipThreshold }] = await Promise.all([
-    token ? getCart(token) : Promise.resolve(EMPTY_CART),
-    getSettings(),
+    token ? getCart(token).catch(() => EMPTY_CART) : Promise.resolve(EMPTY_CART),
+    getSettings().catch(() => ({ freeShipThreshold: 999 })),
   ])
 
   if (cart.items.length === 0) {

@@ -57,7 +57,7 @@ export function Account({
               <span className="badge" style={{ background: 'var(--butter)', color: '#8a5a00', fontSize: '.86rem', padding: '8px 14px' }}>
                 {pointsBalance.toLocaleString('en-IN')} Bloom points
               </span>
-              <button className="btn btn-ghost">Edit profile</button>
+              <button className="btn btn-ghost" type="button" title="Profile editing is not available yet" disabled>Edit profile</button>
             </div>
           </div>
         </div>
@@ -124,7 +124,7 @@ export function Account({
         {/* addresses */}
         <div className="col-6">
           <div className="panel pad-lg" style={{ height: '100%' }}>
-            <div className="panel-head"><div><h3>Saved addresses</h3></div><button className="btn btn-ghost" style={{ padding: '.5em 1em', fontSize: '.85rem' }}>Add new</button></div>
+            <div className="panel-head"><div><h3>Saved addresses</h3></div><button className="btn btn-ghost" type="button" title="Adding addresses is not available yet" style={{ padding: '.5em 1em', fontSize: '.85rem' }} disabled>Add new</button></div>
             {addresses.length === 0 ? (
               <p className="oitems">No saved addresses yet - the address on your next order is saved here automatically.</p>
             ) : (

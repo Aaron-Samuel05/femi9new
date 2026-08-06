@@ -145,8 +145,8 @@ export function Shell({ variant, title, subtitle, children }: Props) {
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="icon-btn" aria-label="Search"><ISearch /></button>
-            <button className="icon-btn" aria-label="Notifications"><IBell /></button>
+            <button className="icon-btn" type="button" aria-label="Search" title="Search is not available yet" disabled><ISearch /></button>
+            <button className="icon-btn" type="button" aria-label="Notifications" title="Notifications are not available yet" disabled><IBell /></button>
             <span className="avatar">{foot.initials}</span>
           </div>
         </header>

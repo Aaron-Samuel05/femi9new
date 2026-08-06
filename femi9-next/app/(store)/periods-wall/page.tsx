@@ -7,6 +7,8 @@ import { listApprovedPosts } from '@/lib/services/wall'
 export const dynamic = 'force-dynamic'
 
 export default async function PeriodsWallPage() {
-  const posts = await listApprovedPosts()
+  // The compose form remains usable when the read-side database is briefly
+  // unavailable; the API will report the write failure explicitly if needed.
+  const posts = await listApprovedPosts().catch(() => [])
   return <PeriodsWall posts={posts} />
 }
