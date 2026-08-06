@@ -11,6 +11,7 @@
         },
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
+            "repo:Mohammed-farook-28/femi9:ref:refs/heads/main",
             "repo:Mohammed-farook-28/femi9:ref:refs/heads/master",
             "repo:Mohammed-farook-28/femi9:ref:refs/heads/staging"
           ]
