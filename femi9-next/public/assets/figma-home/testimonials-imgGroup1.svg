@@ -1,0 +1,9 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="52" height="52" viewBox="0 0 52 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group">
+<foreignObject x="-4" y="-4" width="60" height="60"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(2px);clip-path:url(#bgblur_0_0_108_clip_path);height:100%;width:100%"></div></foreignObject><path id="Vector" data-figma-bg-blur-radius="4" d="M26 52C40.3594 52 52 40.3594 52 26C52 11.6406 40.3594 0 26 0C11.6406 0 0 11.6406 0 26C0 40.3594 11.6406 52 26 52Z" fill="white" fill-opacity="0.5"/>
+<path id="Vector_2" d="M36.6386 28.1303L21.7372 38.7601C20.0058 39.9952 17.6025 38.7574 17.6025 36.6307V15.3712C17.6025 13.2445 20.0058 12.0068 21.7372 13.2418L36.6386 23.8716C38.1008 24.9146 38.1008 27.0873 36.6386 28.1303Z" fill="black"/>
+</g>
+<defs>
+<clipPath id="bgblur_0_0_108_clip_path" transform="translate(4 4)"><path d="M26 52C40.3594 52 52 40.3594 52 26C52 11.6406 40.3594 0 26 0C11.6406 0 0 11.6406 0 26C0 40.3594 11.6406 52 26 52Z"/>
+</clipPath></defs>
+</svg>

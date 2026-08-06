@@ -1,0 +1,75 @@
+# =============================================================================
+# LOCAL prod-like verification stack — NOT a production deployment.
+# -----------------------------------------------------------------------------
+# Purpose: build the real production image (the Dockerfile) and run it against a
+# throwaway Postgres, exactly as it would run on ECS Fargate — same standalone
+# server, same `prisma migrate deploy` on boot, same NON-root user. Use it to
+# catch container/runtime issues before pushing to ECR.
+#
+#   docker compose up --build      # build image + start db + app
+#   open http://localhost:3000
+#   docker compose down -v         # stop and wipe the local db volume
+#
+# PRODUCTION DIFFERENCES (do NOT use this file to deploy):
+#   * Production uses Aurora Serverless v2 (ap-south-1) behind RDS Proxy — here we
+#     run a local `postgres:16` container instead.
+#   * Production secrets come from AWS Secrets Manager — here they come from `.env`.
+#   * Production runs on Fargate behind an ALB (+ optional CloudFront) — here it's
+#     a single container published on localhost:3000.
+#
+# The app service reads secrets (AUTH_SECRET, ADMIN_*, RAZORPAY_*, MSG91_AUTH_KEY,
+# RESEND_API_KEY, SENTRY_DSN, NEXT_PUBLIC_* …) from `.env` via `env_file`.
+# Copy `.env.example` → `.env` and fill it in first. DATABASE_URL / DIRECT_URL are
+# overridden below to point at the compose `db` service (an explicit `environment`
+# value always wins over `env_file`), so whatever those are set to in `.env` for
+# local host development is ignored here.
+# =============================================================================
+
+services:
+  # --- Postgres 16 — stand-in for Aurora in local testing --------------------
+  db:
+    image: postgres:16
+    environment:
+      # Throwaway local credentials — safe to hard-code, this DB never leaves the host.
+      POSTGRES_USER: femi9
+      POSTGRES_PASSWORD: femi9
+      POSTGRES_DB: femi9
+    ports:
+      # Exposed so you can inspect the DB from the host (psql / Prisma Studio).
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # `app` waits for this to pass before starting, so migrate-on-boot succeeds.
+      test: ["CMD-SHELL", "pg_isready -U femi9 -d femi9"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  # --- The Femi9 app, built from the production Dockerfile --------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        # Only start once Postgres reports healthy (its healthcheck above).
+        condition: service_healthy
+    env_file:
+      # All app secrets. Must exist — copy .env.example → .env and fill it in.
+      - .env
+    environment:
+      # Point the app + migrations at the compose `db` service. These override any
+      # DATABASE_URL/DIRECT_URL in `.env`. Both are the SAME host here because there
+      # is no pooler locally (in production DATABASE_URL goes through RDS Proxy while
+      # DIRECT_URL bypasses it for migrations).
+      DATABASE_URL: "postgresql://femi9:femi9@db:5432/femi9?schema=public"
+      DIRECT_URL: "postgresql://femi9:femi9@db:5432/femi9?schema=public"
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+
+volumes:
+  # Persists the local Postgres data between `up`/`down`; wipe with `down -v`.
+  pgdata:

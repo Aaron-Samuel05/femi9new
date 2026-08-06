@@ -1,0 +1,129 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI — Femi9 (Next.js 14 + Prisma 6 + Postgres)
+#
+# Runs on every pull request and on every push to `main`. It gives us a single
+# gate that must be green before code merges/ships:
+#
+#   1. install deps (npm ci — reproducible, uses package-lock.json)
+#   2. prisma generate (client must exist before typecheck & build)
+#   3. typecheck        (tsc --noEmit — fails the build on any type error)
+#   4. tests            (vitest, against a REAL Postgres 16 service container)
+#   5. production build (next build)
+#
+# Any failing step fails the whole workflow (steps run sequentially and GitHub
+# stops the job on the first non-zero exit).
+#
+# The test suite talks to a throwaway Postgres spun up as a service container.
+# We create the schema with `prisma db push` (fast, no migration history needed
+# for CI) and point the app at it via TEST_DATABASE_URL — see vitest.config.ts,
+# which reads TEST_DATABASE_URL and also enforces a "*_test" DB-name guardrail
+# (test/setup.ts), hence the DB is named `femi9_test`.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Cancel an in-progress run for the same ref when a new commit is pushed, so we
+# don't waste minutes CI-ing stale commits.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Lint · Typecheck · Test · Build
+    runs-on: ubuntu-latest
+
+    # ── Postgres 16 service container ────────────────────────────────────────
+    # Available to steps on localhost:5432. Health-checked so steps don't start
+    # querying before the DB is accepting connections.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: femi9_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # ── Environment ──────────────────────────────────────────────────────────
+    # DATABASE_URL / DIRECT_URL point `prisma db push` at the service container.
+    # TEST_DATABASE_URL is what vitest.config.ts reads for the test run.
+    # All three MUST reference the `femi9_test` database (test/setup.ts refuses
+    # to run against a non-test DB as a safety guardrail).
+    #
+    # The remaining values are DUMMY placeholders that only exist so that
+    # env-validation at import time (and `next build`) doesn't crash in CI.
+    # None of them are real secrets — do NOT copy these into production.
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      AUTH_SECRET: ci-dummy-secret-0123456789abcdef0123456789abcdef
+      ADMIN_EMAIL: admin@femi9.in
+      ADMIN_PASSWORD: femi9admin
+      # Keep providers OFF in CI. Non-empty dummy values make the provider seams
+      # believe they are configured and cause real outbound API attempts.
+      RAZORPAY_KEY_ID: ""
+      RAZORPAY_KEY_SECRET: ""
+      RAZORPAY_WEBHOOK_SECRET: ""
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ""
+      MSG91_AUTH_KEY: ""
+      RESEND_API_KEY: ""
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      SENTRY_DSN: ""
+      NEXT_PUBLIC_SENTRY_DSN: ""
+      ALLOW_MOCK_PROVIDERS: "true"
+      CYCLE_DATA_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      # Skip Next.js anonymous telemetry in CI.
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Node 22 matches the production image and camera-controls engine.
+          node-version: 22
+          # Cache the npm global cache keyed on package-lock.json for fast installs.
+          cache: npm
+
+      - name: Install dependencies
+        # `npm ci` = clean, reproducible install straight from package-lock.json.
+        run: npm ci
+
+      - name: Generate Prisma Client
+        # Must run before typecheck/tests/build — generated types are imported
+        # across the app (@prisma/client).
+        run: npx prisma generate
+
+      - name: Typecheck
+        # Strict type gate. `tsc --noEmit` fails on any type error without
+        # producing output files.
+        run: npx tsc --noEmit
+
+      - name: Push schema to the test database
+        # Creates all tables in the fresh `femi9_test` DB. `db push` is ideal for
+        # CI: it applies the current schema.prisma directly, no migration history
+        # required. --skip-generate because we already generated the client above.
+        run: npx prisma db push --skip-generate
+
+      - name: Run tests
+        # Vitest reads TEST_DATABASE_URL (see vitest.config.ts) and runs the unit
+        # + integration suites against the service-container Postgres.
+        run: npm test
+
+      - name: Build (production)
+        # Final gate: the app must compile & build exactly as it will in prod.
+        run: npm run build

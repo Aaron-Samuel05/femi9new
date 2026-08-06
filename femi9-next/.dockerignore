@@ -1,0 +1,62 @@
+# =============================================================================
+# Files excluded from the Docker build context.
+# Keeping this tight makes `docker build` faster (smaller context upload) and
+# prevents host-only / secret files from ever entering an image layer.
+# The build regenerates node_modules (npm ci) and .next (next build) itself.
+# =============================================================================
+
+# Dependencies & build output — reinstalled/rebuilt inside the image.
+node_modules
+.next
+out
+build
+dist
+
+# Version control & CI metadata.
+.git
+.gitignore
+.github
+
+# Local env / secrets — MUST NOT leak into an image layer.
+# (Runtime config is injected at deploy time via AWS Secrets Manager.)
+.env
+.env.*
+infra/terraform/.terraform
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/*.tfvars
+infra/terraform/*.plan
+infra/terraform/backend.hcl
+infra/terraform/state-bootstrap/.terraform
+infra/terraform/state-bootstrap/*.tfstate
+infra/terraform/state-bootstrap/*.tfstate.*
+
+# Tests, coverage, and TS build cache — not needed to run the app.
+test
+tests
+__tests__
+coverage
+*.tsbuildinfo
+vitest.config.ts
+
+# Local SQLite / Prisma dev artifacts (schema + migrations ARE kept).
+prisma/*.db
+prisma/*.db-journal
+
+# Docs & markdown.
+*.md
+docs
+
+# Docker files themselves — not needed inside the image.
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose*.yml
+
+# Editor / OS cruft.
+.vscode
+.idea
+.DS_Store
+*.pem
+npm-debug.log*
+yarn-error.log*

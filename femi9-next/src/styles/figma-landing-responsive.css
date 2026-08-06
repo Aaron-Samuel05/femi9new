@@ -1,0 +1,157 @@
+.fl-testimonials {
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .fl-about__layout {
+    min-height: 1010px;
+  }
+
+  .fl-about__people {
+    position: relative;
+    inset: auto;
+    height: 520px;
+  }
+
+  .fl-founder--doctor {
+    width: 298px;
+    height: 335.084px;
+    left: 0;
+    top: 40px;
+  }
+
+  .fl-founder--woman {
+    width: 484.657px;
+    height: 248.803px;
+    left: 34px;
+    top: 350px;
+  }
+
+  .fl-founder--man {
+    width: 347px;
+    height: 343.855px;
+    left: 317px;
+    top: 102px;
+  }
+
+  .fl-about__copy {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: auto;
+    transform: none;
+  }
+
+  .fl-products__grid {
+    width: 100%;
+    height: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .fl-product {
+    width: 100%;
+  }
+
+  .fl-journal {
+    height: auto;
+    min-height: 1700px;
+  }
+
+  .fl-journal .fl-heading,
+  .fl-journal__grid {
+    position: relative;
+    inset: auto;
+  }
+
+  .fl-journal .fl-heading {
+    padding-top: 90px;
+  }
+
+  .fl-journal__grid {
+    margin-top: 44px;
+    grid-template-columns: 1fr;
+  }
+
+  .fl-testimonials__track {
+    position: relative;
+    left: auto;
+    top: auto;
+    margin-top: 44px;
+    overflow-x: auto;
+    width: 100%;
+    height: auto;
+    transform: none;
+    scroll-snap-type: x mandatory;
+  }
+
+  .fl-testimonials[data-visible=true] .fl-testimonials__track:not(.is-manual) {
+    animation: none;
+  }
+
+  .fl-review {
+    flex-basis: min(381px, 82vw);
+    scroll-snap-align: start;
+  }
+
+  .fl-partner {
+    height: auto;
+    min-height: 1080px;
+  }
+
+  .fl-partner__layout {
+    min-height: 920px;
+  }
+
+  .fl-partner__copy,
+  .fl-partner__image {
+    position: relative;
+    left: auto;
+    top: auto;
+    width: 100%;
+    transform: none;
+  }
+
+  .fl-partner__copy {
+    padding-top: 70px;
+  }
+
+  .fl-partner__copy h2,
+  .fl-partner__copy > p {
+    width: auto;
+  }
+
+  .fl-partner__image {
+    margin-top: 48px;
+  }
+
+  .fl-partner[data-visible=true] .fl-partner__copy,
+  .fl-partner[data-visible=true] .fl-partner__image {
+    transform: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .fl-products__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fl-products[data-visible=true] .fl-product:hover,
+  .fl-products[data-visible=true] .fl-product:focus-within {
+    transform: translateY(-8px);
+  }
+
+  .fl-about__people {
+    transform: scale(.75);
+    transform-origin: left top;
+    width: 540px;
+  }
+
+  .fl-journal {
+    min-height: 1600px;
+  }
+
+  .fl-testimonials__controls {
+    gap: 12px;
+  }
+}

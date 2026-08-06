@@ -1,0 +1,33 @@
+# dependencies
+/node_modules
+# next
+/.next/
+/out/
+# production
+/build
+# env
+.env
+.env*.local
+# misc
+.DS_Store
+*.pem
+npm-debug.log*
+*.log
+/.npm-cache/
+/.next-swc-cache/
+*.tsbuildinfo
+# prisma
+/prisma/*.db
+
+# Terraform local state and operator values contain generated DB/auth secrets.
+/infra/terraform/.terraform/
+/infra/terraform/*.tfstate
+/infra/terraform/*.tfstate.*
+/infra/terraform/*.tfvars
+!/infra/terraform/*.tfvars.example
+/infra/terraform/*.plan
+/infra/terraform/femi9.plan
+/infra/terraform/backend.hcl
+/infra/terraform/state-bootstrap/*.tfstate
+/infra/terraform/state-bootstrap/*.tfstate.*
+/infra/terraform/state-bootstrap/.terraform/

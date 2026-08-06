@@ -1,0 +1,135 @@
+/* ===== BASE: tokens, reset, buttons, utilities ===== */
+/* ============================================================
+   Femi9 - organic period care  ·  LAVENDER EDITION
+   Palette: premium pastels — lavender / plum-purple + golden-gold accent
+   Type: Urbanist (matches femi9.in)  ·  single soft light theme
+   ============================================================ */
+
+:root{
+  /* surfaces (soft lavender + pale gold) */
+  --cream:      #FBF9FF;
+  --cream-2:    #F2ECFB;
+  /* Card/panel surface. Sits a touch above --cream so elevation still reads,
+     but tinted toward the lavender anchor rather than pure #fff, which renders
+     flat and synthetic against a tinted page. Every raised surface uses this;
+     no component should hardcode #fff. */
+  --surface:    #FEFCFF;
+  --butter:     #FBEFC8;
+  --butter-soft:#FCF6E1;
+  --sage-tint:  #EDE7F9;   /* repurposed → lavender tint */
+  --lilac-tint: #F2ECF9;
+
+  /* brand accent (locked: every CTA is this golden yellow) */
+  --yellow:     #F0C14E;
+  --yellow-deep:#D8A22F;
+
+  /* supporting brand colors (section tints / dark panel only) */
+  --sage:       #B79BD8;   /* repurposed → soft lavender-purple */
+  --lilac:      #C9AEE4;
+  --forest:     #3A2158;   /* deep plum (dark panels) */
+  --forest-2:   #563184;   /* plum-2 */
+
+  /* ink (plum) */
+  --navy:       #34204E;
+  --ink:        #4B3E63;
+  --muted:      #877D9E;
+  --line:       rgba(52,32,78,.13);
+  --line-soft:  rgba(52,32,78,.07);
+
+  /* shape scale (locked) */
+  --r-card: 26px;
+  --r-img:  20px;
+  --r-chip: 999px;
+
+  --shadow-sm: 0 8px 24px -14px rgba(52,32,78,.26);
+  --shadow:    0 26px 60px -30px rgba(52,32,78,.38);
+  --shadow-yel:0 20px 44px -20px rgba(216,162,47,.5);
+
+  --maxw: 1200px;
+  --ease: cubic-bezier(.16,1,.3,1);
+}
+
+/* ---------- reset-ish ---------- */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;overflow-x:clip}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
+body{
+  margin:0;
+  font-family:"Urbanist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background:var(--cream);
+  color:var(--ink);
+  font-weight:400;
+  font-size:clamp(15px,1.05vw,17px);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  /* Must be `clip`, not `hidden`. `hidden` makes body a scroll container, which
+     silently breaks `position:sticky` for descendants - that would kill the
+     pinned scrub in <pad-exploder>. `clip` blocks horizontal scroll the same
+     way without creating one. */
+  overflow-x:clip;
+}
+img{max-width:100%;display:block}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+h1,h2,h3,h4{color:var(--navy);font-weight:600;line-height:1.05;letter-spacing:-.02em;margin:0;text-wrap:balance}
+p{margin:0}
+
+.wrap{max-width:var(--maxw);margin-inline:auto;padding-inline:clamp(18px,4vw,40px)}
+.section{padding-block:clamp(64px,9vw,120px)}
+
+/* eyebrow (rationed) */
+.eyebrow{
+  display:inline-flex;align-items:center;gap:.5em;
+  font-size:.72rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--forest-2);
+}
+.eyebrow::before{content:"";width:22px;height:2px;background:var(--yellow);border-radius:2px}
+
+/* ---------- buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:.55em;
+  padding:.85em 1.5em;border-radius:var(--r-chip);
+  font-weight:500;font-size:.98rem;white-space:nowrap;
+  transition:transform .25s var(--ease), box-shadow .25s var(--ease), background .25s var(--ease);
+}
+.btn svg{width:1.15em;height:1.15em}
+.btn-primary{background:var(--yellow);color:var(--navy);box-shadow:var(--shadow-yel)}
+.btn-primary:hover{background:var(--yellow-deep);transform:translateY(-2px)}
+.btn-primary:active{transform:translateY(0) scale(.98)}
+.btn-dark{background:var(--forest);color:#fff9ea}
+.btn-dark:hover{background:#2a1746;transform:translateY(-2px)}
+.btn-dark:active{transform:translateY(0) scale(.98)}
+.btn-ghost{background:transparent;color:var(--navy);border:1.5px solid var(--line)}
+.btn-ghost:hover{border-color:var(--navy);transform:translateY(-2px)}
+.btn-ghost:active{transform:translateY(0) scale(.98)}
+.btn-on-forest{background:transparent;color:#fff9ea;border:1.5px solid rgba(255,255,255,.32)}
+.btn-on-forest:hover{border-color:#fff9ea;transform:translateY(-2px)}
+.btn-on-yellow{background:transparent;color:var(--navy);border:1.5px solid rgba(11,42,91,.4)}
+.btn-on-yellow:hover{border-color:var(--navy);transform:translateY(-2px)}
+
+/* ===== REVEAL ANIMATION ===== */
+.reveal{opacity:0;transform:translateY(28px);transition:opacity .8s var(--ease),transform .8s var(--ease)}
+.reveal.in{opacity:1;transform:none}
+.reveal.d1{transition-delay:.08s}.reveal.d2{transition-delay:.16s}
+.reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
+
+@keyframes floatUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
+/* Entrance timings are deliberately tight. These elements start at opacity:0,
+   and an invisible element is not "contentful" - so a long fade holds back both
+   the perceived load and the LCP measurement no matter how fast the bytes
+   arrive. The hero photo is preloaded and lands ~180ms in; a 1s fade starting
+   at .3s meant it was not fully on screen until ~1.3s. The stagger is kept,
+   just roughly halved. */
+@media (prefers-reduced-motion: no-preference){
+  .hero-copy>*{opacity:0;animation:floatUp .5s var(--ease) forwards}
+  .hero-copy>*:nth-child(1){animation-delay:.03s}
+  .hero-copy>*:nth-child(2){animation-delay:.08s}
+  .hero-copy>*:nth-child(3){animation-delay:.13s}
+  .hero-copy>*:nth-child(4){animation-delay:.18s}
+  .hero-copy>*:nth-child(5){animation-delay:.23s}
+  .hero-art{opacity:0;animation:floatUp .55s var(--ease) .06s forwards}
+}
+@media (prefers-reduced-motion: reduce){
+  .reveal{opacity:1;transform:none;transition:none}
+  *{animation:none !important}
+}

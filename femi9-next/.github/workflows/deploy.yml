@@ -1,0 +1,160 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# DEPLOY — Femi9 → AWS ECS Fargate (ap-south-1 / Mumbai)
+#
+# Builds the Docker image, pushes it to ECR (tagged with the git SHA), then rolls
+# the ECS service onto a new task-definition revision that references that image.
+#
+# Database migrations are NOT run here — they run inside the container's
+# entrypoint on start (`npx prisma migrate deploy`). So a deploy is simply:
+#   build image → push to ECR → register new task-def revision → roll service.
+#
+# ── AUTHENTICATION: OIDC, no long-lived keys ─────────────────────────────────
+# We authenticate to AWS with GitHub's OIDC provider and assume an IAM role
+# (aws-actions/configure-aws-credentials with `role-to-assume`). There are NO
+# stored AWS access keys/secrets in this repo. The IAM role must trust the GitHub
+# OIDC provider (token.actions.githubusercontent.com) scoped to this repo, and
+# grant ECR push + ECS deploy + iam:PassRole (for the task exec/task roles).
+# See: https://docs.github.com/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services
+#
+# ── REQUIRED repository configuration ────────────────────────────────────────
+# Set these as GitHub → Settings → Secrets and variables → Actions → *Variables*
+# (they are not secrets; the OIDC role is the only credential and it's an ARN):
+#
+#   AWS_ROLE_ARN     IAM role to assume via OIDC
+#                    e.g. arn:aws:iam::<ACCOUNT_ID>:role/femi9-github-deploy   # TODO
+#   AWS_REGION       ap-south-1                                                # TODO (Mumbai — must match Aurora/ECR region)
+#   ECR_REPOSITORY   ECR repo name for the image, e.g. femi9-next             # TODO
+#   ECS_CLUSTER      ECS cluster name, e.g. femi9-prod                        # TODO
+#   ECS_SERVICE      ECS service name, e.g. femi9-next                        # TODO
+#
+# The task family and container name are DERIVED at runtime from the running
+# service (see the "Fetch current task definition" step), so they don't need to
+# be configured. If your task definition has multiple containers, set the app
+# container name explicitly there (marked TODO in that step).
+# ─────────────────────────────────────────────────────────────────────────────
+name: Deploy
+
+on:
+  # Every merge to main ships.
+  push:
+    branches: [main]
+    # ...and any semver tag (e.g. v1.2.3) so tagged releases deploy too.
+    tags: ["v*"]
+  # A published GitHub Release also triggers a deploy.
+  release:
+    types: [published]
+  # Manual "Run workflow" button for ad-hoc / rollback redeploys.
+  workflow_dispatch:
+
+# OIDC requires `id-token: write`; `contents: read` to check out the repo.
+permissions:
+  id-token: write
+  contents: read
+
+# Never run two deploys at once — serialize and let the latest win.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build image · Push to ECR · Roll ECS service
+    runs-on: ubuntu-latest
+    environment: production # optional: enables environment protection rules/approvals
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── AWS auth via OIDC (assumes the role; no static keys) ────────────────
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # ── Build, tag (git SHA + latest), push ─────────────────────────────────
+      # NOTE: this expects a Dockerfile at the repo root (authored separately).
+      # The image is tagged with the immutable commit SHA (for traceability /
+      # rollback) and also `latest` (convenience).
+      - name: Build, tag, and push image to ECR
+        id: build
+        env:
+          REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE_URI="$REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker build -t "$IMAGE_URI" -t "$REGISTRY/$REPOSITORY:latest" .
+          docker push "$IMAGE_URI"
+          docker push "$REGISTRY/$REPOSITORY:latest"
+          # Expose the SHA-tagged URI to later steps.
+          echo "image=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+      # ── Fetch the service's CURRENT task definition ─────────────────────────
+      # We roll the service by registering a new revision of its existing task
+      # definition with only the image swapped — everything else (env, secrets,
+      # cpu/memory, roles, log config) is preserved as-is.
+      #
+      # `describe-task-definition` returns read-only fields that
+      # `register-task-definition` rejects, so we strip them with jq (preinstalled
+      # on ubuntu-latest). We also derive the container name here.
+      - name: Fetch current task definition
+        id: taskdef
+        env:
+          ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+          ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+        run: |
+          set -euo pipefail
+          TASK_DEF_ARN=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          aws ecs describe-task-definition \
+            --task-definition "$TASK_DEF_ARN" \
+            --query 'taskDefinition' > taskdef-raw.json
+
+          # First container = the app container. If the task def has multiple
+          # containers, hardcode the app container name here instead. # TODO
+          CONTAINER_NAME=$(jq -r '.containerDefinitions[0].name' taskdef-raw.json)
+          echo "container=$CONTAINER_NAME" >> "$GITHUB_OUTPUT"
+
+          # Drop fields that register-task-definition does not accept.
+          jq 'del(
+                .taskDefinitionArn,
+                .revision,
+                .status,
+                .requiresAttributes,
+                .compatibilities,
+                .registeredAt,
+                .registeredBy
+              )' taskdef-raw.json > task-definition.json
+
+      # ── Swap in the new image ───────────────────────────────────────────────
+      - name: Render new task definition
+        id: render
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ steps.taskdef.outputs.container }}
+          image: ${{ steps.build.outputs.image }}
+
+      # ── Register the revision and roll the service ──────────────────────────
+      # Registers the rendered task def as a new revision, updates the service to
+      # it, and waits until the deployment reaches a stable/steady state before
+      # the job is marked successful. Migrations run inside the new tasks' entry-
+      # point (prisma migrate deploy) as they boot.
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true

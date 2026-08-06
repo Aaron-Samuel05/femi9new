@@ -1,0 +1,661 @@
+// Femi9 production schema — implements PRD §6 (Data model).
+// Provider: PostgreSQL. ORM: Prisma. Ids are cuid strings.
+//
+// Grouped: Catalog · Identity/Auth · Commerce · Loyalty & programs ·
+// Community · Cycle & content · Platform settings.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────── Enums ───────────────────────────────
+
+enum Role {
+  customer
+  affiliate
+  partner
+  staff
+  admin
+}
+
+enum ProductType {
+  pad
+  panty
+}
+
+enum ProductStatus {
+  active
+  draft
+  archived
+}
+
+enum VariantKind {
+  pack
+  size
+}
+
+enum OrderStatus {
+  pending
+  paid
+  processing
+  shipped
+  delivered
+  cancelled
+  refunded
+}
+
+enum PaymentStatus {
+  created
+  authorized
+  captured
+  failed
+  refunded
+}
+
+enum CouponType {
+  flat
+  pct
+}
+
+enum SubscriptionStatus {
+  active
+  paused
+  cancelled
+}
+
+enum AffiliateStatus {
+  pending
+  approved
+  suspended
+}
+
+enum AffiliateEventType {
+  click
+  signup
+  order
+}
+
+enum PayoutStatus {
+  pending
+  paid
+}
+
+enum PartnerStatus {
+  new
+  contacted
+  onboarded
+  rejected
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  hidden
+}
+
+// ────────────────────────────── Catalog ──────────────────────────────
+
+model Product {
+  id              String        @id @default(cuid())
+  slug            String        @unique
+  name            String
+  type            ProductType   @default(pad)
+  basePrice       Int // rupees, integer paise-free (matches current data)
+  meta            String // e.g. "9 pads · 330mm"
+  flow            String // e.g. "Heavy · Night + Day"
+  description     String
+  longDescription String?
+  tag             String?
+  tagClass        String?
+  rating          Float         @default(0)
+  reviewCount     Int           @default(0)
+  status          ProductStatus @default(active)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  variants  ProductVariant[]
+  images    ProductImage[]
+  features  ProductFeature[]
+  specs     ProductSpec[]
+  reviews   Review[]
+  wallPosts WallPost[]
+}
+
+model ProductVariant {
+  id        String      @id @default(cuid())
+  productId String
+  product   Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  kind      VariantKind // pack (pads) | size (panties)
+  label     String // "9 pcs" | "M"
+  packCount Int? // pads
+  size      String? // panties
+  price     Int
+  sku       String?     @unique
+  stock     Int         @default(0)
+  active    Boolean     @default(true)
+
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  subscriptions Subscription[]
+
+  @@index([productId])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String?
+  position  Int     @default(0)
+
+  @@index([productId])
+}
+
+model ProductFeature {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title     String
+  body      String
+  position  Int     @default(0)
+
+  @@index([productId])
+}
+
+model ProductSpec {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  key       String
+  value     String
+  position  Int     @default(0)
+
+  @@index([productId])
+}
+
+model Cadence {
+  id       String  @id @default(cuid())
+  code     String  @unique // "cycle" | "4w" | "6w"
+  label    String
+  sub      String
+  days     Int
+  active   Boolean @default(true)
+  position Int     @default(0)
+
+  subscriptions Subscription[]
+}
+
+// ─────────────────────────── Identity & Auth ──────────────────────────
+// Auth.js (NextAuth) core models, extended with Femi9 fields on User.
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  phone         String?   @unique
+  image         String?
+  role          Role      @default(customer)
+  tier          String? // "Bloom member"
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  addresses     Address[]
+  carts         Cart[]
+  orders        Order[]
+  subscriptions Subscription[]
+  points        PointsLedger[]
+  affiliate     Affiliate?
+  periods       PeriodLog[]
+  symptoms      SymptomLog[]
+  reviews       Review[]
+  wallPosts     WallPost[]
+  wallLikes     WallLike[]
+  wallReplies   WallReply[]
+  events        EventLog[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String
+  name      String
+  line      String
+  city      String
+  state     String?
+  pincode   String?
+  phone     String?
+  isPrimary Boolean @default(false)
+
+  orders Order[]
+
+  @@index([userId])
+}
+
+// ────────────────────────────── Commerce ──────────────────────────────
+
+model Cart {
+  id         String     @id @default(cuid())
+  userId     String?
+  user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  guestToken String?    @unique // cookie token for anonymous carts
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  items      CartItem[]
+
+  @@index([userId])
+}
+
+model CartItem {
+  id        String         @id @default(cuid())
+  cartId    String
+  cart      Cart           @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id])
+  qty       Int            @default(1)
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  orderNo     String      @unique
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status      OrderStatus @default(pending)
+  subtotal    Int
+  discount    Int         @default(0)
+  shipping    Int         @default(0)
+  total       Int
+  addressId   String?
+  address     Address?    @relation(fields: [addressId], references: [id])
+  couponId    String?
+  coupon      Coupon?     @relation(fields: [couponId], references: [id])
+  affiliateId String?
+  affiliate   Affiliate?  @relation(fields: [affiliateId], references: [id])
+  channel     String      @default("web") // web | whatsapp
+  placedAt    DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  items    OrderItem[]
+  payments Payment[]
+  events   AffiliateEvent[]
+  points   PointsLedger[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id           String         @id @default(cuid())
+  orderId      String
+  order        Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId    String
+  variant      ProductVariant @relation(fields: [variantId], references: [id])
+  productName  String // snapshot at purchase
+  variantLabel String // snapshot at purchase
+  unitPrice    Int // snapshot at purchase
+  qty          Int
+  lineTotal    Int
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  orderId           String
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  provider          String        @default("razorpay")
+  razorpayOrderId   String?
+  razorpayPaymentId String?       @unique
+  amount            Int
+  status            PaymentStatus @default(created)
+  method            String?
+  signatureVerified Boolean       @default(false)
+  raw               Json?
+  createdAt         DateTime      @default(now())
+
+  @@index([orderId])
+}
+
+model Coupon {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  type      CouponType
+  value     Int
+  minOrder  Int        @default(0)
+  maxUses   Int? // null = unlimited
+  usedCount Int        @default(0)
+  expiresAt DateTime?
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  orders Order[]
+}
+
+model Subscription {
+  id             String             @id @default(cuid())
+  userId         String
+  user           User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  variantId      String
+  variant        ProductVariant     @relation(fields: [variantId], references: [id])
+  qty            Int                @default(1)
+  cadenceId      String
+  cadence        Cadence            @relation(fields: [cadenceId], references: [id])
+  status         SubscriptionStatus @default(active)
+  nextDeliveryAt DateTime
+  savedTotal     Int                @default(0)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+
+  @@index([userId])
+  @@index([status, nextDeliveryAt])
+}
+
+// ─────────────────────────── Loyalty & programs ────────────────────────
+
+model PointsLedger {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  delta        Int // +earn / -redeem
+  reason       String
+  orderId      String?
+  order        Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  balanceAfter Int
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+}
+
+model RewardOption {
+  id          String     @id @default(cuid())
+  title       String
+  costPoints  Int
+  couponType  CouponType
+  couponValue Int
+  active      Boolean    @default(true)
+  position    Int        @default(0)
+}
+
+model Affiliate {
+  id           String          @id @default(cuid())
+  userId       String          @unique
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handle       String
+  platform     String?
+  followerBand String?
+  promoCode    String          @unique
+  status       AffiliateStatus @default(pending)
+  payoutUpi    String?
+  createdAt    DateTime        @default(now())
+
+  events  AffiliateEvent[]
+  payouts AffiliatePayout[]
+  orders  Order[]
+}
+
+model AffiliateEvent {
+  id          String             @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate          @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  type        AffiliateEventType
+  orderId     String?
+  order       Order?             @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  amount      Int                @default(0)
+  commission  Int                @default(0)
+  createdAt   DateTime           @default(now())
+
+  @@index([affiliateId])
+}
+
+model AffiliatePayout {
+  id          String       @id @default(cuid())
+  affiliateId String
+  affiliate   Affiliate    @relation(fields: [affiliateId], references: [id], onDelete: Cascade)
+  amount      Int
+  status      PayoutStatus @default(pending)
+  periodStart DateTime
+  periodEnd   DateTime
+  reference   String?
+  paidAt      DateTime?
+  createdAt   DateTime     @default(now())
+
+  @@index([affiliateId])
+}
+
+model PartnerApplication {
+  id        String        @id @default(cuid())
+  name      String
+  phone     String
+  city      String
+  situation String?
+  reason    String?
+  status    PartnerStatus @default(new)
+  notes     String?
+  createdAt DateTime      @default(now())
+
+  @@index([status])
+}
+
+// ────────────────────────────── Community ─────────────────────────────
+
+model WallPost {
+  id          String           @id @default(cuid())
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  alias       String?
+  isAnonymous Boolean          @default(false)
+  productId   String?
+  product     Product?         @relation(fields: [productId], references: [id], onDelete: SetNull)
+  rating      Int?
+  body        String
+  tags        String[]
+  status      ModerationStatus @default(pending)
+  likeCount   Int              @default(0)
+  createdAt   DateTime         @default(now())
+
+  likes   WallLike[]
+  replies WallReply[]
+
+  @@index([status])
+}
+
+model WallLike {
+  id        String   @id @default(cuid())
+  postId    String
+  post      WallPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([postId, userId])
+}
+
+model WallReply {
+  id        String   @id @default(cuid())
+  postId    String
+  post      WallPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([postId])
+}
+
+model Review {
+  id        String           @id @default(cuid())
+  productId String
+  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name      String
+  place     String?
+  rating    Int
+  body      String
+  status    ModerationStatus @default(approved)
+  createdAt DateTime         @default(now())
+
+  @@index([productId])
+}
+
+// ─────────────────────────── Cycle & content ──────────────────────────
+
+model PeriodLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate     DateTime? // legacy plaintext; migration clears after encryption
+  lengthDays    Int?      // legacy plaintext; migration clears after encryption
+  encryptedData String?   // AES-256-GCM period payload
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model SymptomLog {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date          DateTime? // legacy plaintext; migration clears after encryption
+  symptom       String?   // legacy plaintext; migration clears after encryption
+  level         Int?      // legacy plaintext; migration clears after encryption
+  encryptedData String?   // AES-256-GCM symptom payload
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+}
+
+model BlogCategory {
+  id    String @id @default(cuid())
+  name  String @unique
+  color String
+  tint  String
+
+  posts BlogPost[]
+}
+
+model BlogPost {
+  id          String           @id @default(cuid())
+  slug        String           @unique
+  title       String
+  categoryId  String
+  category    BlogCategory     @relation(fields: [categoryId], references: [id])
+  excerpt     String
+  author      String
+  readTime    Int              @default(4)
+  tone        String
+  image       String?
+  featured    Boolean          @default(false)
+  status      ModerationStatus @default(approved)
+  body        String[] // paragraphs / '## ' headings / '> ' pull-quotes
+  publishedAt DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([categoryId])
+}
+
+model EventLog {
+  id        String   @id @default(cuid())
+  type      String // view | add_to_cart | checkout | signup | ...
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ────────────────────────── Platform settings ─────────────────────────
+// Editable business config — replaces hardcoded FREE_SHIP / SUBSCRIBE_PCT etc.
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ────────────────────────── Regional pricing ──────────────────────────
+// A PriceZone is a named pricing bucket (e.g. "Tamil Nadu") that applies a
+// discount off the base price. Regions are attached via ZoneRegion — STATES
+// now, DISTRICTS / PINCODE prefixes later WITHOUT a schema change. Pricing is
+// per-zone and resolved server-side; the isDefault zone is the fallback shown
+// when a visitor's location is unknown. (Per-product-per-zone overrides can be
+// added later as a separate table without touching this.)
+
+enum RegionKind {
+  state
+  district
+  pincode
+}
+
+model PriceZone {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  discountPct Int      @default(0) // 0–100, percent off the base price
+  isDefault   Boolean  @default(false)
+  active      Boolean  @default(true)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  regions ZoneRegion[]
+}
+
+model ZoneRegion {
+  id     String     @id @default(cuid())
+  zoneId String
+  zone   PriceZone  @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  kind   RegionKind @default(state)
+  value  String // "Tamil Nadu" (state) · "Coimbatore" (district) · "641" (pincode prefix)
+
+  @@unique([kind, value]) // a region maps to at most one zone (no ambiguity)
+  @@index([zoneId])
+}

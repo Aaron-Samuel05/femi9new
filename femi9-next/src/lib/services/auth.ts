@@ -1,0 +1,259 @@
+import 'server-only'
+import type { User } from '@prisma/client'
+import { prisma } from '@/lib/db'
+import { generateCode, generateToken, hashCode, sendSms, sendMagicLink } from '@/lib/otp'
+import type { GoogleProfile } from '@/lib/google-oauth'
+import { rateLimit } from '@/lib/rate-limit'
+
+/**
+ * Customer auth service — the challenge lifecycle for phone-OTP and email
+ * magic-link sign in. It owns the VerificationToken table and the User upsert;
+ * it never touches cookies (the route mints the session so the Set-Cookie lands
+ * on the right response).
+ *
+ * We reuse Auth.js's VerificationToken model as a generic single-use challenge
+ * store, namespacing the identifier by channel ("otp:<phone>" / "email:<email>")
+ * so the two flows can't collide. Only the HASH of a code/token is persisted —
+ * see the salted-hash note on requestOtp for why the phone is folded in.
+ */
+
+// Short-lived by design: an OTP is a live conversation, a link is checked from an
+// inbox a little later. Both are single-use regardless (consumed on success).
+const OTP_TTL_MS = 5 * 60 * 1000
+const LINK_TTL_MS = 15 * 60 * 1000
+
+/** Bad phone shape. Route maps to 400. */
+export class InvalidPhoneError extends Error {
+  constructor() {
+    super('Enter a valid 10-digit mobile number.')
+    this.name = 'InvalidPhoneError'
+  }
+}
+
+/** Wrong / expired / already-used OTP. Route maps to 400. Intentionally vague —
+ *  we don't tell an attacker whether the code was wrong or merely stale. */
+export class InvalidOtpError extends Error {
+  constructor() {
+    super('That code is invalid or has expired. Please request a new one.')
+    this.name = 'InvalidOtpError'
+  }
+}
+
+/** Bad email shape. Route maps to 400. */
+export class InvalidEmailError extends Error {
+  constructor() {
+    super('Enter a valid email address.')
+    this.name = 'InvalidEmailError'
+  }
+}
+
+/** Wrong / expired / already-used magic link. Route redirects to /login?error=link. */
+export class InvalidMagicLinkError extends Error {
+  constructor() {
+    super('This sign-in link is invalid or has expired.')
+    this.name = 'InvalidMagicLinkError'
+  }
+}
+
+/** Google returned an unverified email. Route redirects to /login?error=google.
+ *  We only trust a Google identity whose email Google itself has verified. */
+export class UnverifiedGoogleEmailError extends Error {
+  constructor() {
+    super('Your Google email is not verified, so we could not sign you in.')
+    this.name = 'UnverifiedGoogleEmailError'
+  }
+}
+
+/** Reduce any user-entered phone to the bare national number: strip non-digits,
+ *  then take the last 10 so a leading +91 / 0 doesn't fail validation. Exported
+ *  so routes can key per-phone rate limits on the same canonical value. */
+export function normalizePhone(input: string): string {
+  const digits = (input || '').replace(/\D/g, '')
+  return digits.length > 10 ? digits.slice(-10) : digits
+}
+
+function normalizeEmail(input: string): string {
+  return (input || '').trim().toLowerCase()
+}
+
+// Deliberately conservative single-line check — real validation is the delivered
+// link/code round-trip, this only rejects obvious garbage before we hit the DB.
+function isValidEmail(email: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+export interface RequestOtpResult {
+  mock: boolean
+  /** Present ONLY in mock mode so the code is testable without a live SMS provider. */
+  devCode?: string
+}
+
+/**
+ * Start a phone-OTP challenge: mint a 6-digit code, store its hash, and send it
+ * (or mock). Any prior challenge for this phone is deleted first, so there is at
+ * most one live code per number and a re-request always supersedes the old one.
+ *
+ * The stored hash is over `otp:<phone>:<code>`, not the bare code. Two different
+ * numbers can independently draw the same 6-digit code, and VerificationToken.token
+ * is globally @unique — folding the identifier into the hash keeps those rows
+ * distinct so the second create can't collide.
+ */
+export async function requestOtp(phone: string): Promise<RequestOtpResult> {
+  const normalized = normalizePhone(phone)
+  if (normalized.length !== 10) throw new InvalidPhoneError()
+
+  const identifier = `otp:${normalized}`
+  const code = generateCode()
+  const token = hashCode(`${identifier}:${code}`)
+
+  // Single active challenge per phone.
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  await prisma.verificationToken.create({
+    data: { identifier, token, expires: new Date(Date.now() + OTP_TTL_MS) },
+  })
+
+  const { mock } = await sendSms(normalized, code)
+  return { mock, ...(mock ? { devCode: code } : {}) }
+}
+
+/**
+ * Verify a phone-OTP challenge. On success: upsert the User by phone (keeping any
+ * existing name so a returning shopper isn't blanked), consume the challenge, and
+ * return the User for the route to mint a session from. The phone key means a
+ * shopper who checked out as a guest with this number owns those orders.
+ * Throws InvalidOtpError on a wrong / expired / missing code.
+ */
+export async function verifyOtp(phone: string, code: string): Promise<User> {
+  const normalized = normalizePhone(phone)
+  if (normalized.length !== 10) throw new InvalidPhoneError()
+
+  const cleanCode = (code || '').replace(/\D/g, '')
+  if (cleanCode.length !== 6) throw new InvalidOtpError()
+
+  const identifier = `otp:${normalized}`
+  const token = hashCode(`${identifier}:${cleanCode}`)
+
+  // Match identifier + hash + not-expired in one query. A wrong code yields no
+  // row; an expired one is filtered out — both surface as the same vague error.
+  const challenge = await prisma.verificationToken.findFirst({
+    where: { identifier, token, expires: { gt: new Date() } },
+  })
+  if (!challenge) {
+    // Cap guesses per code lifetime. The single live code is otherwise
+    // brute-forceable for the full TTL (a wrong code doesn't consume it). Count
+    // failed attempts per phone; once the cap is hit, burn the challenge so the
+    // attacker must request a fresh code instead of continuing to guess. A
+    // correct code always finds its (still-live) challenge above and skips this.
+    const fail = await rateLimit(`otp:fail:${normalized}`, 5, 5 * 60 * 1000)
+    if (!fail.ok) {
+      await prisma.verificationToken.deleteMany({ where: { identifier } })
+    }
+    throw new InvalidOtpError()
+  }
+
+  const user = await prisma.user.upsert({
+    where: { phone: normalized },
+    update: {}, // keep existing name / profile
+    create: { phone: normalized, role: 'customer' },
+  })
+
+  // Consume every challenge for this identifier so a code can't be replayed.
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  return user
+}
+
+export interface RequestMagicLinkResult {
+  mock: boolean
+  /** Present ONLY in mock mode so the link is usable without a live email provider. */
+  devLink?: string
+}
+
+/**
+ * Start an email magic-link challenge: mint a random token, store its hash, build
+ * the verify URL with the RAW token, and send it (or mock). Prior challenges for
+ * this email are cleared first so only the newest link works.
+ */
+export async function requestMagicLink(email: string): Promise<RequestMagicLinkResult> {
+  const normalized = normalizeEmail(email)
+  if (!isValidEmail(normalized)) throw new InvalidEmailError()
+
+  const identifier = `email:${normalized}`
+  const raw = generateToken()
+  const token = hashCode(raw)
+
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  await prisma.verificationToken.create({
+    data: { identifier, token, expires: new Date(Date.now() + LINK_TTL_MS) },
+  })
+
+  // The link carries the RAW token; the DB only ever holds its hash. NEXT_PUBLIC_SITE_URL
+  // is the canonical origin so the link resolves the same whatever host issued it.
+  const base = process.env.NEXT_PUBLIC_SITE_URL || ''
+  const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}`
+
+  const { mock } = await sendMagicLink(normalized, link)
+  return { mock, ...(mock ? { devLink: link } : {}) }
+}
+
+/**
+ * Verify an email magic-link challenge. On success: upsert the User by email
+ * (stamping emailVerified), consume the challenge, and return the User for the
+ * route to mint a session. Throws InvalidMagicLinkError on any bad/expired token.
+ */
+export async function verifyMagicLink(email: string, token: string): Promise<User> {
+  const normalized = normalizeEmail(email)
+  if (!isValidEmail(normalized) || !token) throw new InvalidMagicLinkError()
+
+  const identifier = `email:${normalized}`
+  const hash = hashCode(token)
+
+  const challenge = await prisma.verificationToken.findFirst({
+    where: { identifier, token: hash, expires: { gt: new Date() } },
+  })
+  if (!challenge) throw new InvalidMagicLinkError()
+
+  const user = await prisma.user.upsert({
+    where: { email: normalized },
+    update: { emailVerified: new Date() },
+    create: { email: normalized, emailVerified: new Date(), role: 'customer' },
+  })
+
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  return user
+}
+
+/**
+ * Sign in (or register) a customer from a verified Google profile. Like the
+ * magic-link path this keys on the @unique email, so a shopper who previously
+ * used the email link — or checked out with this address — lands on the SAME
+ * account. We only accept a Google-verified email (no challenge round-trip here,
+ * so the verification IS the trust anchor), stamp emailVerified, keep an existing
+ * name, and backfill the avatar only when we don't already have one.
+ * Throws UnverifiedGoogleEmailError if Google says the email isn't verified.
+ */
+export async function signInWithGoogle(profile: GoogleProfile): Promise<User> {
+  const normalized = normalizeEmail(profile.email)
+  if (!isValidEmail(normalized) || !profile.emailVerified) throw new UnverifiedGoogleEmailError()
+
+  const name = profile.name?.trim() || undefined
+  const image = profile.picture?.trim() || undefined
+
+  const existing = await prisma.user.findUnique({ where: { email: normalized } })
+  const user = await prisma.user.upsert({
+    where: { email: normalized },
+    // Don't blank an existing name/avatar; only fill gaps.
+    update: {
+      emailVerified: new Date(),
+      ...(existing?.name ? {} : name ? { name } : {}),
+      ...(existing?.image ? {} : image ? { image } : {}),
+    },
+    create: {
+      email: normalized,
+      emailVerified: new Date(),
+      role: 'customer',
+      ...(name ? { name } : {}),
+      ...(image ? { image } : {}),
+    },
+  })
+  return user
+}

@@ -1,0 +1,59 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# terraform.tfvars.example
+# Copy to `terraform.tfvars` and adjust. Everything here has a sane default in
+# variables.tf, so an empty tfvars is valid — but you'll want at least the image
+# tag and (before go-live) the ACM cert + domain.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NOTE: do NOT put third-party API keys here. Those live in Secrets Manager and
+# are set out-of-band after apply (see secrets.tf / README). tfvars is committed-
+# adjacent and not the place for secrets.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Identity / region ──
+aws_region  = "ap-south-1"
+project     = "femi9"
+environment = "prod"
+
+# ── Container image ──
+# Prefer an immutable git-SHA tag over "latest" for real deploys.
+container_image_tag = "latest"
+
+# ── Task sizing / scaling ──
+task_cpu      = 512
+task_memory   = 1024
+desired_count = 2
+min_capacity  = 2
+max_capacity  = 6
+
+# ── Database (Aurora Serverless v2) ──
+db_name                  = "femi9"
+db_master_username       = "femi9_admin"
+db_min_acu               = 0.5
+db_max_acu               = 4
+db_instance_count        = 2 # writer + reader (Multi-AZ). Set 1 for cheaper single-AZ.
+db_backup_retention_days = 7
+
+# ── TLS / DNS (fill before going live) ──
+# Request/validate an ACM cert IN ap-south-1 for your domain, then paste its ARN.
+acm_certificate_arn = "" # e.g. "arn:aws:acm:ap-south-1:123456789012:certificate/xxxxxxxx"
+domain_name         = "" # e.g. "shop.femi9.com"
+route53_zone_id     = "" # e.g. "Z0123456789ABCDEFGHIJ" (leave empty to manage DNS yourself)
+
+# ── Public (NEXT_PUBLIC_*) values ──
+# Also pass these as build args to `next build` in CI (client bundle is baked
+# at build time, not read from the container at runtime).
+next_public_site_url        = "" # defaults to https://<domain_name> when empty
+next_public_razorpay_key_id = "" # e.g. "rzp_live_xxxxxxxx"
+next_public_sentry_dsn      = "" # e.g. "https://public@o0.ingest.sentry.io/0"
+
+# ── Provider configuration ──
+msg91_template_id = "" # DLT-approved OTP template id
+email_from        = "" # e.g. "Femi9 <login@femi9.in>" (must be verified in Resend)
+
+# ── Optional features ──
+# DynamoDB shared rate limiting is provisioned by default. Enable this only when
+# intentionally using Upstash as an alternative/fallback.
+enable_rate_limit_redis = false
+single_nat_gateway      = true  # false = one NAT per AZ (HA egress, higher cost)
