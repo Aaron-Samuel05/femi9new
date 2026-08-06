@@ -82,7 +82,7 @@ export function CartDrawer() {
                 className="btn btn-primary"
                 onClick={() => {
                   closeCart()
-                  window.location.hash = '#products'
+                  window.location.assign('/#products')
                 }}
               >
                 Shop pads

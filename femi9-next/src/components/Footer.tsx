@@ -97,8 +97,8 @@ export function Footer() {
           <div className="footer-col">
             <h4>Femi9</h4>
             <Link to="/#why">Why Femi9</Link>
-            <Link to="/#story">Our Story</Link>
-            <Link to="/#impact">Impact</Link>
+            <Link to="/#about">Our Story</Link>
+            <Link to="/#opportunities">Impact</Link>
             <Link to="/dashboard">My dashboard</Link>
           </div>
 
@@ -117,7 +117,7 @@ export function Footer() {
 
         <div className="footer-bottom">
           <span>&copy; Femi9 2026. All rights reserved.</span>
-          <a href="#">Privacy Policy</a>
+          <Link to="/privacy">Privacy Policy</Link>
         </div>
       </div>
     </footer>

@@ -14,6 +14,7 @@ type Filter = string
 
 export function Blog({ posts, categories }: Props) {
   const [filter, setFilter] = useState<Filter>('All')
+  const [subscribed, setSubscribed] = useState(false)
 
   const featured = useMemo(() => posts.filter((p) => p.featured).slice(0, 5), [posts])
   const list = useMemo(
@@ -74,10 +75,14 @@ export function Blog({ posts, categories }: Props) {
             <h2 className="display">Care notes, in your inbox.</h2>
             <p>A gentle, occasional letter — cycle tips and new writing. No spam, ever.</p>
           </div>
-          <form className="blog-news-form" onSubmit={(e) => e.preventDefault()}>
-            <input type="email" placeholder="Your email address" aria-label="Email address" />
-            <button type="submit" className="btn btn-primary">Subscribe</button>
-          </form>
+          {subscribed ? (
+            <p role="status" className="blog-news-confirm">Thanks — you’re on the list.</p>
+          ) : (
+            <form className="blog-news-form" onSubmit={(e) => { e.preventDefault(); setSubscribed(true) }}>
+              <input type="email" placeholder="Your email address" aria-label="Email address" required />
+              <button type="submit" className="btn btn-primary">Subscribe</button>
+            </form>
+          )}
         </div>
       </section>
     </main>
