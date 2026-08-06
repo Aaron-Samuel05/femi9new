@@ -111,9 +111,10 @@ function LandingNav() {
       </nav>
       <div className="fl-nav__actions">
         <Link className="fl-nav__icon" to="/account" aria-label="My account">
-          <img src={`${ASSET}navbar-imgLayer2.svg`} alt="" />
+          <img src={`${ASSET}navbar-imgGroup.svg`} alt="" />
         </Link>
         <button className="fl-nav__icon" type="button" onClick={openCart} aria-label="Open bag">
+          <img className="fl-nav__bag-layer" src={`${ASSET}navbar-imgLayer2.svg`} alt="" />
           <img src={`${ASSET}navbar-imgFrame.svg`} alt="" />
           {count > 0 && <span>{count}</span>}
         </button>
@@ -210,8 +211,8 @@ function Hero() {
 
 const FOUNDERS = [
   { image: 'about-founder.png', label: 'FOUNDERS', variant: 'doctor', name: 'Dr. Gomathi V', arrow: 'about-hover-gomathi.svg' },
-  { image: 'about-woman.png', label: 'CO-FOUNDERS', variant: 'woman', name: 'Vignesh Shivan', arrow: 'about-hover-vignesh.svg' },
-  { image: 'about-man.png', label: 'CO-FOUNDERS', variant: 'man', name: 'Nayanthara', arrow: 'about-hover-nayanthara.svg' },
+  { image: 'about-man.png', label: 'CO-FOUNDERS', variant: 'woman', name: 'Vignesh Shivan', arrow: 'about-hover-vignesh.svg' },
+  { image: 'about-woman.png', label: 'CO-FOUNDERS', variant: 'man', name: 'Nayanthara', arrow: 'about-hover-nayanthara.svg' },
 ] as const
 
 function About() {
@@ -220,6 +221,7 @@ function About() {
       <img className="fl-about__shape fl-about__shape--corner" src={`${ASSET}about-imgPolygon1.svg`} alt="" />
       <img className="fl-about__shape fl-about__shape--top" src={`${ASSET}about-imgVector2.svg`} alt="" />
       <img className="fl-about__shape fl-about__shape--bottom" src={`${ASSET}about-imgVector3.svg`} alt="" />
+      <img className="fl-about__shape fl-about__shape--edge" src={`${ASSET}about-imgRectangle16.svg`} alt="" />
       <div className="fl-shell fl-about__layout">
         <div className="fl-about__people" aria-label="Femi9 founders">
           {FOUNDERS.map((person) => (
@@ -253,17 +255,20 @@ function About() {
 }
 
 const BENEFITS = [
-  { image: 'why-imgImage23.png', title: 'Cotton-Soft Comfort', copy: 'Feels Soft Against Your Skin For All-Day Comfort With Zero Irritation.' },
-  { image: 'why-imgImage24.png', title: 'Breathable Design', copy: 'Airflow-Friendly Layers Help Reduce Heat And Keep You Feeling Fresh.' },
-  { image: 'why-imgImage25.png', title: 'Onion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
-  { image: 'why-imgImage26.png', title: 'Nothing Nasty', copy: 'Free From Harsh Chemicals, Chlorine And Toxins For Skin-Friendly Protection.' },
+  { image: 'why-imgImage23.png', art: 'comfort', title: 'Cotton-Soft Comfort', copy: 'Feels Soft Against Your Skin For All-Day Comfort With Zero Irritation.' },
+  { image: 'why-imgImage24.png', art: 'breathable', title: 'Breathable Design', copy: 'Airflow-Friendly Layers Help Reduce Heat And Keep You Feeling Fresh.' },
+  { image: 'why-imgImage25.png', art: 'anion', title: 'Onion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
+  { image: 'why-imgImage26.png', art: 'clean', title: 'Nothing Nasty', copy: 'Free From Harsh Chemicals, Chlorine And Toxins For Skin-Friendly Protection.' },
 ] as const
 
 function Benefit({ item, side }: { item: (typeof BENEFITS)[number]; side: 'left' | 'right' }) {
   return (
     <article className={`fl-benefit fl-benefit--${side}`}>
-      <img src={`${ASSET}${item.image}`} alt="" />
-      <div><h3>{item.title}</h3><p>{item.copy}</p></div>
+      {side === 'right' && <div><h3>{item.title}</h3><p>{item.copy}</p></div>}
+      <span className={`fl-benefit__art fl-benefit__art--${item.art}`} aria-hidden="true">
+        <img src={`${ASSET}${item.image}`} alt="" />
+      </span>
+      {side === 'left' && <div><h3>{item.title}</h3><p>{item.copy}</p></div>}
     </article>
   )
 }
@@ -345,6 +350,7 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
   return (
     <Reveal className="fl-journal" id="journal">
       <img className="fl-journal__ribbon" src={`${ASSET}blogs-imgVector2.svg`} alt="" />
+      <img className="fl-journal__polygon" src={`${ASSET}blogs-imgPolygon2.svg`} alt="" />
       <div className="fl-shell">
         <div className="fl-heading">
           <div><p className="fl-kicker">Blogs <Flower /></p><h2>Women&apos;s Wellness Journal</h2><p>Knowledge, Care, And Confidence—Everything You Need To Understand Your Body Better.</p></div>
@@ -353,7 +359,9 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
         <div className="fl-journal__grid">
           {JOURNAL.map((item, index) => (
             <Link className="fl-blog" to={posts[index] ? `/blog/${posts[index].slug}` : '/blog'} key={item.title} style={{ '--blog-index': index } as CSSProperties}>
-              <span className={`fl-blog__photo fl-blog__photo--${item.pos}`} />
+              <span className={`fl-blog__photo fl-blog__photo--${item.pos}`}>
+                <img src={`${ASSET}blogs-imgImage18.png`} alt="" />
+              </span>
               <span className="fl-blog__shade" />
               <span className="fl-blog__meta">
                 <b>{item.tag}</b>
