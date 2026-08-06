@@ -7,8 +7,13 @@
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": {
-          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:Mohammed-farook-28/femi9:environment:staging"
+          "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+          "token.actions.githubusercontent.com:sub": [
+            "repo:Mohammed-farook-28/femi9:ref:refs/heads/master",
+            "repo:Mohammed-farook-28/femi9:ref:refs/heads/staging"
+          ]
         }
       }
     }
