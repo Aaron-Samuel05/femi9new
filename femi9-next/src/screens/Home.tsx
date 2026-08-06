@@ -191,7 +191,7 @@ function Hero() {
         <div className="fl-shell fl-hero__inner">
           <div className="fl-hero__copy fl-hero__copy--second">
             <h2><strong>Confidence</strong> That Lasts All Day.</h2>
-            <p>Stay protected through work, travel, workouts, and restful nights with ultra-absorbent organic pads designed to move with you—not against you.</p>
+            <p>Stay protected through work, travel, workouts, and restful nights with ultra-absorbent organic pads designed to move with you - not against you.</p>
             <div className="fl-hero__proof">
               <span><img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />Certified Organic Cotton</span>
               <i />
@@ -279,7 +279,7 @@ function Why() {
     <Reveal className="fl-why" id="why">
       <div className="fl-shell">
         <div className="fl-heading fl-heading--light">
-          <div><p className="fl-kicker">Why Femi9 <Flower light /></p><h2>Built By A Doctor. Backed By Women.<br />Made For Every Body.</h2><p>Knowledge, Care, And Confidence—Everything You Need To Understand Your Body Better.</p></div>
+          <div><p className="fl-kicker">Why Femi9 <Flower light /></p><h2>Built By A Doctor. Backed By Women.<br />Made For Every Body.</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--light" to="/periods-wall">View Details <span>→</span></Link>
         </div>
         <div className="fl-why__grid">
@@ -306,7 +306,7 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
       <img className="fl-products__ribbon" src={`${ASSET}products-imgRectangle15.svg`} alt="" />
       <div className="fl-shell">
         <div className="fl-heading">
-          <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence—Everything You Need To Understand Your Body Better.</p></div>
+          <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--outline fl-btn--arrow" to={products[0] ? `/product/${products[0].id}` : '/'}>View All <span>→</span></Link>
         </div>
         <div
@@ -379,7 +379,7 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
       <img className="fl-journal__polygon" src={`${ASSET}blogs-imgPolygon2.svg`} alt="" />
       <div className="fl-shell">
         <div className="fl-heading">
-          <div><p className="fl-kicker">Blogs <Flower /></p><h2>Women&apos;s Wellness Journal</h2><p>Knowledge, Care, And Confidence—Everything You Need To Understand Your Body Better.</p></div>
+          <div><p className="fl-kicker">Blogs <Flower /></p><h2>Women&apos;s Wellness Journal</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--outline" to="/blog">View All</Link>
         </div>
         <div className="fl-journal__grid">

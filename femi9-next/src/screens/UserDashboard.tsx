@@ -90,7 +90,7 @@ export function UserDashboard(props: DashProps) {
                 <h2>Log your first period</h2>
                 <p className="ph-sub">
                   Once you tell us when your last period started, we’ll predict your next one, map your
-                  fertile and PMS windows, and keep your calendar in sync — all from your own data.
+                  fertile and PMS windows, and keep your calendar in sync - all from your own data.
                 </p>
               </div>
             </div>

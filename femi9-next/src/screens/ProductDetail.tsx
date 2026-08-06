@@ -240,7 +240,7 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                       ))}
                     </div>
                     <p className="sub-next">
-                      <Check /> Next delivery <b>{deliveryDate(activeCadence.days)}</b> — {activeCadence.sub}.
+                      <Check /> Next delivery <b>{deliveryDate(activeCadence.days)}</b> - {activeCadence.sub}.
                     </p>
                   </div>
                 )}
@@ -305,7 +305,7 @@ export function ProductDetail({ product, extra, reviews }: Props) {
           <div style={{ marginTop: 26, maxWidth: 640 }}>
             {rvState === 'sent' ? (
               <div className="review">
-                <b style={{ color: 'var(--navy)' }}>Thanks — your review is awaiting approval.</b>
+                <b style={{ color: 'var(--navy)' }}>Thanks - your review is awaiting approval.</b>
                 <p style={{ marginTop: 8, color: 'var(--muted)' }}>
                   We read every review before it goes live. It’ll appear here once approved.
                 </p>

@@ -73,10 +73,10 @@ export function Blog({ posts, categories }: Props) {
         <div className="blog-news">
           <div>
             <h2 className="display">Care notes, in your inbox.</h2>
-            <p>A gentle, occasional letter — cycle tips and new writing. No spam, ever.</p>
+            <p>A gentle, occasional letter - cycle tips and new writing. No spam, ever.</p>
           </div>
           {subscribed ? (
-            <p role="status" className="blog-news-confirm">Thanks — you’re on the list.</p>
+            <p role="status" className="blog-news-confirm">Thanks - you’re on the list.</p>
           ) : (
             <form className="blog-news-form" onSubmit={(e) => { e.preventDefault(); setSubscribed(true) }}>
               <input type="email" placeholder="Your email address" aria-label="Email address" required />

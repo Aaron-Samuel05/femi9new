@@ -22,7 +22,7 @@ const STEPS = [
   {
     n: '01',
     t: 'Apply',
-    d: 'Fill the short form below. It takes about two minutes — no paperwork.',
+    d: 'Fill the short form below. It takes about two minutes - no paperwork.',
   },
   {
     n: '02',
@@ -32,7 +32,7 @@ const STEPS = [
   {
     n: '03',
     t: 'Sell in your community',
-    d: 'On WhatsApp, at your doorstep, or through nearby shops — however suits you.',
+    d: 'On WhatsApp, at your doorstep, or through nearby shops - however suits you.',
   },
   {
     n: '04',
@@ -249,14 +249,14 @@ export function Partner() {
       <section className="section wrap pt-why">
         <header className="pt-head">
           <h2 className="display">Why partner with Femi9</h2>
-          <p>Dignified work that fits your life — and grows a business that is yours.</p>
+          <p>Dignified work that fits your life - and grows a business that is yours.</p>
         </header>
         <div className="pt-why-grid">
           <article className="pt-feature">
             <h3 className="display pt-feature-t">Be part of a movement</h3>
             <p className="pt-feature-d">
               Every pack you sell puts health, dignity and income into the hands of
-              women across Tamil Nadu — starting with your own.
+              women across Tamil Nadu - starting with your own.
             </p>
             <p className="pt-feature-tag">5,000+ women already lead the way</p>
           </article>
@@ -298,7 +298,7 @@ export function Partner() {
             <h2 className="display">Apply to become a partner</h2>
             <p>
               Tell us a little about yourself. There is no cost to apply and no
-              obligation — our team will call you on WhatsApp to talk it through.
+              obligation - our team will call you on WhatsApp to talk it through.
             </p>
             <ul className="pt-apply-list">
               <li>A friendly local team, in your own language</li>
@@ -320,7 +320,7 @@ export function Partner() {
                 2 working days.
               </p>
               <p className="pt-success-sub">
-                Keep your phone handy — we&apos;ll call you on WhatsApp to talk it
+                Keep your phone handy - we&apos;ll call you on WhatsApp to talk it
                 through. Welcome to the Femi9 family.
               </p>
             </div>
@@ -389,7 +389,7 @@ export function Partner() {
                 <textarea
                   id="pt-reason"
                   rows={3}
-                  placeholder="A line or two about what brings you here — no wrong answers."
+                  placeholder="A line or two about what brings you here - no wrong answers."
                   value={form.reason}
                   onChange={(e) => update('reason', e.target.value)}
                 />

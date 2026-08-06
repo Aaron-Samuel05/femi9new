@@ -139,7 +139,7 @@ export function Rewards({ pointsBalance, rewardOptions, activity = [] }: Rewards
       {/* redeem */}
       <span className="rw-sub-label rw-redeem-label">Redeem your points</span>
       {rewardOptions.length === 0 ? (
-        <p className="oitems" style={{ marginBottom: 8 }}>No rewards available just yet — check back soon.</p>
+        <p className="oitems" style={{ marginBottom: 8 }}>No rewards available just yet - check back soon.</p>
       ) : (
         <div className="rw-redeem">
           {rewardOptions.map((r) => {

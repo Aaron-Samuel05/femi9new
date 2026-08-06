@@ -4,7 +4,7 @@ import { listProducts } from '@/lib/services/products'
 import { listPosts } from '@/lib/services/blog'
 
 export const metadata: Metadata = {
-  title: 'Femi9 — Organic, breathable period care',
+  title: 'Femi9 - Organic, breathable period care',
   description:
     'Shop Femi9 ultra-thin, breathable organic cotton pads with a mood-lifting anion strip. Toxin-free, biodegradable period care made for real life.',
 }

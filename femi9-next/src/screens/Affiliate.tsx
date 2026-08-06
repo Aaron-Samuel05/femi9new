@@ -198,7 +198,7 @@ export function Affiliate() {
       setSubmitted(true)
       scrollToJoin()
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -242,7 +242,7 @@ export function Affiliate() {
       }
       setStats((await res.json()) as StatsResult)
     } catch {
-      setStatsError('Network error — please try again.')
+      setStatsError('Network error - please try again.')
     } finally {
       setStatsLoading(false)
     }
@@ -262,7 +262,7 @@ export function Affiliate() {
             <p className="af-hero-sub">
               Apply in a minute for a personal Femi9 code. Your followers get{' '}
               <strong>10% off</strong> their first order, and you earn{' '}
-              <strong>commission</strong> on everything they buy — paid every
+              <strong>commission</strong> on everything they buy - paid every
               month, straight to your UPI.
             </p>
             <div className="af-hero-cta">
@@ -320,7 +320,7 @@ export function Affiliate() {
                 <span>This month</span>
               </div>
             </div>
-            <p className="af-preview-note">Sample — yours starts at zero.</p>
+            <p className="af-preview-note">Sample - yours starts at zero.</p>
           </aside>
         </div>
       </header>
@@ -351,7 +351,7 @@ export function Affiliate() {
               {
                 n: '03',
                 t: 'Earn on every order',
-                d: 'You keep commission on everything they buy — tracked live and paid monthly via UPI.',
+                    d: 'You keep commission on everything they buy - tracked live and paid monthly via UPI.',
               },
             ].map((s, i) => (
               <Rise key={s.n} delay={i * 90}>
@@ -389,7 +389,7 @@ export function Affiliate() {
                   {
                     icon: Ico.coin,
                     t: 'Commission for you',
-                    d: 'On every order placed with your code — no cap.',
+                    d: 'On every order placed with your code - no cap.',
                   },
                   {
                     icon: Ico.calendar,
@@ -445,7 +445,7 @@ export function Affiliate() {
               code.
             </p>
             <ul className="af-reassure">
-              <li>{Ico.check} Free forever — no fees, no lock-in</li>
+                    <li>{Ico.check} Free forever - no fees, no lock-in</li>
               <li>{Ico.check} No minimum follower count</li>
               <li>{Ico.check} Track clicks &amp; earnings any time</li>
             </ul>
@@ -521,7 +521,7 @@ export function Affiliate() {
                   <h3 className="display">Thanks, {name.split(' ')[0] || 'creator'} 🎉</h3>
                   <p>
                     We&rsquo;ve got your application. Our team reviews new
-                    creators within a day or two — we&rsquo;ll email your personal
+                    creators within a day or two - we&rsquo;ll email your personal
                     Femi9 code the moment you&rsquo;re approved.
                   </p>
                 </div>
@@ -628,7 +628,7 @@ export function Affiliate() {
                   {submitting ? 'Submitting…' : 'Apply for my code'}
                 </button>
                 <p className="af-form-fine">
-                  By applying you agree to share honestly. No spam — we promise.
+                  By applying you agree to share honestly. No spam - we promise.
                 </p>
               </form>
             )}
@@ -651,11 +651,11 @@ export function Affiliate() {
             {[
               {
                 q: 'When do I get paid?',
-                a: 'Earnings are tallied through the month and paid on the 1st via UPI. There is no minimum threshold to receive your first payout — even a single order counts.',
+                a: 'Earnings are tallied through the month and paid on the 1st via UPI. There is no minimum threshold to receive your first payout - even a single order counts.',
               },
               {
                 q: 'Can I use the code myself?',
-                a: 'Yes. Your code works on your own orders too, so you get the 10% follower discount whenever you restock — though commission is earned on your community’s orders.',
+                a: 'Yes. Your code works on your own orders too, so you get the 10% follower discount whenever you restock - though commission is earned on your community’s orders.',
               },
               {
                 q: 'Is there a minimum following?',
@@ -663,7 +663,7 @@ export function Affiliate() {
               },
               {
                 q: 'How is this different from a brand collab?',
-                a: 'Collaborations and partnerships are separate, hands-on programs. This is self-serve: once approved your code is always live, always yours, and earns commission automatically — no briefs or deadlines.',
+                a: 'Collaborations and partnerships are separate, hands-on programs. This is self-serve: once approved your code is always live, always yours, and earns commission automatically - no briefs or deadlines.',
               },
             ].map((f) => (
               <details className="af-faq" key={f.q}>

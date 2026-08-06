@@ -65,7 +65,7 @@ export const POSTS: BlogPost[] = [
       'The anion strip is a thin functional layer designed to release negative ions in the presence of moisture and warmth. In everyday terms, it is built to help keep the surface feeling fresher for longer and to gently support you through the parts of the day that can feel less comfortable.',
       'It sits underneath the soft cotton top sheet, so it never touches your skin directly. What you feel against you is always breathable organic cotton.',
       '## What it is not',
-      'The strip is not a medicine and it is not a cure for cramps. We are careful never to over-promise. What many people tell us is that the overall experience — thin, breathable, low-odour — simply feels steadier, and the strip is one part of that whole design.',
+      'The strip is not a medicine and it is not a cure for cramps. We are careful never to over-promise. What many people tell us is that the overall experience - thin, breathable, low-odour - simply feels steadier, and the strip is one part of that whole design.',
       '> The goal was never a gimmick. It was a pad that quietly does its job and gets out of your way.',
       'If comfort through your cycle is what you are after, the strip works best as part of the full pad: organic cotton on top, a biodegradable core to lock moisture, and a breathable back that will not trap heat.',
     ],
@@ -109,7 +109,7 @@ export const POSTS: BlogPost[] = [
     body: [
       'The single most common message we get is some version of: "I wake up to check." Broken sleep on your period is exhausting, and it is almost always a coverage-and-position problem rather than anything you are doing wrong.',
       '## Length before thickness',
-      'For overnight, back coverage matters more than bulk. Flow pools toward the back when you lie down, so a longer pad — 330mm or the 425mm overnight — gives your body room to move without a gap opening up.',
+      'For overnight, back coverage matters more than bulk. Flow pools toward the back when you lie down, so a longer pad - 330mm or the 425mm overnight - gives your body room to move without a gap opening up.',
       '## Wings that hold position',
       'Double wings keep the pad anchored so it does not shift and bunch while you turn. A pad that stays put is a pad that keeps working.',
       '## Breathable, still',
@@ -130,7 +130,7 @@ export const POSTS: BlogPost[] = [
     image: '/assets/img/pad-detail-2.webp',
     featured: true,
     body: [
-      'Skin on this part of the body is thin, sensitive and in contact with a pad for many hours at a time. So the top sheet — the layer against you — is worth being fussy about.',
+      'Skin on this part of the body is thin, sensitive and in contact with a pad for many hours at a time. So the top sheet - the layer against you - is worth being fussy about.',
       '## Chlorine-free matters',
       'Conventional pads are often bleached bright white with chlorine compounds. Organic cotton skips that. For people prone to irritation, removing that step can be the difference between an uneventful period and a week of itch.',
       '## Breathability',
@@ -152,7 +152,7 @@ export const POSTS: BlogPost[] = [
     tone: CATEGORY_META.Sustainability.tint,
     featured: true,
     body: [
-      'A person can use thousands of period products across a lifetime. That number can feel heavy — but it also means small, sustainable choices compound into something real.',
+      'A person can use thousands of period products across a lifetime. That number can feel heavy - but it also means small, sustainable choices compound into something real.',
       '## Start with what you already use',
       'The most sustainable swap is the one you will actually keep. Biodegradable pads are an easy first step because nothing about your routine has to change.',
       '## Read the back layer',
@@ -173,11 +173,11 @@ export const POSTS: BlogPost[] = [
     readTime: 6,
     tone: CATEGORY_META['Comfort & Care'].tint,
     body: [
-      'Cramping is one of the most common period experiences, and for most people it is a normal — if annoying — part of the cycle. Knowing the usual pattern helps you spot when something is worth a conversation with a doctor.',
+      'Cramping is one of the most common period experiences, and for most people it is a normal - if annoying - part of the cycle. Knowing the usual pattern helps you spot when something is worth a conversation with a doctor.',
       '## The usual pattern',
       'Typical cramps arrive shortly before or as bleeding begins and ease over the first day or two. Heat, movement and rest genuinely help for many people.',
       '## When to check in',
-      'Pain that stops you doing normal things, that keeps getting worse, or that shows up at unusual times in your cycle is worth raising with a professional. Trust your own baseline — you know your body better than any chart.',
+      'Pain that stops you doing normal things, that keeps getting worse, or that shows up at unusual times in your cycle is worth raising with a professional. Trust your own baseline - you know your body better than any chart.',
       '## Everyday relief',
       'A warm compress, gentle movement, hydration and staying comfortable and dry all help. A breathable pad will not cure a cramp, but staying un-irritated means one less thing adding to the discomfort.',
       '> Normal does not mean you have to grit your teeth through it. Comfort is allowed.',
@@ -188,7 +188,7 @@ export const POSTS: BlogPost[] = [
     title: 'Why ultra-thin does not mean less protection',
     category: 'Product Guides',
     excerpt:
-      'Thinness used to mean a compromise. Modern cores have quietly rewritten that rule — here is the engineering in plain language.',
+      'Thinness used to mean a compromise. Modern cores have quietly rewritten that rule - here is the engineering in plain language.',
     author: 'Femi9 Team',
     date: 'May 19, 2026',
     readTime: 4,
@@ -200,7 +200,7 @@ export const POSTS: BlogPost[] = [
       'Modern absorbent materials lock in far more liquid per millimetre than old fluff-based padding. A thin core can hold a heavy day comfortably while feeling like almost nothing.',
       '## Comfort you keep wearing',
       'Thin, breathable pads are the ones people actually keep on all day, which in practice means better real-world protection than a bulky pad you are constantly adjusting.',
-      '> The best pad is the one you forget you are wearing — and it still has your back.',
+      '> The best pad is the one you forget you are wearing - and it still has your back.',
     ],
   },
   {
@@ -208,7 +208,7 @@ export const POSTS: BlogPost[] = [
     title: 'Spotting between periods: six calm explanations',
     category: 'Cycle & Hormones',
     excerpt:
-      'Unexpected spotting is startling, but it is often ordinary. The common, non-scary reasons — and the ones worth a doctor visit.',
+      'Unexpected spotting is startling, but it is often ordinary. The common, non-scary reasons - and the ones worth a doctor visit.',
     author: 'Dr. Gomathi',
     date: 'May 12, 2026',
     readTime: 5,
@@ -218,7 +218,7 @@ export const POSTS: BlogPost[] = [
       '## Common, ordinary reasons',
       'Ovulation, starting or changing a hormonal contraceptive, stress, and the first months of a new cycle pattern can all cause light spotting. A liner is usually all you need.',
       '## Worth a conversation',
-      'Spotting that is heavy, persistent, painful, or happens after intimacy is worth raising with a professional — not to panic, but to rule things out and get peace of mind.',
+      'Spotting that is heavy, persistent, painful, or happens after intimacy is worth raising with a professional - not to panic, but to rule things out and get peace of mind.',
       '> A small liner and a calm head handle most of it. A doctor handles the rest.',
     ],
   },
@@ -236,7 +236,7 @@ export const POSTS: BlogPost[] = [
     body: [
       'A first period can feel like a lot at once. The good news is that choosing a pad does not have to be complicated, and the right first pad is simply one that feels comfortable and easy.',
       '## Start regular, start soft',
-      'A regular-length pad with a soft cotton top is the friendliest starting point — enough coverage for confidence without feeling bulky.',
+      'A regular-length pad with a soft cotton top is the friendliest starting point - enough coverage for confidence without feeling bulky.',
       '## Change often, worry less',
       'Changing every few hours keeps things fresh and comfortable, and takes the guesswork out of "is it time yet?" A small pouch in a bag makes it easy at school.',
       '## For parents',
@@ -255,7 +255,7 @@ export const POSTS: BlogPost[] = [
     readTime: 5,
     tone: CATEGORY_META['Skin & Body'].tint,
     body: [
-      'Irritation during a period is common enough that many people assume it is just part of the deal. It usually is not — and a few adjustments make a real difference.',
+      'Irritation during a period is common enough that many people assume it is just part of the deal. It usually is not - and a few adjustments make a real difference.',
       '## Reduce the triggers',
       'Fragranced and heavily bleached products are frequent culprits. Switching to fragrance-free, chlorine-free organic cotton removes two of the biggest irritants at once.',
       '## Keep it dry and breathable',
@@ -267,7 +267,7 @@ export const POSTS: BlogPost[] = [
   },
   {
     slug: 'pms-moods-science',
-    title: 'PMS mood shifts are real — the science and what helps',
+    title: 'PMS mood shifts are real - the science and what helps',
     category: 'Cycle & Hormones',
     excerpt:
       'No, it is not "all in your head." A clear look at why mood changes before your period, and gentle things that genuinely help.',
@@ -276,11 +276,11 @@ export const POSTS: BlogPost[] = [
     readTime: 6,
     tone: CATEGORY_META['Cycle & Hormones'].tint,
     body: [
-      'Being told your feelings are just hormones is dismissive and, frankly, wrong. Premenstrual mood changes are a real, physiological phenomenon — and understanding them is the opposite of dismissing them.',
+      'Being told your feelings are just hormones is dismissive and, frankly, wrong. Premenstrual mood changes are a real, physiological phenomenon - and understanding them is the opposite of dismissing them.',
       '## What is happening',
       'In the luteal phase, shifting levels of estrogen and progesterone interact with brain chemistry linked to mood and sleep. For some people that means irritability, low mood or anxiety in the days before bleeding.',
       '## What tends to help',
-      'Steady sleep, movement, and going gentle on caffeine and sugar all soften the edges for many people. Tracking your cycle helps too — simply knowing "this is my luteal week" reframes the feeling.',
+      'Steady sleep, movement, and going gentle on caffeine and sugar all soften the edges for many people. Tracking your cycle helps too - simply knowing "this is my luteal week" reframes the feeling.',
       '## When to seek support',
       'If low mood before your period is severe or disruptive, that is worth talking to a professional about. It is common, it is real, and it is treatable.',
       '> Naming the pattern is powerful. It turns "what is wrong with me" into "ah, it is that week."',
@@ -301,7 +301,7 @@ export const POSTS: BlogPost[] = [
     body: [
       'Femi9 began with a simple belief: period care should be safe, honest and genuinely comfortable. Somewhere along the way it also became a livelihood for thousands of women.',
       '## The model',
-      'Across Tamil Nadu and beyond, a growing network of women entrepreneurs distribute Femi9 in their own communities — earning an income while making better period care reachable where it is needed most.',
+      'Across Tamil Nadu and beyond, a growing network of women entrepreneurs distribute Femi9 in their own communities - earning an income while making better period care reachable where it is needed most.',
       '## Why it matters',
       'Access and dignity travel together. When the person selling you a pad is your neighbour, the conversation around periods opens up, and the stigma quietly loses its grip.',
       '## The number that keeps growing',

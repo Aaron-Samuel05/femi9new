@@ -72,7 +72,7 @@ export function Account({
           <div className="panel pad-lg">
             <div className="panel-head"><div><h3>Order history</h3><div className="sub">{orders.length} {orders.length === 1 ? 'order' : 'orders'}</div></div></div>
             {orders.length === 0 ? (
-              <p className="oitems" style={{ padding: '18px 4px' }}>No orders yet — your first Femi9 order will show up here.</p>
+              <p className="oitems" style={{ padding: '18px 4px' }}>No orders yet - your first Femi9 order will show up here.</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
                 <table className="dtable">
@@ -126,7 +126,7 @@ export function Account({
           <div className="panel pad-lg" style={{ height: '100%' }}>
             <div className="panel-head"><div><h3>Saved addresses</h3></div><button className="btn btn-ghost" style={{ padding: '.5em 1em', fontSize: '.85rem' }}>Add new</button></div>
             {addresses.length === 0 ? (
-              <p className="oitems">No saved addresses yet — the address on your next order is saved here automatically.</p>
+              <p className="oitems">No saved addresses yet - the address on your next order is saved here automatically.</p>
             ) : (
               addresses.map((a) => (
                 <div className={`addr${a.primary ? ' primary' : ''}`} key={a.id}>

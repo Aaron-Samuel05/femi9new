@@ -5,7 +5,7 @@ import { listPosts, listCategories } from '@/lib/services/blog'
 export const metadata: Metadata = {
   title: 'Journal · Femi9',
   description:
-    'Stories, guides, and honest talk on periods, organic care, and living well — the Femi9 Journal.',
+    'Stories, guides, and honest talk on periods, organic care, and living well - the Femi9 Journal.',
 }
 
 // Journal posts come from Postgres — render at request time, not at build (the

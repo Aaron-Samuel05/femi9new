@@ -44,7 +44,7 @@ export function CartDrawer() {
     if (isEmpty) return
     let msg = 'Hi Femi9! I would like to order:\n'
     for (const it of items) {
-      msg += `\n• ${it.name} — ${it.variantLabel} x${it.qty} (${rupees(it.lineTotal)})`
+      msg += `\n• ${it.name} - ${it.variantLabel} x${it.qty} (${rupees(it.lineTotal)})`
     }
     msg += `\n\nTotal: ${rupees(subtotal)}`
     window.open(`https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank')

@@ -280,7 +280,7 @@ export function CycleTracker() {
             </h2>
             <p className="cyc-lead">
               {mode === 'setup'
-                ? 'A Gentle, Private Tracker. Tell Us Three Things To See When Your Next Period Is Likely To Arrive — And When You Are Signed In, It Saves To Your Femi9 Account So Your Dashboard Stays In Sync.'
+                ? 'A Gentle, Private Tracker. Tell Us Three Things To See When Your Next Period Is Likely To Arrive - And When You Are Signed In, It Saves To Your Femi9 Account So Your Dashboard Stays In Sync.'
                 : 'Here is your rhythm at a glance. Signed in, it is saved to your account so you can plan your days and your Femi9 pack with a little more calm.'}
             </p>
             <ul className="cyc-assurances" aria-label="How this tracker treats your data">

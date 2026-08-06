@@ -273,7 +273,7 @@ export function PeriodsWall({ posts }: Props) {
       if (confirmTimer.current) clearTimeout(confirmTimer.current)
       confirmTimer.current = setTimeout(() => setConfirmed(false), 6000)
     } catch {
-      setError('Something went wrong — please try again.')
+      setError('Something went wrong - please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -286,7 +286,7 @@ export function PeriodsWall({ posts }: Props) {
         <span className="eyebrow">Periods Wall</span>
         <h1 className="display pwall-title">Real period stories, no judgment.</h1>
         <p className="pwall-sub">
-          A gentle corner of Femi9 where people across India share how their days really go —
+          A gentle corner of Femi9 where people across India share how their days really go -
           with our pads or whatever they used before. Read, relate, and add your own.
         </p>
         <p className="pwall-kind">
@@ -373,7 +373,7 @@ export function PeriodsWall({ posts }: Props) {
               {error
                 ? error
                 : confirmed
-                  ? 'Thank you for sharing 💛 your story is awaiting review — it’ll appear once approved.'
+                  ? 'Thank you for sharing 💛 your story is awaiting review - it’ll appear once approved.'
                   : ''}
             </span>
           </div>
@@ -401,14 +401,14 @@ export function PeriodsWall({ posts }: Props) {
               <div className="pw-empty">
                 <p className="pw-empty-title">No stories yet.</p>
                 <p className="pw-empty-sub">
-                  Be the first to share how your days really go — your story appears here once it’s approved.
+                  Be the first to share how your days really go - your story appears here once it’s approved.
                 </p>
               </div>
             ) : (
               <div className="pw-empty">
                 <p className="pw-empty-title">Nothing here yet.</p>
                 <p className="pw-empty-sub">
-                  No stories under “{filter}” right now — try another filter, or be the first to write one.
+                  No stories under “{filter}” right now - try another filter, or be the first to write one.
                 </p>
               </div>
             )

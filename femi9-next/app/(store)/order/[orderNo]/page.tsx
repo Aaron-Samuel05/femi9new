@@ -54,7 +54,7 @@ export default async function OrderConfirmationPage(
 
   // Pre-fill the WhatsApp message with the order number + lines so our team can
   // confirm and share payment details in one reply. WA_NUMBER + rupees per spec.
-  const lines = order.items.map((it) => `• ${it.productName} — ${it.variantLabel} x${it.qty} (${rupees(it.lineTotal)})`)
+  const lines = order.items.map((it) => `• ${it.productName} - ${it.variantLabel} x${it.qty} (${rupees(it.lineTotal)})`)
   const waMessage =
     `Hi Femi9! Please confirm my order ${order.orderNo}.\n\n` +
     lines.join('\n') +
@@ -159,7 +159,7 @@ export default async function OrderConfirmationPage(
             <br />
             {order.address.line}, {order.address.city}
             {order.address.state ? `, ${order.address.state}` : ''}
-            {order.address.pincode ? ` — ${order.address.pincode}` : ''}
+            {order.address.pincode ? ` - ${order.address.pincode}` : ''}
             {order.address.phone ? (
               <>
                 <br />

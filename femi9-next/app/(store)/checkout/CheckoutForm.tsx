@@ -164,7 +164,7 @@ export function CheckoutForm() {
   // Mock mode: no gateway to open, so simulate a captured payment against the
   // pending order and be upfront that it's a test.
   async function simulateMockPayment(orderNo: string, token: string) {
-    setNote('Test mode — simulating payment…')
+    setNote('Test mode - simulating payment…')
     const okv = await postVerify({ orderNo, mock: true })
     if (!okv) {
       setFormError('We could not confirm the test payment. Please try again.')
