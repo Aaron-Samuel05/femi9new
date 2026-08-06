@@ -3,7 +3,7 @@ name: Deploy staging
 on:
   workflow_dispatch:
   push:
-    branches: [staging]
+    branches: [master, staging]
     paths:
       - "femi9-next/**"
       - ".github/workflows/deploy-staging.yml"
@@ -14,7 +14,9 @@ permissions:
 
 concurrency:
   group: femi9-staging-deploy
-  cancel-in-progress: true
+  # Never cancel an image build/deployment that is already in progress. A
+  # second push waits in the same group and deploys its own commit afterward.
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -25,8 +27,7 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
       - uses: aws-actions/amazon-ecr-login@v2
