@@ -146,6 +146,15 @@ directly in a browser. Superseded by `femi9-lavender/` but kept for reference.
 
 ## Recent work & current state
 
+### 2026-08-06 — `femi9-next` release verification
+
+The Next.js storefront/admin application on `master` was verified locally with
+an isolated PostgreSQL database: TypeScript validation, the production build,
+58 unit/integration tests, and 68 HTTP E2E checks passed. The production
+dependency audit reports zero vulnerabilities. Local E2E uses explicit mock
+providers, so it does not send email/SMS or capture real payments; live-provider
+and cloud-deployment checks remain an operator responsibility.
+
 All recent effort has gone into **`femi9-lavender/`**. In rough order:
 
 1. **Content/AI-slop audit** — removed generic marketing copy and dead code;

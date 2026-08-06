@@ -130,6 +130,22 @@ npm run build
 The integration tests use only the isolated `femi9_test` database. The HTTP E2E
 script refuses non-local mutations unless an explicit override is supplied.
 
+## Latest local release gate (2026-08-06)
+
+The current `master` revision passed the following local checks against an
+isolated PostgreSQL instance:
+
+- `npx tsc --noEmit`
+- `npm test` — 58 unit/integration tests passed
+- `npm run build`
+- `E2E_BASE_URL=http://127.0.0.1:3100 npm run test:e2e` — 68 HTTP checks passed
+- `npm audit --omit=dev --json` — zero production dependency vulnerabilities
+
+The local E2E environment uses `ALLOW_MOCK_PROVIDERS=true` with blank provider
+credentials. It verifies the flows without sending email/SMS or creating/capturing
+real payments. Complete the production launch gates above before enabling real
+providers or deploying.
+
 ## Build and push
 
 `NEXT_PUBLIC_*` variables are embedded during `next build`; changing them

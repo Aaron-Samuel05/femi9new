@@ -14,11 +14,19 @@ Companion documents: `../../../Femi9-Backend-PRD.pdf` (the what/why) and
 | Phase | Spec | Status |
 |-------|------|--------|
 | **Phase 0 — Foundation** | (delivered inline) | ✅ **Done** — Next.js migration, Postgres + Prisma schema, seed, and the read-side API layer are live and verified |
-| Phase 1 — Auth & accounts | [`phase-1-auth.md`](./phase-1-auth.md) | 📋 Spec ready |
-| Phase 2 — Commerce + Razorpay | [`phase-2-commerce.md`](./phase-2-commerce.md) | 📋 Spec ready |
-| Phase 3 — Custom admin | [`phase-3-admin.md`](./phase-3-admin.md) | 📋 Spec ready |
-| Phase 4 — Growth programs | [`phase-4-programs.md`](./phase-4-programs.md) | 📋 Spec ready |
-| Phase 5 — Lifecycle & content | [`phase-5-lifecycle.md`](./phase-5-lifecycle.md) | 📋 Spec ready |
+| Phase 1 — Auth & accounts | [`phase-1-auth.md`](./phase-1-auth.md) | Implemented; verified locally |
+| Phase 2 — Commerce + Razorpay | [`phase-2-commerce.md`](./phase-2-commerce.md) | Implemented; verified locally with mocks |
+| Phase 3 — Custom admin | [`phase-3-admin.md`](./phase-3-admin.md) | Implemented; verified locally |
+| Phase 4 — Growth programs | [`phase-4-programs.md`](./phase-4-programs.md) | Implemented; verified locally |
+| Phase 5 — Lifecycle & content | [`phase-5-lifecycle.md`](./phase-5-lifecycle.md) | Implemented; verified locally |
+
+## Latest verification (2026-08-06)
+
+On `master`, TypeScript validation, the production build, 58 unit/integration
+tests, and 68 local HTTP E2E checks passed against isolated PostgreSQL data.
+The test setup uses mock payment, email, and OTP providers; no real payment,
+email, or SMS was sent. Production provider activation and cloud launch checks
+remain governed by [`DEPLOY.md`](../../DEPLOY.md).
 
 ## What Phase 0 delivered (already in the codebase)
 
