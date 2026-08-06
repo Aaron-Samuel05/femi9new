@@ -67,3 +67,5 @@
 .fl-founder--woman .fl-founder__portrait>img{object-position:center top}
 .fl-testimonials{position:relative}
 @media(prefers-reduced-motion:reduce){.figma-landing *,.figma-landing *:before,.figma-landing *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fl-founder,.fl-benefit,.fl-why__product,.fl-product,.fl-blog,.fl-review,.fl-partner__copy,.fl-partner__image,.fl-footer>.fl-shell,.fl-why .fl-heading,.fl-journal .fl-heading,.fl-testimonials .fl-heading,.fl-testimonials__track{opacity:1!important}.fl-founder,.fl-benefit,.fl-why__product,.fl-product,.fl-blog,.fl-partner__copy,.fl-partner__image{transform:none!important}.fl-testimonials__track{transform:translateX(-80px)!important}}
+.fl-product__buy{min-width:107px;min-height:41px;padding:12px 24px;border-radius:35px;background:#120f2e;color:#fff!important;cursor:pointer;transition:background-color .3s ease-out,transform .3s ease-out;text-align:center;text-decoration:none!important}
+.fl-product__buy:hover,.fl-product__buy:focus-visible{background:#4a4286;transform:translateY(-2px)}

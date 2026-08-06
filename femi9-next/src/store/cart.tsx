@@ -120,10 +120,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [refresh])
 
   const add = useCallback(async (variantId: string, qty = 1) => {
+    // Open immediately so a slow cart request cannot make a successful click
+    // look unresponsive. The server response remains authoritative for lines
+    // and pricing when it arrives.
+    dispatch({ type: 'OPEN' })
     try {
       const cart = await cartFetch('/api/cart', jsonInit('POST', { variantId, qty }))
       dispatch({ type: 'SET_CART', cart })
-      dispatch({ type: 'OPEN' })
       const line = cart.items.find((i) => i.variantId === variantId)
       dispatch({ type: 'TOAST', msg: `${line?.name ?? 'Item'} added to bag` })
     } catch (err) {

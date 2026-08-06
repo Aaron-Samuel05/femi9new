@@ -11,6 +11,7 @@ import {
 import { Link } from '@/lib/router-compat'
 import { useCart } from '@/store/cart'
 import { CycleTracker } from '@/components/CycleTracker'
+import { PRODUCTS, rupees } from '@/data/products'
 import type { ProductWithVariants } from '@/lib/services/products'
 import type { BlogPostDTO } from '@/lib/services/blog'
 
@@ -294,10 +295,11 @@ function Why() {
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
   const { add } = useCart()
   const [hovered, setHovered] = useState<number | null>(null)
-  const cards = Array.from(
-    { length: 4 },
-    (_, index) => (products.length ? products[index % products.length] : undefined),
-  )
+  const [adding, setAdding] = useState<string | null>(null)
+  // Keep the landing page useful while an empty production catalog is being
+  // seeded, but never repeat one product four times.
+  const fallbackProducts: ProductWithVariants[] = PRODUCTS.slice(0, 4).map((product) => ({ ...product, variants: [] }))
+  const cards = (products.length ? products : fallbackProducts).slice(0, 4)
 
   return (
     <Reveal className="fl-products" id="products">
@@ -312,8 +314,9 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
           onMouseLeave={() => setHovered(null)}
         >
           {cards.map((product, index) => {
-            const slug = product?.id ?? 'p330dw'
-            const variantId = product?.variants[0]?.id
+            const slug = product.id
+            const variantId = product.variants.find((variant) => variant.kind === 'pack' && variant.price === product.price)?.id ?? product.variants[0]?.id
+            const image = product.img || `${ASSET}products-imgFrame206.png`
             return (
               <article
                 className={`fl-product${hovered === index ? ' is-active' : ''}`}
@@ -326,13 +329,33 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
                 }}
               >
                 <Link className="fl-product__media" to={`/product/${slug}`}>
-                  <img className="fl-product__package" src={`${ASSET}products-imgFrame206.png`} alt="Femi9 organic cotton pad pack" />
-                  <img className="fl-product__hover-art" src={`${ASSET}products-imgFrame206-hover.png`} alt="" />
+                  <img className="fl-product__package" src={image} alt={`${product.name} pack`} />
+                  {!product.img && <img className="fl-product__hover-art" src={`${ASSET}products-imgFrame206-hover.png`} alt="" />}
                 </Link>
                 <div className="fl-product__body">
-                  <Link to={`/product/${slug}`}><h3>Femi9-330mm-Extra-Large 6 Pads</h3></Link>
-                  <p>qnty: 8 pads</p>
-                  <div><strong>₹ 1,099</strong><button type="button" disabled={!variantId} onClick={() => variantId && void add(variantId)}>Buy Now</button></div>
+                  <Link to={`/product/${slug}`}><h3>{product.name}</h3></Link>
+                  <p>{product.meta}</p>
+                  <div>
+                    <strong>{rupees(product.price)}</strong>
+                    {variantId ? (
+                      <button
+                        type="button"
+                        disabled={adding === variantId}
+                        onClick={async () => {
+                          setAdding(variantId)
+                          try {
+                            await add(variantId)
+                          } finally {
+                            setAdding(null)
+                          }
+                        }}
+                      >
+                        {adding === variantId ? 'Adding…' : 'Buy Now'}
+                      </button>
+                    ) : (
+                      <Link className="fl-product__buy" to={`/product/${slug}`}>Buy Now</Link>
+                    )}
+                  </div>
                 </div>
               </article>
             )
