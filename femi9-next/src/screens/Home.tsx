@@ -308,7 +308,7 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
       <div className="fl-shell">
         <div className="fl-heading">
           <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
-          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to={products[0] ? `/product/${products[0].id}` : '/'}>View All <span>→</span></Link>
+          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/#products">View All <span>→</span></Link>
         </div>
         <div
           className={`fl-products__grid${hovered === null ? '' : ` has-hover-${hovered + 1}`}`}
