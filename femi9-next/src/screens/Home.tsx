@@ -143,13 +143,14 @@ function LandingNav() {
 
 function Hero() {
   const [slide, setSlide] = useState<0 | 1>(0)
+  const SLIDE_INTERVAL_MS = 3000
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     let timer = 0
     const swap = () => {
       setSlide((current) => (current === 0 ? 1 : 0))
-      timer = window.setTimeout(swap, 1667)
+      timer = window.setTimeout(swap, SLIDE_INTERVAL_MS)
     }
     timer = window.setTimeout(swap, 5)
     return () => window.clearTimeout(timer)
