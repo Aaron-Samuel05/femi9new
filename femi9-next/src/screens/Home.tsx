@@ -294,7 +294,10 @@ function Why() {
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
   const { add } = useCart()
   const [hovered, setHovered] = useState<number | null>(null)
-  const cards = Array.from({ length: 4 }, (_, index) => products[index] ?? products[0])
+  const cards = Array.from(
+    { length: 4 },
+    (_, index) => (products.length ? products[index % products.length] : undefined),
+  )
 
   return (
     <Reveal className="fl-products" id="products">
@@ -357,22 +360,25 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
           <Link className="fl-btn fl-btn--outline" to="/blog">View All</Link>
         </div>
         <div className="fl-journal__grid">
-          {JOURNAL.map((item, index) => (
-            <Link className="fl-blog" to={posts[index] ? `/blog/${posts[index].slug}` : '/blog'} key={item.title} style={{ '--blog-index': index } as CSSProperties}>
-              <span className={`fl-blog__photo fl-blog__photo--${item.pos}`}>
-                <img src={`${ASSET}blogs-imgImage18.png`} alt="" />
+          {JOURNAL.map((item, index) => {
+            const post = posts[index]
+            return (
+            <Link className="fl-blog" to={post ? `/blog/${post.slug}` : '/blog'} key={post?.slug ?? item.title} style={{ '--blog-index': index } as CSSProperties}>
+              <span className={`fl-blog__photo ${post?.image ? 'fl-blog__photo--dynamic' : `fl-blog__photo--${item.pos}`}`}>
+                <img src={post?.image || `${ASSET}blogs-imgImage18.png`} alt="" />
               </span>
               <span className="fl-blog__shade" />
               <span className="fl-blog__meta">
-                <b>{item.tag}</b>
+                <b>{post?.category ?? item.tag}</b>
                 <span className="fl-blog__read">
-                  <small>5mins Read</small>
+                  <small>{post ? `${post.readTime}mins Read` : '5mins Read'}</small>
                   <span className="fl-blog__arrow"><img src={`${ASSET}blogs-imgFrame.svg`} alt="" /></span>
                 </span>
               </span>
-              <h3>{item.title}</h3>
+              <h3>{post?.title ?? item.title}</h3>
             </Link>
-          ))}
+            )
+          })}
         </div>
       </div>
     </Reveal>
