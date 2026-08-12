@@ -56,13 +56,16 @@ function toRow(a: {
 export async function listApplications({
   status,
 }: { status?: PartnerStatus } = {}): Promise<PartnerRow[]> {
-  const rows = await prisma.partnerApplication.findMany({
-    // Omit the filter entirely when no status is given so the planner sees a
-    // plain "all rows" read rather than `status = …`.
-    where: status ? { status } : undefined,
-    orderBy: { createdAt: 'desc' },
-  })
-  return rows.map(toRow)
+  try {
+    const rows = await prisma.partnerApplication.findMany({
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+    })
+    return rows.map(toRow)
+  } catch (err) {
+    console.error('[listApplications] DB error:', err)
+    return []
+  }
 }
 
 // ─────────────────────────────── Writes ─────────────────────────────────

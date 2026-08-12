@@ -28,40 +28,40 @@ export default async function AdminPanelLayout({ children }: { children: React.R
         <nav className="adm-nav" aria-label="Admin">
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Overview</p>
-            <AdminNavLink href="/admin" label="Dashboard" exact />
+            <AdminNavLink href="/admin" label="Dashboard" icon="dashboard" exact />
           </div>
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Catalog</p>
-            <AdminNavLink href="/admin/products" label="Products" />
-            <AdminNavLink href="/admin/inventory" label="Inventory" />
+            <AdminNavLink href="/admin/products" label="Products" icon="products" />
+            <AdminNavLink href="/admin/inventory" label="Inventory" icon="inventory" />
           </div>
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Sales</p>
-            <AdminNavLink href="/admin/orders" label="Orders" />
-            <AdminNavLink href="/admin/subscriptions" label="Subscriptions" />
-            <AdminNavLink href="/admin/customers" label="Customers" />
-            <AdminNavLink href="/admin/coupons" label="Coupons" />
+            <AdminNavLink href="/admin/orders" label="Orders" icon="orders" />
+            <AdminNavLink href="/admin/subscriptions" label="Subscriptions" icon="subscriptions" />
+            <AdminNavLink href="/admin/customers" label="Customers" icon="customers" />
+            <AdminNavLink href="/admin/coupons" label="Coupons" icon="coupons" />
           </div>
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Growth</p>
-            <AdminNavLink href="/admin/affiliates" label="Affiliates" />
-            <AdminNavLink href="/admin/partners" label="Partners" />
+            <AdminNavLink href="/admin/affiliates" label="Affiliates" icon="affiliates" />
+            <AdminNavLink href="/admin/partners" label="Partners" icon="partners" />
           </div>
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Content</p>
-            <AdminNavLink href="/admin/content/blog" label="Blog" />
-            <AdminNavLink href="/admin/reviews" label="Reviews" />
-            <AdminNavLink href="/admin/community" label="Community" />
+            <AdminNavLink href="/admin/content/blog" label="Blog" icon="blog" />
+            <AdminNavLink href="/admin/reviews" label="Reviews" icon="reviews" />
+            <AdminNavLink href="/admin/community" label="Community" icon="community" />
           </div>
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Configure</p>
-            <AdminNavLink href="/admin/settings" label="Settings" />
-            <AdminNavLink href="/admin/pricing" label="Pricing zones" />
+            <AdminNavLink href="/admin/settings" label="Settings" icon="settings" />
+            <AdminNavLink href="/admin/pricing" label="Pricing zones" icon="pricing" />
           </div>
         </nav>
 

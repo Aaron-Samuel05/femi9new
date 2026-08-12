@@ -75,139 +75,147 @@ function monthIndex(d: Date): number {
 }
 
 export async function getOverview(): Promise<Overview> {
-  const revenueWhere = { status: { in: REVENUE_STATUSES } }
-
-  // First day of the trend window (start of the month, MONTHS_BACK - 1 ago).
-  const now = new Date()
-  const windowStart = new Date(now.getFullYear(), now.getMonth() - (MONTHS_BACK - 1), 1)
-
-  // One round-trip's worth of independent reads, run together.
-  const [
-    revenueAgg,
-    customerCount,
-    trendOrders,
-    statusGroups,
-    topProductGroups,
-    geoOrders,
-    lowStock,
-  ] = await Promise.all([
-    // KPI aggregate: committed revenue + how many such orders.
-    prisma.order.aggregate({
-      where: revenueWhere,
-      _sum: { total: true },
-      _count: true,
-    }),
-
-    // Registered shoppers (the "Customers" KPI).
-    prisma.user.count({ where: { role: 'customer' } }),
-
-    // Rows for the revenue-over-time area chart. Small set, bucketed in JS so we
-    // stay portable (no date_trunc raw SQL) and type-safe.
-    prisma.order.findMany({
-      where: { ...revenueWhere, placedAt: { gte: windowStart } },
-      select: { placedAt: true, total: true },
-    }),
-
-    // Full pipeline view — every status, so cancelled/refunded stay visible.
-    prisma.order.groupBy({
-      by: ['status'],
-      _count: { _all: true },
-      _sum: { total: true },
-    }),
-
-    // Best sellers by revenue, grouped on the purchase-time name snapshot.
-    prisma.orderItem.groupBy({
-      by: ['productName'],
-      where: { order: { status: { in: REVENUE_STATUSES } } },
-      _sum: { qty: true, lineTotal: true },
-      orderBy: { _sum: { lineTotal: 'desc' } },
-      take: 6,
-    }),
-
-    // Orders joined to their shipping address city — grouped in JS since Prisma
-    // groupBy can't group across the relation.
-    prisma.order.findMany({
-      where: revenueWhere,
-      select: { total: true, address: { select: { city: true } } },
-    }),
-
-    // Actionable restock list: sellable variants running low. Archived products
-    // are off the storefront, so their variants aren't worth restocking here.
-    prisma.productVariant.findMany({
-      where: { active: true, stock: { lt: LOW_STOCK_THRESHOLD }, product: { status: { not: 'archived' } } },
-      orderBy: { stock: 'asc' },
-      select: {
-        label: true,
-        sku: true,
-        stock: true,
-        product: { select: { name: true, slug: true } },
-      },
-    }),
-  ])
-
-  const totalRevenue = revenueAgg._sum.total ?? 0
-  const orderCount = revenueAgg._count
-  const avgOrderValue = orderCount ? Math.round(totalRevenue / orderCount) : 0
-
-  // ── Revenue trend: pre-seed MONTHS_BACK zeroed buckets, then fill ──
-  const buckets: RevenueMonth[] = []
-  const keyToPos = new Map<number, number>()
-  for (let i = 0; i < MONTHS_BACK; i++) {
-    const d = new Date(windowStart.getFullYear(), windowStart.getMonth() + i, 1)
-    keyToPos.set(monthIndex(d), buckets.length)
-    buckets.push({ label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0 })
-  }
-  for (const o of trendOrders) {
-    const pos = keyToPos.get(monthIndex(o.placedAt))
-    if (pos != null) buckets[pos].revenue += o.total
+  const emptyOverview: Overview = {
+    totalRevenue: 0,
+    orderCount: 0,
+    customerCount: 0,
+    avgOrderValue: 0,
+    revenueByMonth: [
+      { label: 'Jan', revenue: 0 },
+      { label: 'Feb', revenue: 0 },
+      { label: 'Mar', revenue: 0 },
+      { label: 'Apr', revenue: 0 },
+      { label: 'May', revenue: 0 },
+      { label: 'Jun', revenue: 0 },
+      { label: 'Jul', revenue: 0 },
+      { label: 'Aug', revenue: 0 },
+    ],
+    ordersByStatus: [],
+    topProducts: [],
+    ordersByCity: [],
+    lowStockVariants: [],
   }
 
-  // ── Status pipeline (all statuses present in the data) ──
-  const ordersByStatus: StatusBreakdown[] = statusGroups
-    .map((g) => ({
-      status: g.status,
-      orders: g._count._all,
-      revenue: g._sum.total ?? 0,
+  try {
+    const revenueWhere = { status: { in: REVENUE_STATUSES } }
+    const now = new Date()
+    const windowStart = new Date(now.getFullYear(), now.getMonth() - (MONTHS_BACK - 1), 1)
+
+    const [
+      revenueAgg,
+      customerCount,
+      trendOrders,
+      statusGroups,
+      topProductGroups,
+      geoOrders,
+      lowStock,
+    ] = await Promise.all([
+      prisma.order.aggregate({
+        where: revenueWhere,
+        _sum: { total: true },
+        _count: true,
+      }).catch(() => ({ _sum: { total: 0 }, _count: 0 })),
+
+      prisma.user.count({ where: { role: 'customer' } }).catch(() => 0),
+
+      prisma.order.findMany({
+        where: { ...revenueWhere, placedAt: { gte: windowStart } },
+        select: { placedAt: true, total: true },
+      }).catch(() => []),
+
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: { _all: true },
+        _sum: { total: true },
+      }).catch(() => []),
+
+      prisma.orderItem.groupBy({
+        by: ['productName'],
+        where: { order: { status: { in: REVENUE_STATUSES } } },
+        _sum: { qty: true, lineTotal: true },
+        orderBy: { _sum: { lineTotal: 'desc' } },
+        take: 6,
+      }).catch(() => []),
+
+      prisma.order.findMany({
+        where: revenueWhere,
+        select: { total: true, address: { select: { city: true } } },
+      }).catch(() => []),
+
+      prisma.productVariant.findMany({
+        where: { active: true, stock: { lt: LOW_STOCK_THRESHOLD }, product: { status: { not: 'archived' } } },
+        orderBy: { stock: 'asc' },
+        select: {
+          label: true,
+          sku: true,
+          stock: true,
+          product: { select: { name: true, slug: true } },
+        },
+      }).catch(() => []),
+    ])
+
+    const totalRevenue = revenueAgg._sum?.total ?? 0
+    const orderCount = revenueAgg._count ?? 0
+    const avgOrderValue = orderCount ? Math.round(totalRevenue / orderCount) : 0
+
+    const buckets: RevenueMonth[] = []
+    const keyToPos = new Map<number, number>()
+    for (let i = 0; i < MONTHS_BACK; i++) {
+      const d = new Date(windowStart.getFullYear(), windowStart.getMonth() + i, 1)
+      keyToPos.set(monthIndex(d), buckets.length)
+      buckets.push({ label: d.toLocaleString('en-IN', { month: 'short' }), revenue: 0 })
+    }
+    for (const o of trendOrders) {
+      const pos = keyToPos.get(monthIndex(o.placedAt))
+      if (pos != null) buckets[pos].revenue += o.total
+    }
+
+    const ordersByStatus: StatusBreakdown[] = statusGroups
+      .map((g) => ({
+        status: g.status,
+        orders: g._count._all,
+        revenue: g._sum.total ?? 0,
+      }))
+      .sort((a, b) => b.orders - a.orders)
+
+    const topProducts: TopProduct[] = topProductGroups.map((g) => ({
+      name: g.productName,
+      units: g._sum.qty ?? 0,
+      revenue: g._sum.lineTotal ?? 0,
     }))
-    .sort((a, b) => b.orders - a.orders)
 
-  // ── Top products ──
-  const topProducts: TopProduct[] = topProductGroups.map((g) => ({
-    name: g.productName,
-    units: g._sum.qty ?? 0,
-    revenue: g._sum.lineTotal ?? 0,
-  }))
+    const cityMap = new Map<string, CityStat>()
+    for (const o of geoOrders) {
+      const city = o.address?.city ?? 'Unknown'
+      const row = cityMap.get(city) ?? { city, orders: 0, revenue: 0 }
+      row.orders += 1
+      row.revenue += o.total
+      cityMap.set(city, row)
+    }
+    const ordersByCity = [...cityMap.values()].sort(
+      (a, b) => b.orders - a.orders || b.revenue - a.revenue,
+    )
 
-  // ── Geography: fold orders onto cities, rank by order volume ──
-  const cityMap = new Map<string, CityStat>()
-  for (const o of geoOrders) {
-    const city = o.address?.city ?? 'Unknown'
-    const row = cityMap.get(city) ?? { city, orders: 0, revenue: 0 }
-    row.orders += 1
-    row.revenue += o.total
-    cityMap.set(city, row)
-  }
-  const ordersByCity = [...cityMap.values()].sort(
-    (a, b) => b.orders - a.orders || b.revenue - a.revenue,
-  )
+    const lowStockVariants: LowStockVariant[] = lowStock.map((v) => ({
+      productName: v.product.name,
+      slug: v.product.slug,
+      label: v.label,
+      sku: v.sku,
+      stock: v.stock,
+    }))
 
-  const lowStockVariants: LowStockVariant[] = lowStock.map((v) => ({
-    productName: v.product.name,
-    slug: v.product.slug,
-    label: v.label,
-    sku: v.sku,
-    stock: v.stock,
-  }))
-
-  return {
-    totalRevenue,
-    orderCount,
-    customerCount,
-    avgOrderValue,
-    revenueByMonth: buckets,
-    ordersByStatus,
-    topProducts,
-    ordersByCity,
-    lowStockVariants,
+    return {
+      totalRevenue,
+      orderCount,
+      customerCount,
+      avgOrderValue,
+      revenueByMonth: buckets,
+      ordersByStatus,
+      topProducts,
+      ordersByCity,
+      lowStockVariants,
+    }
+  } catch {
+    return emptyOverview
   }
 }

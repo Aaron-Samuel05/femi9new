@@ -2429,4 +2429,92 @@
   }
 }
 
+/* =============================================================================
+   MOBILE PRODUCT DETAIL PAGE (PDP) GALLERY & LAYOUT OPTIMIZATIONS
+   ============================================================================= */
+@media (max-width: 768px) {
+  .pdp-page {
+    padding-top: 6px;
+  }
+
+  .crumbs {
+    padding-top: 12px;
+    margin-bottom: 14px;
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .pdp-grid {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  .pdp-gallery-layout {
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100% !important;
+  }
+
+  .pdp-stage-column {
+    width: 100% !important;
+    order: 1 !important;
+  }
+
+  .pdp-hero-stage {
+    width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    min-height: 280px !important;
+    max-height: 420px !important;
+    border-radius: 18px !important;
+  }
+
+  /* Horizontal thumbnail row beneath main stage image */
+  .pdp-thumb-stack {
+    order: 2 !important;
+    flex-direction: row !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    gap: 10px !important;
+    padding: 4px 2px 8px !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .pdp-thumb-stack::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pdp-vertical-thumb {
+    width: 64px !important;
+    height: 64px !important;
+    flex-shrink: 0 !important;
+    border-radius: 12px !important;
+    scroll-snap-align: start !important;
+  }
+
+  .pdp-hero-gap-banner {
+    display: none !important; /* Hide duplicate sample banner on mobile */
+  }
+
+  .pdp-right-col {
+    max-width: 100% !important;
+    gap: 16px !important;
+  }
+
+  .pdp-title {
+    font-size: clamp(22px, 6vw, 28px) !important;
+    line-height: 1.25 !important;
+  }
+
+  .pdp-benefit-badges {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+}
+
 

@@ -1403,7 +1403,7 @@
   max-width: 1520px;
   grid-template-columns: minmax(0, 56fr) minmax(430px, 44fr);
   gap: 0;
-  padding: 84px clamp(58px, 6.2vw, 96px) 70px;
+  padding: 38px clamp(58px, 6.2vw, 96px) 50px;
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__copy--second {
@@ -1414,13 +1414,18 @@
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__card-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
   gap: 0;
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__flower-icon {
-  width: 72px;
-  height: 72px;
-  margin: 0 0 24px;
+  width: 60px;
+  height: 60px;
+  margin: 0 0 12px;
+  align-self: flex-start;
 }
 
 .figma-landing .fl-hero__scene--second h2 {
@@ -1430,6 +1435,7 @@
   line-height: 1.08;
   font-weight: 700;
   letter-spacing: -.015em;
+  text-align: left;
 }
 
 .figma-landing .fl-hero__scene--second h2 span {
@@ -1438,15 +1444,17 @@
 
 .figma-landing .fl-hero__scene--second .fl-hero__card-panel > p {
   max-width: 650px;
-  margin: 26px 0 0;
+  margin: 20px 0 0;
   color: rgba(255, 255, 255, .7);
   font-size: 17px;
   line-height: 1.5;
+  text-align: left;
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__proof--light {
-  margin: 22px 0 0;
+  margin: 20px 0 0;
   color: #fff;
+  align-self: flex-start;
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__proof--light .fl-hero__proof-divider {
@@ -1455,6 +1463,16 @@
 
 .figma-landing .fl-hero__scene--second .fl-hero__actions {
   margin-top: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  align-self: flex-start;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__actions .fl-btn--gold {
+  align-self: flex-start;
+  margin-left: 0;
+  box-shadow: 0 10px 28px rgba(229, 184, 66, 0.32);
 }
 
 .figma-landing .fl-hero__scene--second .fl-hero__visual--second {
@@ -1473,25 +1491,25 @@
 .figma-landing .fl-hero__scene--second .fl-hero__lifestyle {
   position: absolute;
   z-index: 3;
-  right: -6px;
-  bottom: -42px;
-  width: min(470px, 38vw);
+  right: -2%;
+  bottom: -32px;
+  width: clamp(540px, 46vw, 680px);
   max-width: none;
   height: auto;
   border-radius: 0;
   box-shadow: none;
-  filter: drop-shadow(0 24px 32px rgba(25, 17, 63, .2));
+  filter: drop-shadow(0 28px 40px rgba(25, 17, 63, .28));
 }
 
 .figma-landing .fl-hero__girl-pad {
   position: absolute;
   z-index: 2;
-  right: -50px;
-  bottom: 62px;
-  width: min(330px, 25vw);
+  right: -30px;
+  bottom: 50px;
+  width: clamp(360px, 28vw, 460px);
   height: auto;
   transform: rotate(7deg);
-  filter: drop-shadow(0 22px 34px rgba(31, 22, 70, .24));
+  filter: drop-shadow(0 24px 38px rgba(31, 22, 70, .28));
 }
 
 .figma-landing .fl-hero__girl-clouds {
@@ -1547,87 +1565,421 @@
 }
 
 @media (max-width: 760px) {
+  .figma-landing .fl-hero {
+    height: auto !important;
+    min-height: 720px !important;
+  }
+
   .figma-landing .fl-hero__scene--second .fl-hero__inner {
-    grid-template-columns: 1fr;
-    grid-template-rows: 230px auto;
-    gap: 12px;
-    padding: 64px 20px 54px;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    text-align: center !important;
+    padding: 72px 20px 48px !important;
+    gap: 16px !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__visual--second {
-    order: -1;
-    min-height: 230px;
+    order: -1 !important;
+    width: 100% !important;
+    min-height: 260px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 auto 8px !important;
+    position: relative !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__lifestyle {
-    right: 4%;
-    bottom: 0;
-    width: min(200px, 54vw);
+    position: relative !important;
+    inset: auto !important;
+    margin: 0 auto !important;
+    display: block !important;
+    width: min(340px, 82vw) !important;
+    max-width: 360px !important;
+    height: auto !important;
+    z-index: 5 !important;
+    filter: drop-shadow(0 20px 32px rgba(25, 17, 63, .35)) !important;
   }
 
   .figma-landing .fl-hero__girl-pad {
-    right: 1%;
-    bottom: 44px;
-    width: min(120px, 31vw);
+    position: absolute !important;
+    left: 50% !important;
+    transform: translateX(-50%) rotate(5deg) !important;
+    bottom: -8px !important;
+    width: min(240px, 58vw) !important;
+    height: auto !important;
+    z-index: 4 !important;
+    opacity: 0.85 !important;
   }
 
   .figma-landing .fl-hero__girl-clouds {
-    right: -20%;
-    bottom: 22%;
-    width: 115%;
-    height: 72%;
+    right: -10%;
+    bottom: 10%;
+    width: 120%;
+    height: 80%;
+    opacity: 0.8;
   }
 
   .figma-landing .fl-hero__girl-flower-outline {
-    top: 42%;
-    left: -24px;
-    width: 100px;
-    height: 100px;
+    top: 15%;
+    left: 4%;
+    width: 80px;
+    height: 80px;
+    opacity: 0.25;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__copy--second {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__card-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    text-align: center !important;
+    width: 100% !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__flower-icon {
-    width: 44px;
-    height: 44px;
-    margin-bottom: 12px;
+    width: 48px !important;
+    height: 48px !important;
+    margin: 0 auto 12px !important;
+    align-self: center !important;
   }
 
   .figma-landing .fl-hero__scene--second h2 {
-    max-width: 15ch;
-    font-size: clamp(32px, 9.5vw, 38px);
+    max-width: 100% !important;
+    font-size: clamp(28px, 7.5vw, 36px) !important;
+    line-height: 1.2 !important;
+    text-align: center !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__card-panel > p {
-    max-width: 350px;
-    margin-top: 16px;
-    font-size: 14px;
-    line-height: 1.45;
+    max-width: 480px !important;
+    margin: 12px auto 0 !important;
+    font-size: 14.5px !important;
+    line-height: 1.45 !important;
+    text-align: center !important;
   }
 
-  .figma-landing .fl-hero__scene--second .fl-hero__proof--light {
-    margin-top: 14px;
-    gap: 12px;
-    font-size: 11px;
+  .fl-hero__scene--second .fl-hero__proof--light {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px 14px !important;
+    margin: 14px auto 0 !important;
+    font-size: 12.5px !important;
+    align-self: center !important;
   }
 
-  .figma-landing .fl-hero__scene--second .fl-hero__proof-divider {
-    display: none;
-  }
-
-  .figma-landing .fl-hero__scene--second .fl-hero__proof span img {
-    width: 18px;
-    height: 18px;
+  .fl-hero__scene--second .fl-hero__proof-divider {
+    display: inline-block !important;
+    color: rgba(255, 255, 255, 0.4) !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__actions {
-    margin-top: 14px;
+    margin-top: 18px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-self: center !important;
+    width: 100% !important;
   }
 
   .figma-landing .fl-hero__scene--second .fl-hero__actions .fl-btn--gold {
-    width: auto;
-    min-width: 142px;
+    width: auto !important;
+    min-width: 160px !important;
+    align-self: center !important;
   }
 
   .figma-landing .fl-hero.is-second .fl-hero__pager {
-    bottom: 10px;
+    bottom: 14px !important;
+  }
+}
+
+/* =============================================================================
+   UNIVERSAL MICRO-INTERACTIONS & MOBILE RESPONSIVE ENHANCEMENTS
+   ============================================================================= */
+
+/* 1. Spring Button & CTA Micro-Interactions */
+.fl-btn,
+.btn,
+.fl-btn--gold,
+.fl-btn--outline,
+.fl-btn--primary {
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.2s ease,
+              color 0.2s ease !important;
+  will-change: transform, box-shadow;
+  position: relative;
+  overflow: hidden;
+}
+
+.fl-btn:hover,
+.btn:hover,
+.fl-btn--gold:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 14px 32px rgba(229, 184, 66, 0.38) !important;
+}
+
+.fl-btn:active,
+.btn:active,
+.fl-btn--gold:active {
+  transform: translateY(0) scale(0.96) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Shimmer pass on hover */
+.fl-btn--gold::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    60deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  transform: rotate(30deg) translateX(-100%);
+  transition: transform 0.65s ease;
+  pointer-events: none;
+}
+
+.fl-btn--gold:hover::after {
+  transform: rotate(30deg) translateX(100%);
+}
+
+/* 2. Product & Card Elevation Micro-Interactions */
+.fl-product-card,
+.fl-journal__card,
+.fl-review,
+.cyc-card,
+.fl-partner__stat {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: transform, box-shadow;
+}
+
+.fl-product-card:hover,
+.fl-journal__card:hover,
+.fl-review:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 42px -12px rgba(39, 35, 85, 0.16) !important;
+}
+
+.fl-product-card img,
+.fl-journal__card img {
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.fl-product-card:hover img,
+.fl-journal__card:hover img {
+  transform: scale(1.05);
+}
+
+/* 3. Gentle Ambient Floating Flowers */
+@keyframes flGentleFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(4deg); }
+}
+
+.fl-hero__flower-icon,
+.fl-flower img {
+  animation: flGentleFloat 5s ease-in-out infinite;
+}
+
+/* 4. Strict Mobile Layout & Touch-Screen Optimizations */
+@media (max-width: 768px) {
+  html, body {
+    overflow-x: hidden !important;
+    touch-action: manipulation;
+  }
+
+  /* Universal text line-height safeguard to prevent line collision */
+  h1, h2, h3, h4, .display {
+    line-height: 1.25 !important;
+    height: auto !important;
+    margin-bottom: 8px !important;
+  }
+
+  p, span, small {
+    line-height: 1.5 !important;
+    height: auto !important;
+  }
+
+  /* Hero section mobile copy */
+  .fl-hero h1,
+  .fl-hero h2 {
+    font-size: clamp(26px, 7.5vw, 36px) !important;
+    line-height: 1.22 !important;
+    margin-bottom: 12px !important;
+  }
+
+  .fl-hero__copy > p,
+  .fl-hero__card-panel > p {
+    font-size: 14.5px !important;
+    line-height: 1.45 !important;
+    margin-top: 8px !important;
+  }
+
+  .fl-hero__proof {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 8px 12px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    margin-top: 14px !important;
+  }
+
+  .fl-hero__proof-divider {
+    display: inline-block !important;
+    margin: 0 4px !important;
+    opacity: 0.5 !important;
+  }
+
+  /* Clean mobile pill buttons */
+  .fl-btn,
+  .btn,
+  .fl-btn--gold,
+  .fl-btn--outline,
+  .fl-btn--primary,
+  .fl-partner__actions .fl-btn,
+  .fl-hero .fl-btn--gold {
+    min-width: 0 !important;
+    width: auto !important;
+    max-width: 100% !important;
+    min-height: 46px !important;
+    height: auto !important;
+    padding: 10px 24px !important;
+    font-size: 14.5px !important;
+    line-height: 1.2 !important;
+    border-radius: 999px !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+  }
+
+  .fl-partner__actions {
+    width: 100% !important;
+    max-width: 100% !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    margin-top: 18px !important;
+  }
+
+  .fl-partner__copy h2 {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: clamp(26px, 7vw, 34px) !important;
+    line-height: 1.22 !important;
+  }
+
+  .fl-partner__copy p {
+    width: 100% !important;
+    max-width: 100% !important;
+    font-size: 15px !important;
+    line-height: 1.48 !important;
+    margin-top: 14px !important;
+  }
+
+  .fl-partner__stats {
+    width: 100% !important;
+    max-width: 100% !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px !important;
+    margin-top: 18px !important;
+  }
+
+  .fl-partner__stats strong {
+    font-size: 24px !important;
+    line-height: 1.1 !important;
+  }
+
+  .fl-partner__stats small {
+    font-size: 13px !important;
+    line-height: 1.3 !important;
+  }
+
+  .fl-hero__pager button {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fl-product {
+    height: auto !important;
+    min-height: 380px !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+    box-sizing: border-box !important;
+  }
+
+  .fl-product__media {
+    height: 220px !important;
+    flex-basis: 220px !important;
+    width: 100% !important;
+  }
+
+  .fl-product__buy {
+    width: 100% !important;
+    min-height: 44px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    border-radius: 999px !important;
+    margin-top: 8px !important;
+  }
+
+  .fl-benefit {
+    height: auto !important;
+    min-height: 120px !important;
+    padding: 16px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 14px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .fl-journal__grid {
+    display: flex !important;
+    overflow-x: auto !important;
+    scroll-snap-type: x mandatory !important;
+    -webkit-overflow-scrolling: touch;
+    gap: 16px !important;
+    padding-bottom: 16px !important;
+  }
+
+  .fl-journal__card {
+    flex: 0 0 78vw !important;
+    max-width: 320px !important;
+    height: auto !important;
+    border-radius: 16px !important;
+    scroll-snap-align: center !important;
+    box-sizing: border-box !important;
+  }
+
+  .fl-journal__card img {
+    height: 180px !important;
+    object-fit: cover !important;
   }
 }
