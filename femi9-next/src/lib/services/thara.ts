@@ -3,6 +3,7 @@ import type { TharaMembership, TharaStatus, Prisma, User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { generateReferralCode } from '@/lib/thara/codes'
 import { verifyTharaRefCookie } from '@/lib/thara/cookies'
+import { isTharaEnabled } from '@/lib/thara/feature'
 
 /**
  * Thara Model service.
@@ -214,6 +215,68 @@ export async function unsuspendMembership(id: string): Promise<TharaMembership> 
 
 export async function getMembershipById(id: string): Promise<TharaMembership | null> {
   return prisma.tharaMembership.findUnique({ where: { id } })
+}
+
+// ─────────────────────── Sub-project B: personal discount ──────────────────
+
+/** Slab thresholds in paise. Matches PROGRAM.md §5 and the PRD's §6 slab table. */
+export const TharaDiscountSlabs = {
+  SLAB_1_MIN: 300_000, // ₹3,000 — 10% off
+  SLAB_2_MIN: 600_000, // ₹6,000 — 15% off
+  SLAB_3_MIN: 900_000, // ₹9,000 — 20% off
+} as const
+
+export type TharaDiscountSlab = '10' | '15' | '20'
+
+export interface TharaDiscountResult {
+  /** True only when the flag is on, the user is an active member, AND subtotal ≥ ₹3,000. */
+  eligible: boolean
+  slab: TharaDiscountSlab | null
+  /** Integer paise. Zero when not eligible. */
+  discountPaise: number
+}
+
+/**
+ * Compute the personal-discount amount for a checkout. Called from placeOrder
+ * inside the checkout transaction (uses the tx client so a rollback wipes the
+ * membership read too — cheap consistency).
+ *
+ * Discount is applied ONLY when:
+ *  - THARA_ENABLED is true
+ *  - The user has a TharaMembership in status='active' (not purchase_pending,
+ *    not suspended, not deactivated)
+ *  - Cart subtotal ≥ ₹3,000
+ */
+export async function computeTharaDiscount(
+  tx: Prisma.TransactionClient,
+  userId: string | null | undefined,
+  subtotalPaise: number,
+): Promise<TharaDiscountResult> {
+  const zero: TharaDiscountResult = { eligible: false, slab: null, discountPaise: 0 }
+  if (!isTharaEnabled()) return zero
+  if (!userId || subtotalPaise < TharaDiscountSlabs.SLAB_1_MIN) return zero
+
+  const membership = await tx.tharaMembership.findUnique({
+    where: { userId },
+    select: { status: true },
+  })
+  if (!membership || membership.status !== 'active') return zero
+
+  let pct: number
+  let slab: TharaDiscountSlab
+  if (subtotalPaise >= TharaDiscountSlabs.SLAB_3_MIN) {
+    pct = 20
+    slab = '20'
+  } else if (subtotalPaise >= TharaDiscountSlabs.SLAB_2_MIN) {
+    pct = 15
+    slab = '15'
+  } else {
+    pct = 10
+    slab = '10'
+  }
+  // floor so we never round up and end up giving MORE discount than the slab says
+  const discountPaise = Math.floor((subtotalPaise * pct) / 100)
+  return { eligible: true, slab, discountPaise }
 }
 
 export async function listMemberships(filter: {
