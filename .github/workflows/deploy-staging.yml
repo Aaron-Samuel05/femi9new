@@ -9,7 +9,6 @@ on:
       - ".github/workflows/deploy-staging.yml"
 
 permissions:
-  id-token: write
   contents: read
 
 concurrency:
@@ -21,15 +20,16 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: staging
 
     steps:
       - uses: actions/checkout@v7
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION }}
+          allowed-account-ids: "851725383246"
 
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
