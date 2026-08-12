@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { getSettings } from '@/lib/services/settings'
 import { REF_COOKIE, attributeOrder } from '@/lib/services/affiliate'
 import * as razorpay from '@/lib/razorpay'
+import { activateAndLockIfEligible } from '@/lib/services/thara'
 import type { OrderStatus } from '@prisma/client'
 
 /**
@@ -510,6 +511,9 @@ export async function markOrderPaid({
         })
       }
     }
+
+    // Thara: activate membership and lock incoming referral for qualifying orders.
+    await activateAndLockIfEligible(tx, order.id)
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })

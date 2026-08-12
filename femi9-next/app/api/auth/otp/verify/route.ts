@@ -3,6 +3,7 @@ import { ok, badRequest, handle } from '@/lib/api'
 import { verifyOtp, InvalidOtpError, InvalidPhoneError, normalizePhone } from '@/lib/services/auth'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,8 +23,14 @@ export async function POST(req: NextRequest) {
     const phHit = await rateLimit('otp:verify:ph:' + normalizePhone(phone), 10, 60_000)
     if (!phHit.ok) return tooManyRequests(phHit.retryAfterSec)
 
+    const attributionCtx = {
+      cookieToken: req.cookies.get(THARA_REF_COOKIE)?.value ?? null,
+      ip: clientIp(req),
+      ua: req.headers.get('user-agent') ?? null,
+    }
+
     try {
-      const user = await verifyOtp(phone, code)
+      const user = await verifyOtp(phone, code, attributionCtx)
       const token = await createSession({
         sub: user.id,
         phone: user.phone ?? undefined,
@@ -39,6 +46,9 @@ export async function POST(req: NextRequest) {
         path: '/',
         maxAge: SESSION_MAX_AGE,
       })
+      // Clear the referral cookie once consumed (either way — successful
+      // attribution or a rejected one — we don't want it re-used).
+      res.cookies.set(THARA_REF_COOKIE, '', { path: '/', maxAge: 0 })
       return res
     } catch (err) {
       if (err instanceof InvalidOtpError || err instanceof InvalidPhoneError) {

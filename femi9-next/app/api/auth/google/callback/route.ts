@@ -10,6 +10,8 @@ import {
 import { signInWithGoogle } from '@/lib/services/auth'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { mockProvidersAllowed } from '@/lib/runtime-mode'
+import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
+import { clientIp } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -60,7 +62,12 @@ export async function GET(req: NextRequest) {
     }
 
     // 3. Find-or-create the customer and mint OUR session.
-    const user = await signInWithGoogle(profile)
+    const attributionCtx = {
+      cookieToken: req.cookies.get(THARA_REF_COOKIE)?.value ?? null,
+      ip: clientIp(req),
+      ua: req.headers.get('user-agent') ?? null,
+    }
+    const user = await signInWithGoogle(profile, attributionCtx)
     const jwt = await createSession({
       sub: user.id,
       email: user.email ?? undefined,
@@ -83,6 +90,7 @@ export async function GET(req: NextRequest) {
       path: '/',
       maxAge: 0,
     })
+    res.cookies.set(THARA_REF_COOKIE, '', { path: '/', maxAge: 0 })
     return res
   } catch (err) {
     return fail(err instanceof Error ? err.message : 'unknown error')

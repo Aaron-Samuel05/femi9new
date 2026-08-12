@@ -1,33 +1,56 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { REF_COOKIE, logClick } from '@/lib/services/affiliate'
+import { normalizeReferralCode } from '@/lib/thara/codes'
+import {
+  THARA_REF_COOKIE,
+  THARA_REF_COOKIE_MAX_AGE,
+  signTharaRefCookie,
+} from '@/lib/thara/cookies'
+import { isTharaEnabled } from '@/lib/thara/feature'
+import { prisma } from '@/lib/db'
 
 /**
- * GET /r/[code] — a creator's shareable link.
+ * GET /r/[code] — referral link entry point.
  *
- * Records a click for the code, drops the referral cookie so a later checkout
- * can attribute the order back to the creator, then bounces to the storefront
- * home. The cookie is set unconditionally (even for an unknown code); checkout's
- * attribution is itself a no-op for anything but an approved code, so a bogus
- * link simply carries a cookie that never earns anything.
+ * Sets a signed HttpOnly cookie carrying the referrer's TharaMembership id if
+ * the code resolves to an eligible (active or purchase_pending) referrer, then
+ * 302s to the site homepage. If the feature is off, the code is invalid, or
+ * the referrer is suspended/deactivated, we still 302 home but skip the cookie.
  */
 
-// 30-day attribution window, matching the cookie the checkout hook reads.
-const THIRTY_DAYS = 60 * 60 * 24 * 30
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-export async function GET(req: NextRequest, props: { params: Promise<{ code: string }> }) {
-  const params = await props.params;
-  const code = params.code.trim()
+export async function GET(
+  req: NextRequest,
+  ctx: { params: Promise<{ code: string }> },
+) {
+  const home = new URL('/', req.url)
 
-  // Best-effort tracking — a logging hiccup must never block the redirect.
-  await logClick(code).catch(() => {})
+  if (!isTharaEnabled()) {
+    return new NextResponse('Not Found', { status: 404 })
+  }
 
-  const res = NextResponse.redirect(new URL('/', req.url), 307)
-  res.cookies.set(REF_COOKIE, code, {
+  const { code: raw } = await ctx.params
+  const code = normalizeReferralCode(raw)
+  if (!code) return NextResponse.redirect(home)
+
+  const membership = await prisma.tharaMembership.findUnique({
+    where: { referralCode: code },
+    select: { id: true, status: true },
+  })
+  if (!membership) return NextResponse.redirect(home)
+  if (membership.status !== 'active' && membership.status !== 'purchase_pending') {
+    return NextResponse.redirect(home)
+  }
+
+  const token = await signTharaRefCookie(membership.id)
+  const res = NextResponse.redirect(home)
+  res.cookies.set(THARA_REF_COOKIE, token, {
     httpOnly: true,
-    sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: THARA_REF_COOKIE_MAX_AGE,
     path: '/',
-    maxAge: THIRTY_DAYS,
   })
   return res
 }

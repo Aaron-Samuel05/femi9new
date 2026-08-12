@@ -222,6 +222,9 @@ model User {
   wallLikes     WallLike[]
   wallReplies   WallReply[]
   events        EventLog[]
+
+  tharaMembership       TharaMembership?
+  tharaReferralReceived TharaReferral?   @relation("TharaReferralReceived")
 }
 
 model Account {
@@ -303,24 +306,25 @@ model CartItem {
 }
 
 model Order {
-  id          String      @id @default(cuid())
-  orderNo     String      @unique
-  userId      String?
-  user        User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status      OrderStatus @default(pending)
-  subtotal    Int
-  discount    Int         @default(0)
-  shipping    Int         @default(0)
-  total       Int
-  addressId   String?
-  address     Address?    @relation(fields: [addressId], references: [id])
-  couponId    String?
-  coupon      Coupon?     @relation(fields: [couponId], references: [id])
-  affiliateId String?
-  affiliate   Affiliate?  @relation(fields: [affiliateId], references: [id])
-  channel     String      @default("web") // web | whatsapp
-  placedAt    DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id                 String           @id @default(cuid())
+  orderNo            String           @unique
+  userId             String?
+  user               User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status             OrderStatus      @default(pending)
+  subtotal           Int
+  discount           Int              @default(0)
+  shipping           Int              @default(0)
+  total              Int
+  addressId          String?
+  address            Address?         @relation(fields: [addressId], references: [id])
+  couponId           String?
+  coupon             Coupon?          @relation(fields: [couponId], references: [id])
+  affiliateId        String?
+  affiliate          Affiliate?       @relation(fields: [affiliateId], references: [id])
+  tharaQualifyingFor TharaMembership? @relation("TharaQualifyingOrder")
+  channel            String           @default("web") // web | whatsapp
+  placedAt           DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   items    OrderItem[]
   payments Payment[]
@@ -548,25 +552,25 @@ model Review {
 // ─────────────────────────── Cycle & content ──────────────────────────
 
 model PeriodLog {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   startDate     DateTime? // legacy plaintext; migration clears after encryption
-  lengthDays    Int?      // legacy plaintext; migration clears after encryption
-  encryptedData String?   // AES-256-GCM period payload
+  lengthDays    Int? // legacy plaintext; migration clears after encryption
+  encryptedData String? // AES-256-GCM period payload
   createdAt     DateTime  @default(now())
 
   @@index([userId])
 }
 
 model SymptomLog {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   date          DateTime? // legacy plaintext; migration clears after encryption
-  symptom       String?   // legacy plaintext; migration clears after encryption
-  level         Int?      // legacy plaintext; migration clears after encryption
-  encryptedData String?   // AES-256-GCM symptom payload
+  symptom       String? // legacy plaintext; migration clears after encryption
+  level         Int? // legacy plaintext; migration clears after encryption
+  encryptedData String? // AES-256-GCM symptom payload
   createdAt     DateTime  @default(now())
 
   @@index([userId])
@@ -658,4 +662,66 @@ model ZoneRegion {
 
   @@unique([kind, value]) // a region maps to at most one zone (no ambiguity)
   @@index([zoneId])
+}
+
+// ─────────────────────────── Thara Model ───────────────────────────
+// Sub-project A: identity spine (enrolment + attribution). Sub-projects
+// B–F (personal discount, wallet credit, points, invite email, dashboards)
+// read from these tables; they do not modify them.
+
+enum TharaStatus {
+  purchase_pending
+  active
+  suspended
+  deactivated
+}
+
+model TharaMembership {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status            TharaStatus @default(purchase_pending)
+  enrolledAt        DateTime    @default(now())
+  activatedAt       DateTime?
+  qualifyingOrderId String?     @unique
+  qualifyingOrder   Order?      @relation("TharaQualifyingOrder", fields: [qualifyingOrderId], references: [id])
+
+  referralCode    String   @unique
+  termsAcceptedAt DateTime
+  termsVersion    String
+
+  suspendedAt         DateTime?
+  suspendedReason     String?
+  statusBeforeSuspend TharaStatus?
+  deactivatedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  referralsMade TharaReferral[] @relation("Referrer")
+
+  @@index([status])
+  @@index([referralCode])
+}
+
+model TharaReferral {
+  id         String          @id @default(cuid())
+  referrerId String
+  referrer   TharaMembership @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  referredUserId String @unique
+  referred       User   @relation("TharaReferralReceived", fields: [referredUserId], references: [id], onDelete: Cascade)
+
+  attributedAt DateTime  @default(now())
+  lockedAt     DateTime?
+
+  invitedByEmail String?
+  invitedByLink  Boolean @default(false)
+  ipAtSignup     String?
+  uaAtSignup     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([referrerId])
 }

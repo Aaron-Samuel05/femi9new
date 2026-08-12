@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyMagicLink } from '@/lib/services/auth'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
+import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
+import { clientIp } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,8 +20,14 @@ export async function GET(req: NextRequest) {
   // Canonical origin for the redirect target; fall back to the request origin.
   const base = process.env.NEXT_PUBLIC_SITE_URL || url.origin
 
+  const attributionCtx = {
+    cookieToken: req.cookies.get(THARA_REF_COOKIE)?.value ?? null,
+    ip: clientIp(req),
+    ua: req.headers.get('user-agent') ?? null,
+  }
+
   try {
-    const user = await verifyMagicLink(email, token)
+    const user = await verifyMagicLink(email, token, attributionCtx)
     const jwt = await createSession({
       sub: user.id,
       email: user.email ?? undefined,
@@ -35,6 +43,7 @@ export async function GET(req: NextRequest) {
       path: '/',
       maxAge: SESSION_MAX_AGE,
     })
+    res.cookies.set(THARA_REF_COOKIE, '', { path: '/', maxAge: 0 })
     return res
   } catch (err) {
     // Typed link errors are expected (stale/tampered link); anything else is a
