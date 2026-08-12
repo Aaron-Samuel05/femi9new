@@ -1,0 +1,1191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thara Model — Femi9 Program Guide</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --ground: #F7F5FB;
+    --panel: #FFFFFF;
+    --ink: #1A1428;
+    --ink-quiet: #4A3E5D;
+    --ink-muted: #7F6EB9;
+    --line: #E4DFEE;
+    --line-soft: #EDE9F4;
+    --accent: #5B3FDA;
+    --accent-quiet: #EFEBFF;
+    --gold: #F0C14E;
+    --gold-soft: #FBF3D9;
+    --status-shipped: #3D8B5C;
+    --status-shipped-bg: #E1F0E7;
+    --status-planned: #B8863A;
+    --status-planned-bg: #FBF0DA;
+    --callout: #FBF9F3;
+    --callout-border: #EDE4C7;
+    --shadow: 0 1px 0 rgba(26, 20, 40, 0.03);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #141020;
+      --panel: #1B1630;
+      --ink: #EFECF7;
+      --ink-quiet: #B6ADD0;
+      --ink-muted: #8A7EB0;
+      --line: #2E274A;
+      --line-soft: #241E3A;
+      --accent: #8B7BFF;
+      --accent-quiet: #241D48;
+      --gold: #F4CE6B;
+      --gold-soft: #3B2F17;
+      --status-shipped: #67C48A;
+      --status-shipped-bg: #1C3626;
+      --status-planned: #E4B36E;
+      --status-planned-bg: #372A15;
+      --callout: #221B33;
+      --callout-border: #4A3B22;
+      --shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+    }
+  }
+  :root[data-theme="light"] {
+    --ground: #F7F5FB;
+    --panel: #FFFFFF;
+    --ink: #1A1428;
+    --ink-quiet: #4A3E5D;
+    --ink-muted: #7F6EB9;
+    --line: #E4DFEE;
+    --line-soft: #EDE9F4;
+    --accent: #5B3FDA;
+    --accent-quiet: #EFEBFF;
+    --gold: #F0C14E;
+    --gold-soft: #FBF3D9;
+    --status-shipped: #3D8B5C;
+    --status-shipped-bg: #E1F0E7;
+    --status-planned: #B8863A;
+    --status-planned-bg: #FBF0DA;
+    --callout: #FBF9F3;
+    --callout-border: #EDE4C7;
+    --shadow: 0 1px 0 rgba(26, 20, 40, 0.03);
+  }
+  :root[data-theme="dark"] {
+    --ground: #141020;
+    --panel: #1B1630;
+    --ink: #EFECF7;
+    --ink-quiet: #B6ADD0;
+    --ink-muted: #8A7EB0;
+    --line: #2E274A;
+    --line-soft: #241E3A;
+    --accent: #8B7BFF;
+    --accent-quiet: #241D48;
+    --gold: #F4CE6B;
+    --gold-soft: #3B2F17;
+    --status-shipped: #67C48A;
+    --status-shipped-bg: #1C3626;
+    --status-planned: #E4B36E;
+    --status-planned-bg: #372A15;
+    --callout: #221B33;
+    --callout-border: #4A3B22;
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
+  }
+
+  html { color-scheme: light dark; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  * { box-sizing: border-box; }
+
+  .serif {
+    font-family: "Iowan Old Style", "Palatino Linotype", "Palatino", Georgia, "Times New Roman", serif;
+    font-feature-settings: "kern" 1, "liga" 1, "onum" 1;
+  }
+  .mono {
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .page {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+
+  header.masthead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 24px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 40px;
+  }
+  .eyebrow {
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-family: "Iowan Old Style", "Palatino Linotype", "Palatino", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(2.4rem, 4.6vw, 3.6rem);
+    line-height: 1.05;
+    margin: 0 0 12px;
+    letter-spacing: -0.012em;
+    text-wrap: balance;
+    color: var(--ink);
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 400;
+  }
+  .subtitle {
+    max-width: 60ch;
+    font-size: 1.06rem;
+    line-height: 1.55;
+    color: var(--ink-quiet);
+    margin: 0;
+  }
+  .status-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: var(--accent-quiet);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .status-header .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 220px minmax(0, 1fr);
+    gap: 64px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    .page { padding: 32px 20px 72px; }
+    header.masthead { grid-template-columns: 1fr; }
+    .layout { grid-template-columns: 1fr; gap: 40px; }
+    nav.toc { position: static; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 32px;
+    align-self: start;
+  }
+  nav.toc .toc-eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 600;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  nav.toc ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    counter-reset: toc;
+  }
+  nav.toc li { counter-increment: toc; }
+  nav.toc a {
+    display: block;
+    padding: 6px 0 6px 32px;
+    color: var(--ink-quiet);
+    text-decoration: none;
+    font-size: 13.5px;
+    line-height: 1.35;
+    position: relative;
+    transition: color 0.15s ease;
+  }
+  nav.toc a::before {
+    content: counter(toc, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 10.5px;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+  }
+  nav.toc a:hover { color: var(--accent); }
+  nav.toc a:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  main { min-width: 0; }
+  section {
+    padding: 32px 0 40px;
+    border-bottom: 1px solid var(--line-soft);
+    counter-increment: section;
+  }
+  section:last-of-type { border-bottom: 0; }
+  section > h2 {
+    font-family: "Iowan Old Style", "Palatino Linotype", "Palatino", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(1.65rem, 3vw, 2.1rem);
+    line-height: 1.15;
+    letter-spacing: -0.008em;
+    margin: 0 0 4px;
+    color: var(--ink);
+    text-wrap: balance;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+  section > h2 .n {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.68em;
+    color: var(--ink-muted);
+    letter-spacing: 0.02em;
+    font-weight: 500;
+  }
+  section > .lede {
+    font-size: 1.03rem;
+    color: var(--ink-quiet);
+    max-width: 70ch;
+    margin: 8px 0 24px;
+    line-height: 1.6;
+  }
+  h3 {
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    margin: 28px 0 12px;
+    color: var(--ink);
+  }
+  h4 {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    margin: 20px 0 8px;
+  }
+  p {
+    margin: 0 0 14px;
+    max-width: 70ch;
+  }
+  p:last-child { margin-bottom: 0; }
+  ul, ol {
+    padding-left: 22px;
+    margin: 0 0 14px;
+    max-width: 70ch;
+  }
+  ul li, ol li { margin-bottom: 6px; }
+  ul li::marker { color: var(--ink-muted); }
+  ol li::marker { color: var(--ink-muted); font-variant-numeric: tabular-nums; }
+
+  strong { font-weight: 600; }
+  em { font-style: italic; color: var(--ink); }
+  code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    background: var(--line-soft);
+    color: var(--ink);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  /* Benefit grid at top */
+  .benefit-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 24px 0 8px;
+  }
+  @media (max-width: 720px) { .benefit-strip { grid-template-columns: 1fr; } }
+  .benefit-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 18px 20px 20px;
+    box-shadow: var(--shadow);
+  }
+  .benefit-card .num-badge {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--accent);
+    font-style: italic;
+  }
+  .benefit-card h4 {
+    text-transform: none;
+    letter-spacing: 0;
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--ink);
+    margin: 8px 0 6px;
+  }
+  .benefit-card p {
+    font-size: 14px;
+    color: var(--ink-quiet);
+    margin: 0 0 12px;
+    line-height: 1.5;
+  }
+  .benefit-card .metric {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 28px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .benefit-card .metric small {
+    font-family: -apple-system, "SF Pro Text", "Segoe UI", sans-serif;
+    font-size: 12px;
+    color: var(--ink-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 4px;
+    font-variant-numeric: normal;
+  }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 12px 0 24px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14.5px;
+    font-variant-numeric: tabular-nums;
+  }
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  th {
+    font-weight: 600;
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--line);
+  }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td:first-child, th:first-child { padding-left: 0; }
+  td:last-child, th:last-child { padding-right: 0; }
+  .discount-slab td.pct {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 20px;
+    color: var(--ink);
+    padding-right: 4px;
+    text-align: right;
+    width: 90px;
+  }
+  .discount-slab tr:last-child td { border-bottom: 0; }
+  .discount-slab td.range { color: var(--ink-quiet); }
+
+  /* Status pills */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11.5px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .pill-shipped { background: var(--status-shipped-bg); color: var(--status-shipped); }
+  .pill-shipped .dot { background: var(--status-shipped); }
+  .pill-planned { background: var(--status-planned-bg); color: var(--status-planned); }
+  .pill-planned .dot { background: var(--status-planned); }
+
+  /* ASCII diagrams */
+  .diagram {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 20px;
+    margin: 16px 0 22px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--ink);
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* Callout / worked example */
+  .callout {
+    background: var(--callout);
+    border: 1px solid var(--callout-border);
+    border-radius: 4px;
+    padding: 18px 22px 20px;
+    margin: 16px 0 22px;
+  }
+  .callout .callout-label {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--status-planned);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .callout .money {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-size: 15.5px;
+    color: var(--ink);
+    line-height: 1.65;
+    font-variant-numeric: tabular-nums;
+  }
+  .callout .money strong { color: var(--ink); font-weight: 600; }
+  .callout .money .yield {
+    font-family: -apple-system, sans-serif;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    display: inline-block;
+    min-width: 92px;
+  }
+
+  /* FAQ */
+  .faq details {
+    border-top: 1px solid var(--line-soft);
+    padding: 16px 0;
+  }
+  .faq details:last-child { border-bottom: 1px solid var(--line-soft); }
+  .faq summary {
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--ink);
+    padding-right: 24px;
+    position: relative;
+    list-style: none;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after {
+    content: "+";
+    position: absolute;
+    right: 0;
+    top: -2px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: var(--ink-muted);
+    font-size: 18px;
+    transition: transform 0.15s ease;
+  }
+  .faq details[open] summary::after { transform: rotate(45deg); }
+  .faq details[open] summary { color: var(--accent); }
+  .faq details p {
+    margin-top: 10px;
+    color: var(--ink-quiet);
+    font-size: 14.5px;
+    max-width: 68ch;
+  }
+
+  /* Code map */
+  .code-map {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    margin: 16px 0 8px;
+  }
+  .code-group {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 16px 16px;
+  }
+  .code-group h5 {
+    margin: 0 0 8px;
+    font-size: 12.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-muted);
+    font-weight: 600;
+  }
+  .code-group ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .code-group li {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    color: var(--ink);
+    padding: 3px 0;
+    line-height: 1.4;
+  }
+  .code-group li .name { color: var(--accent); }
+  .code-group li .desc { color: var(--ink-muted); }
+
+  /* Footer meta */
+  footer.meta {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  footer.meta .sig {
+    font-family: "Iowan Old Style", Georgia, serif;
+    font-style: italic;
+    color: var(--ink-quiet);
+  }
+
+  /* Theme toggle */
+  .theme-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 10;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--ink-quiet);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 15px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    transition: color 0.15s ease, transform 0.15s ease;
+  }
+  .theme-toggle:hover { color: var(--accent); transform: translateY(-1px); }
+  .theme-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Anchor scroll offset */
+  section { scroll-margin-top: 24px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle" aria-label="Toggle theme" onclick="(()=>{const r=document.documentElement;const cur=r.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');r.setAttribute('data-theme',cur==='dark'?'light':'dark');})()">◐</button>
+
+<div class="page">
+  <header class="masthead">
+    <div>
+      <div class="eyebrow">Femi9 · Program Guide</div>
+      <h1>The <em>Thara</em> Model</h1>
+      <p class="subtitle">Femi9's opt-in customer referral and loyalty program. A tiered personal discount, ten percent of a friend's order as store credit, and one percent that compounds every quarter into an Amazon voucher — layered on top of the storefront a customer already knows.</p>
+    </div>
+    <div class="status-header"><span class="dot"></span>All six sub-projects shipped · flag off until launch</div>
+  </header>
+
+  <div class="layout">
+    <nav class="toc" aria-label="Table of contents">
+      <div class="toc-eyebrow">Contents</div>
+      <ol>
+        <li><a href="#overview">What the model is</a></li>
+        <li><a href="#users">Who's who</a></li>
+        <li><a href="#lifecycle">Enrollment lifecycle</a></li>
+        <li><a href="#attribution">Referral flow</a></li>
+        <li><a href="#benefit-1">Personal discount</a></li>
+        <li><a href="#benefit-2">Referral commission</a></li>
+        <li><a href="#benefit-3">Reward points &amp; voucher</a></li>
+        <li><a href="#refunds">Refunds &amp; reversals</a></li>
+        <li><a href="#fraud">Fraud prevention</a></li>
+        <li><a href="#config">Configuration</a></li>
+        <li><a href="#status">Program status</a></li>
+        <li><a href="#gaps">Deferred pieces</a></li>
+        <li><a href="#code-map">Files &amp; code map</a></li>
+        <li><a href="#faq">Common questions</a></li>
+      </ol>
+    </nav>
+
+    <main>
+      <section id="overview">
+        <h2><span class="n">01</span>What the model is</h2>
+        <p class="lede">Any registered Femi9 customer can enroll, complete a qualifying purchase, and then earn three stacked benefits — going forward, on their own orders and on the orders of anyone they refer.</p>
+
+        <div class="benefit-strip">
+          <div class="benefit-card">
+            <div class="num-badge">i.</div>
+            <h4>Personal discount</h4>
+            <p>On the member's own orders, tiered by cart value.</p>
+            <div class="metric">10 – 20<small>Percent, by slab</small></div>
+          </div>
+          <div class="benefit-card">
+            <div class="num-badge">ii.</div>
+            <h4>Referral commission</h4>
+            <p>Ten percent of a friend's paid order lands as Femi9 store credit.</p>
+            <div class="metric">10<small>Percent · store credit</small></div>
+          </div>
+          <div class="benefit-card">
+            <div class="num-badge">iii.</div>
+            <h4>Quarterly voucher</h4>
+            <p>One percent of a friend's paid order becomes points; every quarter they multiply by three into an Amazon voucher.</p>
+            <div class="metric">1 × 3<small>Percent × Multiplier</small></div>
+          </div>
+        </div>
+
+        <p>Referred customers do <em>not</em> need to enroll to buy — they're regular shoppers to Femi9. Enrollment is only what unlocks earning power for the referrer.</p>
+        <p><strong>Single-level referral tree.</strong> Person A refers B and C. A earns on B's and C's purchases. If B later refers D, only B earns on D — A does not. No cascade, no multi-level structure.</p>
+      </section>
+
+      <section id="users">
+        <h2><span class="n">02</span>Who's who</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:220px">Role</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><strong>Non-member</strong></td><td>Any registered Femi9 customer who has not enrolled in Thara.</td></tr>
+            <tr><td><strong>purchase_pending</strong></td><td>Enrolled and accepted T&amp;C, but has not yet completed a ≥ ₹3,000 order. Cannot earn referral benefits yet.</td></tr>
+            <tr><td><strong>active</strong></td><td>Enrolled and completed a qualifying order. Can now earn on downline purchases and use their personal discount.</td></tr>
+            <tr><td><strong>suspended</strong></td><td>Admin-suspended for suspected abuse. Past earnings preserved; no new accruals while suspended.</td></tr>
+            <tr><td><strong>deactivated</strong></td><td>Voluntarily opted out. Terminal state for this user — cannot re-enroll on the same account.</td></tr>
+            <tr><td><strong>Downline user</strong></td><td>Any user who was referred by a Thara member. Does <em>not</em> need to be a Thara member themselves for the referrer to earn on their orders.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="lifecycle">
+        <h2><span class="n">03</span>Enrollment lifecycle</h2>
+        <p class="lede">A member moves through four possible states. Activation happens automatically — inside the same database transaction that captures the qualifying payment — so a member can never end up "active" without a paid order behind them.</p>
+
+        <div class="diagram">   NON-MEMBER
+       │
+       │ POST /api/thara/enroll { termsVersion }
+       │  — auto-issues a unique 8-char referral code
+       ▼
+  purchase_pending  ◄─────────────────────────┐
+       │                                      │  admin unsuspends
+       │ pays for order with subtotal ≥ ₹3,000│  → status is restored to
+       │  (activation happens INSIDE the      │    whatever it was before
+       │   markOrderPaid DB transaction)      │    the suspension
+       ▼                                      │
+     ACTIVE ─────── admin suspends ────────► SUSPENDED
+       │
+       │ POST /api/thara/opt-out
+       ▼
+   DEACTIVATED  (terminal for this user account —
+                 code is preserved as an audit anchor
+                 but treated as invalid on /r/[code])</div>
+
+        <p>Activation is server-authoritative. The promotion <code>purchase_pending → active</code> runs inside the same DB transaction as <code>markOrderPaid</code>, and stamps the <code>qualifyingOrderId</code> at the same moment. This guarantees the two facts — you have paid, you are active — cannot drift apart.</p>
+      </section>
+
+      <section id="attribution">
+        <h2><span class="n">04</span>Referral link &amp; attribution</h2>
+        <p class="lede">Every Thara member gets a unique referral code: four uppercase letters, then four digits. Ambiguous characters are omitted on both sides so a code shared in WhatsApp is unambiguously transcribable.</p>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:180px">Piece</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Format</td><td class="mono">TARA5578, MENA2839, PADS9843…</td></tr>
+            <tr><td>Letter alphabet</td><td class="mono">ABCDEFGHJKMNPQRSTUVWXYZ &nbsp;<span style="color:var(--ink-muted)">— 23 chars, no I, L, O</span></td></tr>
+            <tr><td>Digit alphabet</td><td class="mono">23456789 &nbsp;<span style="color:var(--ink-muted)">— 8 chars, no 0, 1</span></td></tr>
+            <tr><td>Possible codes</td><td class="num">≈ 1.15 billion</td></tr>
+            <tr><td>URL shape</td><td class="mono">https://femi9.in/r/TARA5578</td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>What happens when someone clicks a referral link</h3>
+        <div class="diagram">Friend receives  https://femi9.in/r/TARA5578  (WhatsApp, SMS, in person)
+        │
+        │  GET /r/TARA5578
+        ▼
+┌─────────────────────────────────────────────────┐
+│  /r/[code] route                                │
+│                                                  │
+│  1. Feature flag off?          → 404             │
+│  2. Code malformed?            → 302 /           │
+│  3. Code not found?            → 302 /           │
+│  4. Referrer suspended/off?    → 302 /           │
+│  5. Otherwise: set signed HttpOnly cookie        │
+│     femi9_thara_ref = jwt(referrer.id)           │
+│     TTL 30 days, aud=femi9-thara-ref             │
+│     → 302 to /                                   │
+└─────────────────────────────────────────────────┘
+        │
+        ▼
+Friend browses, adds to cart, eventually signs up.</div>
+        <p>The cookie is signed with <code>AUTH_SECRET</code> (HS256, distinct audience <code>femi9-thara-ref</code>) so a hostile shopper cannot hand-craft one crediting an arbitrary member.</p>
+
+        <h3>What happens when the friend signs up</h3>
+        <p>All three sign-in paths — phone OTP, email magic link, Google — flow through the same helper <code>attributeReferralIfPresent</code>. It runs immediately after the User is created or matched, and is fire-and-forget: attribution failure never blocks sign-in.</p>
+
+        <p>Guards, in order:</p>
+        <ol>
+          <li>No <code>femi9_thara_ref</code> cookie → skip.</li>
+          <li>Cookie signature invalid → skip.</li>
+          <li>Referrer id doesn't resolve to a membership → skip.</li>
+          <li>Referrer is <code>suspended</code> or <code>deactivated</code> → skip.</li>
+          <li>The friend and the referrer are the same user → <strong>reject</strong> (self-referral).</li>
+          <li>The friend's verified email matches the referrer's → <strong>reject</strong> (duplicate account).</li>
+          <li>The friend's phone matches the referrer's → <strong>reject</strong> (duplicate account).</li>
+          <li>The friend already has a <code>TharaReferral</code> row (unique constraint) → <strong>reject</strong> (one referrer per user, forever).</li>
+          <li>Otherwise: create the row, stamp <code>ipAtSignup</code> + <code>uaAtSignup</code>.</li>
+          <li>Clear the cookie either way.</li>
+        </ol>
+
+        <h3>When the referral becomes permanent</h3>
+        <p>Attribution is created at signup with <code>lockedAt = null</code>. Admin can delete an obviously-fraudulent row during this window. The referral becomes <strong>permanent</strong> on the friend's first paid ≥ ₹3,000 order — inside the same transaction as activation, so state stays coherent.</p>
+      </section>
+
+      <section id="benefit-1">
+        <h2><span class="n">05</span>Personal discount &nbsp;<span class="pill pill-shipped"><span class="dot"></span>Shipped · sub-project B</span></h2>
+        <p class="lede">Applied to the Thara member's own orders. Slab-based on cart subtotal, before shipping.</p>
+
+        <div class="table-wrap"><table class="discount-slab">
+          <thead><tr><th>Order subtotal</th><th class="num">Discount</th></tr></thead>
+          <tbody>
+            <tr><td class="range">Below ₹3,000</td><td class="pct" style="color:var(--ink-muted);">—</td></tr>
+            <tr><td class="range">₹3,000 &nbsp;to &nbsp;₹5,999</td><td class="pct">10<span style="color:var(--ink-muted);font-size:14px">%</span></td></tr>
+            <tr><td class="range">₹6,000 &nbsp;to &nbsp;₹8,999</td><td class="pct">15<span style="color:var(--ink-muted);font-size:14px">%</span></td></tr>
+            <tr><td class="range">₹9,000 and above</td><td class="pct">20<span style="color:var(--ink-muted);font-size:14px">%</span></td></tr>
+          </tbody>
+        </table></div>
+
+        <h3>Rules</h3>
+        <ul>
+          <li>Member must be <code>active</code>. A <code>purchase_pending</code> member sees no discount on their first order — that first ≥ ₹3,000 order pays full price and activates them for future orders.</li>
+          <li>Discount is computed on <strong>subtotal</strong> (before shipping).</li>
+          <li><strong>No stacking with promo coupons.</strong> The system picks the better of the two at checkout, not both.</li>
+          <li>Applied server-side at order creation. The client preview is not authoritative — what the server writes to <code>Order.discount</code> is.</li>
+          <li>Below ₹3,000: normal order at full price. No partial slab, no discount.</li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-label">Worked example</div>
+          <div class="money">
+            <span class="yield">Cart subtotal</span> <strong>₹4,000</strong><br>
+            <span class="yield">Applicable slab</span> ₹3,000–₹5,999 · 10% off<br>
+            <span class="yield">Discount</span> <strong>₹400</strong><br>
+            <span class="yield">Payable</span> <strong>₹3,600</strong> <span style="color:var(--ink-muted)">(before shipping)</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="benefit-2">
+        <h2><span class="n">06</span>Referral commission &nbsp;<span class="pill pill-shipped"><span class="dot"></span>Shipped · sub-project C</span></h2>
+        <p class="lede">Every time a downline user pays for an order, the referring Thara member earns 10% of that order's subtotal as Femi9 store credit, credited to their account and auto-applied at their next checkout.</p>
+
+        <div class="diagram">Downline user pays ₹3,000 order
+                │
+                │  (inside markOrderPaid transaction)
+                ▼
+Look up TharaReferral where referredUserId = downline.id
+                │
+                │  If lockedAt is set (permanent referral):
+                │  earn = 10% × subtotal = ₹300
+                ▼
+Append to TharaCreditLedger:
+    { userId: referrer.userId,
+      delta: +30000 paise,
+      reason: 'referral-commission',
+      sourceOrderId: downline_order.id }
+Balance = SUM(delta) over all rows for that user.</div>
+
+        <h3>Rules</h3>
+        <ul>
+          <li><strong>Requires the referrer to be <code>active</code>.</strong> A <code>purchase_pending</code> member's downline purchases produce no commission until they complete their own qualifying order. Past downline purchases do <em>not</em> backfill.</li>
+          <li><strong>Requires the referrer to be not-suspended.</strong> Suspended members earn nothing during the suspension window.</li>
+          <li><strong>Applies to any downline order</strong> — no minimum. A ₹500 order earns ₹50 credit.</li>
+          <li><strong>Applied automatically</strong> at the referrer's next checkout. No coupon code, no opt-in — the credit reduces the payable amount and debits the ledger in the same transaction.</li>
+          <li><strong>Store credit only.</strong> Not withdrawable to bank / UPI. Not transferable. Persists as long as the account exists — <strong>no expiry.</strong></li>
+        </ul>
+
+        <h3>Ledger design</h3>
+        <p>Append-only. Every credit is a positive <code>delta</code>. Every debit (spent on a future order) is a negative <code>delta</code> linked to the order that consumed it. Every refund reversal (see §8) is a negative <code>delta</code> linked back to the original commission row. Balance is always <code>SUM(delta)</code>. Historical rows are never mutated.</p>
+      </section>
+
+      <section id="benefit-3">
+        <h2><span class="n">07</span>Reward points &amp; quarterly voucher &nbsp;<span class="pill pill-shipped"><span class="dot"></span>Shipped · sub-project D</span></h2>
+        <p class="lede">Every downline order also generates 1% of subtotal as reward points, distinct from the store credit. Points accumulate over a rolling three-month cycle. At the end of the cycle, <code>points × 3</code> is issued as an Amazon voucher.</p>
+
+        <div class="diagram">Downline user pays ₹3,000 order
+                │
+                │  (inside markOrderPaid transaction)
+                ▼
+earn = 1% × subtotal = ₹30 = 30 points
+                │
+                ▼
+Append to TharaRewardPointsLedger:
+    { userId: referrer.userId,
+      delta: +30, reason: 'referral-points',
+      sourceOrderId: downline_order.id,
+      cycleId: current_open_cycle.id }
+
+At end of cycle (cron on the 1st of the quarter):
+    total_points = SUM(delta) for the closed cycle
+    voucher_value = total_points × 3   (₹)
+    Create TharaVoucher {
+      userId, cycleId, points: total_points,
+      valueRupees: voucher_value,
+      status: 'available',
+      claimDeadline: cycleClose + 30 days }
+    Amazon Incentives API → issue real gift-code → attach.
+    Fallback: admin pastes codes via /admin/thara/vouchers.</div>
+
+        <h3>Cycle timing</h3>
+        <ul>
+          <li>Fixed calendar quarters (Q1: Jan–Mar, Q2: Apr–Jun, Q3: Jul–Sep, Q4: Oct–Dec) — admin-configurable if a different rhythm is preferred later.</li>
+          <li>Voucher is issued within the first hour of the next quarter.</li>
+          <li>Voucher must be claimed within <strong>30 days</strong> of issuance or it expires.</li>
+        </ul>
+
+        <div class="callout">
+          <div class="callout-label">Worked example · full cycle math</div>
+          <div class="money">
+            <span class="yield">Referrer A</span> <strong>active</strong><br>
+            <span class="yield">Person B</span> buys <strong>₹3,000</strong> · A earns <strong>₹300 credit</strong> + <strong>30 points</strong><br>
+            <span class="yield">Person C</span> buys <strong>₹8,000</strong> · A earns <strong>₹800 credit</strong> + <strong>80 points</strong><br>
+            <br>
+            <span class="yield">Credit this cycle</span> <strong>₹1,100</strong> <span style="color:var(--ink-muted)">— usable at next checkout</span><br>
+            <span class="yield">Points accrued</span> <strong>110</strong><br>
+            <span class="yield">At cycle close</span> 110 × 3 = <strong>₹330 Amazon voucher</strong>
+          </div>
+        </div>
+
+        <h3>Rules</h3>
+        <ul>
+          <li>Same eligibility as commission — <code>active</code> and not suspended.</li>
+          <li>Points are <em>not</em> spendable directly; they only become a voucher at cycle close.</li>
+          <li>No expiry mid-cycle. Points become vulnerable to expiry only once they turn into a voucher.</li>
+          <li>Unclaimed vouchers expire after 30 days.</li>
+        </ul>
+      </section>
+
+      <section id="refunds">
+        <h2><span class="n">08</span>Refunds &amp; reversals</h2>
+        <p class="lede">If a downline order that generated commission and/or points is later refunded, cancelled, or otherwise reversed, the earnings tied to that order are reversed too.</p>
+
+        <ul>
+          <li><strong>Any refund state</strong> — <code>cancelled</code>, <code>refunded</code>, <code>partially_refunded</code> — triggers reversal.</li>
+          <li><strong>Full reversal on full refund.</strong> A ₹3,000 order that generated ₹300 credit + 30 points is fully reversed: ₹300 debited, 30 points debited.</li>
+          <li><strong>Proportional reversal on partial refund.</strong> A ₹5,000 order refunded to ₹2,000 leaves ₹3,000 kept. Commission is recomputed on the kept amount: 10% of ₹3,000 = ₹300 → the ₹200 difference from the original ₹500 is debited; points scale proportionally.</li>
+          <li><strong>Ledger stays append-only.</strong> Reversal writes a negative-delta row referencing the original earning row. The original row is never edited.</li>
+          <li><strong>Negative balance is allowed.</strong> If the referrer has already spent the credit at another checkout by the time the refund happens, their balance goes negative. They cannot spend more until fresh earnings restore it to ≥ 0.</li>
+          <li><strong>Voucher-stage reversal.</strong> If points were already rolled into an issued voucher and the voucher has not been claimed, the voucher value is reduced. If already claimed and used, no clawback of the Amazon code — the ledger records a negative delta as a soft claim against future earnings.</li>
+        </ul>
+      </section>
+
+      <section id="fraud">
+        <h2><span class="n">09</span>Fraud prevention</h2>
+        <p class="lede">Layered guards, from cheapest to catch to hardest to bypass.</p>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:220px">Guard</th><th style="width:200px">Where enforced</th><th>Behavior</th></tr></thead>
+          <tbody>
+            <tr><td>Self-referral</td><td>Signup hook</td><td>If the friend's user id equals the referrer's, reject silently.</td></tr>
+            <tr><td>Duplicate email</td><td>Signup hook</td><td>If verified email matches the referrer's, reject.</td></tr>
+            <tr><td>Duplicate phone</td><td>Signup hook</td><td>If phone matches the referrer's, reject.</td></tr>
+            <tr><td>Suspended referrer</td><td>Signup hook + <code>/r/[code]</code></td><td>No cookie set; existing cookie ignored at signup.</td></tr>
+            <tr><td>One referrer per user, forever</td><td>DB unique index</td><td>Second referral link click won't overwrite; row won't insert.</td></tr>
+            <tr><td>Cookie unforgeability</td><td>HS256 JWT over <code>AUTH_SECRET</code></td><td>Distinct audience <code>femi9-thara-ref</code>. Hand-crafted cookies fail verification.</td></tr>
+            <tr><td>No post-hoc attribution</td><td>By design</td><td>No admin API to attach a referrer after the fact. "I forgot the link, credit me" flow does not exist.</td></tr>
+            <tr><td>IP / UA capture</td><td>Non-blocking, stored on row</td><td>Powers admin queries: "one referrer's 50 signups all from the same subnet" → manual suspension.</td></tr>
+            <tr><td>Admin suspend / deactivate</td><td><code>/api/admin/thara/[id]/suspend</code></td><td>Ops-level breaker. Preserves prior status for clean unsuspend.</td></tr>
+            <tr><td>Refund clawback</td><td>Refund webhook</td><td>Fraudulent orders that earned commission are automatically reversed.</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="config">
+        <h2><span class="n">10</span>Configuration</h2>
+        <p class="lede">Everything below is meant to be admin-configurable without a code deploy, so the business team can tune slabs, cycle length, or multipliers. The current implementation ships with these values as sane defaults.</p>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th>Setting</th><th style="width:180px">Default</th><th>Location</th></tr></thead>
+          <tbody>
+            <tr><td>Minimum qualifying purchase</td><td class="num">₹3,000</td><td><code>THARA_QUALIFYING_MIN_PAISE</code> in <code>services/thara.ts</code></td></tr>
+            <tr><td>Discount slab 1</td><td class="num">10% · ₹3,000–₹5,999</td><td>(B) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Discount slab 2</td><td class="num">15% · ₹6,000–₹8,999</td><td>(B) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Discount slab 3</td><td class="num">20% · ₹9,000+</td><td>(B) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Referral commission rate</td><td class="num">10%</td><td>(C) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Reward points rate</td><td class="num">1%</td><td>(D) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Voucher multiplier</td><td class="num">×3</td><td>(D) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Cycle length</td><td>3 months (calendar quarters)</td><td>(D) <code>TharaSetting</code> table</td></tr>
+            <tr><td>Voucher claim deadline</td><td class="num">30 days after issue</td><td>(D) <code>TharaSetting</code> table</td></tr>
+            <tr><td>T&amp;C version</td><td><code>"v1"</code></td><td><code>THARA_TERMS_VERSION</code> in <code>thara/terms.ts</code></td></tr>
+            <tr><td>Feature flag</td><td><code>THARA_ENABLED="false"</code></td><td>Environment (see <code>DEPLOY.md</code>)</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="status">
+        <h2><span class="n">11</span>Program status</h2>
+        <p class="lede">Every sub-project is now merged to <code>master</code> at <code>5af410c</code>. The full flow — enrol, refer, discount, commission, invite, points, voucher, claim — is exercised end-to-end by 131 passing tests. The feature flag stays off in production until the operational blockers in the next section are cleared.</p>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:30px">#</th><th style="width:260px">Sub-project</th><th style="width:150px">Status</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="mono">A</td><td>Enrolment + attribution</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td>Schema, feature flag, referral code, cookie, signup hook wiring, activate + lock in <code>markOrderPaid</code>, customer + admin routes. 37 tests.</td>
+            </tr>
+            <tr>
+              <td class="mono">B</td><td>Personal discount at checkout</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td><code>computeTharaDiscount</code> inside <code>placeOrder</code> transaction. Floor-rounded, feature-flag gated, applies only to <code>active</code> members. 9 tests.</td>
+            </tr>
+            <tr>
+              <td class="mono">C</td><td>Wallet + commission accrual</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td>Append-only <code>TharaCreditLedger</code>. Accrual inside <code>markOrderPaid</code>, auto-apply inside <code>placeOrder</code>, mirror-signed reversal inside <code>refundOrder</code>. 9 tests.</td>
+            </tr>
+            <tr>
+              <td class="mono">E</td><td>Email invites via Resend</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td><code>/api/thara/invite</code> (rate-limited 10/user·hr + 20/IP·hr), <code>/api/webhooks/resend</code> populates <code>TharaSuppressedEmail</code>. 9 tests.</td>
+            </tr>
+            <tr>
+              <td class="mono">D</td><td>Reward points + quarterly voucher</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td><code>TharaRewardPointsLedger</code>, <code>TharaCycle</code>, <code>TharaVoucher</code>. <code>VoucherIssuer</code> interface with Amazon-first + Manual fallback; cycle-close cron; expire-stale cron. 9 tests.</td>
+            </tr>
+            <tr>
+              <td class="mono">F</td><td>Customer + admin dashboards</td>
+              <td><span class="pill pill-shipped"><span class="dot"></span>Shipped</span></td>
+              <td><code>/thara</code> (customer, single-fetch <code>/api/thara/summary</code>). <code>/admin/thara</code> (metrics + voucher-code paste queue + close-cycle button).</td>
+            </tr>
+          </tbody>
+        </table></div>
+      </section>
+
+      <section id="gaps">
+        <h2><span class="n">12</span>Deferred pieces</h2>
+        <p class="lede">Nothing here is a bug. Each row is a known shortcut with a documented exit. Together they are what stands between the current code and a real production launch.</p>
+
+        <div class="table-wrap"><table>
+          <thead><tr><th style="width:220px">Gap</th><th>Where</th><th>Why deferred</th><th>To close</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Amazon Incentives API real call</strong></td>
+              <td><code>src/lib/thara/voucher-issuer.ts</code>
+                  <br><span style="color:var(--ink-muted)">AmazonIncentivesIssuer.issue()</span></td>
+              <td>Throws <code>NotImplemented</code>. Amazon's onboarding is 2–4 weeks and needs business verification, a signed agreement, and the SigV4-signed <code>CreateGiftCard</code> setup.</td>
+              <td>Onboard with Amazon Incentives API. Manual issuer takes over automatically until then — cycle-close never blocks.</td>
+            </tr>
+            <tr>
+              <td><strong>Resend webhook signature verification</strong></td>
+              <td><code>app/api/webhooks/resend/route.ts</code></td>
+              <td>SVIX HMAC verification is stubbed with a comment. In mock mode the endpoint accepts unsigned events.</td>
+              <td>Add SVIX signature verification once <code>RESEND_WEBHOOK_SECRET</code> is available.</td>
+            </tr>
+            <tr>
+              <td><strong>Cron schedule</strong></td>
+              <td>Routes exist under <code>/api/cron/thara-*</code>; nothing calls them on a schedule yet.</td>
+              <td>Depends on the infra choice (AWS EventBridge Scheduler vs Vercel Cron).</td>
+              <td>Two EventBridge rules — <code>thara-close-cycle</code> at 00:05 UTC on the 1st of Jan/Apr/Jul/Oct; <code>thara-expire-vouchers</code> daily.</td>
+            </tr>
+            <tr>
+              <td><strong>E2E script covers A only</strong></td>
+              <td><code>scripts/e2e-http.mjs</code></td>
+              <td>Integration tests cover B–F thoroughly. E2E black-box was left at A.</td>
+              <td>Extend the E2E block to enrol → refer → pay → assert commission + points + voucher.</td>
+            </tr>
+            <tr>
+              <td><strong>Admin-configurable business rules</strong></td>
+              <td>Discount slabs, commission %, points %, voucher multiplier, cycle length all live as constants in <code>src/lib/services/thara.ts</code>.</td>
+              <td>A working <code>Setting</code> table exists elsewhere in the codebase but hasn't been extended for Thara. MVP doesn't need runtime tunability.</td>
+              <td>Extend the <code>Setting</code> table (or introduce <code>TharaSetting</code>) + admin form so business can adjust without a deploy.</td>
+            </tr>
+            <tr>
+              <td><strong>Customer dashboard visual polish</strong></td>
+              <td><code>/thara</code></td>
+              <td>Shipped as functional. Utilitarian palette + layout, not editorial-brand.</td>
+              <td>Design pass matching the storefront's Fraunces + lavender identity.</td>
+            </tr>
+            <tr>
+              <td><strong>Legal T&amp;C text</strong></td>
+              <td><code>docs/thara/terms/v1.md</code></td>
+              <td>Placeholder pending legal counsel.</td>
+              <td>Legal drafts real terms → bump <code>THARA_TERMS_VERSION</code> so existing members re-accept on next enrol.</td>
+            </tr>
+          </tbody>
+        </table></div>
+
+        <h3>External (not code)</h3>
+        <ul>
+          <li><strong>AWS OIDC trust policy</strong> on <code>femi9-github-staging-deploy</code> has been failing since Aug 6. Every push to <code>master</code> — including both Thara merges — has failed to deploy. Someone with IAM access to account <code>851725383246</code> needs to fix the role's trust policy. Once fixed, everything catches up in one CI run.</li>
+          <li><strong><code>THARA_ENABLED=true</code></strong> in the ECS task definition — a single environment-variable flip when you're ready. All Thara routes return <code>404</code> until then.</li>
+          <li><strong>Resend domain verification</strong> for <code>femi9.in</code> — SPF and DKIM DNS records so real invite emails deliver. Development runs against <code>onboarding@resend.dev</code> in the meantime.</li>
+        </ul>
+      </section>
+
+      <section id="code-map">
+        <h2><span class="n">13</span>Files &amp; code map</h2>
+        <p class="lede">Where every piece lives, so a new engineer can find their way from a route to the service to the schema in a single glance.</p>
+
+        <div class="code-map">
+          <div class="code-group">
+            <h5>Feature flag</h5>
+            <ul>
+              <li><span class="name">src/lib/thara/feature.ts</span></li>
+              <li class="desc">isTharaEnabled()</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Referral code</h5>
+            <ul>
+              <li><span class="name">src/lib/thara/codes.ts</span></li>
+              <li class="desc">generateReferralCode()</li>
+              <li class="desc">normalizeReferralCode()</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Attribution cookie</h5>
+            <ul>
+              <li><span class="name">src/lib/thara/cookies.ts</span></li>
+              <li class="desc">signTharaRefCookie()</li>
+              <li class="desc">verifyTharaRefCookie()</li>
+              <li class="desc">femi9_thara_ref · 30d · HS256</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Service layer</h5>
+            <ul>
+              <li><span class="name">src/lib/services/thara.ts</span></li>
+              <li class="desc">enrollUser()</li>
+              <li class="desc">optOutUser()</li>
+              <li class="desc">attributeReferralIfPresent()</li>
+              <li class="desc">activateAndLockIfEligible()</li>
+              <li class="desc">suspendMembership() / unsuspendMembership()</li>
+              <li class="desc">listMemberships() / getMembershipById()</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Sign-in integration</h5>
+            <ul>
+              <li><span class="name">src/lib/services/auth.ts</span></li>
+              <li class="desc">verifyOtp() · verifyMagicLink() · signInWithGoogle()</li>
+              <li class="desc">each accepts an optional attributionCtx</li>
+              <li><span class="name">app/api/auth/otp/verify</span></li>
+              <li><span class="name">app/api/auth/email/verify</span></li>
+              <li><span class="name">app/api/auth/google/callback</span></li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Payment integration</h5>
+            <ul>
+              <li><span class="name">src/lib/services/checkout.ts</span></li>
+              <li class="desc">markOrderPaid() calls</li>
+              <li class="desc">activateAndLockIfEligible(tx, order.id)</li>
+              <li class="desc">inside its DB transaction</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Customer routes</h5>
+            <ul>
+              <li><span class="name">app/r/[code]</span></li>
+              <li><span class="name">app/api/thara/enroll</span></li>
+              <li><span class="name">app/api/thara/me</span></li>
+              <li><span class="name">app/api/thara/opt-out</span></li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Admin routes</h5>
+            <ul>
+              <li><span class="name">app/api/admin/thara/list</span></li>
+              <li><span class="name">app/api/admin/thara/[id]</span></li>
+              <li><span class="name">app/api/admin/thara/[id]/suspend</span></li>
+              <li><span class="name">app/api/admin/thara/[id]/unsuspend</span></li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Schema</h5>
+            <ul>
+              <li><span class="name">prisma/schema.prisma</span></li>
+              <li class="desc">TharaMembership · TharaReferral</li>
+              <li class="desc">enum TharaStatus</li>
+              <li><span class="name">prisma/migrations/…thara_a_enrollment</span></li>
+              <li class="desc">additive only</li>
+            </ul>
+          </div>
+          <div class="code-group">
+            <h5>Tests</h5>
+            <ul>
+              <li class="desc">test/unit/thara-{feature, codes, cookies}</li>
+              <li class="desc">test/integration/thara-{enrollment, attribution, activation, admin}</li>
+              <li class="desc">scripts/e2e-http.mjs · Thara block auto-skips if flag off</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="faq" class="faq">
+        <h2><span class="n">14</span>Common questions</h2>
+
+        <details>
+          <summary>What if a member enrolls but never buys anything?</summary>
+          <p>They stay in <code>purchase_pending</code> forever. Their referral link still works and can capture attributions, but when a referred friend pays, only the friend's activation and lock happen — the referrer earns nothing because they themselves are not yet <code>active</code>. If the referrer later completes their own qualifying order, they become <code>active</code> and future downline orders start earning. Past ones do not backfill.</p>
+        </details>
+
+        <details>
+          <summary>Can two members share a phone number?</summary>
+          <p>No. <code>User.phone</code> has a database-level unique constraint. There's exactly one User per phone number in the system, so this edge case is impossible.</p>
+        </details>
+
+        <details>
+          <summary>What if the referrer opts out after a friend has been attributed but before that friend's first paid order?</summary>
+          <p>The referral row exists but <code>lockedAt</code> is null. Because the referrer's membership is now <code>deactivated</code>, no commission or points would accrue on the friend's future purchases either way. The row stays as an audit record.</p>
+        </details>
+
+        <details>
+          <summary>Does the personal discount apply to the qualifying (first ≥ ₹3,000) order?</summary>
+          <p>No. Activation happens inside the same transaction that marks the order paid, but discount computation runs earlier (at checkout, when the order is created). So the first qualifying order pays full price and unlocks the discount for future orders.</p>
+        </details>
+
+        <details>
+          <summary>Can a member share their referral link publicly?</summary>
+          <p>Yes. There's no per-code rate limit on <code>/r/[code]</code>. But fraud detection watches for high-volume attributions from the same IP/UA cluster — if it looks like link-farming, admin can suspend.</p>
+        </details>
+
+        <details>
+          <summary>What happens to a suspended member's earnings?</summary>
+          <p>Already-accrued store credit stays in their ledger. Already-issued vouchers stay valid until their claim deadline. New commission and points do not accrue during the suspension window.</p>
+        </details>
+
+        <details>
+          <summary>Can a customer be both a Thara member and a downline user of someone else?</summary>
+          <p>Yes. Enrollment and being-referred are independent facts. The customer earns on their downline's orders (Benefits 2 &amp; 3), and their own referrer earns on the customer's orders (from that referrer's perspective, the customer is a downline user).</p>
+        </details>
+      </section>
+
+      <footer class="meta">
+        <div>Femi9 · Thara Model · Program guide v2</div>
+        <div class="sig">All six sub-projects shipped on <code>master</code> at <code>5af410c</code> · 131 tests passing.</div>
+      </footer>
+    </main>
+  </div>
+</div>
+</body>
+</html>
