@@ -1,0 +1,121 @@
+/* Thara customer dashboard */
+.thara {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 32px 20px 96px;
+  font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+}
+.thara h1 {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 400;
+  margin: 0 0 8px;
+  color: #34204E;
+}
+.thara h2 {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.3rem;
+  font-weight: 400;
+  margin: 0 0 16px;
+  color: #34204E;
+}
+.thara p { color: #4A3E5D; margin: 6px 0; line-height: 1.55; }
+.thara .hint { color: #7F6EB9; font-size: 14px; }
+.thara-hero {
+  background: linear-gradient(160deg, #EFEBFF 0%, #FBF9F3 100%);
+  border: 1px solid #E4DFEE;
+  border-radius: 12px;
+  padding: 28px 32px;
+  margin-bottom: 24px;
+}
+.thara-hero .row { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
+.thara-hero .status { text-transform: capitalize; }
+.thara-hero .metric { text-align: right; }
+.thara-hero .metric .label {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7F6EB9; font-weight: 600;
+}
+.thara-hero .metric .value {
+  font-family: "Fraunces", Georgia, serif; font-size: 2rem; color: #34204E; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.thara-block {
+  background: #FFFFFF;
+  border: 1px solid #E4DFEE;
+  border-radius: 12px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+}
+.thara-block .row { display: flex; gap: 24px; flex-wrap: wrap; }
+.thara-block .metric { flex: 1; min-width: 160px; }
+.thara-block .metric .label {
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7F6EB9; font-weight: 600;
+}
+.thara-block .metric .value {
+  font-family: "Fraunces", Georgia, serif; font-size: 1.6rem; color: #34204E; margin-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.thara-block code {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 20px;
+  background: #F0C14E22;
+  color: #34204E;
+  padding: 6px 14px;
+  border-radius: 6px;
+  letter-spacing: 0.04em;
+}
+.thara .code-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.thara .url {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  color: #7F6EB9; font-size: 13px; overflow-wrap: anywhere;
+}
+.thara .invite-row {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+}
+.thara .invite-row input {
+  flex: 1; min-width: 220px;
+  padding: 12px 14px;
+  border: 1px solid #E4DFEE;
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+}
+.thara .invite-row input:focus {
+  outline: none; border-color: #5B3FDA;
+}
+.thara-empty {
+  min-height: 40vh; display: flex; align-items: center; justify-content: center;
+  color: #7F6EB9;
+}
+.thara-table {
+  width: 100%; border-collapse: collapse; font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.thara-table th, .thara-table td {
+  padding: 10px 12px; text-align: left; border-bottom: 1px solid #EDE9F4;
+}
+.thara-table th { color: #7F6EB9; font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+.thara-table td.credit { color: #3D8B5C; font-weight: 600; }
+.thara-table td.debit { color: #B8863A; font-weight: 600; }
+.thara-table code {
+  font-size: 12px; background: transparent; padding: 0; letter-spacing: 0.06em;
+}
+.pill {
+  display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11.5px;
+  font-weight: 600; letter-spacing: 0.02em; text-transform: capitalize;
+}
+.pill-available { background: #EFEBFF; color: #5B3FDA; }
+.pill-claimed { background: #E1F0E7; color: #3D8B5C; }
+.pill-expired { background: #FBF0DA; color: #B8863A; }
+.pill-cancelled { background: #F5EBEB; color: #A54646; }
+
+.thara .btn {
+  display: inline-block; padding: 10px 18px; border-radius: 999px; font-weight: 600;
+  font-size: 14px; border: 0; cursor: pointer; font-family: inherit;
+}
+.thara .btn-primary { background: #F0C14E; color: #34204E; }
+.thara .btn-primary:hover:not(:disabled) { background: #E6B23A; }
+.thara .btn-primary:disabled { background: #EDE9F4; color: #7F6EB9; cursor: not-allowed; }
+.thara .btn-ghost { background: transparent; border: 1px solid #E4DFEE; color: #34204E; }
+.thara .btn-ghost:hover { border-color: #5B3FDA; color: #5B3FDA; }
