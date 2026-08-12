@@ -4,9 +4,9 @@ import { listProducts } from '@/lib/services/products'
 import { listPosts } from '@/lib/services/blog'
 
 export const metadata: Metadata = {
-  title: 'Femi9 - Organic, breathable period care',
+  title: 'Femi9 Sanitary Pads | Rash-Free, Cotton-Soft Period Care India',
   description:
-    'Shop Femi9 ultra-thin, breathable organic cotton pads with a mood-lifting anion strip. Toxin-free, biodegradable period care made for real life.',
+    'Shop Femi9 sanitary pads—cotton-soft, breathable, and reliably absorbent. Discover rash-free period care designed for everyday confidence. Made in India.',
 }
 
 // The catalog + journal teaser come from Postgres, so this page must render at

@@ -94,6 +94,19 @@ export const PRODUCTS: Product[] = [
     type: 'panty',
     sizes: ['S', 'M', 'L', 'XL'],
   },
+  {
+    id: 'p180m9',
+    name: 'Femi9 180mm Mini Pads',
+    price: 99,
+    img: '/assets/img/prod-180-mini.webp',
+    meta: '30 pads · 180mm',
+    flow: 'Light Flow · Daily Freshness',
+    desc: 'Ultra-thin, breathable everyday protection for light flow, daily discharge, spotting, and minor urinary leakage.',
+    type: 'pad',
+    packs: [
+      { count: 30, price: 99 }
+    ],
+  },
 ]
 
 /** Subscribe & save — applied on every product page. */

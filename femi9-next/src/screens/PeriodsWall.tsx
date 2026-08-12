@@ -32,7 +32,7 @@ type Post = {
 }
 
 /* ---------- compose options ---------- */
-const PRODUCTS = ['Femi9 330mm', 'Femi9 290mm', 'Femi9 Panties', 'Another brand', 'First period']
+const PRODUCTS = ['Femi9 330mm', 'Femi9 290mm', 'Femi9 Pantyliner', 'Another brand', 'First period']
 
 /* ---------- feed filters ---------- */
 const FILTERS = ['All', 'Femi9', 'Cramps', 'First period', 'Heavy days', 'Switching', 'Sensitive skin'] as const

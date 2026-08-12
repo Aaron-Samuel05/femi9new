@@ -121,7 +121,7 @@ async function seedProducts() {
       })
     } else {
       // Single default pack (e.g. the 3-pad starter with no explicit packs).
-      const count = Number(p.meta.match(/(\d+)\s*pads?/)?.[1] ?? 1)
+      const count = Number(p.meta.match(/(\d+)\s*(?:pads?|liners?)/)?.[1] ?? 1)
       await prisma.productVariant.create({
         data: {
           productId: product.id,
