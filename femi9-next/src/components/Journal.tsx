@@ -15,7 +15,6 @@ function StackCard({ post }: { post: BlogPostDTO }) {
         <BlogCover post={post} />
       </span>
       <span className="jstack-body">
-        <CatChip post={post} />
         <h3 className="display">{post.title}</h3>
         <p>{post.excerpt}</p>
         <span className="jstack-foot">

@@ -1,3 +1,5 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import { CATEGORY_META, type BlogCategory } from '../data/blog'
 import type { BlogPostDTO } from '@/lib/services/blog'
@@ -173,9 +175,48 @@ export function BlogCover({
   // category arrives as a plain string on the DTO; narrow it to the known union
   // for the CATEGORY_META lookup and the motif helpers below.
   const cat = post.category as BlogCategory
-  const { color, tint } = CATEGORY_META[cat]
+  const { color, tint } = CATEGORY_META[cat] ?? { color: '#7B4FA6', tint: 'linear-gradient(150deg,#F2ECF9,#D6C2EC)' }
   const deep = variant === 'deep'
   const r = makeRng(post.slug + variant)
+
+  if (post.image) {
+    return (
+      <span
+        className={`bcover bcover--has-image bcover--${variant} ${className}`}
+        style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'block', background: '#272355' }}
+        aria-hidden="true"
+      >
+        <img
+          src={post.image}
+          alt=""
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none'
+          }}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            display: 'block',
+          }}
+        />
+        {deep && (
+          <span
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'linear-gradient(180deg, rgba(18, 10, 32, 0.25) 0%, rgba(28, 16, 46, 0.75) 55%, rgba(18, 10, 32, 0.92) 100%)',
+              pointerEvents: 'none',
+              zIndex: 1,
+            }}
+          />
+        )}
+      </span>
+    )
+  }
 
   // deep covers (featured hero / article) use a plum→accent gradient with light
   // motifs; light covers (cards / teaser) use the pale category tint with the

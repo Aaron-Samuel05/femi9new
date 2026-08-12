@@ -73,3 +73,21 @@
 @media(prefers-reduced-motion:reduce){.figma-landing *,.figma-landing *:before,.figma-landing *:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}.fl-founder,.fl-benefit,.fl-why__product,.fl-product,.fl-blog,.fl-review,.fl-partner__copy,.fl-partner__image,.fl-footer>.fl-shell,.fl-why .fl-heading,.fl-journal .fl-heading,.fl-testimonials .fl-heading,.fl-testimonials__track{opacity:1!important}.fl-founder,.fl-benefit,.fl-why__product,.fl-product,.fl-blog,.fl-partner__copy,.fl-partner__image{transform:none!important}.fl-testimonials__track{transform:translateX(-80px)!important}}
 .fl-product__buy{min-width:107px;min-height:41px;padding:12px 24px;border-radius:35px;background:#120f2e;color:#fff!important;cursor:pointer;transition:background-color .3s ease-out,transform .3s ease-out;text-align:center;text-decoration:none!important}
 .fl-product__buy:hover,.fl-product__buy:focus-visible{background:#4a4286;transform:translateY(-2px)}
+
+.fl-journal{background:var(--cream)}
+.fl-journal .fl-kicker{color:var(--forest-2);font:600 14px/1 "Urbanist",system-ui,sans-serif;letter-spacing:.18em;text-transform:uppercase}
+.fl-journal .fl-kicker:before{content:"";width:22px;height:2px;border-radius:2px;background:var(--yellow)}
+.fl-journal .fl-heading h2{color:var(--navy);font-family:"Instrument Sans","Urbanist",system-ui,sans-serif;font-size:48px;font-weight:600;line-height:1.12;letter-spacing:0}
+.fl-journal .fl-heading>div:first-child>p:last-child{max-width:620px;color:var(--muted);font-family:"Urbanist",system-ui,sans-serif;font-size:20px;font-weight:400;line-height:1.55;letter-spacing:0}
+.fl-journal .fl-btn--outline{border-color:var(--line);background:transparent;color:var(--navy);font-family:"Urbanist",system-ui,sans-serif;box-shadow:none;transition:transform .25s var(--ease),border-color .25s var(--ease),background .25s var(--ease)}
+.fl-journal .fl-btn--outline:hover,.fl-journal .fl-btn--outline:focus-visible{border-color:var(--navy);background:var(--surface);transform:translateY(-2px)}
+.fl-blog{border-radius:var(--r-card);font-family:"Urbanist",system-ui,sans-serif;transition:opacity .6s var(--ease),transform .6s var(--ease),box-shadow .25s var(--ease)}
+.fl-blog__shade{background:linear-gradient(180deg,rgba(58,33,88,0) 28%,rgba(58,33,88,.9) 100%)}
+.fl-blog__shade:after{background:linear-gradient(180deg,rgba(58,33,88,0) 0%,var(--forest) 78%)}
+.fl-blog__meta b{background:var(--butter);color:var(--navy);font-family:"Urbanist",system-ui,sans-serif;font-size:14px;font-weight:600;letter-spacing:0}
+.fl-blog__read small{font-family:"Urbanist",system-ui,sans-serif;color:#fff9ea;font-size:14px;font-weight:500;letter-spacing:0}
+.fl-blog__arrow{background:var(--sage-tint)}
+.fl-blog h3{color:#fff;font-family:"Instrument Sans","Urbanist",system-ui,sans-serif;font-size:25px;font-weight:600;line-height:1.15;letter-spacing:0}
+
+@media(max-width:900px){.fl-journal .fl-heading h2{font-size:38px}.fl-journal .fl-heading>div:first-child>p:last-child{font-size:18px}.fl-blog h3{font-size:23px}}
+@media(max-width:620px){.fl-journal .fl-heading h2{font-size:33px}.fl-journal .fl-heading>div:first-child>p:last-child{font-size:17px}.fl-blog h3{font-size:21px}}

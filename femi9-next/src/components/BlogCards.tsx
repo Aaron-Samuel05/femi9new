@@ -1,10 +1,12 @@
+'use client'
+
 import { Link } from '@/lib/router-compat'
 import { CATEGORY_META, type BlogCategory } from '../data/blog'
 import { BlogCover } from './BlogCover'
 import type { BlogPostDTO } from '@/lib/services/blog'
 
 export function CatChip({ post, onDark = false }: { post: BlogPostDTO; onDark?: boolean }) {
-  const { color } = CATEGORY_META[post.category as BlogCategory]
+  const { color } = CATEGORY_META[post.category as BlogCategory] ?? { color: '#7B4FA6' }
   return (
     <span
       className={`bcat ${onDark ? 'bcat--dark' : ''}`}
@@ -33,7 +35,6 @@ export function ArticleCard({ post }: { post: BlogPostDTO }) {
     <Link to={`/blog/${post.slug}`} className="bcard interactive">
       <span className="bcard-poster">
         <BlogCover post={post} />
-        <CatChip post={post} />
       </span>
       <span className="bcard-body">
         <h3>{post.title}</h3>
@@ -50,7 +51,6 @@ export function MosaicTile({ post, big = false }: { post: BlogPostDTO; big?: boo
     <Link to={`/blog/${post.slug}`} className={`mtile interactive ${big ? 'mtile--big' : ''}`}>
       <BlogCover post={post} variant="deep" />
       <span className="mtile-scrim">
-        <span className="mtile-cat">{post.category}</span>
         <h3>{post.title}</h3>
         <span className="mtile-read">{post.readTime} min read</span>
       </span>

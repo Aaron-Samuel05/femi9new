@@ -307,9 +307,8 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
               </span>
               <span className="fl-blog__shade" />
               <span className="fl-blog__meta">
-                <b>{post?.category ?? item.tag}</b>
                 <span className="fl-blog__read">
-                  <small>{post ? `${post.readTime}mins Read` : '5mins Read'}</small>
+                  <small>{post ? `${post.readTime} min read` : '5 min read'}</small>
                   <span className="fl-blog__arrow"><img src={`${ASSET}blogs-imgFrame.svg`} alt="" /></span>
                 </span>
               </span>

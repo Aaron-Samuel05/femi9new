@@ -1,38 +1,61 @@
 /* ============================================================
    BLOG / JOURNAL — listing, article, home teaser
+   Font stack: Instrument Sans for headlines (matches landing page),
+   Urbanist for body & metadata.
    ============================================================ */
 
-.blog { position: relative; }
+.blog { position: relative; font-family: "Urbanist", system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+/* Enforce landing page Instrument Sans font on all blog display titles */
+.blog h1,
+.blog h2,
+.blog h3,
+.blog .display,
+.blog-hero-title,
+.article-title,
+.mtile-scrim h3,
+.bcard-body h3 {
+  font-family: "Instrument Sans", "Urbanist", system-ui, -apple-system, sans-serif !important;
+}
 
 /* ---------- generated editorial cover (BlogCover) ---------- */
 .bcover { position: absolute; inset: 0; display: block; overflow: hidden; z-index: 0; }
 .bcover-art { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-/* soft overhead sheen for depth */
-.bcover::before {
+/* soft overhead sheen for depth (SVG covers only) */
+.bcover:not(.bcover--has-image)::before {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: radial-gradient(130% 80% at 50% -18%, rgba(255,255,255,.45), transparent 58%);
 }
-.bcover--deep::before { background: radial-gradient(130% 92% at 50% -10%, rgba(255,255,255,.16), transparent 60%); }
+.bcover--deep:not(.bcover--has-image)::before { background: radial-gradient(130% 92% at 50% -10%, rgba(255,255,255,.16), transparent 60%); }
 /* deep: bottom scrim so overlaid white text always reads */
-.bcover--deep::after {
+.bcover--deep:not(.bcover--has-image)::after {
   content: ""; position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(to top, rgba(18,10,32,.74) 0%, rgba(28,16,46,.3) 36%, transparent 68%);
 }
 
 /* ---------- listing hero ---------- */
 .blog-hero { padding-block: clamp(40px, 6vw, 80px) clamp(24px, 3vw, 40px); max-width: 820px; }
-.blog-hero-title { font-size: clamp(2.4rem, 6vw, 4.4rem); line-height: 1.02; color: var(--navy); margin-top: 14px; }
-.blog-hero-sub { margin-top: 20px; font-size: clamp(1.05rem, 1.4vw, 1.2rem); color: var(--muted); max-width: 60ch; }
+.blog-hero-title {
+  font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important;
+  font-size: clamp(2.4rem, 6vw, 4.4rem); font-weight: 600; line-height: 1.06;
+  letter-spacing: -0.01em; color: var(--navy); margin-top: 14px;
+}
+.blog-hero-sub {
+  margin-top: 20px; font-family: "Urbanist", system-ui, -apple-system, sans-serif;
+  font-size: clamp(1.05rem, 1.4vw, 1.2rem); font-weight: 400; line-height: 1.55;
+  letter-spacing: 0; color: var(--muted); max-width: 60ch;
+}
 
 /* ---------- category chip + meta (shared) ---------- */
 .bcat {
   display: inline-flex; align-items: center; align-self: flex-start;
+  font-family: "Urbanist", system-ui, -apple-system, sans-serif;
   font-size: .68rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
   padding: 5px 11px; border-radius: 999px; white-space: nowrap;
 }
-.bcat--dark { color: #fff; background: rgba(255, 255, 255, .18); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.28); }
+.bcat--dark { color: #fff; background: rgba(255, 255, 255, .22); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.32); }
 
-.bmeta { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); flex-wrap: wrap; }
+.bmeta { display: inline-flex; align-items: center; gap: 8px; font-family: "Urbanist", system-ui, -apple-system, sans-serif; font-size: .82rem; font-weight:400; letter-spacing:0; color: var(--muted); flex-wrap: wrap; }
 .bmeta b { font-weight: 500; color: var(--ink); }
 .bmeta i { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: .5; }
 
@@ -47,31 +70,38 @@
 .mtile {
   position: relative; display: block; border-radius: var(--r-card); overflow: hidden;
   background-size: cover; background-position: center; box-shadow: var(--shadow-sm);
-  min-height: 0;
+  min-height: 0; background-color: var(--forest);
 }
 .mtile--big { grid-column: 1; grid-row: 1 / span 2; }
 .mtile-scrim {
-  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column;
+  position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column;
   justify-content: flex-end; align-items: flex-start; gap: 8px; padding: clamp(16px, 1.8vw, 26px);
+  background: linear-gradient(180deg, rgba(18, 10, 32, 0.15) 0%, rgba(18, 10, 32, 0.7) 50%, rgba(18, 10, 32, 0.94) 100%);
+  pointer-events: none;
 }
-.mtile-cat { font-size: .66rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: rgba(255,255,255,.88); }
+.mtile-cat {
+  font-family: "Urbanist", system-ui, sans-serif; font-size: .66rem; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  color: #ffffff; background: rgba(255,255,255,.22); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,.3);
+  padding: 4px 11px; border-radius: 999px;
+}
 .mtile-scrim h3 {
-  color: #fff; font-family: var(--display); font-weight: 600; letter-spacing: -.01em;
-  font-size: clamp(1.02rem, 1.4vw, 1.35rem); line-height: 1.12;
+  color: #ffffff !important; font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important;
+  font-weight: 600; letter-spacing: 0; font-size: clamp(1.02rem, 1.4vw, 1.35rem); line-height: 1.15;
+  text-shadow: 0 2px 6px rgba(0,0,0,0.5);
 }
-.mtile--big .mtile-scrim h3 { font-size: clamp(1.6rem, 2.8vw, 2.6rem); }
-.mtile-read { font-size: .78rem; color: rgba(255,255,255,.8); }
+.mtile--big .mtile-scrim h3 { font-size: clamp(1.5rem, 2.6vw, 2.4rem); }
+.mtile-read { font-family: "Urbanist", system-ui, sans-serif; font-size: .78rem; font-weight:500; letter-spacing:0; color: rgba(255,255,255,.9); }
 .mtile img, .mtile { transition: transform .5s var(--ease); }
 .mtile:hover { transform: translateY(-2px); }
 
 /* ---------- latest + filter ---------- */
 .blog-latest { padding-block: clamp(48px, 7vw, 92px); }
 .blog-latest-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
-.blog-latest-head h2 { font-size: clamp(1.7rem, 3.4vw, 2.6rem); color: var(--navy); }
+.blog-latest-head h2 { font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important; font-size: clamp(1.7rem, 3.4vw, 2.6rem); font-weight:600; letter-spacing:0; color: var(--navy); }
 
 .bchips { display: flex; flex-wrap: wrap; gap: 8px; }
 .bchip {
-  padding: 8px 15px; border-radius: 999px; font-size: .84rem; font-weight: 500;
+  padding: 8px 15px; border-radius: 999px; font-family: "Urbanist", system-ui, -apple-system, sans-serif; font-size: .84rem; font-weight: 500; letter-spacing:0;
   color: var(--ink); background: var(--surface); border: 1px solid var(--line);
   transition: background .2s, color .2s, border-color .2s, transform .2s var(--ease);
 }
@@ -93,8 +123,8 @@
 }
 .bcard-poster .bcat { position: absolute; top: 12px; left: 12px; z-index: 2; }
 .bcard-body { display: flex; flex-direction: column; gap: 10px; padding: clamp(16px, 1.6vw, 22px); flex: 1; }
-.bcard-body h3 { font-size: 1.12rem; font-weight: 600; color: var(--navy); line-height: 1.22; letter-spacing: -.01em; }
-.bcard-body p { font-size: .92rem; color: var(--muted); line-height: 1.5; flex: 1; }
+.bcard-body h3 { font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important; font-size: 1.12rem; font-weight: 600; color: var(--navy); line-height: 1.22; letter-spacing: 0; }
+.bcard-body p { font-family: "Urbanist", system-ui, -apple-system, sans-serif; font-size: .92rem; font-weight:400; letter-spacing:0; color: var(--muted); line-height: 1.5; flex: 1; }
 .bcard-body .bmeta { margin-top: 4px; }
 
 /* ---------- newsletter ---------- */
@@ -103,7 +133,7 @@
   background: var(--forest); color: #fff9ea; border-radius: var(--r-card);
   padding: clamp(28px, 4vw, 48px); margin-bottom: clamp(50px, 8vw, 100px);
 }
-.blog-news h2 { color: #fff; font-size: clamp(1.5rem, 3vw, 2.3rem); }
+.blog-news h2 { color: #fff; font-size: clamp(1.5rem, 3vw, 2.3rem); font-family: "Instrument Sans", sans-serif !important; }
 .blog-news p { color: rgba(255, 249, 234, .8); margin-top: 8px; max-width: 46ch; }
 .blog-news-form { display: flex; gap: 10px; flex-wrap: wrap; }
 .blog-news-form input {
@@ -115,7 +145,7 @@
 
 /* ---------- home teaser ---------- */
 .journal-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: clamp(22px, 3vw, 40px); }
-.journal-title { font-size: clamp(1.9rem, 4vw, 3rem); color: var(--navy); margin-top: 12px; }
+.journal-title { font-size: clamp(1.9rem, 4vw, 3rem); color: var(--navy); margin-top: 12px; font-family: "Instrument Sans", sans-serif !important; }
 .journal-all { white-space: nowrap; }
 .journal-grid { grid-template-columns: repeat(3, 1fr); }
 
@@ -129,7 +159,7 @@
   flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 14px;
   padding: clamp(24px, 3vw, 48px); justify-content: center;
 }
-.jstack-body h3 { font-size: clamp(1.4rem, 2.6vw, 2.15rem); color: var(--navy); line-height: 1.08; letter-spacing: -.01em; }
+.jstack-body h3 { font-size: clamp(1.4rem, 2.6vw, 2.15rem); color: var(--navy); line-height: 1.08; letter-spacing: -.01em; font-family: "Instrument Sans", sans-serif !important; }
 .jstack-body p { color: var(--muted); font-size: clamp(.98rem, 1.2vw, 1.12rem); line-height: 1.55; }
 .jstack-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 4px; }
 .jstack-more { font-weight: 600; color: var(--navy); font-size: .95rem; transition: color .2s; white-space: nowrap; }
@@ -142,24 +172,37 @@
 }
 
 /* ---------- article (detail) ---------- */
-.article-top { padding-block: clamp(28px, 4vw, 48px) 0; }
-.article-back { display: inline-block; font-size: .9rem; color: var(--muted); margin-bottom: 22px; transition: color .2s; }
-.article-back:hover { color: var(--navy); }
-.article-head { max-width: 780px; display: flex; flex-direction: column; gap: 18px; }
-.article-title { font-size: clamp(2rem, 4.6vw, 3.4rem); line-height: 1.05; color: var(--navy); }
-.article-meta { font-size: .9rem; }
+.article-top { padding-block: clamp(84px, 10vw, 120px) 0; }
+.article-back {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: "Urbanist", sans-serif; font-size: .95rem; font-weight: 600;
+  color: var(--muted); margin-bottom: 22px; transition: color .2s, transform .2s var(--ease);
+}
+.article-back:hover { color: var(--navy); transform: translateX(-3px); }
+.article-head { max-width: 860px; display: flex; flex-direction: column; gap: 14px; }
+.article-title {
+  font-size: clamp(2.2rem, 4.8vw, 3.6rem); line-height: 1.1; color: var(--navy);
+  font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important;
+  font-weight: 600; letter-spacing: -.01em; margin-top: 4px;
+}
+.article-meta {
+  font-family: "Urbanist", sans-serif; font-size: clamp(0.92rem, 1.1vw, 1.02rem);
+  color: var(--muted); margin-top: 6px;
+}
+.article-meta b { color: var(--navy); font-weight: 600; }
 .article-cover {
   position: relative; overflow: hidden;
-  height: clamp(240px, 42vw, 480px); border-radius: var(--r-card);
-  max-width: var(--maxw); margin: clamp(26px, 4vw, 46px) auto 0;
+  height: clamp(300px, 46vw, 540px); border-radius: var(--r-card);
+  max-width: var(--maxw); margin: clamp(28px, 4vw, 48px) auto 0;
   margin-inline: auto; width: calc(100% - 2 * clamp(18px, 4vw, 40px));
+  box-shadow: var(--shadow-sm);
 }
 .article-body { max-width: 720px; padding-block: clamp(32px, 5vw, 56px); }
 .article-body p { font-size: 1.12rem; line-height: 1.75; color: var(--ink); margin-bottom: 1.3em; }
-.article-body h2 { font-family: var(--display); font-size: clamp(1.4rem, 2.4vw, 1.9rem); color: var(--navy); margin: 1.6em 0 .5em; }
+.article-body h2 { font-family: "Instrument Sans", sans-serif !important; font-size: clamp(1.4rem, 2.4vw, 1.9rem); color: var(--navy); margin: 1.6em 0 .5em; }
 .article-body blockquote {
   position: relative; margin: 1.8em 0; padding: 30px 0 6px;
-  font-family: var(--display); font-size: clamp(1.3rem, 2.2vw, 1.7rem); font-style: italic;
+  font-family: "Instrument Sans", sans-serif !important; font-size: clamp(1.3rem, 2.2vw, 1.7rem); font-style: italic;
   line-height: 1.34; color: var(--navy); text-wrap: pretty;
 }
 .article-body blockquote::before {
@@ -167,9 +210,12 @@
   font-size: 3.2em; line-height: 1; font-style: normal;
   color: var(--accent, var(--yellow-deep)); opacity: .28;
 }
+.article-body-img { margin: 2.2em 0; border-radius: var(--r-card); overflow: hidden; box-shadow: var(--shadow-sm); }
+.article-body-img img { width: 100%; height: auto; display: block; object-fit: cover; border-radius: var(--r-card); }
+.article-body-img figcaption { font-size: .88rem; color: var(--muted); text-align: center; margin-top: 10px; font-family: "Urbanist", sans-serif; }
 .article-cta { padding-bottom: clamp(40px, 6vw, 72px); }
 .article-related { padding-bottom: clamp(56px, 8vw, 104px); }
-.article-related h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); color: var(--navy); margin-bottom: 26px; }
+.article-related h2 { font-size: clamp(1.5rem, 3vw, 2.2rem); color: var(--navy); margin-bottom: 26px; font-family: "Instrument Sans", sans-serif !important; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
