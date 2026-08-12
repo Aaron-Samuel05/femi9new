@@ -353,6 +353,36 @@ async function main() {
   })
   status('Partner application succeeds', partner, 200)
 
+  // Thara Model — enrol / share / attribute. Only runs when THARA_ENABLED is on
+  // in the server process. When off, every route 404s; we skip cleanly.
+  const tharaProbe = await request('/api/thara/me', { jar: customer })
+  if (tharaProbe.response.status === 404) {
+    console.log('~ Thara routes are 404 (THARA_ENABLED off) — skipping Thara block')
+  } else {
+    const tharaEnroll = await request('/api/thara/enroll', {
+      jar: customer,
+      method: 'POST',
+      json: { termsVersion: 'v1' },
+    })
+    status('Thara enrol succeeds', tharaEnroll, 200)
+    check(
+      'Thara enrol issues a valid 4-letter/4-digit code',
+      /^[A-HJ-NP-Z]{4}[2-9]{4}$/.test(tharaEnroll.body?.referralCode ?? ''),
+    )
+
+    const tharaMe = await request('/api/thara/me', { jar: customer })
+    status('Thara me returns enrolled state', tharaMe, 200)
+    check(
+      'Thara me exposes the same referral code',
+      tharaMe.body?.referralCode === tharaEnroll.body?.referralCode,
+    )
+
+    const friend = new CookieJar()
+    const rr = await request(`/r/${tharaEnroll.body.referralCode}`, { jar: friend })
+    status('Referral link redirects', rr, 302)
+    check('Referral link sets the thara_ref cookie', friend.cookies.has('femi9_thara_ref'))
+  }
+
   console.log(`\n${checks.length} E2E checks passed against ${baseUrl}.`)
 }
 
