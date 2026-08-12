@@ -57,6 +57,15 @@ The infrastructure generates/injects `DATABASE_URL`, `DIRECT_URL`,
 `/api/health` returns HTTP 503 in production when the database is unavailable or
 a required launch setting is absent/placeholder. It never returns secret values.
 
+## Thara Model feature flag
+
+`THARA_ENABLED` (default `false`) gates every Thara route. Flip to `"true"`
+only after sub-project B (personal discount) is also in production, so
+enrolled members have a visible benefit on their next order. All new
+routes return 404 when the flag is off. Schema migrations for the
+program ship regardless of the flag and are additive-only; rolling back
+the flag does not require a schema revert.
+
 ## First-time Terraform state bootstrap
 
 The state bucket is already bootstrapped for the current AWS account. For a new
