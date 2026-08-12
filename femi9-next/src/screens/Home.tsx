@@ -5,15 +5,16 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type FormEvent,
   type ReactNode,
 } from 'react'
 import { Link } from '@/lib/router-compat'
-import { useCart } from '@/store/cart'
 import { CycleTracker } from '@/components/CycleTracker'
-import { PRODUCTS, rupees } from '@/data/products'
+import { PRODUCTS } from '@/data/products'
 import type { ProductWithVariants } from '@/lib/services/products'
 import type { BlogPostDTO } from '@/lib/services/blog'
+import { Footer } from '@/components/Footer'
+import { Nav } from '@/components/Nav'
+import { ProductCard } from '@/components/ProductCard'
 
 const ASSET = '/assets/figma-home/'
 
@@ -81,69 +82,9 @@ function Reveal({
   )
 }
 
-const NAV = [
-  ['#products', 'Products'],
-  ['#why', 'Why Femi9'],
-  ['#about', 'About Us'],
-  ['#journal', 'Journal'],
-  ['#opportunities', 'Opportunities'],
-] as const
-
-function LandingNav() {
-  const { count, openCart } = useCart()
-  const [open, setOpen] = useState(false)
-
-  const scrollTo = (target: string) => {
-    setOpen(false)
-    document.querySelector(target)?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  return (
-    <header className="fl-nav">
-      <Link className="fl-nav__logo" to="/" aria-label="Femi9 home">
-        <img src={`${ASSET}navbar-imgImage29.png`} alt="Femi9" />
-      </Link>
-      <nav className="fl-nav__links" aria-label="Landing page navigation">
-        {NAV.map(([target, label]) => (
-          <button type="button" key={target} onClick={() => scrollTo(target)}>
-            {label}
-          </button>
-        ))}
-      </nav>
-      <div className="fl-nav__actions">
-        <Link className="fl-nav__icon" to="/account" aria-label="My account">
-          <img src={`${ASSET}navbar-imgGroup.svg`} alt="" />
-        </Link>
-        <button className="fl-nav__icon" type="button" onClick={openCart} aria-label="Open bag">
-          <img className="fl-nav__bag-layer" src={`${ASSET}navbar-imgLayer2.svg`} alt="" />
-          <img src={`${ASSET}navbar-imgFrame.svg`} alt="" />
-          {count > 0 && <span>{count}</span>}
-        </button>
-        <button
-          className="fl-nav__menu"
-          type="button"
-          aria-label="Toggle menu"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <i />
-          <i />
-        </button>
-      </div>
-      <div className={`fl-nav__mobile${open ? ' is-open' : ''}`}>
-        {NAV.map(([target, label]) => (
-          <button type="button" key={target} onClick={() => scrollTo(target)}>
-            {label}
-          </button>
-        ))}
-      </div>
-    </header>
-  )
-}
-
 function Hero() {
   const [slide, setSlide] = useState<0 | 1>(0)
-  const SLIDE_INTERVAL_MS = 3000
+  const SLIDE_INTERVAL_MS = 6000
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
@@ -152,7 +93,7 @@ function Hero() {
       setSlide((current) => (current === 0 ? 1 : 0))
       timer = window.setTimeout(swap, SLIDE_INTERVAL_MS)
     }
-    timer = window.setTimeout(swap, 5)
+    timer = window.setTimeout(swap, SLIDE_INTERVAL_MS)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -170,7 +111,7 @@ function Hero() {
         <img className="fl-hero__cloud fl-hero__cloud--bottom" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
         <img className="fl-hero__cloud fl-hero__cloud--edge" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
         <img className="fl-hero__pad" src={`${ASSET}hero-imgImage20.png`} alt="" />
-        <img className="fl-hero__model" src={`${ASSET}hero-imgImage19.png`} alt="Woman seated beside Femi9 pads" />
+        <img className="fl-hero__model" src={`${ASSET}image 19.png`} alt="Woman seated beside Femi9 pads" />
         <div className="fl-shell fl-hero__inner">
           <div className="fl-hero__copy">
           <h1 id="fl-hero-heading"><strong>Organic Pads</strong> That Feel Like Nothing At All.</h1>
@@ -192,7 +133,7 @@ function Hero() {
         <div className="fl-shell fl-hero__inner">
           <div className="fl-hero__copy fl-hero__copy--second">
             <h2><strong>Confidence</strong> That Lasts All Day.</h2>
-            <p>Stay protected through work, travel, workouts, and restful nights with ultra-absorbent organic pads designed to move with you - not against you.</p>
+            <p>Ultra-absorbent. Exceptionally comfortable. Certified organic cotton, thoughtfully designed for you.</p>
             <div className="fl-hero__proof">
               <span><img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />Certified Organic Cotton</span>
               <i />
@@ -211,55 +152,12 @@ function Hero() {
   )
 }
 
-const FOUNDERS = [
-  { image: 'about-founder.png', label: 'FOUNDERS', variant: 'doctor', name: 'Dr. Gomathi V', arrow: 'about-hover-gomathi.svg' },
-  { image: 'about-man.png', label: 'CO-FOUNDERS', variant: 'woman', name: 'Vignesh Shivan', arrow: 'about-hover-vignesh.svg' },
-  { image: 'about-woman.png', label: 'CO-FOUNDERS', variant: 'man', name: 'Nayanthara', arrow: 'about-hover-nayanthara.svg' },
-] as const
 
-function About() {
-  return (
-    <Reveal className="fl-about" id="about">
-      <img className="fl-about__shape fl-about__shape--corner" src={`${ASSET}about-imgPolygon1.svg`} alt="" />
-      <img className="fl-about__shape fl-about__shape--top" src={`${ASSET}about-imgVector2.svg`} alt="" />
-      <img className="fl-about__shape fl-about__shape--bottom" src={`${ASSET}about-imgVector3.svg`} alt="" />
-      <img className="fl-about__shape fl-about__shape--edge" src={`${ASSET}about-imgRectangle16.svg`} alt="" />
-      <div className="fl-shell fl-about__layout">
-        <div className="fl-about__people" aria-label="Femi9 founders">
-          {FOUNDERS.map((person) => (
-            <figure className={`fl-founder fl-founder--${person.variant}`} key={person.variant} tabIndex={0}>
-              <span className="fl-founder__portrait">
-                <img src={`${ASSET}${person.image}`} alt="Femi9 founder" />
-              </span>
-              {person.variant === 'man' && (
-                <span className="fl-founder__spark" aria-hidden="true">
-                  <img src={`${ASSET}about-imgVector4.svg`} alt="" />
-                  <img src={`${ASSET}about-imgVector5.svg`} alt="" />
-                  <img src={`${ASSET}about-imgVector6.svg`} alt="" />
-                </span>
-              )}
-              <span className="fl-founder__hover-name">{person.name}</span>
-              <img className="fl-founder__hover-arrow" src={`${ASSET}${person.arrow}`} alt="" />
-              <figcaption>{person.label}</figcaption>
-            </figure>
-          ))}
-        </div>
-        <div className="fl-about__copy">
-          <p className="fl-kicker">About Us <Flower /></p>
-          <h2>Built By A Doctor. Backed By Women. Made For Every Body.</h2>
-          <p>Femi9 Began With A Simple Belief: Period Care Should Be Safe, Honest And Genuinely Comfortable. Today It Is Also A Movement That Puts Income And Dignity Into Women&apos;s Hands.</p>
-          <p>Femi9 Began With A Simple Belief: Period Care Should Be Safe, Honest And Genuinely Comfortable. Today It Is Also A Movement That Puts Income And Dignity Into Women&apos;s Hands.</p>
-          <Link className="fl-btn fl-btn--outline" to="/periods-wall">Know More</Link>
-        </div>
-      </div>
-    </Reveal>
-  )
-}
 
 const BENEFITS = [
   { image: 'why-imgImage23.png', art: 'comfort', title: 'Cotton-Soft Comfort', copy: 'Feels Soft Against Your Skin For All-Day Comfort With Zero Irritation.' },
   { image: 'why-imgImage24.png', art: 'breathable', title: 'Breathable Design', copy: 'Airflow-Friendly Layers Help Reduce Heat And Keep You Feeling Fresh.' },
-  { image: 'why-imgImage25.png', art: 'anion', title: 'Onion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
+  { image: 'why-imgImage25.png', art: 'anion', title: 'Anion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
   { image: 'why-imgImage26.png', art: 'clean', title: 'Nothing Nasty', copy: 'Free From Harsh Chemicals, Chlorine And Toxins For Skin-Friendly Protection.' },
 ] as const
 
@@ -294,9 +192,6 @@ function Why() {
 }
 
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
-  const { add } = useCart()
-  const [hovered, setHovered] = useState<number | null>(null)
-  const [adding, setAdding] = useState<string | null>(null)
   // Keep the landing page useful while an empty production catalog is being
   // seeded, but never repeat one product four times.
   const fallbackProducts: ProductWithVariants[] = PRODUCTS.slice(0, 4).map((product) => ({ ...product, variants: [] }))
@@ -310,57 +205,10 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
           <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/#products">View All <span>→</span></Link>
         </div>
-        <div
-          className={`fl-products__grid${hovered === null ? '' : ` has-hover-${hovered + 1}`}`}
-          onMouseLeave={() => setHovered(null)}
-        >
-          {cards.map((product, index) => {
-            const slug = product.id
-            const variantId = product.variants.find((variant) => variant.kind === 'pack' && variant.price === product.price)?.id ?? product.variants[0]?.id
-            const image = product.img || `${ASSET}products-imgFrame206.png`
-            return (
-              <article
-                className={`fl-product${hovered === index ? ' is-active' : ''}`}
-                key={`${slug}-${index}`}
-                style={{ '--card-index': index } as CSSProperties}
-                onMouseEnter={() => setHovered(index)}
-                onFocusCapture={() => setHovered(index)}
-                onBlur={(event) => {
-                  if (!event.currentTarget.contains(event.relatedTarget)) setHovered(null)
-                }}
-              >
-                <Link className="fl-product__media" to={`/product/${slug}`}>
-                  <img className="fl-product__package" src={image} alt={`${product.name} pack`} />
-                  {!product.img && <img className="fl-product__hover-art" src={`${ASSET}products-imgFrame206-hover.png`} alt="" />}
-                </Link>
-                <div className="fl-product__body">
-                  <Link to={`/product/${slug}`}><h3>{product.name}</h3></Link>
-                  <p>{product.meta}</p>
-                  <div>
-                    <strong>{rupees(product.price)}</strong>
-                    {variantId ? (
-                      <button
-                        type="button"
-                        disabled={adding === variantId}
-                        onClick={async () => {
-                          setAdding(variantId)
-                          try {
-                            await add(variantId)
-                          } finally {
-                            setAdding(null)
-                          }
-                        }}
-                      >
-                        {adding === variantId ? 'Adding…' : 'Buy Now'}
-                      </button>
-                    ) : (
-                      <Link className="fl-product__buy" to={`/product/${slug}`}>Buy Now</Link>
-                    )}
-                  </div>
-                </div>
-              </article>
-            )
-          })}
+        <div className="grid-products" style={{ marginTop: 44 }}>
+          {cards.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
         </div>
       </div>
     </Reveal>
@@ -464,51 +312,18 @@ function Partner() {
   )
 }
 
-function LandingFooter() {
-  const { notify } = useCart()
-  const [email, setEmail] = useState('')
-  const subscribe = (event: FormEvent) => {
-    event.preventDefault()
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return notify('Please enter a valid email')
-    setEmail('')
-    notify('Thanks! You are on the list')
-  }
-
-  return (
-    <Reveal className="fl-footer">
-      <div className="fl-shell">
-        <div className="fl-footer__cta">
-          <img className="fl-footer__flower fl-footer__flower--one" src={`${ASSET}footer-imgVector.svg`} alt="" />
-          <img className="fl-footer__flower fl-footer__flower--two" src={`${ASSET}footer-imgVector.svg`} alt="" />
-          <div><h2>Make The Switch This Month.</h2><p>Try A Starter Pack, Feel The Difference, And Never Go Back To Plastic Pads.</p><button className="fl-btn fl-btn--gold" type="button" onClick={() => document.querySelector('#products')?.scrollIntoView({ behavior: 'smooth' })}>Buy Now</button></div>
-          <img className="fl-footer__packs" src={`${ASSET}footer-imgImage9.png`} alt="Hands holding two Femi9 packs" />
-        </div>
-        <div className="fl-footer__grid">
-          <div className="fl-footer__brand"><img src={`${ASSET}footer-imgImage1.png`} alt="Femi9" /><p>Organic, breathable period care that is kinder to your body and the planet.</p><img className="fl-footer__social" src={`${ASSET}footer-imgFrame3.svg`} alt="Facebook and Instagram" /></div>
-          <div><h3>SHOP</h3><Link to="/product/p330dw">330mm Double Wings</Link><Link to="/product/p330cw">330mm Centre Wings</Link><Link to="/product/p290l9">290mm Large</Link><Link to="/product/p290l3">290mm Starter</Link></div>
-          <div><h3>FEMI9</h3><a href="#why">Why Femi9</a><a href="#about">Our Story</a><a href="#opportunities">Impact</a></div>
-          <div><h3>SUPPORT</h3><a href="tel:+1234567890"><img src={`${ASSET}footer-imgIcon.svg`} alt="" /> +123 456 7890</a><a href="mailto:support@mm.com"><img src={`${ASSET}footer-imgIcon1.svg`} alt="" /> support@mm.com</a></div>
-          <div className="fl-footer__newsletter"><h3>CARE IN YOUR INBOX</h3><p>Organic, breathable period care that is kinder to your body and the planet.</p><form onSubmit={subscribe}><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Enter your mail" aria-label="Email address" /><button type="submit">Subscribe</button></form></div>
-        </div>
-        <p className="fl-footer__copyright">© Femi9 2026. All rights reserved.</p>
-      </div>
-    </Reveal>
-  )
-}
-
 export function Home({ products, posts }: Props) {
   return (
     <main className="figma-landing" id="top">
-      <LandingNav />
+      <Nav />
       <Hero />
-      <About />
-      <Why />
       <ProductGrid products={products} />
+      <Why />
       <Journal posts={posts} />
       <div className="fl-cycle"><CycleTracker /></div>
       <Testimonials />
       <Partner />
-      <LandingFooter />
+      <Footer />
     </main>
   )
 }

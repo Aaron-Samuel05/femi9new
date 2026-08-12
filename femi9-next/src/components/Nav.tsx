@@ -7,13 +7,16 @@ import { IUser } from './AppIcons'
 const LINKS = [
   { to: '/#products', label: 'Products' },
   { to: '/#why', label: 'Why Femi9' },
+  { to: '/about', label: 'About Us' },
   { to: '/blog', label: 'Journal' },
-  { to: '/periods-wall', label: 'Periods Wall' },
   { to: '/partner', label: 'Opportunities' },
 ]
 
 // secondary links — shown in the mobile menu + footer, not the desktop bar
-const MORE = [{ to: '/affiliate', label: 'Affiliate' }]
+const MORE = [
+  { to: '/periods-wall', label: 'Periods Wall' },
+  { to: '/affiliate', label: 'Affiliate' },
+]
 
 export function Nav() {
   const { count, openCart } = useCart()
@@ -61,6 +64,17 @@ export function Nav() {
     }
   }, [])
 
+  const handleLinkClick = (to: string) => {
+    setMenuOpen(false)
+    if (to.startsWith('/#')) {
+      const hash = to.substring(1)
+      const el = document.querySelector(hash)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+      }
+    }
+  }
+
   // Signed-in shoppers go to their account; everyone else to sign-in.
   const accountHref = user ? '/account' : '/login'
 
@@ -68,11 +82,11 @@ export function Nav() {
     <header className={`nav${scrolled ? ' scrolled' : ''}`} id="nav">
       <div className="wrap nav-in">
         <Link to="/" className="nav-logo" aria-label="Femi9 home">
-          <img src="/assets/img/logo.png" alt="Femi9" />
+          <img src="/assets/figma-home/navbar-imgImage29.png" alt="Femi9" />
         </Link>
         <nav className="nav-links" aria-label="Primary">
           {LINKS.map((l) => (
-            <Link key={l.to} to={l.to}>
+            <Link key={l.to} to={l.to} onClick={() => handleLinkClick(l.to)}>
               {l.label}
             </Link>
           ))}
@@ -91,9 +105,6 @@ export function Nav() {
               {count}
             </span>
           </button>
-          <Link to="/#products" className="btn btn-primary nav-cta">
-            Shop pads
-          </Link>
           <button
             className="burger"
             aria-label={menuOpen ? 'Close menu' : 'Open menu'}
@@ -107,15 +118,12 @@ export function Nav() {
       </div>
       <div id="mobile-menu" className={`mobile-menu${menuOpen ? ' open' : ''}`}>
         {[...LINKS, ...MORE].map((l) => (
-          <Link key={l.to} to={l.to} onClick={() => setMenuOpen(false)}>
+          <Link key={l.to} to={l.to} onClick={() => handleLinkClick(l.to)}>
             {l.label}
           </Link>
         ))}
         <Link to={accountHref} onClick={() => setMenuOpen(false)}>
           {user ? (user.firstName ? `Hi, ${user.firstName}` : 'My account') : 'Sign in'}
-        </Link>
-        <Link to="/#products" className="btn btn-primary" onClick={() => setMenuOpen(false)}>
-          Shop pads
         </Link>
       </div>
     </header>

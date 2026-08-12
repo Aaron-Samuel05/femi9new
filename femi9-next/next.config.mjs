@@ -19,6 +19,8 @@ const productionCsp = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // This app remains canonical while legacy prototypes live beside it.
+  outputFileTracingRoot: process.cwd(),
   // The three.js / R3F stack ships ESM that Next needs to transpile.
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
 

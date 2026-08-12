@@ -302,7 +302,7 @@ export function ProductDetail({ product, extra, reviews }: Props) {
           </div>
 
           {/* Write a review — additive submission form; approved reviews render above. */}
-          <div style={{ marginTop: 26, maxWidth: 640 }}>
+          <div style={{ marginTop: 26, maxWidth: 520 }}>
             {rvState === 'sent' ? (
               <div className="review">
                 <b style={{ color: 'var(--navy)' }}>Thanks - your review is awaiting approval.</b>

@@ -1,44 +1,43 @@
 /* ===== NAV ===== */
 .nav{
   position:sticky;top:0;z-index:50;
-  background:rgba(251,249,255,.82);
-  backdrop-filter:saturate(140%) blur(14px);
-  border-bottom:1px solid transparent;
+  background:#352D78;
+  border-bottom:1px solid rgba(255,255,255,.1);
   transition:border-color .3s, box-shadow .3s;
 }
-.nav.scrolled{border-color:var(--line-soft);box-shadow:0 10px 30px -22px rgba(52,32,78,.5)}
-.nav-in{display:flex;align-items:center;justify-content:space-between;height:70px;gap:24px}
-.nav-logo img{height:30px;width:auto}
-.nav-links{display:flex;align-items:center;gap:30px}
-.nav-links a{font-size:.95rem;font-weight:400;color:var(--ink);position:relative;padding-block:4px}
+.nav.scrolled{border-color:rgba(255,255,255,.18);box-shadow:0 10px 30px -22px rgba(27,23,61,.6)}
+.nav-in{display:flex;align-items:center;justify-content:space-between;height:76px;gap:24px}
+.nav-logo{position:relative;display:block;flex:0 0 116px;width:116px;height:48px;overflow:hidden}
+.nav-logo img{position:absolute;left:0;top:-68.14%;display:block;width:100%;height:240.69%;max-width:none}
+.nav-links{display:flex;align-items:center;gap:24px}
+.nav-links a{font-size:16px;font-weight:400;color:#fff;position:relative;padding-block:12px;text-decoration:none}
 .nav-links a::after{
-  content:"";position:absolute;left:0;bottom:0;height:2px;width:0;background:var(--yellow);
-  border-radius:2px;transition:width .3s var(--ease);
+  content:"";position:absolute;left:0;right:100%;bottom:5px;height:1px;background:#fff;
+  transition:right .3s;
 }
-.nav-links a:hover{color:var(--navy)}
-.nav-links a:hover::after{width:100%}
-.nav-right{display:flex;align-items:center;gap:14px}
+.nav-links a:hover{color:#fff}
+.nav-links a:hover::after{right:0}
+.nav-right{display:flex;align-items:center;gap:16px}
 .cart-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;
-  width:44px;height:44px;border-radius:var(--r-chip);border:1px solid var(--line);
-  color:var(--navy);transition:background .25s,border-color .25s}
-.cart-btn:hover{background:var(--butter-soft);border-color:var(--yellow)}
-.cart-btn svg{width:21px;height:21px}
+  width:38px;height:38px;border-radius:var(--r-chip);border:1px solid rgba(255,255,255,.2);
+  color:#fff;transition:background .25s,border-color .25s}
+.cart-btn:hover{background:rgba(255,255,255,.15);border-color:#fff}
+.cart-btn svg{width:20px;height:20px}
 .cart-count{
-  position:absolute;top:-5px;right:-5px;min-width:20px;height:20px;padding:0 5px;
-  background:var(--forest-2);color:#fff;border-radius:999px;
+  position:absolute;top:-5px;right:-8px;min-width:18px;height:18px;padding:0 4px;
+  background:var(--yellow);color:#111;border-radius:999px;
   font-size:.68rem;font-weight:600;display:none;align-items:center;justify-content:center;
 }
 .cart-count.show{display:inline-flex}
-.nav-cta{display:inline-flex}
-.burger{display:none;width:44px;height:44px;border-radius:var(--r-chip);border:1px solid var(--line);
-  align-items:center;justify-content:center;color:var(--navy)}
+.burger{display:none;width:40px;height:40px;border-radius:var(--r-chip);border:1px solid rgba(255,255,255,.2);
+  align-items:center;justify-content:center;color:#fff}
 .burger svg{width:22px;height:22px}
 .mobile-menu{display:flex;flex-direction:column;padding:0 24px;
-  border-top:1px solid transparent;background:rgba(251,249,255,.98);
+  border-top:1px solid transparent;background:#352D78;
   max-height:0;overflow:hidden;opacity:0;pointer-events:none;
   transition:max-height .42s var(--ease),opacity .3s var(--ease),padding .42s var(--ease),border-color .3s}
-.mobile-menu.open{max-height:70vh;opacity:1;pointer-events:auto;padding:8px 24px 22px;border-top-color:var(--line-soft)}
-.mobile-menu a{padding:14px 2px;font-size:1.05rem;color:var(--ink);border-bottom:1px solid var(--line-soft);
+.mobile-menu.open{max-height:70vh;opacity:1;pointer-events:auto;padding:8px 24px 22px;border-top-color:rgba(255,255,255,.15)}
+.mobile-menu a{padding:14px 2px;font-size:1.05rem;color:#fff;border-bottom:1px solid rgba(255,255,255,.12);
   transform:translateY(-6px);opacity:0;transition:transform .4s var(--ease),opacity .4s var(--ease)}
 .mobile-menu.open a{transform:none;opacity:1}
 .mobile-menu.open a:nth-child(1){transition-delay:.04s}
@@ -53,7 +52,6 @@
 /* nav collapses to the burger below 960px so the 5 links never crowd */
 @media (max-width:960px){
   .nav-links{display:none}
-  .nav-cta{display:none}
   .burger{display:inline-flex}
 }
 @media (min-width:961px){.mobile-menu{display:none !important}}

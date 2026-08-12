@@ -45,7 +45,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* LCP hero photo + nav logo are React-rendered, so the browser can't
             discover them until the bundle runs. Preloading puts them in flight
             with the HTML. Keep in sync with Hero.tsx / Nav.tsx. */}
-        <link rel="preload" as="image" href="/assets/figma-home/hero-imgImage19.png" fetchPriority="high" />
+        <link rel="preload" as="image" href="/assets/figma-home/image 19.png" fetchPriority="high" />
         <link rel="preload" as="image" href="/assets/figma-home/navbar-imgImage29.png" fetchPriority="high" />
         <link
           href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;0,6..72,700;1,6..72,400;1,6..72,500;1,6..72,600&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap"
