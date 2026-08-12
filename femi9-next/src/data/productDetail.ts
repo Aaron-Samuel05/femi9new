@@ -21,7 +21,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['/assets/img/prod-330-double.webp', PAD_1, PAD_2],
     rating: 4.8,
     reviews: 214,
-    long: 'Our overnight hero. Extra 330mm length with double wings locks everything in place while you sleep, so you wake up fresh and worry-free. Ultra-thin, breathable, and made for the heaviest nights.',
+    long: 'A 100% organic cotton overnight pad with extra 330mm coverage and double wings. Enriched with an active anion strip that locks in heavy flow, neutralizes odor, and soothes cramp discomfort. Chlorine-free and rash-safe for all skin types.',
     features: [
       { title: '330mm Extra-Long Coverage', body: 'Designed for heavy flow and overnight use with extra-long protection.' },
       { title: '9-Layer Leak-Lock Protection', body: 'Fast-absorbing layers help lock in flow for dependable protection and comfort.' },
@@ -42,7 +42,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['/assets/img/prod-290-large9.webp', PAD_1, PAD_2],
     rating: 4.7,
     reviews: 168,
-    long: 'The everyday large. Nine soft, breathable pads that carry you comfortably through a full, regular-flow day without the bulk.',
+    long: 'A 100% certified organic cotton pad designed for active regular-to-heavy flow days. Features an active anion comfort strip and 9-layer leak-guard core that locks in moisture, eliminates odor, and prevents skin chafing. 100% toxin-free and gentle on sensitive skin.',
     features: [
       { title: '290mm Large Coverage', body: 'Thoughtfully sized for active, regular-flow days and everyday movement.' },
       { title: 'Leak-Guard Protection', body: 'Multi-layer core channels wetness away and locks it in quickly.' },
@@ -65,7 +65,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['/assets/img/prod-330-centre.webp', PAD_2, PAD_1],
     rating: 4.8,
     reviews: 141,
-    long: 'Extra 330mm length with centre wings and a wider back panel for confident, leak-free heavier nights. Soft, thin, and reassuringly secure.',
+    long: 'Extra 330mm length pad with central wing balance and a wide back panel for heavy night protection. Combines breathable organic cotton with active anion technology to prevent sleep leaks and neutralize odors naturally.',
     features: commonFeatures,
     specs: [
       { k: 'Length', v: '330mm (Extra Large)' },
@@ -79,7 +79,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['/assets/img/prod-290-large3.webp', PAD_1, PAD_2],
     rating: 4.6,
     reviews: 96,
-    long: 'A three-pad starter so you can feel the Femi9 difference before you switch fully. Same organic cotton, same anion strip, no commitment.',
+    long: 'A 3-pad trial pack made with 100% certified organic cotton and active anion technology. Ideal for experiencing rash-free, leak-guard period care before switching to full monthly subscriptions.',
     features: commonFeatures,
     specs: [
       { k: 'Length', v: '290mm (Large)' },
@@ -94,7 +94,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['lilac', 'plum', 'gold'],
     rating: 4.7,
     reviews: 58,
-    long: 'Our first reusable. Soft organic-cotton against your skin, a quiet leak-proof core, and a breathable outer that will not feel sweaty. Washable and wearable for up to 40 cycles. Perfect for heavy nights, travel, and lighter days as backup.',
+    long: 'Reusable 4-layer period underwear crafted from soft organic cotton with a leak-proof breathable barrier. Holds up to 2 full pads of flow, washable up to 40+ cycles, and completely chemical-free for ultimate everyday & sleep comfort.',
     features: [
       { title: 'Four-layer leak-proof core', body: 'A cotton top, absorbent middle and leak-proof back hold up to two pads’ worth, without the bulk.' },
       { title: 'Reusable up to 40 washes', body: 'Rinse, machine-wash cold and line-dry. One pair replaces dozens of disposables.' },
@@ -113,7 +113,7 @@ export const EXTRAS: Record<string, ProductExtra> = {
     gallery: ['/assets/img/prod-180-mini.webp', PAD_1, PAD_2],
     rating: 4.5,
     reviews: 32,
-    long: 'Ultra-thin, breathable everyday protection for light flow, daily discharge, spotting, and minor urinary leakage.',
+    long: 'Ultra-thin 1mm organic cotton daily panty liners for light flow, spotting, and daily discharge. Features breathable micro-porous backing and a natural anion strip to maintain intimate freshness all day long.',
     features: [
       { title: 'Everyday Panty Liners', body: 'Ideal for daily freshness, light discharge, or spotting.' },
       { title: 'Daily Freshness', body: 'Keeps you feeling clean, dry, and comfortable throughout the day.' },

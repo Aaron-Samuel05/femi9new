@@ -36,9 +36,9 @@
 .footer-in {
   position: relative;
   z-index: 1;
-  width: min(100%, 1400px);
+  width: min(100%, 1280px);
   margin-inline: auto;
-  padding-inline: clamp(24px, 5vw, 64px);
+  padding-inline: clamp(18px, 4vw, 40px);
 }
 
 .footer-main {

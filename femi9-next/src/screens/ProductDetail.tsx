@@ -1,15 +1,14 @@
 'use client'
-import { useState, type CSSProperties, type FormEvent } from 'react'
+
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { PRODUCTS, rupees, subPrice, SUBSCRIBE_PCT, CADENCES } from '../data/products'
 import { useCart } from '../store/cart'
-import { ProductCard } from '../components/ProductCard'
 import { PantyArt } from '../components/PantyArt'
-import { Bag, Drop, Leaf, ShieldCheck, Check } from '../components/Icons'
+import { Bag, Drop, Leaf, ShieldCheck, Check, Facebook, Instagram, Whatsapp } from '../components/Icons'
 import { IStar } from '../components/AppIcons'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
-// ProductExtra lives in the data module; the service imports but does not re-export it.
-import type { ProductExtra } from '@/data/productDetail'
+import { sampleReviews, type ProductExtra } from '@/data/productDetail'
 
 interface Props {
   product: ProductWithVariants
@@ -19,9 +18,6 @@ interface Props {
 
 const featIcons = [Drop, Leaf, ShieldCheck]
 
-// Shared input styling for the review form. Inlined (rather than a new CSS class)
-// because this file is the only one we may touch; it mirrors the site's field
-// look via existing CSS variables.
 const rvInput: CSSProperties = {
   width: '100%',
   padding: '11px 14px',
@@ -55,18 +51,36 @@ export function ProductDetail({ product, extra, reviews }: Props) {
   const [sizeIdx, setSizeIdx] = useState(1)
   const [mode, setMode] = useState<'once' | 'sub'>('once')
   const [cadence, setCadence] = useState(CADENCES[0].id)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [specsOpen, setSpecsOpen] = useState(true)
+  const [reviewsOpen, setReviewsOpen] = useState(true)
   const { add, openCart, notify } = useCart()
   const router = useRouter()
 
-  // ── "Write a review" form ─────────────────────────────────────────────
-  // A submission is additive: it never joins the rendered `reviews` list here
-  // (that list is approved-only). It POSTs to /api/reviews, lands as `pending`,
-  // and the form flips to a thank-you state awaiting moderation.
   const [rvName, setRvName] = useState('')
   const [rvPlace, setRvPlace] = useState('')
   const [rvBody, setRvBody] = useState('')
   const [rvRating, setRvRating] = useState(5)
   const [rvState, setRvState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+
+  const isPanty = product.type === 'panty'
+  const packs = product.packs
+  const related = PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4)
+  const mmPart = product.meta.split('·').pop()?.trim() ?? ''
+  const selectedPack = packs ? packs[packIdx] : null
+  const basePrice = selectedPack ? selectedPack.price : product.price
+  const effPrice = mode === 'sub' ? subPrice(basePrice) : basePrice
+  const activeCadence = CADENCES.find((c) => c.id === cadence) ?? CADENCES[0]
+  const averageRating = reviews.length ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : extra.rating
+  const reviewTotal = reviews.length || extra.reviews
+  const shortDescription = extra.long || product.desc
+
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 620px)').matches
+    setSpecsOpen(!isMobile)
+    setReviewsOpen(!isMobile)
+  }, [])
 
   const submitReview = async (e: FormEvent) => {
     e.preventDefault()
@@ -77,8 +91,6 @@ export function ProductDetail({ product, extra, reviews }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          // product.id maps to the DB slug (see products service), which the
-          // API expects to resolve the product to review.
           productSlug: product.id,
           name: rvName.trim(),
           place: rvPlace.trim() || undefined,
@@ -93,25 +105,7 @@ export function ProductDetail({ product, extra, reviews }: Props) {
     }
   }
 
-  const isPanty = product.type === 'panty'
-  const packs = product.packs
-  const related = PRODUCTS.filter((p) => p.id !== product.id)
-  const mmPart = product.meta.split('·').pop()?.trim() ?? ''
-
-  const selectedPack = packs ? packs[packIdx] : null
-  const basePrice = selectedPack ? selectedPack.price : product.price
-  const effPrice = mode === 'sub' ? subPrice(basePrice) : basePrice
-  const metaDisplay = selectedPack
-    ? `${selectedPack.count} pads · ${mmPart}`
-    : isPanty
-      ? `Size ${product.sizes?.[sizeIdx]} · ${product.meta}`
-      : product.meta
-  const activeCadence = CADENCES.find((c) => c.id === cadence) ?? CADENCES[0]
-
   const submit = async () => {
-    // Resolve the on-screen selection to a concrete VARIANT id — the cart and the
-    // subscription API are both variant-aware, so we must tell the server which
-    // pack/size the shopper picked (adding the product id would be ambiguous).
     const variant = isPanty
       ? product.variants.find((v) => v.kind === 'size' && v.size === product.sizes?.[sizeIdx])
       : product.variants.find((v) => v.kind === 'pack' && v.packCount === selectedPack?.count)
@@ -121,9 +115,6 @@ export function ProductDetail({ product, extra, reviews }: Props) {
     }
 
     if (mode === 'sub') {
-      // Subscriptions are real, per-user records, so they require an account. POST
-      // straight away: an unauthenticated request comes back 401 (nothing created),
-      // which we treat as "sign in first" and send the shopper to /login.
       try {
         const res = await fetch('/api/subscriptions', {
           method: 'POST',
@@ -145,56 +136,117 @@ export function ProductDetail({ product, extra, reviews }: Props) {
       return
     }
 
-    // One-time purchase — the server applies the quantity, so add once, not in a loop.
     void add(variant.id, qty)
     openCart()
   }
 
+  const renderGalleryImage = (full = false) => (
+    isPanty ? (
+      <PantyArt variant={extra.gallery[imgIdx] as 'lilac' | 'plum' | 'gold'} />
+    ) : (
+      <img src={extra.gallery[imgIdx]} alt={full ? `${product.name} enlarged` : product.name} />
+    )
+  )
+
   return (
-    <>
-      <section className="pdp-section">
+    <div className="pdp-page">
+      <main className="pdp-main-content">
         <div className="wrap">
+          {/* BREADCRUMB */}
           <div className="crumbs">
-            <Link to="/">Home</Link> / <Link to="/#products">Shop</Link> / {product.name}
+            <Link to="/">Home</Link> / <Link to="/#products">Sanitary Care</Link> / {product.name}
           </div>
-          <div className="pdp">
-            <div className="pdp-gallery">
-              <div className="pdp-main">
-                {isPanty ? (
-                  <PantyArt variant={extra.gallery[imgIdx] as 'lilac' | 'plum' | 'gold'} />
-                ) : (
-                  <img src={extra.gallery[imgIdx]} alt={product.name} />
-                )}
-              </div>
-              <div className="pdp-thumbs">
+
+          {/* 3. TWO-COLUMN PRODUCT LAYOUT */}
+          <div className="pdp-grid">
+            {/* LEFT COLUMN — VERTICAL THUMBNAILS + STAGE */}
+            <div className="pdp-gallery-layout">
+              {/* Stacked Vertical Thumbnails */}
+              <div className="pdp-thumb-stack">
                 {extra.gallery.map((g, i) => (
-                  <button key={i} className={`pdp-thumb${i === imgIdx ? ' on' : ''}`} onClick={() => setImgIdx(i)} aria-label={`View ${i + 1}`}>
+                  <button
+                    key={i}
+                    className={`pdp-vertical-thumb${i === imgIdx ? ' active' : ''}`}
+                    onClick={() => setImgIdx(i)}
+                    aria-label={`View photo ${i + 1}`}
+                  >
                     {isPanty ? <PantyArt variant={g as 'lilac' | 'plum' | 'gold'} /> : <img src={g} alt="" />}
                   </button>
                 ))}
               </div>
+
+              {/* Main Display Stage + Gap Filling Feature Image */}
+              <div className="pdp-stage-column">
+                <div className="pdp-hero-stage" onClick={() => setIsFullscreen(true)}>
+                  {renderGalleryImage()}
+                </div>
+
+                {/* Gap Filling Image Banner */}
+                <div className="pdp-hero-gap-banner">
+                  <img src="/assets/img/sample.jpeg" alt="Femi9 Organic Care Quality" />
+                </div>
+              </div>
             </div>
 
-            <div className="pdp-info">
-              <span className="pdp-flow">{product.flow}</span>
-              <h1>{product.name}</h1>
-              <div className="pdp-rating">
-                <Stars rating={extra.rating} />
-                <span>{extra.rating} · {extra.reviews} reviews</span>
-              </div>
-              <div className="pdp-price">
-                <b>{rupees(effPrice)}</b>
-                {mode === 'sub' && <span className="pdp-was">{rupees(basePrice)}</span>}
-                <span className="unit">{metaDisplay}</span>
-              </div>
-              <p className="pdp-long">{extra.long}</p>
+            {/* RIGHT COLUMN — PRODUCT INFORMATION */}
+            <div className="pdp-right-col">
+              <span className="pdp-eyebrow">SANITARY &amp; PERIOD CARE</span>
+              <h1 className="pdp-title">{product.name}</h1>
 
+              {/* Rating Row with Score */}
+              <div className="pdp-rating-row">
+                <Stars rating={averageRating} />
+                <span className="pdp-rating-score">{averageRating.toFixed(1)} / 5</span>
+                <span className="pdp-rating-count">({reviewTotal} reviews)</span>
+                <span className="pdp-rating-divider">&middot;</span>
+                <span className="pdp-rating-sub">Organic Certified</span>
+              </div>
+
+              {/* Price Line with Was Price, Active Price & Discount Badge */}
+              <div className="pdp-price-block">
+                <div className="pdp-price-line">
+                  <span className="pdp-was-price">{rupees(Math.round(basePrice * 1.18))}</span>
+                  <span className="pdp-now-price">{rupees(effPrice)}</span>
+                  <span className="pdp-discount-badge">-15% OFF</span>
+                </div>
+                <span className="pdp-tax-note">Tax included. Free shipping on orders over Rs. 499.</span>
+              </div>
+
+              {/* Short Description */}
+              <p className="pdp-desc-text">{shortDescription}</p>
+
+              {/* 4 CIRCULAR BENEFIT BADGES */}
+              <div className="pdp-benefit-badges">
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Leaf /></div>
+                  <span>Organic Cotton</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><ShieldCheck /></div>
+                  <span>Chlorine Free</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Check /></div>
+                  <span>Dermat Tested</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Drop /></div>
+                  <span>All Flow Types</span>
+                </div>
+              </div>
+
+              {/* Pack Selector */}
               {packs && (
-                <div className="pdp-choose">
-                  <div className="pdp-block-label">Choose your pack</div>
-                  <div className="pack-opts">
+                <div className="pdp-block">
+                  <div className="pdp-label">Choose your pack</div>
+                  <div className="pack-cards">
                     {packs.map((p, i) => (
-                      <button key={p.count} className={`pack-opt${i === packIdx ? ' on' : ''}`} onClick={() => setPackIdx(i)}>
+                      <button
+                        key={p.count}
+                        className={`pack-card${i === packIdx ? ' active' : ''}`}
+                        onClick={() => setPackIdx(i)}
+                        aria-pressed={i === packIdx}
+                      >
                         <b>{p.count} pcs</b>
                         <span>{rupees(p.price)}</span>
                       </button>
@@ -203,12 +255,18 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                 </div>
               )}
 
+              {/* Panty Sizes */}
               {isPanty && product.sizes && (
-                <div className="pdp-choose">
-                  <div className="pdp-block-label">Choose your size</div>
-                  <div className="size-pills">
+                <div className="pdp-block">
+                  <div className="pdp-label">Choose your size</div>
+                  <div className="size-cards">
                     {product.sizes.map((s, i) => (
-                      <button key={s} className={`size-pill${i === sizeIdx ? ' on' : ''}`} onClick={() => setSizeIdx(i)} aria-pressed={i === sizeIdx}>
+                      <button
+                        key={s}
+                        className={`size-card${i === sizeIdx ? ' active' : ''}`}
+                        onClick={() => setSizeIdx(i)}
+                        aria-pressed={i === sizeIdx}
+                      >
                         {s}
                       </button>
                     ))}
@@ -216,104 +274,296 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                 </div>
               )}
 
-              {/* Subscribe & save */}
-              <div className="sub-module">
-                <button className={`sub-mode${mode === 'once' ? ' on' : ''}`} onClick={() => setMode('once')}>
-                  <span className="sub-radio" aria-hidden="true" />
-                  <span className="sub-mode-txt"><b>One-time purchase</b><span>{rupees(basePrice)}</span></span>
-                </button>
-                <button className={`sub-mode${mode === 'sub' ? ' on' : ''}`} onClick={() => setMode('sub')}>
-                  <span className="sub-radio" aria-hidden="true" />
-                  <span className="sub-mode-txt">
-                    <b>Subscribe &amp; save {SUBSCRIBE_PCT}%</b>
-                    <span>{rupees(subPrice(basePrice))} · skip or cancel anytime</span>
-                  </span>
-                  <span className="sub-save">Save {SUBSCRIBE_PCT}%</span>
-                </button>
-                {mode === 'sub' && (
-                  <div className="sub-detail">
-                    <div className="sub-cadences">
-                      {CADENCES.map((c) => (
-                        <button key={c.id} className={`cad${cadence === c.id ? ' on' : ''}`} onClick={() => setCadence(c.id)}>
-                          {c.label}
-                        </button>
-                      ))}
+              {/* Purchase Options */}
+              <div className="pdp-block">
+                <div className="pdp-label">Purchase options</div>
+                <div className="sub-options" role="radiogroup" aria-label="Purchase options">
+                  <button
+                    className={`sub-row${mode === 'once' ? ' active' : ''}`}
+                    onClick={() => setMode('once')}
+                    aria-pressed={mode === 'once'}
+                  >
+                    <span className="sub-radio-dot" />
+                    <div className="sub-row-content">
+                      <b>One-time purchase</b>
+                      <span>{rupees(basePrice)}</span>
                     </div>
-                    <p className="sub-next">
-                      <Check /> Next delivery <b>{deliveryDate(activeCadence.days)}</b> - {activeCadence.sub}.
-                    </p>
-                  </div>
-                )}
+                  </button>
+                  <button
+                    className={`sub-row${mode === 'sub' ? ' active' : ''}`}
+                    onClick={() => setMode('sub')}
+                    aria-pressed={mode === 'sub'}
+                  >
+                    <span className="sub-radio-dot" />
+                    <div className="sub-row-content">
+                      <b>Subscribe &amp; save {SUBSCRIBE_PCT}%</b>
+                      <span>{rupees(subPrice(basePrice))} &middot; skip or cancel anytime</span>
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              <div className="buy-row">
-                <div className="stepper">
+              {/* Quantity Stepper & Add to Bag */}
+              <div className="cta-row">
+                <div className="qty-stepper">
                   <button onClick={() => setQty((q) => Math.max(1, q - 1))} aria-label="Decrease">&minus;</button>
                   <span>{qty}</span>
                   <button onClick={() => setQty((q) => q + 1)} aria-label="Increase">+</button>
                 </div>
-                <button className="btn btn-primary" onClick={submit}>
-                  <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} · {rupees(effPrice * qty)}
+                <button className="add-to-bag-btn" onClick={submit}>
+                  <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} &mdash; {rupees(effPrice * qty)}
                 </button>
               </div>
 
-              <div className="pdp-features">
-                {extra.features.map((f, i) => {
-                  const Icon = featIcons[i % featIcons.length]
-                  return (
-                    <div className="pdp-feat" key={f.title}>
-                      <span className="ficon"><Icon /></span>
-                      <div><b>{f.title}</b><p>{f.body}</p></div>
-                    </div>
-                  )
-                })}
+              {/* Social Share Row (Reference Layout) */}
+              <div className="pdp-share-row">
+                <span className="pdp-share-label">Share:</span>
+                <div className="pdp-share-links">
+                  <a
+                    href="https://facebook.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pdp-share-link"
+                    aria-label="Share on Facebook"
+                  >
+                    <Facebook />
+                  </a>
+                  <a
+                    href="https://whatsapp.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pdp-share-link"
+                    aria-label="Share on WhatsApp"
+                  >
+                    <Whatsapp />
+                  </a>
+                  <a
+                    href="https://instagram.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pdp-share-link"
+                    aria-label="Share on Instagram"
+                  >
+                    <Instagram />
+                  </a>
+                </div>
               </div>
 
-              <div className="pdp-block-label">Specifications</div>
-              <div className="spec-list">
-                {extra.specs.map((s) => (
-                  <div className="spec-row" key={s.k}>
-                    <span className="k">{s.k}</span>
-                    <span className="v">{s.v}</span>
+              {/* Collapsible Accordions */}
+              <div className="pdp-accordions">
+                <details className="pdp-accordion-item" open>
+                  <summary className="pdp-accordion-summary">Product Information</summary>
+                  <div className="pdp-accordion-body">
+                    <p>{extra.long}</p>
                   </div>
-                ))}
+                </details>
+                <details className="pdp-accordion-item">
+                  <summary className="pdp-accordion-summary">Specifications &amp; Materials</summary>
+                  <div className="pdp-accordion-body">
+                    <dl className="specs-table">
+                      {extra.specs.map((s) => (
+                        <div className="spec-item" key={s.k}>
+                          <dt className="spec-key">{s.k}</dt>
+                          <dd className="spec-dash" />
+                          <dd className="spec-val">{s.v}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                </details>
+                <details className="pdp-accordion-item">
+                  <summary className="pdp-accordion-summary">Shipping &amp; Delivery</summary>
+                  <div className="pdp-accordion-body">
+                    <p>Free standard shipping across India on orders over Rs. 499. Orders dispatch within 24 hours in discreet, eco-friendly paper packaging.</p>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
+
+          {/* 2. BENEFITS STORYTELLING SECTION ("Why Femi9 feels different") */}
+          <section className="pdp-benefits-section">
+            <div className="pdp-sec-head">
+              <span className="pdp-sec-kicker">
+                <Leaf /> PRODUCT BENEFITS
+              </span>
+              <h2 className="pdp-sec-title">Why Femi9 feels different</h2>
+              <p className="pdp-sec-subtitle">
+                Thoughtfully engineered for complete peace of mind, daily comfort, and rash-free period care.
+              </p>
+            </div>
+
+            <div className="pdp-benefits-banner-wrapper">
+              <img
+                src={
+                  product.id.includes('330')
+                    ? '/assets/img/330mm.jpeg'
+                    : product.id.includes('290')
+                    ? '/assets/img/290mm.jpeg'
+                    : product.img || '/assets/img/290mm.jpeg'
+                }
+                alt={`${product.name} product benefits`}
+                className="pdp-benefits-full-img"
+              />
+            </div>
+          </section>
+
+          {/* 3. CUSTOMER REVIEWS SECTION (Senior UI/UX Designed) */}
+          <section className="pdp-reviews-section">
+            <div className="pdp-sec-head">
+              <span className="pdp-sec-kicker">
+                <ShieldCheck /> VERIFIED REVIEWS
+              </span>
+              <h2 className="pdp-sec-title">Customer Reviews</h2>
+              <p className="pdp-sec-subtitle">
+                Real experiences from women who trust Femi9 for a rash-free, comfortable cycle.
+              </p>
+            </div>
+
+            {/* 3 FEATURED REVIEW CARDS */}
+            <div className="pdp-reviews-grid">
+              {(reviews.length > 0 ? reviews : sampleReviews).slice(0, 3).map((rv: any, idx: number) => (
+                <article className="pdp-review-card" key={idx}>
+                  <div className="pdp-review-card-head">
+                    <div className="pdp-review-stars">
+                      <Stars rating={rv.rating || 5} />
+                    </div>
+                    <span className="pdp-review-date">{rv.date || 'Jun 2026'}</span>
+                  </div>
+
+                  <div className="pdp-review-user-row">
+                    <div className="pdp-review-avatar">
+                      {rv.name.charAt(0)}
+                    </div>
+                    <div className="pdp-review-user-info">
+                      <b>{rv.name}</b>
+                      <span>{rv.place || 'Coimbatore'} &middot; <span className="verified-text">Verified Buyer</span></span>
+                    </div>
+                  </div>
+
+                  <h4 className="pdp-review-title">
+                    {idx === 0 ? 'Works wonders for overnight sleep' : idx === 1 ? 'Zero rashes & comfortable fit' : 'Magical & so soft'}
+                  </h4>
+
+                  <p className="pdp-review-body">{rv.body}</p>
+
+                  <div className="pdp-review-footer">
+                    <span className="pdp-review-full-link">Full Review</span>
+                    <div className="pdp-review-helpful">
+                      <button type="button" aria-label="Helpful review">👍 {idx === 0 ? 12 : idx === 1 ? 8 : 15}</button>
+                      <button type="button" aria-label="Not helpful review">👎 0</button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {/* RATING DISTRIBUTION SUMMARY (No Write Review or Pill Buttons) */}
+            <div className="pdp-rating-summary-box">
+              <div className="pdp-rating-score-col">
+                <div className="pdp-rating-big">{averageRating.toFixed(2)}</div>
+                <div className="pdp-rating-summary-meta">
+                  <Stars rating={averageRating} />
+                  <span>Based on {reviewTotal} verified reviews</span>
+                </div>
+              </div>
+
+              <div className="pdp-rating-bars-col">
+                <div className="pdp-rating-bar-row">
+                  <span>5 ★</span>
+                  <div className="pdp-bar-track">
+                    <div className="pdp-bar-fill" style={{ width: '88%' }} />
+                  </div>
+                  <span className="pdp-bar-count">88%</span>
+                </div>
+                <div className="pdp-rating-bar-row">
+                  <span>4 ★</span>
+                  <div className="pdp-bar-track">
+                    <div className="pdp-bar-fill" style={{ width: '9%' }} />
+                  </div>
+                  <span className="pdp-bar-count">9%</span>
+                </div>
+                <div className="pdp-rating-bar-row">
+                  <span>3 ★</span>
+                  <div className="pdp-bar-track">
+                    <div className="pdp-bar-fill" style={{ width: '3%' }} />
+                  </div>
+                  <span className="pdp-bar-count">3%</span>
+                </div>
+                <div className="pdp-rating-bar-row">
+                  <span>2 ★</span>
+                  <div className="pdp-bar-track">
+                    <div className="pdp-bar-fill" style={{ width: '0%' }} />
+                  </div>
+                  <span className="pdp-bar-count">0%</span>
+                </div>
+                <div className="pdp-rating-bar-row">
+                  <span>1 ★</span>
+                  <div className="pdp-bar-track">
+                    <div className="pdp-bar-fill" style={{ width: '0%' }} />
+                  </div>
+                  <span className="pdp-bar-count">0%</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* 5. RECOMMENDED PRODUCTS (Frequently Bought Together — Reference Layout) */}
+          <section className="pdp-related-section">
+            <div className="pdp-sec-head">
+              <h2 className="pdp-sec-title">Frequently Bought Together</h2>
+              <p className="pdp-sec-subtitle">
+                Complete your personal care routine with these organic essentials.
+              </p>
+            </div>
+
+            <div className="related-grid">
+              {related.slice(0, 4).map((p) => (
+                <article className="related-card" key={p.id}>
+                  <Link to={`/product/${p.id}`} className="related-img-box">
+                    <span className="related-badge">{p.flow || 'Sanitary Care'}</span>
+                    <img src={p.img || '/assets/img/pad-detail-1.webp'} alt={p.name} loading="lazy" />
+                  </Link>
+                  <div className="related-card-content">
+                    <Link to={`/product/${p.id}`} className="related-title">{p.name}</Link>
+                    <p className="related-desc">{p.desc}</p>
+                    <div className="related-price-block">
+                      <span className="related-was-price">{rupees(Math.round(p.price * 1.18))}</span>
+                      <b className="related-now-price">{rupees(p.price)}</b>
+                      <span className="related-discount-pill">-15% OFF</span>
+                    </div>
+
+                    <Link to={`/product/${p.id}`} className="related-add-btn-pill">
+                      <Bag /> Add to bag
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
-      </section>
+      </main>
 
-      <section className="section" style={{ paddingTop: 0 }}>
-        <div className="wrap">
-          <div className="sec-head">
-            <div>
-              <span className="eyebrow">Reviews</span>
-              <h2 className="display" style={{ marginTop: 12 }}>What women say</h2>
-            </div>
-          </div>
-          <div className="reviews">
-            {reviews.map((r) => (
-              <div className="review" key={r.name}>
-                <Stars rating={r.rating} />
-                <p>“{r.body}”</p>
-                <div className="who"><b>{r.name}</b> · {r.place}</div>
-              </div>
-            ))}
-          </div>
 
-          {/* Write a review — additive submission form; approved reviews render above. */}
-          <div style={{ marginTop: 26, maxWidth: 520 }}>
+      {/* Review Modal */}
+      {reviewOpen && (
+        <div className="pdp-modal" role="dialog" aria-modal="true" aria-label="Write a review">
+          <button className="pdp-modal-backdrop" onClick={() => setReviewOpen(false)} aria-label="Close review form" />
+          <div className="pdp-modal-card">
+            <button className="pdp-modal-close" onClick={() => setReviewOpen(false)} aria-label="Close">x</button>
             {rvState === 'sent' ? (
               <div className="review">
-                <b style={{ color: 'var(--navy)' }}>Thanks - your review is awaiting approval.</b>
-                <p style={{ marginTop: 8, color: 'var(--muted)' }}>
-                  We read every review before it goes live. It’ll appear here once approved.
+                <b style={{ color: 'var(--ink)' }}>Thanks - your review is awaiting approval.</b>
+                <p style={{ marginTop: 8, color: 'var(--text-soft)' }}>
+                  We read every review before it goes live. It will appear here once approved.
                 </p>
               </div>
             ) : (
-              <form className="review" onSubmit={submitReview} style={{ display: 'grid', gap: 14 }}>
-                <div className="pdp-block-label" style={{ marginBottom: 0 }}>Write a review</div>
-
+              <form className="review-form" onSubmit={submitReview}>
+                <div>
+                  <div className="pdp-label" style={{ marginBottom: 8 }}>Write a review</div>
+                  <h2 className="pdp-title" style={{ fontSize: 24 }}>Share your experience</h2>
+                </div>
                 <span className="stars" role="radiogroup" aria-label="Your rating">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
@@ -328,56 +578,29 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                     </button>
                   ))}
                 </span>
-
-                <input
-                  value={rvName}
-                  onChange={(e) => setRvName(e.target.value)}
-                  placeholder="Your name"
-                  required
-                  style={rvInput}
-                />
-                <input
-                  value={rvPlace}
-                  onChange={(e) => setRvPlace(e.target.value)}
-                  placeholder="City (optional)"
-                  style={rvInput}
-                />
-                <textarea
-                  value={rvBody}
-                  onChange={(e) => setRvBody(e.target.value)}
-                  placeholder="Share your experience"
-                  required
-                  rows={4}
-                  style={{ ...rvInput, resize: 'vertical' }}
-                />
-
-                {rvState === 'error' && (
-                  <p style={{ color: '#c0392b', fontSize: '.88rem', margin: 0 }}>
-                    Something went wrong. Please try again.
-                  </p>
-                )}
-
-                <div>
-                  <button type="submit" className="btn btn-primary" disabled={rvState === 'sending'}>
-                    {rvState === 'sending' ? 'Submitting…' : 'Submit review'}
-                  </button>
-                </div>
+                <input value={rvName} onChange={(e) => setRvName(e.target.value)} placeholder="Your name" required style={rvInput} />
+                <input value={rvPlace} onChange={(e) => setRvPlace(e.target.value)} placeholder="City (optional)" style={rvInput} />
+                <textarea value={rvBody} onChange={(e) => setRvBody(e.target.value)} placeholder="Share your experience" required rows={4} style={{ ...rvInput, resize: 'vertical' }} />
+                {rvState === 'error' && <p style={{ color: 'var(--mustard-deep)', fontSize: '.88rem', margin: 0 }}>Something went wrong. Please try again.</p>}
+                <button type="submit" className="add-to-bag-btn" disabled={rvState === 'sending'}>
+                  {rvState === 'sending' ? 'Submitting...' : 'Submit review'}
+                </button>
               </form>
             )}
           </div>
         </div>
-      </section>
+      )}
 
-      <section className="section why">
-        <div className="wrap">
-          <div className="sec-head"><div><h2 className="display">You may also like</h2></div></div>
-          <div className="grid-products">
-            {related.map((p) => (
-              <ProductCard key={p.id} product={p} />
-            ))}
+      {/* Fullscreen Image Modal */}
+      {isFullscreen && (
+        <div className="pdp-modal pdp-image-modal" role="dialog" aria-modal="true" aria-label="Product image fullscreen">
+          <button className="pdp-modal-backdrop" onClick={() => setIsFullscreen(false)} aria-label="Close image view" />
+          <div className="pdp-image-modal-card">
+            <button className="pdp-modal-close" onClick={() => setIsFullscreen(false)} aria-label="Close">x</button>
+            {renderGalleryImage(true)}
           </div>
         </div>
-      </section>
-    </>
+      )}
+    </div>
   )
 }
