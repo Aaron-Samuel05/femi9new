@@ -1,7 +1,8 @@
 import 'server-only'
-import type { TharaMembership, TharaStatus, Prisma } from '@prisma/client'
+import type { TharaMembership, TharaStatus, Prisma, User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { generateReferralCode } from '@/lib/thara/codes'
+import { verifyTharaRefCookie } from '@/lib/thara/cookies'
 
 /**
  * Thara Model service.
@@ -69,4 +70,72 @@ export async function optOutUser(userId: string): Promise<void> {
 
 export async function getMembership(userId: string): Promise<TharaMembership | null> {
   return prisma.tharaMembership.findUnique({ where: { userId } })
+}
+
+type AttributionReason =
+  | 'no-cookie'
+  | 'bad-cookie'
+  | 'referrer-not-found'
+  | 'referrer-not-eligible'
+  | 'self-referral'
+  | 'dup-email'
+  | 'dup-phone'
+  | 'already-attributed'
+
+export interface AttributionInput {
+  cookieToken: string | null
+  ip: string | null
+  ua: string | null
+}
+
+/**
+ * Called from every sign-in path after a User is upserted. Silently no-ops
+ * for any reject reason so sign-in never fails because of attribution.
+ */
+export async function attributeReferralIfPresent(
+  user: User,
+  input: AttributionInput,
+): Promise<{ attributed: boolean; reason?: AttributionReason }> {
+  if (!input.cookieToken) return { attributed: false, reason: 'no-cookie' }
+  const claim = await verifyTharaRefCookie(input.cookieToken)
+  if (!claim) return { attributed: false, reason: 'bad-cookie' }
+
+  const referrer = await prisma.tharaMembership.findUnique({
+    where: { id: claim.referrerMembershipId },
+    include: { user: { select: { id: true, email: true, phone: true } } },
+  })
+  if (!referrer) return { attributed: false, reason: 'referrer-not-found' }
+  if (referrer.status === 'suspended' || referrer.status === 'deactivated') {
+    return { attributed: false, reason: 'referrer-not-eligible' }
+  }
+
+  if (referrer.user.id === user.id) return { attributed: false, reason: 'self-referral' }
+  if (
+    user.email &&
+    referrer.user.email &&
+    user.email.toLowerCase() === referrer.user.email.toLowerCase()
+  ) {
+    return { attributed: false, reason: 'dup-email' }
+  }
+  if (user.phone && referrer.user.phone && user.phone === referrer.user.phone) {
+    return { attributed: false, reason: 'dup-phone' }
+  }
+
+  try {
+    await prisma.tharaReferral.create({
+      data: {
+        referrerId: referrer.id,
+        referredUserId: user.id,
+        invitedByLink: true,
+        ipAtSignup: input.ip ?? undefined,
+        uaAtSignup: input.ua ?? undefined,
+      },
+    })
+    return { attributed: true }
+  } catch (e: unknown) {
+    if (typeof e === 'object' && e && 'code' in e && (e as { code?: string }).code === 'P2002') {
+      return { attributed: false, reason: 'already-attributed' }
+    }
+    throw e
+  }
 }
