@@ -4,6 +4,8 @@ import { verifyOtp, InvalidOtpError, InvalidPhoneError, normalizePhone } from '@
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
+import { GUEST_COOKIE } from '@/lib/session'
+import { mergeGuestCartIntoUser } from '@/lib/services/cart'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,6 +33,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const user = await verifyOtp(phone, code, attributionCtx)
+      await mergeGuestCartIntoUser(req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
       const token = await createSession({
         sub: user.id,
         phone: user.phone ?? undefined,

@@ -46,7 +46,14 @@ export function generateState(): string {
  *  the "Authorized redirect URIs" registered on the OAuth client. Canonical
  *  origin first so it's stable behind a proxy/CDN. */
 export function callbackUrl(requestOrigin: string): string {
-  const base = process.env.NEXT_PUBLIC_SITE_URL || requestOrigin
+  // GOOGLE_REDIRECT_URI is intentionally the highest-priority override: Google
+  // compares this value byte-for-byte with the URI registered on the OAuth
+  // client. Keeping it separate from the general site URL avoids accidental
+  // mismatches when the app is reached through a preview host or reverse proxy.
+  const explicit = process.env.GOOGLE_REDIRECT_URI?.trim()
+  if (explicit) return explicit
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL?.trim() || requestOrigin
   return `${base.replace(/\/$/, '')}/api/auth/google/callback`
 }
 
@@ -58,6 +65,7 @@ export function buildConsentUrl(state: string, redirectUri: string): string {
   url.searchParams.set('response_type', 'code')
   url.searchParams.set('scope', 'openid email profile')
   url.searchParams.set('state', state)
+  url.searchParams.set('include_granted_scopes', 'true')
   // Always show the account chooser; keeps the flow predictable across accounts.
   url.searchParams.set('prompt', 'select_account')
   return url.toString()

@@ -12,6 +12,8 @@ import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { mockProvidersAllowed } from '@/lib/runtime-mode'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
 import { clientIp } from '@/lib/rate-limit'
+import { GUEST_COOKIE } from '@/lib/session'
+import { mergeGuestCartIntoUser } from '@/lib/services/cart'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -68,6 +70,7 @@ export async function GET(req: NextRequest) {
       ua: req.headers.get('user-agent') ?? null,
     }
     const user = await signInWithGoogle(profile, attributionCtx)
+    await mergeGuestCartIntoUser(req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
     const jwt = await createSession({
       sub: user.id,
       email: user.email ?? undefined,

@@ -122,3 +122,36 @@ export async function removeItem(token: string, variantId: string): Promise<Cart
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id, variantId } })
   return getCart(token)
 }
+
+/**
+ * Attach the browser's guest cart to the customer who just signed in. If that
+ * customer already has another cart, merge every line into the browser cart and
+ * delete the old row. Keeping the current guest token means the already-mounted
+ * cart UI continues to work immediately after login while `userId` makes the
+ * cart durable across future authenticated sessions.
+ */
+export async function mergeGuestCartIntoUser(token: string | null, userId: string): Promise<void> {
+  if (!token) return
+
+  await prisma.$transaction(async (tx) => {
+    const guest = await tx.cart.findUnique({ where: { guestToken: token } })
+    const owned = await tx.cart.findFirst({ where: { userId }, orderBy: { updatedAt: 'desc' } })
+
+    if (!guest) return
+    if (!owned || owned.id === guest.id) {
+      await tx.cart.update({ where: { id: guest.id }, data: { userId } })
+      return
+    }
+
+    const oldItems = await tx.cartItem.findMany({ where: { cartId: owned.id } })
+    for (const item of oldItems) {
+      await tx.cartItem.upsert({
+        where: { cartId_variantId: { cartId: guest.id, variantId: item.variantId } },
+        update: { qty: { increment: item.qty } },
+        create: { cartId: guest.id, variantId: item.variantId, qty: item.qty },
+      })
+    }
+    await tx.cart.delete({ where: { id: owned.id } })
+    await tx.cart.update({ where: { id: guest.id }, data: { userId } })
+  })
+}
