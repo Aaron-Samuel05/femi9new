@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Link } from '@/lib/router-compat'
 import { Hero } from './Hero'
 import { PantyArt } from './PantyArt'
 import { Bag, ArrowRight } from './Icons'
 
-const SLIDE_MS = 6500
 const N = 3
 
 function PromoPanty() {
@@ -71,18 +70,10 @@ function PromoSub() {
 
 export function HeroBanner() {
   const [i, setI] = useState(0)
-  const [paused, setPaused] = useState(false)
   const startX = useRef<number | null>(null)
 
   const go = useCallback((idx: number) => setI(((idx % N) + N) % N), [])
   const next = useCallback(() => setI((v) => (v + 1) % N), [])
-
-  useEffect(() => {
-    if (paused) return
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    const t = window.setInterval(next, SLIDE_MS)
-    return () => window.clearInterval(t)
-  }, [paused, next, i])
 
   const onDown = (e: React.PointerEvent) => {
     startX.current = e.clientX
@@ -100,14 +91,6 @@ export function HeroBanner() {
       className="hbanner"
       aria-roledescription="carousel"
       aria-label="Featured"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      // Focus pause, not just hover: pausing on hover alone is a hover-only
-      // affordance, so keyboard users had no way to stop the rotation while
-      // tabbing through the slide's links (WCAG 2.2.2). Capture phase so focus
-      // anywhere inside the carousel counts.
-      onFocusCapture={() => setPaused(true)}
-      onBlurCapture={() => setPaused(false)}
       onPointerDown={onDown}
       onPointerUp={onUp}
     >

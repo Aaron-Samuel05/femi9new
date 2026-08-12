@@ -1,17 +1,28 @@
 import type { Metadata } from 'next'
 import { Home } from '@/screens/Home'
-import { listProducts } from '@/lib/services/products'
-import { listPosts } from '@/lib/services/blog'
+import { listProducts, type ProductWithVariants } from '@/lib/services/products'
+import { listPosts, type BlogPostDTO } from '@/lib/services/blog'
 
 export const metadata: Metadata = {
-  title: 'Femi9 - Organic, breathable period care',
+  title: 'Femi9 Sanitary Pads | Rash-Free, Cotton-Soft Period Care India',
   description:
-    'Shop Femi9 ultra-thin, breathable organic cotton pads with a mood-lifting anion strip. Toxin-free, biodegradable period care made for real life.',
+    'Shop Femi9 sanitary pads—cotton-soft, breathable, and reliably absorbent. Discover rash-free period care designed for everyday confidence. Made in India.',
 }
 
 // The catalog + journal teaser come from Postgres, so this page must render at
 // request time (the DB isn't reachable during the container image build).
 export const dynamic = 'force-dynamic'
+
+const HOMEPAGE_DATA_TIMEOUT_MS = 1800
+
+function withHomepageTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), HOMEPAGE_DATA_TIMEOUT_MS)
+    }),
+  ])
+}
 
 // Server component: the catalog grid and journal teaser are now sourced from
 // Postgres. We fetch on the server and hand the data to the (client) Home
@@ -22,8 +33,8 @@ export default async function HomePage() {
   // Figma-authored teaser cards have their own visual fallbacks, while valid
   // database connections still provide live product and journal links.
   const [products, posts] = await Promise.all([
-    listProducts().catch(() => []),
-    listPosts().catch(() => []),
+    withHomepageTimeout<ProductWithVariants[]>(listProducts().catch(() => []), []),
+    withHomepageTimeout<BlogPostDTO[]>(listPosts().catch(() => []), []),
   ])
   return <Home products={products} posts={posts} />
 }

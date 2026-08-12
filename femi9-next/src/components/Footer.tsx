@@ -46,7 +46,7 @@ export function Footer() {
             <Link to="/" aria-label="Femi9 Home">
               <img className="footer-logo-white" src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" />
             </Link>
-            <p className="footer-tagline">NATURAL. COMFORTABLE. BREATHABLE.</p>
+            <p className="footer-tagline">Thoughtfully designed period care for comfort, confidence, and everyday movement.</p>
             <p className="footer-desc">
               Organic, breathable period care that is kinder to your body and the planet.
             </p>
@@ -79,11 +79,10 @@ export function Footer() {
 
           {/* Column 2: SHOP */}
           <div className="footer-col">
-            <h4>SHOP</h4>
-            <Link to="/product/p330dw">330mm Double Wings</Link>
-            <Link to="/product/p330cw">330mm Centre Wings</Link>
-            <Link to="/product/p290l9">290mm Large</Link>
-            <Link to="/product/p290l3">290mm Starter</Link>
+            <h4>Shop Our Products</h4>
+            <Link to="/product/p330dw">330mm XL Pads (Heavy Flow)</Link>
+            <Link to="/product/p290l9">290mm Large Pads (Regular Flow)</Link>
+            <Link to="/product/p180m9">180mm Mini Pads (Light Flow & Daily Freshness)</Link>
           </div>
 
           {/* Column 3: FEMI9 */}
@@ -99,7 +98,13 @@ export function Footer() {
           <div className="footer-col">
             <h4>SUPPORT</h4>
             <a href={WA} target="_blank" rel="noopener noreferrer">
-              Contact us
+              Phone: +91 90429 16499
+            </a>
+            <a href="mailto:support@femi9.in">
+              Email: support@femi9.in
+            </a>
+            <a href={WA} target="_blank" rel="noopener noreferrer">
+              Contact us via WhatsApp
             </a>
             <a href={IG} target="_blank" rel="noopener noreferrer">
               @femi9official

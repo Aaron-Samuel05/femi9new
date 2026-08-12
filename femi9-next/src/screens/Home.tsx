@@ -84,17 +84,13 @@ function Reveal({
 
 function Hero() {
   const [slide, setSlide] = useState<0 | 1>(0)
-  const SLIDE_INTERVAL_MS = 6000
 
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
-    let timer = 0
-    const swap = () => {
+    const timer = window.setInterval(() => {
       setSlide((current) => (current === 0 ? 1 : 0))
-      timer = window.setTimeout(swap, SLIDE_INTERVAL_MS)
-    }
-    timer = window.setTimeout(swap, SLIDE_INTERVAL_MS)
-    return () => window.clearTimeout(timer)
+    }, 6000)
+    return () => window.clearInterval(timer)
   }, [])
 
   const buyNow = () => document.querySelector('#products')?.scrollIntoView({ behavior: 'smooth' })
@@ -104,49 +100,100 @@ function Hero() {
       <div className="fl-hero__background fl-hero__background--first" />
       <div className="fl-hero__background fl-hero__background--second" />
 
+      {/* Slide 1 - Product Slide (Image 3) */}
       <div className="fl-hero__scene fl-hero__scene--first" aria-hidden={slide === 1}>
-        <img className="fl-hero__flower fl-hero__flower--ghost" src={`${ASSET}hero-imgGroup.svg`} alt="" />
-        <img className="fl-hero__flower fl-hero__flower--solid" src={`${ASSET}hero-imgGroup1.svg`} alt="" />
-        <img className="fl-hero__cloud fl-hero__cloud--top" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-        <img className="fl-hero__cloud fl-hero__cloud--bottom" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-        <img className="fl-hero__cloud fl-hero__cloud--edge" src={`${ASSET}hero-img4157844189182061.png`} alt="" />
-        <img className="fl-hero__pad" src={`${ASSET}hero-imgImage20.png`} alt="" />
-        <img className="fl-hero__model" src={`${ASSET}image 19.png`} alt="Woman seated beside Femi9 pads" />
+        <img className="fl-hero__shape fl-hero__shape--top" src={`${ASSET}hero-imgRectangle18.svg`} alt="" aria-hidden="true" />
+        <img className="fl-hero__shape fl-hero__shape--bottom" src={`${ASSET}hero-imgRectangle17.svg`} alt="" aria-hidden="true" />
+
         <div className="fl-shell fl-hero__inner">
           <div className="fl-hero__copy">
-          <h1 id="fl-hero-heading"><strong>Organic Pads</strong> That Feel Like Nothing At All.</h1>
-          <p>Ultra-Thin, Breathable Cotton Pads With A Mood-Lifting Anion Strip. Toxin-Free, Biodegradable, And Made For Real Life</p>
-          <div className="fl-hero__proof">
-            <span><img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />Certified Organic Cotton</span>
-            <i />
-            <span><img src={`${ASSET}hero-imgSeedling1.png`} alt="" />Biodegradable</span>
+            <h1 id="fl-hero-heading">Confidence That Lasts All Day.</h1>
+            <p>
+              Stay protected through work, travel, workouts, and restful nights with ultra-absorbent organic pads designed to move with you - not against you.
+            </p>
+            <div className="fl-hero__proof">
+              <span>
+                <img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />
+                Certified Organic Cotton
+              </span>
+              <span className="fl-hero__proof-divider" aria-hidden="true">|</span>
+              <span>
+                <img src={`${ASSET}hero-imgSeedling1.png`} alt="" />
+                Biodegradable
+              </span>
+            </div>
+            <div className="fl-hero__actions">
+              <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>
+                Buy Now
+              </button>
+            </div>
           </div>
-            <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>Buy Now</button>
+          <div className="fl-hero__visual">
+            <img
+              className="fl-hero__product"
+              src={`${ASSET}hero-imgImage30.png`}
+              alt="Femi9 organic pads displayed on a pedestal"
+            />
           </div>
         </div>
       </div>
 
+      {/* Slide 2 - Lifestyle Slide (Image 4) */}
       <div className="fl-hero__scene fl-hero__scene--second" aria-hidden={slide === 0}>
-        <img className="fl-hero__second-shape fl-hero__second-shape--top" src={`${ASSET}hero-imgRectangle18.svg`} alt="" />
-        <img className="fl-hero__second-shape fl-hero__second-shape--bottom" src={`${ASSET}hero-imgRectangle17.svg`} alt="" />
-        <img className="fl-hero__second-product" src={`${ASSET}hero-imgImage30.png`} alt="Femi9 organic pads displayed on a pedestal" />
+        <img
+          className="fl-hero__cloud fl-hero__cloud--right"
+          src={`${ASSET}about-imgSubtract1.png`}
+          alt=""
+          aria-hidden="true"
+        />
         <div className="fl-shell fl-hero__inner">
           <div className="fl-hero__copy fl-hero__copy--second">
-            <h2><strong>Confidence</strong> That Lasts All Day.</h2>
-            <p>Ultra-absorbent. Exceptionally comfortable. Certified organic cotton, thoughtfully designed for you.</p>
-            <div className="fl-hero__proof">
-              <span><img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />Certified Organic Cotton</span>
-              <i />
-              <span><img src={`${ASSET}hero-imgSeedling1.png`} alt="" />Biodegradable</span>
+            <div className="fl-hero__card-panel">
+              <img className="fl-hero__flower-icon" src={`${ASSET}hero-imgGroup.svg`} alt="" aria-hidden="true" />
+              <h2>Organic Pads That Feel Like Nothing At All.</h2>
+              <p>
+                Ultra-Thin, Breathable Cotton Pads With A Mood-Lifting Anion Strip. Toxin-Free, Biodegradable, And Made For Real Life
+              </p>
+              <div className="fl-hero__proof fl-hero__proof--light">
+                <span>
+                  <img src={`${ASSET}hero-imgBadgetCheckAlt21.png`} alt="" />
+                  Certified Organic Cotton
+                </span>
+                <span className="fl-hero__proof-divider" aria-hidden="true">|</span>
+                <span>
+                  <img src={`${ASSET}hero-imgSeedling1.png`} alt="" />
+                  Biodegradable
+                </span>
+              </div>
+              <div className="fl-hero__actions">
+                <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>
+                  Buy Now
+                </button>
+              </div>
             </div>
-            <button type="button" className="fl-btn fl-btn--gold" onClick={buyNow}>Buy Now</button>
+          </div>
+          <div className="fl-hero__visual fl-hero__visual--second">
+            <div className="fl-hero__lifestyle-card">
+              <img className="fl-hero__lifestyle" src={`${ASSET}image 19.png`} alt="Woman seated on Femi9 pads" />
+            </div>
+            <img className="fl-hero__standing-pad" src={`${ASSET}hero-imgImage30.png`} alt="" aria-hidden="true" />
           </div>
         </div>
       </div>
 
       <div className="fl-hero__pager" role="group" aria-label="Hero slides">
-        <button type="button" aria-label="Show first slide" className={slide === 0 ? 'is-active' : ''} onClick={() => setSlide(0)} />
-        <button type="button" aria-label="Show second slide" className={slide === 1 ? 'is-active' : ''} onClick={() => setSlide(1)} />
+        <button
+          type="button"
+          aria-label="Show first slide"
+          className={slide === 0 ? 'is-active' : ''}
+          onClick={() => setSlide(0)}
+        />
+        <button
+          type="button"
+          aria-label="Show second slide"
+          className={slide === 1 ? 'is-active' : ''}
+          onClick={() => setSlide(1)}
+        />
       </div>
     </section>
   )
@@ -155,10 +202,12 @@ function Hero() {
 
 
 const BENEFITS = [
-  { image: 'why-imgImage23.png', art: 'comfort', title: 'Cotton-Soft Comfort', copy: 'Feels Soft Against Your Skin For All-Day Comfort With Zero Irritation.' },
-  { image: 'why-imgImage24.png', art: 'breathable', title: 'Breathable Design', copy: 'Airflow-Friendly Layers Help Reduce Heat And Keep You Feeling Fresh.' },
-  { image: 'why-imgImage25.png', art: 'anion', title: 'Anion Strip Technology', copy: 'Helps Reduce Odour And Provides Extra Comfort Throughout Your Period.' },
-  { image: 'why-imgImage26.png', art: 'clean', title: 'Nothing Nasty', copy: 'Free From Harsh Chemicals, Chlorine And Toxins For Skin-Friendly Protection.' },
+  { image: 'why-imgImage23.png', art: 'comfort', title: 'Cotton-Soft Comfort', copy: 'A gentle, soft surface that feels nice against your skin throughout your period.' },
+  { image: 'why-imgImage24.png', art: 'breathable', title: 'Breathable Design', copy: 'Airflow-friendly layers that help reduce trapped heat and keep you fresher, longer.' },
+  { image: 'why-imgImage25.png', art: 'anion', title: 'Reliable Absorbency & Leak Protection', copy: 'Designed to absorb quickly and keep you protected through regular and heavier flow days.' },
+  { image: 'why-imgImage26.png', art: 'clean', title: 'Rash-Conscious Comfort', copy: 'Thoughtfully made for women who want gentle, comfortable pads without unnecessary irritants.' },
+  { image: 'why-imgImage25.png', art: 'anion', title: 'Freshness & Odour Control', copy: 'Stay feeling fresh and confident, whether you\'re at work, traveling, or resting.' },
+  { image: 'why-imgImage26.png', art: 'clean', title: 'Made for Everyday Movement', copy: 'A lightweight fit that supports freedom of movement—focus on your day, not your pad.' },
 ] as const
 
 function Benefit({ item, side }: { item: (typeof BENEFITS)[number]; side: 'left' | 'right' }) {
@@ -182,9 +231,17 @@ function Why() {
           <Link className="fl-btn fl-btn--light" to="/periods-wall">View Details <span>→</span></Link>
         </div>
         <div className="fl-why__grid">
-          <div className="fl-why__column"><Benefit item={BENEFITS[0]} side="left" /><Benefit item={BENEFITS[1]} side="left" /></div>
+          <div className="fl-why__column">
+            <Benefit item={BENEFITS[0]} side="left" />
+            <Benefit item={BENEFITS[1]} side="left" />
+            <Benefit item={BENEFITS[2]} side="left" />
+          </div>
           <div className="fl-why__product"><img src={`${ASSET}why-imgImage22.png`} alt="Femi9 pad on a lavender pedestal" /></div>
-          <div className="fl-why__column"><Benefit item={BENEFITS[2]} side="right" /><Benefit item={BENEFITS[3]} side="right" /></div>
+          <div className="fl-why__column">
+            <Benefit item={BENEFITS[3]} side="right" />
+            <Benefit item={BENEFITS[4]} side="right" />
+            <Benefit item={BENEFITS[5]} side="right" />
+          </div>
         </div>
       </div>
     </Reveal>
@@ -202,7 +259,16 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
       <img className="fl-products__ribbon" src={`${ASSET}products-imgRectangle15.svg`} alt="" />
       <div className="fl-shell">
         <div className="fl-heading">
-          <div><p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p><h2>Real People, Real Relief.</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
+          <div>
+            <p className="fl-kicker fl-kicker--gold">Buy Now <Flower /></p>
+            <h2>Choose Your Perfect Fit. Shop Sanitary Pads for Your Flow.</h2>
+            <p style={{ marginBottom: '16px' }}>
+              Every body is different. Whether you experience light flow, regular flow, or heavy flow periods, Femi9 has a sanitary pad designed just for you.
+            </p>
+            <p style={{ fontSize: '0.9rem', color: 'var(--muted)' }}>
+              Choose the pad size and protection level that matches your flow, then shop with confidence and comfort in mind.
+            </p>
+          </div>
           <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/#products">View All <span>→</span></Link>
         </div>
         <div className="grid-products" style={{ marginTop: 44 }}>
@@ -228,7 +294,7 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
       <img className="fl-journal__polygon" src={`${ASSET}blogs-imgPolygon2.svg`} alt="" />
       <div className="fl-shell">
         <div className="fl-heading">
-          <div><p className="fl-kicker">Blogs <Flower /></p><h2>Women&apos;s Wellness Journal</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
+          <div><p className="fl-kicker">Blogs <Flower /></p><h2>Period Care, Explained Simply</h2><p>Knowledge, Care, And Confidence - Everything You Need To Understand Your Body Better.</p></div>
           <Link className="fl-btn fl-btn--outline" to="/blog">View All</Link>
         </div>
         <div className="fl-journal__grid">
@@ -273,7 +339,7 @@ function Testimonials() {
     <Reveal className="fl-testimonials" id="testimonials">
       <div className="fl-shell">
         <div className="fl-heading">
-          <div><p className="fl-kicker fl-kicker--gold">Testimonial <Flower /></p><h2>Real People, Real Relief.</h2></div>
+          <div><p className="fl-kicker fl-kicker--gold">Testimonial <Flower /></p><h2>Real Period Stories. Real Everyday Confidence.</h2></div>
           <div className="fl-testimonials__controls">
             <button type="button" aria-label="Previous testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) - 1 + REVIEWS.length) % REVIEWS.length)}><img src={`${ASSET}testimonials-imgFrame.svg`} alt="" /></button>
             <button type="button" aria-label="Next testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) + 1) % REVIEWS.length)}><img src={`${ASSET}testimonials-imgFrame1.svg`} alt="" /></button>
@@ -319,6 +385,22 @@ export function Home({ products, posts }: Props) {
       <Hero />
       <ProductGrid products={products} />
       <Why />
+      <section id="about-femi9" className="about-section" style={{ padding: '80px 0', background: 'var(--bg-light)' }}>
+        <div className="fl-shell" style={{ maxWidth: '800px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '2.2rem', marginBottom: '24px', color: 'var(--navy)', fontFamily: 'var(--font-display)' }}>
+            Designed for Her. Driven by Care. Made to Move With Her.
+          </h2>
+          <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '16px', color: 'var(--ink)' }}>
+            Femi9 was created with one simple purpose: to make period care more comfortable, thoughtful, and reliable. We design our sanitary pads around what real women need—softness against your skin, breathable comfort that actually works, absorbency you can count on, and protection you can trust.
+          </p>
+          <p style={{ fontSize: '1.1rem', lineHeight: '1.6', marginBottom: '32px', color: 'var(--ink)' }}>
+            Beyond just products, Femi9 is about encouraging better menstrual hygiene choices, building awareness, and giving women the confidence they deserve throughout their cycle.
+          </p>
+          <Link to="/about" className="fl-btn fl-btn--gold">
+            Know More About Femi9
+          </Link>
+        </div>
+      </section>
       <Journal posts={posts} />
       <div className="fl-cycle"><CycleTracker /></div>
       <Testimonials />

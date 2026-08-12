@@ -275,8 +275,8 @@ export function CycleTracker() {
           {/* ---- intro / copy side ---- */}
           <div className="cyc-intro">
             <h2 id="cyc-heading" className="display">
-              Know your cycle.<br />
-              Never get caught out.
+              Know Your Cycle.<br />
+              Plan Your Period With Confidence.
             </h2>
             <p className="cyc-lead">
               {mode === 'setup'
@@ -285,7 +285,6 @@ export function CycleTracker() {
             </p>
             <ul className="cyc-assurances" aria-label="How this tracker treats your data">
               <li>100% Organic Cotton</li>
-              <li>Dermatologically Tested</li>
               <li>Biodegradable Materials</li>
             </ul>
           </div>
