@@ -262,3 +262,20 @@ export async function getCustomer(id: string): Promise<CustomerDetail | null> {
     pointsBalance: pointsTotal._sum.delta ?? 0,
   }
 }
+
+export async function adjustCustomerPoints(id: string, delta: number, reason: string): Promise<boolean> {
+  return prisma.$transaction(async (tx) => {
+    const user = await tx.user.findUnique({ where: { id }, select: { id: true } })
+    if (!user) return false
+    const current = await tx.pointsLedger.aggregate({ where: { userId: id }, _sum: { delta: true } })
+    await tx.pointsLedger.create({
+      data: { userId: id, delta, reason: reason.trim(), balanceAfter: (current._sum.delta ?? 0) + delta },
+    })
+    return true
+  })
+}
+
+export async function changeCustomerRole(id: string, role: import('@prisma/client').Role): Promise<boolean> {
+  const result = await prisma.user.updateMany({ where: { id }, data: { role } })
+  return result.count === 1
+}

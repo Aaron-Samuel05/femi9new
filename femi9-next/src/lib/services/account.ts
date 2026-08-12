@@ -232,3 +232,81 @@ export async function getAccountData(userId: string): Promise<AccountData | null
     activity,
   }
 }
+
+export interface AddressInput {
+  label: string
+  name: string
+  line: string
+  city: string
+  state?: string
+  pincode?: string
+  phone?: string
+  isPrimary?: boolean
+}
+
+export async function updateProfile(userId: string, input: { name: string }) {
+  const result = await prisma.user.updateMany({
+    where: { id: userId },
+    data: { name: input.name.trim() },
+  })
+  return result.count > 0
+}
+
+export async function createAddress(userId: string, input: AddressInput) {
+  return prisma.$transaction(async (tx) => {
+    const count = await tx.address.count({ where: { userId } })
+    const makePrimary = input.isPrimary === true || count === 0
+    if (makePrimary) await tx.address.updateMany({ where: { userId }, data: { isPrimary: false } })
+    return tx.address.create({
+      data: {
+        userId,
+        label: input.label.trim(),
+        name: input.name.trim(),
+        line: input.line.trim(),
+        city: input.city.trim(),
+        state: input.state?.trim() || null,
+        pincode: input.pincode?.trim() || null,
+        phone: input.phone?.trim() || null,
+        isPrimary: makePrimary,
+      },
+    })
+  })
+}
+
+export async function updateAddress(userId: string, id: string, input: Partial<AddressInput>) {
+  return prisma.$transaction(async (tx) => {
+    const exists = await tx.address.findFirst({ where: { id, userId }, select: { id: true } })
+    if (!exists) return null
+    if (input.isPrimary) await tx.address.updateMany({ where: { userId }, data: { isPrimary: false } })
+    return tx.address.update({
+      where: { id },
+      data: {
+        ...(input.label !== undefined ? { label: input.label.trim() } : {}),
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.line !== undefined ? { line: input.line.trim() } : {}),
+        ...(input.city !== undefined ? { city: input.city.trim() } : {}),
+        ...(input.state !== undefined ? { state: input.state.trim() || null } : {}),
+        ...(input.pincode !== undefined ? { pincode: input.pincode.trim() || null } : {}),
+        ...(input.phone !== undefined ? { phone: input.phone.trim() || null } : {}),
+        ...(input.isPrimary !== undefined ? { isPrimary: input.isPrimary } : {}),
+      },
+    })
+  })
+}
+
+export async function deleteAddress(userId: string, id: string): Promise<'deleted' | 'missing' | 'in-use'> {
+  return prisma.$transaction(async (tx) => {
+    const address = await tx.address.findFirst({
+      where: { id, userId },
+      select: { id: true, isPrimary: true, _count: { select: { orders: true } } },
+    })
+    if (!address) return 'missing'
+    if (address._count.orders > 0) return 'in-use'
+    await tx.address.delete({ where: { id } })
+    if (address.isPrimary) {
+      const next = await tx.address.findFirst({ where: { userId }, orderBy: { id: 'asc' }, select: { id: true } })
+      if (next) await tx.address.update({ where: { id: next.id }, data: { isPrimary: true } })
+    }
+    return 'deleted'
+  })
+}

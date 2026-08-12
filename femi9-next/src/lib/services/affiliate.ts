@@ -139,6 +139,30 @@ export async function getByCode(promoCode: string): Promise<AffiliateStats | nul
   }
 }
 
+/** Owner-scoped affiliate dashboard. Promo codes are public; earnings are not. */
+export async function getForUser(userId: string): Promise<AffiliateStats | null> {
+  const affiliate = await prisma.affiliate.findUnique({
+    where: { userId },
+    select: { id: true, status: true, promoCode: true },
+  })
+  if (!affiliate || isPlaceholder(affiliate.promoCode)) return null
+  const [clicks, orderAgg] = await Promise.all([
+    prisma.affiliateEvent.count({ where: { affiliateId: affiliate.id, type: 'click' } }),
+    prisma.affiliateEvent.aggregate({
+      where: { affiliateId: affiliate.id, type: 'order' },
+      _count: { _all: true },
+      _sum: { commission: true },
+    }),
+  ])
+  return {
+    status: affiliate.status,
+    promoCode: affiliate.promoCode,
+    clicks,
+    orders: orderAgg._count._all,
+    earnings: orderAgg._sum.commission ?? 0,
+  }
+}
+
 /**
  * Record a click for an approved code (the /r/[code] redirect calls this).
  * Silently ignores unknown/pending/suspended codes so a bad link is harmless.

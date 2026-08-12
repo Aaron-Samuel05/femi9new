@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, unauthorized } from '@/lib/api'
+import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
 import { requireUser } from '@/lib/auth'
-import { logSymptom } from '@/lib/services/cycle'
+import { deleteSymptom, logSymptom } from '@/lib/services/cycle'
 
 /**
  * POST /api/cycle/symptoms — log a symptom intensity for the signed-in user.
@@ -26,5 +26,15 @@ export async function POST(req: NextRequest) {
     const { date, symptom, level } = parsed.data
     await logSymptom(u.sub, date, symptom, level)
     return created({ ok: true })
+  })
+}
+
+export async function DELETE(req: NextRequest) {
+  return handle(async () => {
+    const u = await requireUser()
+    if (!u) return unauthorized()
+    const id = req.nextUrl.searchParams.get('id')?.trim()
+    if (!id) return badRequest('Symptom id is required')
+    return ok({ deleted: await deleteSymptom(u.sub, id) })
   })
 }

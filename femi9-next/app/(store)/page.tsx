@@ -13,17 +13,6 @@ export const metadata: Metadata = {
 // request time (the DB isn't reachable during the container image build).
 export const dynamic = 'force-dynamic'
 
-const HOMEPAGE_DATA_TIMEOUT_MS = 1800
-
-function withHomepageTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((resolve) => {
-      setTimeout(() => resolve(fallback), HOMEPAGE_DATA_TIMEOUT_MS)
-    }),
-  ])
-}
-
 // Server component: the catalog grid and journal teaser are now sourced from
 // Postgres. We fetch on the server and hand the data to the (client) Home
 // screen as props, so the markup/behaviour is unchanged — only the source moved.
@@ -32,9 +21,6 @@ export default async function HomePage() {
   // temporarily unreachable (for example, in a fresh local checkout). The
   // Figma-authored teaser cards have their own visual fallbacks, while valid
   // database connections still provide live product and journal links.
-  const [products, posts] = await Promise.all([
-    withHomepageTimeout<ProductWithVariants[]>(listProducts().catch(() => []), []),
-    withHomepageTimeout<BlogPostDTO[]>(listPosts().catch(() => []), []),
-  ])
+  const [products, posts] = await Promise.all([listProducts(), listPosts()])
   return <Home products={products} posts={posts} />
 }

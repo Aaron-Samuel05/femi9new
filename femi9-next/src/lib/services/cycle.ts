@@ -65,11 +65,13 @@ export interface SymptomEntry {
 }
 
 export interface PeriodEntry {
+  id: string
   start: string // 'YYYY-MM-DD'
   length: number
 }
 
 export interface CycleData {
+  consent: boolean
   needsData: boolean // true when the user has logged no periods yet
   today: string // 'YYYY-MM-DD' — the reference "today" the math was run against
   prediction: CyclePrediction
@@ -151,11 +153,12 @@ export function getPhase(date: Date, prediction: CyclePrediction, periods: Perio
 // ── Read model ───────────────────────────────────────────────────────────────
 
 export async function getCycleData(userId: string): Promise<CycleData> {
-  const [periodRows, symptomRows] = await Promise.all([
+  const [periodRows, user, symptomRows] = await Promise.all([
     prisma.periodLog.findMany({
       where: { userId },
-      select: { startDate: true, lengthDays: true, encryptedData: true },
+      select: { id: true, startDate: true, lengthDays: true, encryptedData: true },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { cycleDataConsent: true } }),
     prisma.symptomLog.findMany({
       where: { userId },
       select: { date: true, symptom: true, level: true, encryptedData: true },
@@ -176,10 +179,10 @@ export async function getCycleData(userId: string): Promise<CycleData> {
         ) {
           throw new Error('Invalid encrypted period payload')
         }
-        return { start: payload.start, length: payload.length }
+        return { id: row.id, start: payload.start, length: payload.length }
       }
       if (!row.startDate || row.lengthDays == null) throw new Error('Incomplete period data')
-      return { start: keyFromDate(row.startDate), length: row.lengthDays }
+      return { id: row.id, start: keyFromDate(row.startDate), length: row.lengthDays }
     })
     .sort((a, b) => a.start.localeCompare(b.start))
 
@@ -223,6 +226,7 @@ export async function getCycleData(userId: string): Promise<CycleData> {
   if (periods.length === 0) {
     const nextStart = addDays(today, avgCycle)
     return {
+      consent: user?.cycleDataConsent ?? false,
       needsData: true,
       today: todayKey,
       prediction: {
@@ -365,6 +369,7 @@ export async function getCycleData(userId: string): Promise<CycleData> {
   })
 
   return {
+    consent: user?.cycleDataConsent ?? false,
     needsData: false,
     today: todayKey,
     prediction,
@@ -399,4 +404,19 @@ export async function logSymptom(userId: string, date: string, symptom: string, 
       encryptedData: encryptCyclePayload({ kind: 'symptom', date, symptom, level }),
     },
   })
+}
+
+export async function deletePeriod(userId: string, id: string): Promise<boolean> {
+  const result = await prisma.periodLog.deleteMany({ where: { id, userId } })
+  return result.count === 1
+}
+
+export async function deleteSymptom(userId: string, id: string): Promise<boolean> {
+  const result = await prisma.symptomLog.deleteMany({ where: { id, userId } })
+  return result.count === 1
+}
+
+export async function setCycleConsent(userId: string, consent: boolean): Promise<boolean> {
+  const result = await prisma.user.updateMany({ where: { id: userId }, data: { cycleDataConsent: consent } })
+  return result.count === 1
 }

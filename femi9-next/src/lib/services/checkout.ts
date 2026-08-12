@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { getSettings } from '@/lib/services/settings'
 import { REF_COOKIE, attributeOrder } from '@/lib/services/affiliate'
+import { applyZonePrice, resolveZone } from '@/lib/services/pricing'
 import * as razorpay from '@/lib/razorpay'
 import {
   activateAndLockIfEligible,
@@ -43,6 +44,13 @@ export class OutOfStockError extends Error {
   constructor(itemName: string) {
     super(`Sorry, "${itemName}" just went out of stock. Please reduce the quantity or remove it to continue.`)
     this.name = 'OutOfStockError'
+  }
+}
+
+export class InvalidCouponError extends Error {
+  constructor(message = 'That coupon is invalid, expired, or no longer available.') {
+    super(message)
+    this.name = 'InvalidCouponError'
   }
 }
 
@@ -90,6 +98,7 @@ export interface CheckoutCustomer {
   city: string
   state?: string
   pincode?: string
+  couponCode?: string
 }
 
 /** The payment intent the client needs to open the Razorpay Checkout widget
@@ -174,6 +183,7 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
   // fetch them before opening the transaction to keep it short. (Loyalty points
   // are no longer awarded here; they are granted on capture in markOrderPaid.)
   const { freeShipThreshold } = await getSettings()
+  const zone = await resolveZone({ state: customer.state, pincode: customer.pincode })
 
   // Referral attribution rides in an httpOnly cookie dropped by /r/[code]. Read
   // it here (request scope) so the transaction can stamp the order's affiliate.
@@ -210,7 +220,7 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
       // Stock is NOT checked here — a read-then-decrement would race two
       // concurrent checkouts into overselling. The reservation below is a
       // conditional atomic decrement that is the sole guard against oversell.
-      const unitPrice = variant.price // server is the source of truth on price
+      const unitPrice = applyZonePrice(variant.price, zone)
       const lineTotal = unitPrice * item.qty
       subtotal += lineTotal
       return {
@@ -248,6 +258,30 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
     // the user isn't a member, or the member is not yet active.
     const tharaDiscount = await computeTharaDiscount(tx, user.id, subtotal)
     let discount = tharaDiscount.discountPaise
+    let couponId: string | undefined
+    const couponCode = customer.couponCode?.trim().toUpperCase()
+    if (couponCode) {
+      const coupon = await tx.coupon.findUnique({ where: { code: couponCode } })
+      const unavailable =
+        !coupon ||
+        !coupon.active ||
+        (coupon.expiresAt !== null && coupon.expiresAt <= new Date()) ||
+        subtotal < coupon.minOrder ||
+        (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses)
+      if (unavailable || !coupon) throw new InvalidCouponError()
+
+      const claimed = await tx.coupon.updateMany({
+        where: { id: coupon.id, usedCount: coupon.usedCount, active: true },
+        data: { usedCount: { increment: 1 } },
+      })
+      if (claimed.count !== 1) throw new InvalidCouponError()
+      couponId = coupon.id
+      const couponDiscount = coupon.type === 'pct'
+        ? Math.round(subtotal * Math.min(100, coupon.value) / 100)
+        : coupon.value
+      const remainingSubtotal = Math.max(0, subtotal - discount)
+      discount += Math.min(remainingSubtotal, Math.max(0, couponDiscount))
+    }
     let total = Math.max(0, subtotal - discount + shipping)
 
     // First address for a user is their primary; later ones are added alongside.
@@ -282,6 +316,7 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
         orderNo,
         userId: user.id,
         addressId: address.id,
+        couponId,
         status: 'pending', // awaiting payment — Razorpay capture comes later
         channel: 'web',
         subtotal,
@@ -396,6 +431,12 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
           await tx.productVariant.update({
             where: { id: item.variantId },
             data: { stock: { increment: item.qty } },
+          })
+        }
+        if (order.couponId) {
+          await tx.coupon.updateMany({
+            where: { id: order.couponId, usedCount: { gt: 0 } },
+            data: { usedCount: { decrement: 1 } },
           })
         }
         await tx.order.delete({ where: { id: orderId } })
@@ -551,6 +592,60 @@ export async function markOrderPaid({
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })
+}
+
+/**
+ * Reconcile old pending orders with Razorpay. Captured payments are fulfilled;
+ * orders with no capture after the expiry window are cancelled and release the
+ * stock/coupon reservation exactly once.
+ */
+export async function reconcilePendingOrders(olderThanMinutes = 60): Promise<{ paid: number; cancelled: number }> {
+  const cutoff = new Date(Date.now() - Math.max(15, olderThanMinutes) * 60_000)
+  const orders = await prisma.order.findMany({
+    where: { status: 'pending', placedAt: { lt: cutoff } },
+    include: {
+      items: { select: { variantId: true, qty: true } },
+      payments: { where: { status: 'created' }, orderBy: { createdAt: 'desc' }, take: 1 },
+    },
+    take: 100,
+  })
+  let paid = 0
+  let cancelled = 0
+
+  for (const order of orders) {
+    const intent = order.payments[0]
+    let capture: Awaited<ReturnType<typeof razorpay.listOrderPayments>>[number] | undefined
+    if (intent?.razorpayOrderId && !intent.razorpayOrderId.startsWith('mock_')) {
+      const payments = await razorpay.listOrderPayments(intent.razorpayOrderId)
+      capture = payments.find((p) => p.status === 'captured' && p.amount === order.total * 100)
+    }
+    if (capture && intent?.razorpayOrderId) {
+      await markOrderPaid({
+        orderNo: order.orderNo,
+        razorpayPaymentId: capture.id,
+        razorpayOrderId: intent.razorpayOrderId,
+        signatureVerified: true,
+        method: capture.method,
+      })
+      paid += 1
+      continue
+    }
+
+    const released = await prisma.$transaction(async (tx) => {
+      const claim = await tx.order.updateMany({ where: { id: order.id, status: 'pending' }, data: { status: 'cancelled' } })
+      if (claim.count !== 1) return false
+      for (const item of order.items) {
+        await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { increment: item.qty } } })
+      }
+      await tx.payment.updateMany({ where: { orderId: order.id, status: 'created' }, data: { status: 'failed' } })
+      if (order.couponId) {
+        await tx.coupon.updateMany({ where: { id: order.couponId, usedCount: { gt: 0 } }, data: { usedCount: { decrement: 1 } } })
+      }
+      return true
+    })
+    if (released) cancelled += 1
+  }
+  return { paid, cancelled }
 }
 
 /**

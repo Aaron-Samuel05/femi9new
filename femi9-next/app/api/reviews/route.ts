@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { ok, badRequest, notFound, handle } from '@/lib/api'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { submitReview, ProductNotFoundError } from '@/lib/services/reviews-public'
+import { getSession } from '@/lib/auth'
 
 /**
  * POST /api/reviews — public review submission from the product page.
@@ -29,7 +30,8 @@ export async function POST(req: Request) {
 
     const { productSlug, name, rating, body, place } = parsed.data
     try {
-      await submitReview(productSlug, { name, rating, body, place })
+      const session = await getSession()
+      await submitReview(productSlug, { name, rating, body, place }, session?.sub)
     } catch (err) {
       // A stale/invalid slug is a client problem, not a server fault.
       if (err instanceof ProductNotFoundError) return notFound('Product not found')

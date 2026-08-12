@@ -1,7 +1,7 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
-import { PRODUCTS, type Product, type ProductType } from '@/data/products'
-import { EXTRAS, type ProductExtra, sampleReviews } from '@/data/productDetail'
+import type { Product, ProductType } from '@/data/products'
+import type { ProductExtra } from '@/data/productDetail'
 
 /**
  * Product service — the single seam between the database and the UI.
@@ -40,24 +40,6 @@ export interface FullProduct {
 }
 
 type Row = Awaited<ReturnType<typeof loadRows>>[number]
-
-function fallbackProduct(slug: string): FullProduct | null {
-  const product = PRODUCTS.find((item) => item.id === slug)
-  if (!product) return null
-  const extra = EXTRAS[slug] ?? {
-    gallery: product.img ? [product.img] : [],
-    rating: 0,
-    reviews: 0,
-    long: product.desc,
-    features: [],
-    specs: [],
-  }
-  return {
-    product: { ...product, variants: [] },
-    extra,
-    reviews: slug === 'p330dw' ? sampleReviews : [],
-  }
-}
 
 function loadRows() {
   return prisma.product.findMany({
@@ -118,18 +100,13 @@ function toExtra(row: Row): ProductExtra {
 
 /** All active products, in the `Product` shape (catalog grid / cards). */
 export async function listProducts(): Promise<ProductWithVariants[]> {
-  try {
-    const rows = await loadRows()
-    return rows.length ? rows.map(toProduct) : PRODUCTS.map((product) => ({ ...product, variants: [] }))
-  } catch {
-    return PRODUCTS.map((product) => ({ ...product, variants: [] }))
-  }
+  const rows = await loadRows()
+  return rows.map(toProduct)
 }
 
 /** One product by slug, with detail extras and moderated reviews. */
 export async function getProduct(slug: string): Promise<FullProduct | null> {
-  try {
-    const row = await prisma.product.findFirst({
+  const row = await prisma.product.findFirst({
       where: { slug, status: 'active' },
       include: {
         variants: { where: { active: true }, orderBy: { price: 'asc' } },
@@ -139,13 +116,10 @@ export async function getProduct(slug: string): Promise<FullProduct | null> {
         reviews: { where: { status: 'approved' }, orderBy: { createdAt: 'desc' } },
       },
     })
-    if (!row) return fallbackProduct(slug)
-    return {
+  if (!row) return null
+  return {
       product: toProduct(row),
       extra: toExtra(row),
       reviews: row.reviews.map((r) => ({ name: r.name, place: r.place, rating: r.rating, body: r.body })),
-    }
-  } catch {
-    return fallbackProduct(slug)
   }
 }

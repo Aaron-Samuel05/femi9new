@@ -1,6 +1,6 @@
 import type { NextRequest } from 'next/server'
-import { handle, notFound, ok } from '@/lib/api'
-import { getGuestToken } from '@/lib/session'
+import { handle, notFound, ok, unauthorized } from '@/lib/api'
+import { requireUser } from '@/lib/auth'
 import { likePost } from '@/lib/services/wall'
 
 /**
@@ -13,10 +13,11 @@ import { likePost } from '@/lib/services/wall'
 export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const token = await getGuestToken()
-    const likeCount = await likePost(params.id, token)
+    const user = await requireUser()
+    if (!user) return unauthorized()
+    const result = await likePost(params.id, user.sub)
     // null → post missing or not approved (can't like a pending/hidden story).
-    if (likeCount === null) return notFound('Post not found')
-    return ok({ likeCount })
+    if (result === null) return notFound('Post not found')
+    return ok(result)
   })
 }

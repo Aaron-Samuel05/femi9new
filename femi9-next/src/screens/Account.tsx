@@ -4,6 +4,7 @@
 // which use hooks. The server page (app/account/page.tsx) resolves the real user
 // and hands everything down as serializable props — this file is a pure view.
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Shell } from '../app/Shell'
 import { AreaChart } from '../charts/AreaChart'
 import { C } from '../charts/theme'
@@ -40,6 +41,44 @@ export function Account({
   activity,
   rewardOptions,
 }: AccountProps) {
+  const router = useRouter()
+  const [accountBusy, setAccountBusy] = useState(false)
+
+  async function mutateAccount(url: string, init: RequestInit) {
+    setAccountBusy(true)
+    try {
+      const res = await fetch(url, { ...init, headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } })
+      const body = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(body?.error ?? 'Could not save your changes.')
+      router.refresh()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Could not save your changes.')
+    } finally {
+      setAccountBusy(false)
+    }
+  }
+
+  function editProfile() {
+    const name = prompt('Full name', user.name)?.trim()
+    if (!name || name === user.name) return
+    void mutateAccount('/api/account/profile', { method: 'PATCH', body: JSON.stringify({ name }) })
+  }
+
+  function addAddress() {
+    const name = prompt('Recipient name', user.name)?.trim()
+    if (!name) return
+    const line = prompt('House / flat, street and area')?.trim()
+    if (!line) return
+    const city = prompt('City')?.trim()
+    if (!city) return
+    const state = prompt('State')?.trim() ?? ''
+    const pincode = prompt('6-digit pincode')?.trim() ?? ''
+    const phone = prompt('10-digit phone number')?.replace(/\D/g, '') ?? ''
+    void mutateAccount('/api/account/addresses', {
+      method: 'POST',
+      body: JSON.stringify({ label: 'Home', name, line, city, state, pincode, phone }),
+    })
+  }
   return (
     <Shell variant="user" title="Account" subtitle="Your details, orders and subscription">
       <div className="dash-grid">
@@ -57,7 +96,7 @@ export function Account({
               <span className="badge" style={{ background: 'var(--butter)', color: '#8a5a00', fontSize: '.86rem', padding: '8px 14px' }}>
                 {pointsBalance.toLocaleString('en-IN')} Bloom points
               </span>
-              <button className="btn btn-ghost" type="button" title="Profile editing is not available yet" disabled>Edit profile</button>
+              <button className="btn btn-ghost" type="button" onClick={editProfile} disabled={accountBusy}>Edit profile</button>
             </div>
           </div>
         </div>
@@ -124,7 +163,7 @@ export function Account({
         {/* addresses */}
         <div className="col-6">
           <div className="panel pad-lg" style={{ height: '100%' }}>
-            <div className="panel-head"><div><h3>Saved addresses</h3></div><button className="btn btn-ghost" type="button" title="Adding addresses is not available yet" style={{ padding: '.5em 1em', fontSize: '.85rem' }} disabled>Add new</button></div>
+            <div className="panel-head"><div><h3>Saved addresses</h3></div><button className="btn btn-ghost" type="button" onClick={addAddress} style={{ padding: '.5em 1em', fontSize: '.85rem' }} disabled={accountBusy}>Add new</button></div>
             {addresses.length === 0 ? (
               <p className="oitems">No saved addresses yet - the address on your next order is saved here automatically.</p>
             ) : (
@@ -133,6 +172,16 @@ export function Account({
                   <span className="alabel">{a.label}</span>
                   <b>{a.name}</b>
                   <span>{a.line}<br />{a.city}<br />{a.phone}</span>
+                  <span style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    {!a.primary && (
+                      <button type="button" onClick={() => void mutateAccount(`/api/account/addresses/${a.id}`, { method: 'PATCH', body: JSON.stringify({ isPrimary: true }) })} disabled={accountBusy} style={{ color: 'var(--forest-2)', fontWeight: 600 }}>
+                        Set primary
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void mutateAccount(`/api/account/addresses/${a.id}`, { method: 'DELETE' })} disabled={accountBusy} style={{ color: '#9a2237', fontWeight: 600 }}>
+                      Delete
+                    </button>
+                  </span>
                 </div>
               ))
             )}

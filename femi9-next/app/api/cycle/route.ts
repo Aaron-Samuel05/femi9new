@@ -1,6 +1,7 @@
-import { handle, ok, unauthorized } from '@/lib/api'
+import { badRequest, handle, ok, unauthorized } from '@/lib/api'
 import { requireUser } from '@/lib/auth'
-import { getCycleData } from '@/lib/services/cycle'
+import { getCycleData, setCycleConsent } from '@/lib/services/cycle'
+import { z } from 'zod'
 
 /**
  * GET /api/cycle — the signed-in user's computed cycle model (same shape the
@@ -13,5 +14,16 @@ export async function GET() {
     const u = await requireUser()
     if (!u) return unauthorized()
     return ok(await getCycleData(u.sub))
+  })
+}
+
+export async function PATCH(req: Request) {
+  return handle(async () => {
+    const u = await requireUser()
+    if (!u) return unauthorized()
+    const parsed = z.object({ consent: z.boolean() }).safeParse(await req.json().catch(() => null))
+    if (!parsed.success) return badRequest('Invalid consent setting')
+    await setCycleConsent(u.sub, parsed.data.consent)
+    return ok({ consent: parsed.data.consent })
   })
 }

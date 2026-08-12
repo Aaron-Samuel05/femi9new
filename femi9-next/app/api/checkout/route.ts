@@ -5,7 +5,7 @@ import { badRequest, created, handle, serviceUnavailable } from '@/lib/api'
 import { getGuestToken } from '@/lib/session'
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { orderToken } from '@/lib/order-token'
-import { EmptyCartError, OutOfStockError, placeOrder } from '@/lib/services/checkout'
+import { EmptyCartError, InvalidCouponError, OutOfStockError, placeOrder } from '@/lib/services/checkout'
 import { ProviderConfigurationError } from '@/lib/runtime-mode'
 
 /**
@@ -29,6 +29,7 @@ const CheckoutSchema = z.object({
   city: z.string().trim().min(1, 'Please enter your city').max(120),
   state: z.preprocess(blankToUndef, z.string().trim().max(120).optional()),
   pincode: z.preprocess(blankToUndef, z.string().trim().regex(/^\d{6}$/, 'Enter a valid 6-digit pincode').optional()),
+  couponCode: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
 })
 
 /** 409 helper — api.ts has no conflict envelope, so build it inline. */
@@ -60,6 +61,7 @@ export async function POST(req: NextRequest) {
       return created({ ...result, token: orderToken(result.orderNo) })
     } catch (err) {
       if (err instanceof EmptyCartError) return badRequest(err.message)
+      if (err instanceof InvalidCouponError) return badRequest(err.message)
       if (err instanceof OutOfStockError) return conflict(err.message)
       if (err instanceof ProviderConfigurationError) {
         return serviceUnavailable('Online payment is temporarily unavailable.')

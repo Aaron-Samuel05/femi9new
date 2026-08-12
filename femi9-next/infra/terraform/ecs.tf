@@ -130,6 +130,7 @@ locals {
     { name = "PORT", value = tostring(var.container_port) },
     { name = "HOSTNAME", value = "0.0.0.0" }, # Next standalone must bind all interfaces
     { name = "NEXT_PUBLIC_SITE_URL", value = local.site_url },
+    { name = "GOOGLE_REDIRECT_URI", value = "${local.site_url}/api/auth/google/callback" },
     { name = "NEXT_PUBLIC_RAZORPAY_KEY_ID", value = var.next_public_razorpay_key_id },
     { name = "NEXT_PUBLIC_SENTRY_DSN", value = var.next_public_sentry_dsn },
     { name = "SENTRY_ENVIRONMENT", value = var.environment },

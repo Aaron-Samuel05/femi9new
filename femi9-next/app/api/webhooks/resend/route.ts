@@ -1,6 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { handle, ok, badRequest } from '@/lib/api'
 import { suppressEmail } from '@/lib/services/thara'
+import { verifyResendWebhook } from '@/lib/resend-webhook'
+import { mockProvidersAllowed } from '@/lib/runtime-mode'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,8 +18,17 @@ export const dynamic = 'force-dynamic'
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const raw = await req.text()
-    // (Signature verification is Resend's SVIX-style HMAC. Left as a hook
-    // when RESEND_WEBHOOK_SECRET is configured; skipped in mock mode.)
+    const secret = process.env.RESEND_WEBHOOK_SECRET?.trim()
+    if (secret) {
+      const verified = verifyResendWebhook(raw, {
+        id: req.headers.get('svix-id'),
+        timestamp: req.headers.get('svix-timestamp'),
+        signature: req.headers.get('svix-signature'),
+      }, secret)
+      if (!verified) return badRequest('Invalid webhook signature')
+    } else if (!mockProvidersAllowed()) {
+      return badRequest('Webhook verification is not configured')
+    }
 
     let body: {
       type?: string

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getProduct } from '@/lib/services/products'
+import { getProduct, listProducts } from '@/lib/services/products'
 import { ProductDetail } from '@/screens/ProductDetail'
 
 // Per-page SEO: reuse the same loader the page uses, mapping the resolved
@@ -25,7 +25,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
 // Postgres on the server and hand it to the (client) detail screen as props.
 export default async function ProductPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const data = await getProduct(params.id)
+  const [data, products] = await Promise.all([getProduct(params.id), listProducts()])
   if (!data) notFound()
-  return <ProductDetail product={data.product} extra={data.extra} reviews={data.reviews} />
+  return <ProductDetail product={data.product} extra={data.extra} reviews={data.reviews} relatedProducts={products.filter((p) => p.id !== params.id).slice(0, 4)} />
 }

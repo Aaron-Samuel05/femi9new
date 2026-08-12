@@ -2,18 +2,20 @@
 
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
-import { PRODUCTS, rupees, subPrice, SUBSCRIBE_PCT, CADENCES } from '../data/products'
+import { rupees, CADENCES } from '../data/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
 import { Bag, Drop, Leaf, ShieldCheck, Check, Facebook, Instagram, Whatsapp } from '../components/Icons'
 import { IStar, IThumbDown, IThumbUp } from '../components/AppIcons'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
-import { sampleReviews, type ProductExtra } from '@/data/productDetail'
+import type { ProductExtra } from '@/data/productDetail'
+import { usePublicSettings } from '@/lib/use-public-settings'
 
 interface Props {
   product: ProductWithVariants
   extra: ProductExtra
   reviews: ProductReview[]
+  relatedProducts: ProductWithVariants[]
 }
 
 const featIcons = [Drop, Leaf, ShieldCheck]
@@ -44,7 +46,8 @@ function deliveryDate(daysAhead: number): string {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-export function ProductDetail({ product, extra, reviews }: Props) {
+export function ProductDetail({ product, extra, reviews, relatedProducts }: Props) {
+  const { subscribeSavePct } = usePublicSettings()
   const [imgIdx, setImgIdx] = useState(0)
   const [qty, setQty] = useState(1)
   const [packIdx, setPackIdx] = useState<number>((product.packs?.length ?? 1) - 1)
@@ -66,11 +69,12 @@ export function ProductDetail({ product, extra, reviews }: Props) {
 
   const isPanty = product.type === 'panty'
   const packs = product.packs
-  const related = PRODUCTS.filter((p) => p.id !== product.id).slice(0, 4)
+  const related = relatedProducts
   const mmPart = product.meta.split('·').pop()?.trim() ?? ''
   const selectedPack = packs ? packs[packIdx] : null
   const basePrice = selectedPack ? selectedPack.price : product.price
-  const effPrice = mode === 'sub' ? subPrice(basePrice) : basePrice
+  const subscriptionPrice = Math.round(basePrice * (100 - subscribeSavePct) / 100)
+  const effPrice = mode === 'sub' ? subscriptionPrice : basePrice
   const activeCadence = CADENCES.find((c) => c.id === cadence) ?? CADENCES[0]
   const averageRating = reviews.length ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : extra.rating
   const reviewTotal = reviews.length || extra.reviews
@@ -296,8 +300,8 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                   >
                     <span className="sub-radio-dot" />
                     <div className="sub-row-content">
-                      <b>Subscribe &amp; save {SUBSCRIBE_PCT}%</b>
-                      <span>{rupees(subPrice(basePrice))} &middot; skip or cancel anytime</span>
+                      <b>Subscribe &amp; save {subscribeSavePct}%</b>
+                      <span>{rupees(subscriptionPrice)} &middot; skip or cancel anytime</span>
                     </div>
                   </button>
                 </div>
@@ -416,7 +420,7 @@ export function ProductDetail({ product, extra, reviews }: Props) {
 
             {/* 3 FEATURED REVIEW CARDS */}
             <div className="pdp-reviews-grid">
-              {(reviews.length > 0 ? reviews : sampleReviews).slice(0, 3).map((rv: any, idx: number) => (
+              {reviews.slice(0, 3).map((rv: any, idx: number) => (
                 <article className="pdp-review-card" key={idx}>
                   <div className="pdp-review-card-head">
                     <div className="pdp-review-stars">

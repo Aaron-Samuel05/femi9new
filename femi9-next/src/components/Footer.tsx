@@ -3,10 +3,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from '@/lib/router-compat'
 import { useCart } from '../store/cart'
-import { WA_NUMBER } from '../data/products'
+import { usePublicSettings } from '@/lib/use-public-settings'
 import { Instagram, Facebook, Youtube, Linkedin, Whatsapp } from './Icons'
 
-const WA = `https://wa.me/${WA_NUMBER}`
 const IG = 'https://www.instagram.com/femi9official/'
 
 const SOCIALS = [
@@ -14,12 +13,14 @@ const SOCIALS = [
   { href: 'https://www.facebook.com/femi9official/', label: 'Facebook', Icon: Facebook },
   { href: 'https://www.youtube.com/@femi9official', label: 'YouTube', Icon: Youtube },
   { href: 'https://www.linkedin.com/company/femi9-official/', label: 'LinkedIn', Icon: Linkedin },
-  { href: WA, label: 'WhatsApp', Icon: Whatsapp },
 ]
 
 export function Footer() {
   const { notify } = useCart()
+  const { whatsappNumber } = usePublicSettings()
+  const wa = `https://wa.me/${whatsappNumber}`
   const [email, setEmail] = useState('')
+  const socials = [...SOCIALS, { href: `https://wa.me/${whatsappNumber}`, label: 'WhatsApp', Icon: Whatsapp }]
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -69,7 +70,7 @@ export function Footer() {
             </div>
 
             <div className="footer-social">
-              {SOCIALS.map(({ href, label, Icon }) => (
+              {socials.map(({ href, label, Icon }) => (
                 <a key={label} href={href} target="_blank" rel="noopener noreferrer" aria-label={label}>
                   <Icon />
                 </a>
@@ -97,13 +98,13 @@ export function Footer() {
           {/* Column 4: SUPPORT */}
           <div className="footer-col">
             <h4>SUPPORT</h4>
-            <a href={WA} target="_blank" rel="noopener noreferrer">
+            <a href={wa} target="_blank" rel="noopener noreferrer">
               Phone: +91 90429 16499
             </a>
             <a href="mailto:support@femi9.in">
               Email: support@femi9.in
             </a>
-            <a href={WA} target="_blank" rel="noopener noreferrer">
+            <a href={wa} target="_blank" rel="noopener noreferrer">
               Contact us via WhatsApp
             </a>
             <a href={IG} target="_blank" rel="noopener noreferrer">

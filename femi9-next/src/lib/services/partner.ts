@@ -1,5 +1,6 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
+import { sendEmailNotification } from '@/lib/services/notifications'
 
 /**
  * Partner (reseller) lead capture — the storefront write path.
@@ -25,7 +26,7 @@ export interface CreateApplicationInput {
 
 /** Persist a new partner lead. Status is left to the schema default (`new`). */
 export async function createApplication(input: CreateApplicationInput) {
-  return prisma.partnerApplication.create({
+  const application = await prisma.partnerApplication.create({
     data: {
       name: input.name,
       phone: input.phone,
@@ -35,4 +36,16 @@ export async function createApplication(input: CreateApplicationInput) {
       reason: input.reason?.trim() || null,
     },
   })
+  const opsEmail = process.env.PARTNER_OPS_EMAIL?.trim()
+  if (opsEmail) {
+    await sendEmailNotification({
+      to: opsEmail,
+      subject: `New Femi9 partner lead: ${application.name}`,
+      text: `${application.name} (${application.phone}) applied from ${application.city}.`,
+      html: `<p><strong>${application.name}</strong> (${application.phone}) applied from ${application.city}.</p>`,
+      template: 'partner-application-ops',
+      dedupeKey: `partner-application:${application.id}:ops`,
+    })
+  }
+  return application
 }

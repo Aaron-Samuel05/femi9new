@@ -227,9 +227,13 @@ export function Affiliate() {
     setStatsLoading(true)
     setStats(null)
     try {
-      const res = await fetch(`/api/affiliate/me?code=${encodeURIComponent(code)}`, {
+      const res = await fetch('/api/affiliate/me', {
         cache: 'no-store',
       })
+      if (res.status === 401) {
+        window.location.href = '/login'
+        return
+      }
       if (res.status === 404) {
         setStatsError(
           'We couldn’t find that code yet. If you just applied, we’ll email it once you’re approved.',

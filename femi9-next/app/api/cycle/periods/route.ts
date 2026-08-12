@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, unauthorized } from '@/lib/api'
+import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
 import { requireUser } from '@/lib/auth'
-import { logPeriod } from '@/lib/services/cycle'
+import { deletePeriod, logPeriod } from '@/lib/services/cycle'
 
 /**
  * POST /api/cycle/periods — log a period start for the signed-in user.
@@ -28,5 +28,15 @@ export async function POST(req: NextRequest) {
 
     await logPeriod(u.sub, parsed.data.startDate, parsed.data.lengthDays)
     return created({ ok: true })
+  })
+}
+
+export async function DELETE(req: NextRequest) {
+  return handle(async () => {
+    const u = await requireUser()
+    if (!u) return unauthorized()
+    const id = req.nextUrl.searchParams.get('id')?.trim()
+    if (!id) return badRequest('Period id is required')
+    return ok({ deleted: await deletePeriod(u.sub, id) })
   })
 }

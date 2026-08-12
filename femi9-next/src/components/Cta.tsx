@@ -1,7 +1,10 @@
+'use client'
+
 import { Whatsapp } from './Icons'
-import { WA_NUMBER } from '../data/products'
+import { usePublicSettings } from '@/lib/use-public-settings'
 
 export function Cta() {
+  const { whatsappNumber } = usePublicSettings()
   return (
     <section className="section cta">
       <div className="wrap cta-in">
@@ -12,7 +15,7 @@ export function Cta() {
             Shop pads
           </a>
           <a
-            href={`https://wa.me/${WA_NUMBER}`}
+            href={`https://wa.me/${whatsappNumber}`}
             target="_blank"
             rel="noopener"
             className="btn btn-on-yellow">

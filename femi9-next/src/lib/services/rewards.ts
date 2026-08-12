@@ -2,6 +2,7 @@ import 'server-only'
 import { randomBytes } from 'node:crypto'
 import type { CouponType } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { sendEmailNotification } from '@/lib/services/notifications'
 
 /**
  * Rewards service — the catalogue of redeemable perks and the redemption itself.
@@ -81,7 +82,7 @@ export interface RedeemResult {
  * InsufficientPointsError when short, RewardOptionNotFoundError for a bad id.
  */
 export async function redeem(userId: string, rewardOptionId: string): Promise<RedeemResult> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const option = await tx.rewardOption.findUnique({ where: { id: rewardOptionId } })
     if (!option || !option.active) throw new RewardOptionNotFoundError()
 
@@ -113,6 +114,19 @@ export async function redeem(userId: string, rewardOptionId: string): Promise<Re
       },
     })
 
-    return { couponCode: coupon.code }
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { email: true } })
+    return { couponCode: coupon.code, email: user?.email ?? null }
   })
+  if (result.email) {
+    await sendEmailNotification({
+      userId,
+      to: result.email,
+      subject: 'Your Femi9 Bloom reward code',
+      text: `Your reward code is ${result.couponCode}. Enter it at checkout.`,
+      html: `<p>Your reward code is <strong>${result.couponCode}</strong>. Enter it at checkout.</p>`,
+      template: 'reward-coupon',
+      dedupeKey: `reward-coupon:${result.couponCode}`,
+    })
+  }
+  return { couponCode: result.couponCode }
 }

@@ -206,6 +206,7 @@ model User {
   tier          String? // "Bloom member"
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  cycleDataConsent Boolean @default(false)
 
   accounts      Account[]
   sessions      Session[]
@@ -222,6 +223,7 @@ model User {
   wallLikes     WallLike[]
   wallReplies   WallReply[]
   events        EventLog[]
+  notifications NotificationLog[]
 
   tharaMembership       TharaMembership?
   tharaReferralReceived TharaReferral?            @relation("TharaReferralReceived")
@@ -620,6 +622,23 @@ model EventLog {
 
   @@index([type])
   @@index([createdAt])
+}
+
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  channel   String
+  recipient String
+  template  String
+  dedupeKey String   @unique
+  status    String
+  error     String?
+  createdAt DateTime @default(now())
+  sentAt    DateTime?
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 // ────────────────────────── Platform settings ─────────────────────────

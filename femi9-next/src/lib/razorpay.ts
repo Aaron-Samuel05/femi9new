@@ -138,6 +138,39 @@ export interface GatewayRefund {
   mock: boolean
 }
 
+export interface GatewayPayment {
+  id: string
+  orderId: string
+  amount: number
+  status: string
+  method?: string
+}
+
+/** Read gateway payments for reconciliation. Amount is returned in paise. */
+export async function listOrderPayments(orderId: string): Promise<GatewayPayment[]> {
+  if (!isConfigured()) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return []
+  }
+  const res = await fetch(`${ORDERS_URL}/${encodeURIComponent(orderId)}/payments`, {
+    headers: { authorization: basicAuthHeader() },
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Razorpay listOrderPayments failed (${res.status}): ${detail}`)
+  }
+  const data = await res.json() as {
+    items?: Array<{ id: string; order_id: string; amount: number; status: string; method?: string }>
+  }
+  return (data.items ?? []).map((p) => ({
+    id: p.id,
+    orderId: p.order_id,
+    amount: p.amount,
+    status: p.status,
+    method: p.method,
+  }))
+}
+
 /**
  * Refund a captured payment (full, or partial when `amountRupees` is given).
  * Configured → real Refunds API; mock → a synthetic refund id, no network call.

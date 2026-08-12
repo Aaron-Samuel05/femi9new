@@ -143,20 +143,26 @@ export async function createPost(input: CreatePostInput): Promise<WallPostDTO> {
  * or not approved (→ 404 upstream). `guestToken` is accepted for signature/
  * forward-compat but isn't durable enough to dedupe against.
  */
-export async function likePost(
-  postId: string,
-  _guestToken: string | null,
-): Promise<number | null> {
-  const post = await prisma.wallPost.findUnique({
-    where: { id: postId },
-    select: { status: true },
+export async function likePost(postId: string, userId: string): Promise<{ likeCount: number; liked: boolean } | null> {
+  return prisma.$transaction(async (tx) => {
+    const post = await tx.wallPost.findUnique({ where: { id: postId }, select: { status: true } })
+    if (!post || post.status !== 'approved') return null
+    const existing = await tx.wallLike.findUnique({ where: { postId_userId: { postId, userId } } })
+    if (existing) {
+      await tx.wallLike.delete({ where: { id: existing.id } })
+      const updated = await tx.wallPost.update({
+        where: { id: postId },
+        data: { likeCount: { decrement: 1 } },
+        select: { likeCount: true },
+      })
+      return { likeCount: Math.max(0, updated.likeCount), liked: false }
+    }
+    await tx.wallLike.create({ data: { postId, userId } })
+    const updated = await tx.wallPost.update({
+      where: { id: postId },
+      data: { likeCount: { increment: 1 } },
+      select: { likeCount: true },
+    })
+    return { likeCount: updated.likeCount, liked: true }
   })
-  if (!post || post.status !== 'approved') return null
-
-  const updated = await prisma.wallPost.update({
-    where: { id: postId },
-    data: { likeCount: { increment: 1 } },
-    select: { likeCount: true },
-  })
-  return updated.likeCount
 }

@@ -5,11 +5,11 @@ admin application. Production runs in AWS `ap-south-1`.
 
 ## Live endpoints
 
-- Storefront: `https://d3b1qrzibm3d0g.cloudfront.net`
-- Health: `https://d3b1qrzibm3d0g.cloudfront.net/api/health`
-- Admin: `https://d3b1qrzibm3d0g.cloudfront.net/admin`
+- Storefront: `https://d24too9me3angh.cloudfront.net`
+- Health: `https://d24too9me3angh.cloudfront.net/api/health`
+- Admin: `https://d24too9me3angh.cloudfront.net/admin`
 - Razorpay webhook:
-  `https://d3b1qrzibm3d0g.cloudfront.net/api/webhooks/razorpay`
+  `https://d24too9me3angh.cloudfront.net/api/webhooks/razorpay`
 
 Replace the CloudFront hostname with the final custom domain everywhere once
 DNS and a CloudFront ACM certificate are configured.
@@ -169,7 +169,7 @@ aws ecr get-login-password --region ap-south-1 |
   docker login --username AWS --password-stdin "$ECR_REPO"
 
 docker build \
-  --build-arg NEXT_PUBLIC_SITE_URL='https://d3b1qrzibm3d0g.cloudfront.net' \
+  --build-arg NEXT_PUBLIC_SITE_URL='https://d24too9me3angh.cloudfront.net' \
   --build-arg NEXT_PUBLIC_RAZORPAY_KEY_ID='<matching-public-key-id>' \
   --build-arg NEXT_PUBLIC_SENTRY_DSN='<public-dsn-or-empty>' \
   -t "$ECR_REPO:$TAG" .
@@ -209,7 +209,7 @@ After ECS is stable:
 
 ```bash
 curl --fail --show-error \
-  https://d3b1qrzibm3d0g.cloudfront.net/api/health
+  https://d24too9me3angh.cloudfront.net/api/health
 ```
 
 Then verify:

@@ -253,6 +253,12 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
           data: { stock: { increment: it.qty } },
         })
       }
+      if (order.couponId) {
+        await tx.coupon.updateMany({
+          where: { id: order.couponId, usedCount: { gt: 0 } },
+          data: { usedCount: { decrement: 1 } },
+        })
+      }
     } else if (order.status !== 'cancelled') {
       // Not holding a reservation (e.g. delivered/refunded) and not already
       // cancelled — honor the requested status change without touching stock.
@@ -328,6 +334,12 @@ export async function refundOrder(id: string): Promise<OrderDetail | null> {
     // captured row without needing to thread its id through.
     await tx.order.update({ where: { id }, data: { status: 'refunded' } })
     await tx.payment.updateMany({ where: { orderId: id }, data: { status: 'refunded' } })
+    if (order.couponId) {
+      await tx.coupon.updateMany({
+        where: { id: order.couponId, usedCount: { gt: 0 } },
+        data: { usedCount: { decrement: 1 } },
+      })
+    }
 
     // Give the reserved stock back.
     for (const it of order.items) {

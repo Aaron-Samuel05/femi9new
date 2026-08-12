@@ -36,21 +36,39 @@ export class ProductNotFoundError extends Error {
  * override the schema default (`approved`) — shopper submissions must be moderated
  * before they appear on the product page.
  */
-export async function submitReview(productSlug: string, input: ReviewInput): Promise<void> {
+export async function submitReview(productSlug: string, input: ReviewInput, userId?: string): Promise<void> {
   const product = await prisma.product.findUnique({
     where: { slug: productSlug },
     select: { id: true },
   })
   if (!product) throw new ProductNotFoundError(productSlug)
 
-  await prisma.review.create({
-    data: {
-      productId: product.id,
-      name: input.name,
-      place: input.place,
-      rating: input.rating,
-      body: input.body,
-      status: 'pending',
-    },
+  await prisma.$transaction(async (tx) => {
+    const priorReview = userId
+      ? await tx.review.findFirst({ where: { userId, productId: product.id }, select: { id: true } })
+      : null
+    const purchased = userId
+      ? await tx.order.findFirst({
+          where: { userId, status: { in: ['paid', 'processing', 'shipped', 'delivered'] }, items: { some: { variant: { productId: product.id } } } },
+          select: { id: true },
+        })
+      : null
+    await tx.review.create({
+      data: {
+        productId: product.id,
+        userId,
+        name: input.name,
+        place: input.place,
+        rating: input.rating,
+        body: input.body,
+        status: 'pending',
+      },
+    })
+    if (userId && purchased && !priorReview) {
+      const balance = await tx.pointsLedger.aggregate({ where: { userId }, _sum: { delta: true } })
+      await tx.pointsLedger.create({
+        data: { userId, delta: 50, reason: `Product review: ${product.id}`, balanceAfter: (balance._sum.delta ?? 0) + 50 },
+      })
+    }
   })
 }

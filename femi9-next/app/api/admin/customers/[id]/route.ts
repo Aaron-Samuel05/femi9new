@@ -2,6 +2,9 @@ import type { NextRequest } from 'next/server'
 import { handle, notFound, ok, unauthorized } from '@/lib/api'
 import { requireAdmin } from '@/lib/admin-auth'
 import { getCustomer } from '@/lib/services/admin/customers'
+import { adjustCustomerPoints, changeCustomerRole } from '@/lib/services/admin/customers'
+import { badRequest } from '@/lib/api'
+import { z } from 'zod'
 
 /** GET /api/admin/customers/[id] — full customer profile. Next 14.2: params is sync. */
 export async function GET(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
@@ -14,5 +17,25 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
     if (!customer) return notFound('Customer not found')
 
     return ok(customer)
+  })
+}
+
+const MutationSchema = z.discriminatedUnion('action', [
+  z.object({ action: z.literal('adjust-points'), delta: z.number().int().min(-100000).max(100000).refine((n) => n !== 0), reason: z.string().trim().min(3).max(160) }),
+  z.object({ action: z.literal('change-role'), role: z.enum(['customer', 'affiliate', 'partner', 'staff', 'admin']) }),
+])
+
+export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
+  return handle(async () => {
+    const admin = await requireAdmin()
+    if (!admin) return unauthorized()
+    const parsed = MutationSchema.safeParse(await req.json().catch(() => null))
+    if (!parsed.success) return badRequest('Invalid customer update', parsed.error.flatten())
+    const id = (await props.params).id
+    const changed = parsed.data.action === 'adjust-points'
+      ? await adjustCustomerPoints(id, parsed.data.delta, parsed.data.reason)
+      : await changeCustomerRole(id, parsed.data.role)
+    if (!changed) return notFound('Customer not found')
+    return ok({ ok: true })
   })
 }

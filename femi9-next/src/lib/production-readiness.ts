@@ -31,6 +31,13 @@ export function productionReadinessIssues(): string[] {
     'MSG91_TEMPLATE_ID',
     'RESEND_API_KEY',
     'EMAIL_FROM',
+    'RESEND_WEBHOOK_SECRET',
+    'GOOGLE_CLIENT_ID',
+    'GOOGLE_CLIENT_SECRET',
+    'GOOGLE_REDIRECT_URI',
+    'ADMIN_EMAIL',
+    'ADMIN_PASSWORD',
+    'CRON_SECRET',
   ]
   for (const key of required) if (!configuredEnv(key)) issues.push(key)
   if (
@@ -46,6 +53,16 @@ export function productionReadinessIssues(): string[] {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim()
   if (!siteUrl || !siteUrl.startsWith('https://')) issues.push('NEXT_PUBLIC_SITE_URL(https)')
+  const googleRedirect = process.env.GOOGLE_REDIRECT_URI?.trim()
+  if (!googleRedirect || !googleRedirect.startsWith('https://') || !googleRedirect.endsWith('/api/auth/google/callback')) {
+    issues.push('GOOGLE_REDIRECT_URI(exact-https-callback)')
+  } else if (siteUrl) {
+    try {
+      if (new URL(googleRedirect).origin !== new URL(siteUrl).origin) issues.push('GOOGLE_REDIRECT_URI(site-origin-mismatch)')
+    } catch {
+      issues.push('GOOGLE_REDIRECT_URI(invalid)')
+    }
+  }
   if ((process.env.AUTH_SECRET?.length ?? 0) < 32) issues.push('AUTH_SECRET(min-32-chars)')
   if (!validBase64Key('CYCLE_DATA_ENCRYPTION_KEY', 32)) {
     issues.push('CYCLE_DATA_ENCRYPTION_KEY(base64-32-bytes)')

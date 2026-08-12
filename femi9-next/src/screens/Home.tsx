@@ -9,7 +9,6 @@ import {
 } from 'react'
 import { Link } from '@/lib/router-compat'
 import { CycleTracker } from '@/components/CycleTracker'
-import { PRODUCTS } from '@/data/products'
 import type { ProductWithVariants } from '@/lib/services/products'
 import type { BlogPostDTO } from '@/lib/services/blog'
 import { Footer } from '@/components/Footer'
@@ -258,8 +257,7 @@ function Why() {
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
   // Keep the landing page useful while an empty production catalog is being
   // seeded, but never repeat one product four times.
-  const fallbackProducts: ProductWithVariants[] = PRODUCTS.slice(0, 4).map((product) => ({ ...product, variants: [] }))
-  const cards = (products.length ? products : fallbackProducts).slice(0, 4)
+  const cards = products.slice(0, 4)
 
   return (
     <Reveal className="fl-products" id="products">

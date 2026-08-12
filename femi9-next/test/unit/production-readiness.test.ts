@@ -14,6 +14,13 @@ const KEYS = [
   'MSG91_TEMPLATE_ID',
   'RESEND_API_KEY',
   'EMAIL_FROM',
+  'RESEND_WEBHOOK_SECRET',
+  'GOOGLE_CLIENT_ID',
+  'GOOGLE_CLIENT_SECRET',
+  'GOOGLE_REDIRECT_URI',
+  'ADMIN_EMAIL',
+  'ADMIN_PASSWORD',
+  'CRON_SECRET',
   'NEXT_PUBLIC_SITE_URL',
   'UPLOADS_BUCKET',
   'RATE_LIMIT_TABLE',
@@ -47,6 +54,13 @@ function configureProduction() {
   process.env.MSG91_TEMPLATE_ID = 'template-id'
   process.env.RESEND_API_KEY = 're_live_1'
   process.env.EMAIL_FROM = 'Femi9 <login@example.test>'
+  process.env.RESEND_WEBHOOK_SECRET = 'whsec_test'
+  process.env.GOOGLE_CLIENT_ID = 'client.apps.googleusercontent.com'
+  process.env.GOOGLE_CLIENT_SECRET = 'google-secret'
+  process.env.GOOGLE_REDIRECT_URI = 'https://shop.example.test/api/auth/google/callback'
+  process.env.ADMIN_EMAIL = 'admin@example.test'
+  process.env.ADMIN_PASSWORD = 'a-strong-admin-password'
+  process.env.CRON_SECRET = 'cron-secret'
   process.env.NEXT_PUBLIC_SITE_URL = 'https://shop.example.test'
   process.env.UPLOADS_BUCKET = 'uploads'
   process.env.RATE_LIMIT_TABLE = 'rate-limit'

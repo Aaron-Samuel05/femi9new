@@ -4,7 +4,8 @@ import { getOrderByNo } from '@/lib/services/checkout'
 import { verifyOrderToken } from '@/lib/order-token'
 import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { WA_NUMBER, rupees } from '@/data/products'
+import { rupees } from '@/data/products'
+import { getSettings } from '@/lib/services/settings'
 import { RetryPaymentButton } from './RetryPaymentButton'
 
 // Confirmation reflects live order state, so render per-request.
@@ -30,7 +31,7 @@ export default async function OrderConfirmationPage(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const order = await getOrderByNo(params.orderNo)
+  const [order, settings] = await Promise.all([getOrderByNo(params.orderNo), getSettings()])
   if (!order) notFound()
 
   // The page exposes customer PII (name/address/phone) and orderNo is guessable,
@@ -59,7 +60,7 @@ export default async function OrderConfirmationPage(
     `Hi Femi9! Please confirm my order ${order.orderNo}.\n\n` +
     lines.join('\n') +
     `\n\nTotal: ${rupees(order.total)}`
-  const waHref = `https://wa.me/${WA_NUMBER}?text=${encodeURIComponent(waMessage)}`
+  const waHref = `https://wa.me/${settings.whatsappNumber}?text=${encodeURIComponent(waMessage)}`
 
   return (
     <main className="wrap section" style={{ maxWidth: 720 }}>

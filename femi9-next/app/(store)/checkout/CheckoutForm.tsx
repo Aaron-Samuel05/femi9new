@@ -91,7 +91,7 @@ function loadRazorpayScript(): Promise<boolean> {
   })
 }
 
-type Field = 'name' | 'phone' | 'email' | 'line' | 'city' | 'state' | 'pincode'
+type Field = 'name' | 'phone' | 'email' | 'line' | 'city' | 'state' | 'pincode' | 'couponCode'
 
 const EMPTY: Record<Field, string> = {
   name: '',
@@ -101,6 +101,7 @@ const EMPTY: Record<Field, string> = {
   city: '',
   state: '',
   pincode: '',
+  couponCode: '',
 }
 
 const inputStyle: CSSProperties = {
@@ -365,6 +366,17 @@ export function CheckoutForm() {
             value={form.pincode}
             onChange={(e) => onDigits('pincode', e.target.value, 6)}
             aria-invalid={!!errors.pincode}
+          />
+        </FormField>
+
+        <FormField label="Coupon or reward code (optional)" full>
+          <input
+            style={inputStyle}
+            type="text"
+            autoComplete="off"
+            placeholder="e.g. BLOOM-XXXXXXXXXX"
+            value={form.couponCode}
+            onChange={(e) => set('couponCode', e.target.value.toUpperCase())}
           />
         </FormField>
       </div>
