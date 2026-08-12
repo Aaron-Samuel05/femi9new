@@ -2,6 +2,7 @@ import 'server-only'
 import { prisma } from '@/lib/db'
 import type { OrderStatus, Prisma } from '@prisma/client'
 import * as razorpay from '@/lib/razorpay'
+import { reverseTharaCreditForRefund } from '@/lib/services/thara'
 
 /**
  * Admin orders service — the single seam between the DB and the Ops console's
@@ -358,6 +359,11 @@ export async function refundOrder(id: string): Promise<OrderDetail | null> {
         },
       })
     }
+
+    // Thara: reverse any commission that was accrued for this order, AND give
+    // back any Thara credit that was spent on this order (so a refund is whole
+    // for the buyer). Both live on the TharaCreditLedger; the helper reads it.
+    await reverseTharaCreditForRefund(tx, id)
 
     return { kind: 'ok' as const }
   })

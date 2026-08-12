@@ -217,6 +217,149 @@ export async function getMembershipById(id: string): Promise<TharaMembership | n
   return prisma.tharaMembership.findUnique({ where: { id } })
 }
 
+// ─────────────────────── Sub-project C: wallet credit ──────────────────────
+
+export const TharaCreditReason = {
+  REFERRAL_COMMISSION: 'referral-commission',
+  CHECKOUT_SPEND: 'checkout-spend',
+  REFUND_REVERSAL: 'refund-reversal',
+} as const
+
+export const THARA_COMMISSION_PCT = 10 // 10% of downline paid subtotal
+
+/**
+ * Called inside markOrderPaid. When the paid order was placed by a referred
+ * user with a permanent (locked) referral to an active Thara member, credit
+ * 10% of the subtotal to the referrer's Femi9 store-credit ledger.
+ */
+export async function accrueTharaCommission(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  if (!isTharaEnabled()) return
+
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, userId: true, subtotal: true },
+  })
+  if (!order || !order.userId) return
+
+  const referral = await tx.tharaReferral.findUnique({
+    where: { referredUserId: order.userId },
+    select: {
+      lockedAt: true,
+      referrer: { select: { userId: true, status: true } },
+    },
+  })
+  if (!referral || !referral.lockedAt) return
+  if (referral.referrer.status !== 'active') return
+
+  const delta = Math.floor((order.subtotal * THARA_COMMISSION_PCT) / 100)
+  if (delta <= 0) return
+
+  const prior = await tx.tharaCreditLedger.aggregate({
+    where: { userId: referral.referrer.userId },
+    _sum: { delta: true },
+  })
+  const balanceAfter = (prior._sum.delta ?? 0) + delta
+  await tx.tharaCreditLedger.create({
+    data: {
+      userId: referral.referrer.userId,
+      delta,
+      reason: TharaCreditReason.REFERRAL_COMMISSION,
+      sourceOrderId: order.id,
+      balanceAfter,
+    },
+  })
+}
+
+/** Current spendable balance for a user. Clamped to ≥ 0 (a negative running
+ *  balance from a refund clawback cannot be spent). */
+export async function getTharaCreditBalance(
+  tx: Prisma.TransactionClient | typeof prisma,
+  userId: string,
+): Promise<number> {
+  const agg = await tx.tharaCreditLedger.aggregate({
+    where: { userId },
+    _sum: { delta: true },
+  })
+  return Math.max(0, agg._sum.delta ?? 0)
+}
+
+/**
+ * Debit up to `wantPaise` from the buyer's credit balance and return the
+ * actual amount applied. Called from placeOrder INSIDE the same transaction
+ * so a concurrent checkout can't double-spend the same balance.
+ */
+export async function applyTharaCredit(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  orderId: string,
+  wantPaise: number,
+): Promise<number> {
+  if (!isTharaEnabled()) return 0
+  if (wantPaise <= 0) return 0
+
+  const balance = await getTharaCreditBalance(tx, userId)
+  const apply = Math.min(balance, wantPaise)
+  if (apply <= 0) return 0
+
+  const prior = await tx.tharaCreditLedger.aggregate({
+    where: { userId },
+    _sum: { delta: true },
+  })
+  const balanceAfter = (prior._sum.delta ?? 0) - apply
+  await tx.tharaCreditLedger.create({
+    data: {
+      userId,
+      delta: -apply,
+      reason: TharaCreditReason.CHECKOUT_SPEND,
+      sourceOrderId: orderId,
+      balanceAfter,
+    },
+  })
+  return apply
+}
+
+/**
+ * Called inside refundOrder's transaction. For every ledger row that
+ * references this order (an earned commission on the referrer, or a spent
+ * credit on the buyer), write a mirror-signed reversal row.
+ *
+ * Because refundOrder gates on status === 'paid', it runs at most once per
+ * order, so we can safely reverse every source row without re-checking for
+ * prior reversals.
+ */
+export async function reverseTharaCreditForRefund(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  const rows = await tx.tharaCreditLedger.findMany({
+    where: {
+      sourceOrderId: orderId,
+      reason: { in: [TharaCreditReason.REFERRAL_COMMISSION, TharaCreditReason.CHECKOUT_SPEND] },
+    },
+    orderBy: { createdAt: 'asc' },
+  })
+  for (const row of rows) {
+    const reversedDelta = -row.delta
+    const prior = await tx.tharaCreditLedger.aggregate({
+      where: { userId: row.userId },
+      _sum: { delta: true },
+    })
+    const balanceAfter = (prior._sum.delta ?? 0) + reversedDelta
+    await tx.tharaCreditLedger.create({
+      data: {
+        userId: row.userId,
+        delta: reversedDelta,
+        reason: TharaCreditReason.REFUND_REVERSAL,
+        sourceOrderId: orderId,
+        balanceAfter,
+      },
+    })
+  }
+}
+
 // ─────────────────────── Sub-project B: personal discount ──────────────────
 
 /** Slab thresholds in paise. Matches PROGRAM.md §5 and the PRD's §6 slab table. */

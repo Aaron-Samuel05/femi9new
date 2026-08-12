@@ -224,7 +224,8 @@ model User {
   events        EventLog[]
 
   tharaMembership       TharaMembership?
-  tharaReferralReceived TharaReferral?   @relation("TharaReferralReceived")
+  tharaReferralReceived TharaReferral?      @relation("TharaReferralReceived")
+  tharaCreditLedger     TharaCreditLedger[] @relation("TharaCreditLedgerUser")
 }
 
 model Account {
@@ -321,7 +322,8 @@ model Order {
   coupon             Coupon?          @relation(fields: [couponId], references: [id])
   affiliateId        String?
   affiliate          Affiliate?       @relation(fields: [affiliateId], references: [id])
-  tharaQualifyingFor TharaMembership? @relation("TharaQualifyingOrder")
+  tharaQualifyingFor TharaMembership?    @relation("TharaQualifyingOrder")
+  tharaCreditLedger  TharaCreditLedger[] @relation("TharaCreditLedgerOrder")
   channel            String           @default("web") // web | whatsapp
   placedAt           DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -703,6 +705,23 @@ model TharaMembership {
 
   @@index([status])
   @@index([referralCode])
+}
+
+/// Append-only ledger of Femi9 store credit (Benefit 2: 10% commission).
+/// Every accrual, spend and refund reversal is a row. Balance = SUM(delta).
+model TharaCreditLedger {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation("TharaCreditLedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+  delta         Int // paise; +earn / -spend / +/-reversal
+  reason        String // 'referral-commission' | 'checkout-spend' | 'refund-reversal'
+  sourceOrderId String?
+  sourceOrder   Order?   @relation("TharaCreditLedgerOrder", fields: [sourceOrderId], references: [id], onDelete: SetNull)
+  balanceAfter  Int // snapshot for auditability
+  createdAt     DateTime @default(now())
+
+  @@index([userId])
+  @@index([sourceOrderId])
 }
 
 model TharaReferral {

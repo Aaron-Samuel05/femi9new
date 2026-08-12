@@ -4,7 +4,12 @@ import { prisma } from '@/lib/db'
 import { getSettings } from '@/lib/services/settings'
 import { REF_COOKIE, attributeOrder } from '@/lib/services/affiliate'
 import * as razorpay from '@/lib/razorpay'
-import { activateAndLockIfEligible, computeTharaDiscount } from '@/lib/services/thara'
+import {
+  activateAndLockIfEligible,
+  applyTharaCredit,
+  accrueTharaCommission,
+  computeTharaDiscount,
+} from '@/lib/services/thara'
 import type { OrderStatus } from '@prisma/client'
 
 /**
@@ -241,8 +246,8 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
     // an active member and the cart clears ₹3,000. Zero when the flag is off,
     // the user isn't a member, or the member is not yet active.
     const tharaDiscount = await computeTharaDiscount(tx, user.id, subtotal)
-    const discount = tharaDiscount.discountPaise
-    const total = Math.max(0, subtotal - discount + shipping)
+    let discount = tharaDiscount.discountPaise
+    let total = Math.max(0, subtotal - discount + shipping)
 
     // First address for a user is their primary; later ones are added alongside.
     const addressCount = await tx.address.count({ where: { userId: user.id } })
@@ -295,6 +300,19 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
       },
       select: { id: true, orderNo: true },
     })
+
+    // Thara wallet — apply available store credit to the buyer's own bill, up
+    // to whatever total is left after the personal-discount slab. Ledger debit
+    // and the order's discount/total are updated in the same tx.
+    const creditApplied = await applyTharaCredit(tx, user.id, order.id, total)
+    if (creditApplied > 0) {
+      discount = discount + creditApplied
+      total = Math.max(0, total - creditApplied)
+      await tx.order.update({
+        where: { id: order.id },
+        data: { discount, total },
+      })
+    }
 
     // Reserve stock atomically. Each line is a CONDITIONAL decrement that only
     // succeeds while enough stock remains (WHERE stock >= qty), so two concurrent
@@ -521,6 +539,10 @@ export async function markOrderPaid({
 
     // Thara: activate membership and lock incoming referral for qualifying orders.
     await activateAndLockIfEligible(tx, order.id)
+
+    // Thara: 10% commission to the referrer's Femi9 credit ledger, if this
+    // paid order is a locked downline purchase of an active member.
+    await accrueTharaCommission(tx, order.id)
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })
