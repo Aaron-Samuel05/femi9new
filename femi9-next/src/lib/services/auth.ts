@@ -123,7 +123,32 @@ export async function requestOtp(phone: string): Promise<RequestOtpResult> {
  * shopper who checked out as a guest with this number owns those orders.
  * Throws InvalidOtpError on a wrong / expired / missing code.
  */
-export async function verifyOtp(phone: string, code: string): Promise<User> {
+export interface TharaAttributionCtx {
+  cookieToken: string | null
+  ip: string | null
+  ua: string | null
+}
+
+/**
+ * Optionally attach a Thara referral to a newly-signed-in user. Fire-and-forget
+ * by design — attribution failure must never block sign-in. Dynamic import
+ * breaks any potential circular boot-time dependency.
+ */
+function maybeAttribute(user: User, ctx: TharaAttributionCtx | undefined) {
+  if (!ctx) return
+  void import('./thara')
+    .then(({ attributeReferralIfPresent }) => attributeReferralIfPresent(user, ctx))
+    .catch((err) => {
+      // eslint-disable-next-line no-console
+      console.error('attribute referral failed', err)
+    })
+}
+
+export async function verifyOtp(
+  phone: string,
+  code: string,
+  attributionCtx?: TharaAttributionCtx,
+): Promise<User> {
   const normalized = normalizePhone(phone)
   if (normalized.length !== 10) throw new InvalidPhoneError()
 
@@ -159,6 +184,7 @@ export async function verifyOtp(phone: string, code: string): Promise<User> {
 
   // Consume every challenge for this identifier so a code can't be replayed.
   await prisma.verificationToken.deleteMany({ where: { identifier } })
+  maybeAttribute(user, attributionCtx)
   return user
 }
 
@@ -200,7 +226,11 @@ export async function requestMagicLink(email: string): Promise<RequestMagicLinkR
  * (stamping emailVerified), consume the challenge, and return the User for the
  * route to mint a session. Throws InvalidMagicLinkError on any bad/expired token.
  */
-export async function verifyMagicLink(email: string, token: string): Promise<User> {
+export async function verifyMagicLink(
+  email: string,
+  token: string,
+  attributionCtx?: TharaAttributionCtx,
+): Promise<User> {
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized) || !token) throw new InvalidMagicLinkError()
 
@@ -219,6 +249,7 @@ export async function verifyMagicLink(email: string, token: string): Promise<Use
   })
 
   await prisma.verificationToken.deleteMany({ where: { identifier } })
+  maybeAttribute(user, attributionCtx)
   return user
 }
 
@@ -231,7 +262,10 @@ export async function verifyMagicLink(email: string, token: string): Promise<Use
  * name, and backfill the avatar only when we don't already have one.
  * Throws UnverifiedGoogleEmailError if Google says the email isn't verified.
  */
-export async function signInWithGoogle(profile: GoogleProfile): Promise<User> {
+export async function signInWithGoogle(
+  profile: GoogleProfile,
+  attributionCtx?: TharaAttributionCtx,
+): Promise<User> {
   const normalized = normalizeEmail(profile.email)
   if (!isValidEmail(normalized) || !profile.emailVerified) throw new UnverifiedGoogleEmailError()
 
@@ -255,5 +289,6 @@ export async function signInWithGoogle(profile: GoogleProfile): Promise<User> {
       ...(image ? { image } : {}),
     },
   })
+  maybeAttribute(user, attributionCtx)
   return user
 }
