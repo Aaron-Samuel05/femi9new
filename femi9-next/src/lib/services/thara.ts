@@ -139,3 +139,35 @@ export async function attributeReferralIfPresent(
     throw e
   }
 }
+
+export const THARA_QUALIFYING_MIN_PAISE = 300_000 // ₹3,000
+
+/**
+ * Called INSIDE the markOrderPaid transaction, so any failure rolls the whole
+ * order-paid commit back. Two independent side-effects:
+ *  1) If the buyer has a purchase_pending membership and this order is >= ₹3,000,
+ *     promote to active and stamp the qualifying order.
+ *  2) If the buyer has an incoming, unlocked referral and this order is >= ₹3,000,
+ *     set lockedAt = now — permanent from that instant.
+ */
+export async function activateAndLockIfEligible(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, userId: true, subtotal: true },
+  })
+  if (!order || !order.userId) return
+  if (order.subtotal < THARA_QUALIFYING_MIN_PAISE) return
+
+  await tx.tharaMembership.updateMany({
+    where: { userId: order.userId, status: 'purchase_pending' },
+    data: { status: 'active', activatedAt: new Date(), qualifyingOrderId: order.id },
+  })
+
+  await tx.tharaReferral.updateMany({
+    where: { referredUserId: order.userId, lockedAt: null },
+    data: { lockedAt: new Date() },
+  })
+}
