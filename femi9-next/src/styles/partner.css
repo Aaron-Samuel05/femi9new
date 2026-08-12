@@ -4,6 +4,27 @@
    Everything here is scoped under .partner / .pt- to avoid collisions.
    ============================================================ */
 
+.partner,
+.partner h1,
+.partner h2,
+.partner h3,
+.partner h4,
+.partner .display,
+.partner .eyebrow,
+.pt-hero-title,
+.pt-hero-sub,
+.pt-stat-n,
+.pt-stat-l,
+.pt-head h2,
+.pt-head p,
+.pt-step-n,
+.pt-step-t,
+.pt-step-d,
+.pt-card-t,
+.pt-feature-title {
+  font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important;
+}
+
 .partner { position: relative; }
 
 /* ---------- 1 · HERO ---------- */
