@@ -171,3 +171,76 @@ export async function activateAndLockIfEligible(
     data: { lockedAt: new Date() },
   })
 }
+
+export class TharaNotFoundError extends Error {
+  constructor() {
+    super('Thara membership not found.')
+    this.name = 'TharaNotFoundError'
+  }
+}
+
+export async function suspendMembership(
+  id: string,
+  reason: string,
+): Promise<TharaMembership> {
+  const existing = await prisma.tharaMembership.findUnique({ where: { id } })
+  if (!existing) throw new TharaNotFoundError()
+  if (existing.status === 'suspended') return existing
+  return prisma.tharaMembership.update({
+    where: { id },
+    data: {
+      status: 'suspended',
+      suspendedAt: new Date(),
+      suspendedReason: reason,
+      statusBeforeSuspend: existing.status,
+    },
+  })
+}
+
+export async function unsuspendMembership(id: string): Promise<TharaMembership> {
+  const existing = await prisma.tharaMembership.findUnique({ where: { id } })
+  if (!existing) throw new TharaNotFoundError()
+  if (existing.status !== 'suspended') return existing
+  return prisma.tharaMembership.update({
+    where: { id },
+    data: {
+      status: existing.statusBeforeSuspend ?? 'purchase_pending',
+      suspendedAt: null,
+      suspendedReason: null,
+      statusBeforeSuspend: null,
+    },
+  })
+}
+
+export async function getMembershipById(id: string): Promise<TharaMembership | null> {
+  return prisma.tharaMembership.findUnique({ where: { id } })
+}
+
+export async function listMemberships(filter: {
+  status?: TharaStatus
+  q?: string
+  take: number
+  skip: number
+}): Promise<{ rows: TharaMembership[]; total: number }> {
+  const where: Prisma.TharaMembershipWhereInput = {
+    ...(filter.status ? { status: filter.status } : {}),
+    ...(filter.q
+      ? {
+          OR: [
+            { referralCode: { contains: filter.q.toUpperCase() } },
+            { user: { email: { contains: filter.q.toLowerCase() } } },
+          ],
+        }
+      : {}),
+  }
+  const [rows, total] = await Promise.all([
+    prisma.tharaMembership.findMany({
+      where,
+      take: filter.take,
+      skip: filter.skip,
+      orderBy: { createdAt: 'desc' },
+    }),
+    prisma.tharaMembership.count({ where }),
+  ])
+  return { rows, total }
+}
