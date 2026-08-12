@@ -748,7 +748,7 @@
   }
 
   .card-media {
-    aspect-ratio: 1.15 / 1;
+    aspect-ratio: 3 / 4;
   }
 
   .fl-products .cta-group {
@@ -1081,6 +1081,11 @@
   transition: opacity 800ms ease-in-out;
 }
 
+/* Keep the second carousel frame visually white, as in the Figma variant. */
+.figma-landing .fl-hero__scene--first .fl-hero__shape {
+  display: none;
+}
+
 .figma-landing .fl-hero__inner {
   width: 100%;
   max-width: 1200px;
@@ -1379,5 +1384,250 @@
   .figma-landing .fl-hero__visual,
   .figma-landing .fl-hero__pager button {
     transition: none;
+  }
+}
+
+/* Figma Hero / Variant 1: purple lifestyle frame with the seated woman. */
+.figma-landing .fl-hero__background--second,
+.figma-landing .fl-hero__scene--second {
+  background:
+    radial-gradient(58% 70% at 76% 34%, rgba(194, 184, 231, .38) 0%, rgba(126, 111, 184, .08) 64%, transparent 78%),
+    linear-gradient(180deg, #a79bd3 0%, #6657aa 48%, #2e2568 100%);
+}
+
+.figma-landing .fl-hero__scene--second {
+  color: #fff;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__inner {
+  max-width: 1520px;
+  grid-template-columns: minmax(0, 56fr) minmax(430px, 44fr);
+  gap: 0;
+  padding: 84px clamp(58px, 6.2vw, 96px) 70px;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__copy--second {
+  position: relative;
+  z-index: 5;
+  max-width: 700px;
+  color: #fff;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__card-panel {
+  gap: 0;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__flower-icon {
+  width: 72px;
+  height: 72px;
+  margin: 0 0 24px;
+}
+
+.figma-landing .fl-hero__scene--second h2 {
+  max-width: 700px;
+  color: #fff !important;
+  font-size: clamp(50px, 4.15vw, 64px);
+  line-height: 1.08;
+  font-weight: 700;
+  letter-spacing: -.015em;
+}
+
+.figma-landing .fl-hero__scene--second h2 span {
+  color: #21184d;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__card-panel > p {
+  max-width: 650px;
+  margin: 26px 0 0;
+  color: rgba(255, 255, 255, .7);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__proof--light {
+  margin: 22px 0 0;
+  color: #fff;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__proof--light .fl-hero__proof-divider {
+  color: rgba(255, 255, 255, .42);
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__actions {
+  margin-top: 26px;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__visual--second {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  min-height: 650px;
+  display: block;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__visual--second::after {
+  display: none;
+}
+
+.figma-landing .fl-hero__scene--second .fl-hero__lifestyle {
+  position: absolute;
+  z-index: 3;
+  right: -6px;
+  bottom: -42px;
+  width: min(470px, 38vw);
+  max-width: none;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 24px 32px rgba(25, 17, 63, .2));
+}
+
+.figma-landing .fl-hero__girl-pad {
+  position: absolute;
+  z-index: 2;
+  right: -50px;
+  bottom: 62px;
+  width: min(330px, 25vw);
+  height: auto;
+  transform: rotate(7deg);
+  filter: drop-shadow(0 22px 34px rgba(31, 22, 70, .24));
+}
+
+.figma-landing .fl-hero__girl-clouds {
+  position: absolute;
+  z-index: 3;
+  right: -5%;
+  bottom: -25%;
+  width: 74%;
+  height: 116%;
+  object-fit: cover;
+  object-position: center;
+  opacity: .92;
+  pointer-events: none;
+}
+
+.figma-landing .fl-hero__girl-flower-outline {
+  position: absolute;
+  z-index: 3;
+  top: 24%;
+  left: 2.5%;
+  width: 132px;
+  height: 132px;
+  opacity: .2;
+  pointer-events: none;
+}
+
+.figma-landing .fl-hero.is-second .fl-hero__pager button {
+  background: rgba(255, 255, 255, .28);
+}
+
+.figma-landing .fl-hero.is-second .fl-hero__pager button.is-active {
+  background: rgba(255, 255, 255, .62);
+}
+
+@media (max-width: 1080px) {
+  .figma-landing .fl-hero__scene--second .fl-hero__inner {
+    grid-template-columns: minmax(0, 57fr) minmax(330px, 43fr);
+    padding-inline: 48px;
+  }
+
+  .figma-landing .fl-hero__scene--second h2 {
+    font-size: 48px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__visual--second {
+    min-height: 560px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__lifestyle {
+    right: -20px;
+    width: min(420px, 43vw);
+  }
+}
+
+@media (max-width: 760px) {
+  .figma-landing .fl-hero__scene--second .fl-hero__inner {
+    grid-template-columns: 1fr;
+    grid-template-rows: 230px auto;
+    gap: 12px;
+    padding: 64px 20px 54px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__visual--second {
+    order: -1;
+    min-height: 230px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__lifestyle {
+    right: 4%;
+    bottom: 0;
+    width: min(200px, 54vw);
+  }
+
+  .figma-landing .fl-hero__girl-pad {
+    right: 1%;
+    bottom: 44px;
+    width: min(120px, 31vw);
+  }
+
+  .figma-landing .fl-hero__girl-clouds {
+    right: -20%;
+    bottom: 22%;
+    width: 115%;
+    height: 72%;
+  }
+
+  .figma-landing .fl-hero__girl-flower-outline {
+    top: 42%;
+    left: -24px;
+    width: 100px;
+    height: 100px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__flower-icon {
+    width: 44px;
+    height: 44px;
+    margin-bottom: 12px;
+  }
+
+  .figma-landing .fl-hero__scene--second h2 {
+    max-width: 15ch;
+    font-size: clamp(32px, 9.5vw, 38px);
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__card-panel > p {
+    max-width: 350px;
+    margin-top: 16px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__proof--light {
+    margin-top: 14px;
+    gap: 12px;
+    font-size: 11px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__proof-divider {
+    display: none;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__proof span img {
+    width: 18px;
+    height: 18px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__actions {
+    margin-top: 14px;
+  }
+
+  .figma-landing .fl-hero__scene--second .fl-hero__actions .fl-btn--gold {
+    width: auto;
+    min-width: 142px;
+  }
+
+  .figma-landing .fl-hero.is-second .fl-hero__pager {
+    bottom: 10px;
   }
 }

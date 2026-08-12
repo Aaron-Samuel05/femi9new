@@ -518,7 +518,7 @@ export function Affiliate() {
               <div className="af-dash">
                 <div className="af-dash-hero">
                   <span className="af-dash-badge">Application received</span>
-                  <h3 className="display">Thanks, {name.split(' ')[0] || 'creator'} 🎉</h3>
+                  <h3 className="display">Thanks, {name.split(' ')[0] || 'creator'}.</h3>
                   <p>
                     We&rsquo;ve got your application. Our team reviews new
                     creators within a day or two - we&rsquo;ll email your personal

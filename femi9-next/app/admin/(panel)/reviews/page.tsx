@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { ModerationStatus } from '@prisma/client'
+import { IStar } from '@/components/AppIcons'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` reviews service at runtime.
 import type { ReviewRow } from '@/lib/services/admin/reviews'
@@ -47,10 +48,11 @@ function Stars({ rating }: { rating: number }) {
     <span
       aria-label={`${n} out of 5 stars`}
       title={`${n} / 5`}
-      style={{ color: 'var(--gold)', whiteSpace: 'nowrap', letterSpacing: 1 }}
+      style={{ display: 'inline-flex', gap: 2, color: 'var(--gold)', whiteSpace: 'nowrap' }}
     >
-      {'★'.repeat(n)}
-      <span style={{ color: 'var(--line)' }}>{'★'.repeat(5 - n)}</span>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <IStar key={i} aria-hidden="true" style={{ width: 14, height: 14, color: i < n ? 'var(--gold)' : 'var(--line)' }} />
+      ))}
     </span>
   )
 }

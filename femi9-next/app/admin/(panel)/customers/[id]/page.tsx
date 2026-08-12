@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { OrderStatus } from '@prisma/client'
 import { getCustomer } from '@/lib/services/admin/customers'
+import { IPin } from '@/components/AppIcons'
 
 /**
  * Customer profile — async server component. Reads the service directly and
@@ -79,7 +80,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ id: 
             {c.tier ? <span className="adm-badge adm-badge--plum">{c.tier}</span> : null}
             {/* Location is the headline "where they're from" fact — give it a chip. */}
             <span className="adm-chip" title="Primary address location">
-              <span aria-hidden="true">📍</span>
+              <IPin aria-hidden="true" style={{ width: 14, height: 14 }} />
               {loc || 'Location unknown'}
             </span>
           </div>

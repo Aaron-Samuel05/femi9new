@@ -86,7 +86,9 @@
   top: 0;
   align-self: start;
   height: 100vh;
-  overflow-y: auto;
+  /* Keep the shell within the viewport. The nav—not the entire sidebar—owns
+     overflow so its final links cannot slide behind the fixed footer actions. */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -127,6 +129,9 @@
   gap: 14px;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .adm-nav-group {
@@ -189,6 +194,7 @@
 }
 
 .adm-sidebar-foot {
+  flex: none;
   margin-top: 12px;
   padding-top: 14px;
   border-top: 1px solid var(--line);

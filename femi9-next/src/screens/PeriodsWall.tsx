@@ -290,7 +290,7 @@ export function PeriodsWall({ posts }: Props) {
           with our pads or whatever they used before. Read, relate, and add your own.
         </p>
         <p className="pwall-kind">
-          <span aria-hidden="true">💛</span> Be kind. Every body and every flow is different.
+          <span aria-hidden="true"><HeartIcon filled /></span> Be kind. Every body and every flow is different.
         </p>
       </header>
 
@@ -373,7 +373,7 @@ export function PeriodsWall({ posts }: Props) {
               {error
                 ? error
                 : confirmed
-                  ? 'Thank you for sharing 💛 your story is awaiting review - it’ll appear once approved.'
+                  ? 'Thank you for sharing. Your story is awaiting review and will appear once approved.'
                   : ''}
             </span>
           </div>

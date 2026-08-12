@@ -63,6 +63,12 @@ export const IGrid = (p: SVGProps<SVGSVGElement>) => (
 export const IStar = (p: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z" /></svg>
 )
+export const IThumbUp = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><path d="M7 10v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3Z" /><path d="M7 19h9.2a3 3 0 0 0 2.9-2.3l1.2-5A2.2 2.2 0 0 0 18.2 9H14l.6-3.1A2.4 2.4 0 0 0 12.2 3L7 10v9Z" /></svg>
+)
+export const IThumbDown = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><path d="M7 14V4H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h3Z" /><path d="M7 5h9.2a3 3 0 0 1 2.9 2.3l1.2 5a2.2 2.2 0 0 1-2.1 2.7H14l.6 3.1a2.4 2.4 0 0 1-2.4 2.9L7 14V5Z" /></svg>
+)
 export const IRupee = (p: SVGProps<SVGSVGElement>) => (
   <svg {...s} {...p}><path d="M6 4h12M6 8h12M15.5 4c0 4-2.5 6-6.5 6H6l7 8" /></svg>
 )

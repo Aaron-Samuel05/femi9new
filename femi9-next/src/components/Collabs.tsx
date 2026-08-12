@@ -41,7 +41,7 @@ const FEATURED: Collab = {
   followers: '128k',
   initials: 'AR',
   avatar: 'av-gold',
-  tag: '▶ Reel',
+  tag: 'Video reel',
   quote:
     "I’ve tried every ‘organic’ pad on the shelf. Femi9 is the first that actually feels soft on a heavy day. And every pack backs women entrepreneurs across Tamil Nadu.",
 }
@@ -102,7 +102,7 @@ const COLLABS: Collab[] = [
 const STATS = [
   { value: '40+', label: 'creators' },
   { value: '2.1M', label: 'combined reach' },
-  { value: '4.8★', label: 'avg honest rating' },
+  { value: '4.8', label: 'average honest rating' },
 ]
 
 /* ── card ─────────────────────────────────────────────────────────────── */

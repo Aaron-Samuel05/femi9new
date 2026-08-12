@@ -50,7 +50,14 @@
   text-wrap: balance;
 }
 .pwall-kind span {
-  font-size: 1.05em;
+  display: inline-flex;
+}
+.pwall-kind svg {
+  width: 17px;
+  height: 17px;
+  fill: var(--yellow);
+  stroke: var(--forest-2);
+  stroke-width: 1.25;
 }
 
 /* ---------- content column ---------- */

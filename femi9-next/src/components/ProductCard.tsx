@@ -10,9 +10,12 @@ interface Props {
   // Cards from the catalog grid carry variants; the "related" strip on the PDP
   // reuses static products that have none — hence the optional field + guard.
   product: Product & { variants?: Variant[] }
+  showInsideOnHover?: boolean
 }
 
-export const ProductCard = memo(function ProductCard({ product }: Props) {
+const INSIDE_PRODUCT_IMAGE = '/assets/figma-home/products-imgFrame206-hover.png'
+
+export const ProductCard = memo(function ProductCard({ product, showInsideOnHover = false }: Props) {
   const { add } = useCart()
   const { id, name, price, img, meta, flow, desc, tag, tagClass, type, variants } = product
 
@@ -30,7 +33,23 @@ export const ProductCard = memo(function ProductCard({ product }: Props) {
         {type === 'panty' ? (
           <PantyArt />
         ) : (
-          <img src={img} alt={`Femi9 ${name} pack`} loading="lazy" />
+          <>
+            <img
+              className={showInsideOnHover ? 'card-media__image card-media__image--pack' : undefined}
+              src={img}
+              alt={`Femi9 ${name} pack`}
+              loading="lazy"
+            />
+            {showInsideOnHover && (
+              <img
+                className="card-media__image card-media__image--inside"
+                src={INSIDE_PRODUCT_IMAGE}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+              />
+            )}
+          </>
         )}
       </Link>
       <div className="card-body">

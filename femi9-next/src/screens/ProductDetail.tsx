@@ -6,7 +6,7 @@ import { PRODUCTS, rupees, subPrice, SUBSCRIBE_PCT, CADENCES } from '../data/pro
 import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
 import { Bag, Drop, Leaf, ShieldCheck, Check, Facebook, Instagram, Whatsapp } from '../components/Icons'
-import { IStar } from '../components/AppIcons'
+import { IStar, IThumbDown, IThumbUp } from '../components/AppIcons'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
 import { sampleReviews, type ProductExtra } from '@/data/productDetail'
 
@@ -384,9 +384,6 @@ export function ProductDetail({ product, extra, reviews }: Props) {
           {/* 2. BENEFITS STORYTELLING SECTION ("Why Femi9 feels different") */}
           <section className="pdp-benefits-section">
             <div className="pdp-sec-head">
-              <span className="pdp-sec-kicker">
-                <Leaf /> PRODUCT BENEFITS
-              </span>
               <h2 className="pdp-sec-title">Why Femi9 feels different</h2>
               <p className="pdp-sec-subtitle">
                 Thoughtfully engineered for complete peace of mind, daily comfort, and rash-free period care.
@@ -411,9 +408,6 @@ export function ProductDetail({ product, extra, reviews }: Props) {
           {/* 3. CUSTOMER REVIEWS SECTION (Senior UI/UX Designed) */}
           <section className="pdp-reviews-section">
             <div className="pdp-sec-head">
-              <span className="pdp-sec-kicker">
-                <ShieldCheck /> VERIFIED REVIEWS
-              </span>
               <h2 className="pdp-sec-title">Customer Reviews</h2>
               <p className="pdp-sec-subtitle">
                 Real experiences from women who trust Femi9 for a rash-free, comfortable cycle.
@@ -450,8 +444,8 @@ export function ProductDetail({ product, extra, reviews }: Props) {
                   <div className="pdp-review-footer">
                     <span className="pdp-review-full-link">Full Review</span>
                     <div className="pdp-review-helpful">
-                      <button type="button" aria-label="Helpful review">👍 {idx === 0 ? 12 : idx === 1 ? 8 : 15}</button>
-                      <button type="button" aria-label="Not helpful review">👎 0</button>
+                      <button type="button" aria-label="Helpful review"><IThumbUp aria-hidden="true" /> {idx === 0 ? 12 : idx === 1 ? 8 : 15}</button>
+                      <button type="button" aria-label="Not helpful review"><IThumbDown aria-hidden="true" /> 0</button>
                     </div>
                   </div>
                 </article>
@@ -470,35 +464,35 @@ export function ProductDetail({ product, extra, reviews }: Props) {
 
               <div className="pdp-rating-bars-col">
                 <div className="pdp-rating-bar-row">
-                  <span>5 ★</span>
+                  <span className="pdp-rating-label">5 <IStar aria-hidden="true" /></span>
                   <div className="pdp-bar-track">
                     <div className="pdp-bar-fill" style={{ width: '88%' }} />
                   </div>
                   <span className="pdp-bar-count">88%</span>
                 </div>
                 <div className="pdp-rating-bar-row">
-                  <span>4 ★</span>
+                  <span className="pdp-rating-label">4 <IStar aria-hidden="true" /></span>
                   <div className="pdp-bar-track">
                     <div className="pdp-bar-fill" style={{ width: '9%' }} />
                   </div>
                   <span className="pdp-bar-count">9%</span>
                 </div>
                 <div className="pdp-rating-bar-row">
-                  <span>3 ★</span>
+                  <span className="pdp-rating-label">3 <IStar aria-hidden="true" /></span>
                   <div className="pdp-bar-track">
                     <div className="pdp-bar-fill" style={{ width: '3%' }} />
                   </div>
                   <span className="pdp-bar-count">3%</span>
                 </div>
                 <div className="pdp-rating-bar-row">
-                  <span>2 ★</span>
+                  <span className="pdp-rating-label">2 <IStar aria-hidden="true" /></span>
                   <div className="pdp-bar-track">
                     <div className="pdp-bar-fill" style={{ width: '0%' }} />
                   </div>
                   <span className="pdp-bar-count">0%</span>
                 </div>
                 <div className="pdp-rating-bar-row">
-                  <span>1 ★</span>
+                  <span className="pdp-rating-label">1 <IStar aria-hidden="true" /></span>
                   <div className="pdp-bar-track">
                     <div className="pdp-bar-fill" style={{ width: '0%' }} />
                   </div>

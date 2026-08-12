@@ -110,7 +110,7 @@ export function Rewards({ pointsBalance, rewardOptions, activity = [] }: Rewards
               {nextTier
                 ? <>{(nextTier.costPoints - balance).toLocaleString('en-IN')} pts to <b>{nextTier.title}</b></>
                 : sorted.length > 0
-                  ? <>You can redeem every reward below 🎉</>
+                  ? <>You can redeem every reward below.</>
                   : <>Earn points on your next order to unlock rewards.</>}
             </p>
           </div>
