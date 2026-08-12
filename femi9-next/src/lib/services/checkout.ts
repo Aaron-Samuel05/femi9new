@@ -8,6 +8,7 @@ import {
   activateAndLockIfEligible,
   applyTharaCredit,
   accrueTharaCommission,
+  accrueTharaPoints,
   computeTharaDiscount,
 } from '@/lib/services/thara'
 import type { OrderStatus } from '@prisma/client'
@@ -543,6 +544,10 @@ export async function markOrderPaid({
     // Thara: 10% commission to the referrer's Femi9 credit ledger, if this
     // paid order is a locked downline purchase of an active member.
     await accrueTharaCommission(tx, order.id)
+
+    // Thara: 1% reward points to the referrer's current-cycle ledger. Same
+    // eligibility as commission; empties into an Amazon voucher at cycle close.
+    await accrueTharaPoints(tx, order.id)
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })

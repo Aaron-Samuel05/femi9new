@@ -224,8 +224,10 @@ model User {
   events        EventLog[]
 
   tharaMembership       TharaMembership?
-  tharaReferralReceived TharaReferral?      @relation("TharaReferralReceived")
-  tharaCreditLedger     TharaCreditLedger[] @relation("TharaCreditLedgerUser")
+  tharaReferralReceived TharaReferral?            @relation("TharaReferralReceived")
+  tharaCreditLedger     TharaCreditLedger[]       @relation("TharaCreditLedgerUser")
+  tharaPointsLedger     TharaRewardPointsLedger[] @relation("TharaPointsLedgerUser")
+  tharaVouchers         TharaVoucher[]            @relation("TharaVoucherUser")
 }
 
 model Account {
@@ -322,8 +324,9 @@ model Order {
   coupon             Coupon?          @relation(fields: [couponId], references: [id])
   affiliateId        String?
   affiliate          Affiliate?       @relation(fields: [affiliateId], references: [id])
-  tharaQualifyingFor TharaMembership?    @relation("TharaQualifyingOrder")
-  tharaCreditLedger  TharaCreditLedger[] @relation("TharaCreditLedgerOrder")
+  tharaQualifyingFor TharaMembership?          @relation("TharaQualifyingOrder")
+  tharaCreditLedger  TharaCreditLedger[]       @relation("TharaCreditLedgerOrder")
+  tharaPointsLedger  TharaRewardPointsLedger[] @relation("TharaPointsLedgerOrder")
   channel            String           @default("web") // web | whatsapp
   placedAt           DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
@@ -705,6 +708,72 @@ model TharaMembership {
 
   @@index([status])
   @@index([referralCode])
+}
+
+/// A three-month reward cycle (Benefit 3). Points accumulate against the
+/// currently-open cycle; a cron closes it, sums, and issues vouchers.
+enum TharaCycleStatus {
+  open
+  closed
+}
+
+model TharaCycle {
+  id        String            @id @default(cuid())
+  startDate DateTime // inclusive
+  endDate   DateTime // inclusive
+  status    TharaCycleStatus  @default(open)
+  closedAt  DateTime?
+  createdAt DateTime          @default(now())
+
+  points   TharaRewardPointsLedger[]
+  vouchers TharaVoucher[]
+
+  @@unique([startDate, endDate])
+  @@index([status])
+}
+
+/// Append-only ledger of Thara reward points (Benefit 3: 1% commission).
+/// Every accrual and reversal is a row. Points sum per (userId, cycleId).
+model TharaRewardPointsLedger {
+  id            String     @id @default(cuid())
+  userId        String
+  user          User       @relation("TharaPointsLedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+  cycleId       String
+  cycle         TharaCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  delta         Int // points; +earn / -reversal
+  reason        String // 'referral-points' | 'refund-reversal'
+  sourceOrderId String?
+  sourceOrder   Order?     @relation("TharaPointsLedgerOrder", fields: [sourceOrderId], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now())
+
+  @@index([userId, cycleId])
+  @@index([sourceOrderId])
+}
+
+/// Amazon voucher issued at cycle close. Points × multiplier (default 3) = ₹.
+enum TharaVoucherStatus {
+  available
+  claimed
+  expired
+  cancelled
+}
+
+model TharaVoucher {
+  id             String              @id @default(cuid())
+  userId         String
+  user           User                @relation("TharaVoucherUser", fields: [userId], references: [id], onDelete: Cascade)
+  cycleId        String
+  cycle          TharaCycle          @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  points         Int // snapshot of the total the cycle closed with
+  valuePaise     Int // points × multiplier × 100
+  amazonCode     String?             @unique
+  status         TharaVoucherStatus  @default(available)
+  issuedAt       DateTime            @default(now())
+  claimDeadline  DateTime // hard expiry
+  claimedAt      DateTime?
+
+  @@unique([userId, cycleId])
+  @@index([status])
 }
 
 /// Hard-bounce / complaint list for Thara invite emails. Populated by the

@@ -217,6 +217,253 @@ export async function getMembershipById(id: string): Promise<TharaMembership | n
   return prisma.tharaMembership.findUnique({ where: { id } })
 }
 
+// ─────────────────────── Sub-project D: reward points ─────────────────────
+
+import { selectVoucherIssuer, ManualIssuer, AmazonIncentivesNotConfiguredError, AmazonIncentivesNotImplementedError, type VoucherIssuer } from '@/lib/thara/voucher-issuer'
+import type { TharaCycle, TharaVoucher } from '@prisma/client'
+
+export const THARA_POINTS_PCT = 1 // 1% of downline subtotal → points
+export const THARA_VOUCHER_MULTIPLIER = 3 // points × 3 = ₹ voucher value
+export const THARA_VOUCHER_CLAIM_DAYS = 30
+
+export const TharaPointsReason = {
+  REFERRAL_POINTS: 'referral-points',
+  REFUND_REVERSAL: 'refund-reversal',
+} as const
+
+/**
+ * Return the currently open cycle, creating one if none exists. The
+ * default cycle boundaries are the calendar quarter that contains `now`
+ * — Q1 Jan–Mar, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec.
+ */
+export async function currentOpenCycle(
+  now: Date = new Date(),
+): Promise<TharaCycle> {
+  const open = await prisma.tharaCycle.findFirst({
+    where: { status: 'open' },
+    orderBy: { startDate: 'desc' },
+  })
+  if (open) return open
+
+  // Emit a calendar quarter containing `now`.
+  const y = now.getUTCFullYear()
+  const q = Math.floor(now.getUTCMonth() / 3) // 0..3
+  const startMonth = q * 3
+  const startDate = new Date(Date.UTC(y, startMonth, 1, 0, 0, 0))
+  const endDate = new Date(Date.UTC(y, startMonth + 3, 0, 23, 59, 59)) // last day of month
+  return prisma.tharaCycle.create({
+    data: { startDate, endDate, status: 'open' },
+  })
+}
+
+/**
+ * Called inside markOrderPaid. On a paid downline order for an eligible
+ * (locked + active) referrer, add 1% of subtotal (as an integer point count)
+ * to the referrer's ledger row in the current open cycle.
+ */
+export async function accrueTharaPoints(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  if (!isTharaEnabled()) return
+
+  const order = await tx.order.findUnique({
+    where: { id: orderId },
+    select: { id: true, userId: true, subtotal: true },
+  })
+  if (!order || !order.userId) return
+
+  const referral = await tx.tharaReferral.findUnique({
+    where: { referredUserId: order.userId },
+    select: {
+      lockedAt: true,
+      referrer: { select: { userId: true, status: true } },
+    },
+  })
+  if (!referral || !referral.lockedAt) return
+  if (referral.referrer.status !== 'active') return
+
+  const points = Math.floor((order.subtotal * THARA_POINTS_PCT) / 100 / 100) // paise → ₹, then 1%
+  if (points <= 0) return
+
+  // Cycle lookup goes on prisma (not tx) so an already-open cycle survives
+  // a rollback of the outer order-paid transaction. Creating a cycle from
+  // inside a transaction is safe too, but reading it outside is quicker.
+  const cycle = await currentOpenCycle()
+
+  await tx.tharaRewardPointsLedger.create({
+    data: {
+      userId: referral.referrer.userId,
+      cycleId: cycle.id,
+      delta: points,
+      reason: TharaPointsReason.REFERRAL_POINTS,
+      sourceOrderId: order.id,
+    },
+  })
+}
+
+/** Called inside refundOrder. Reverses every points row for this order. */
+export async function reverseTharaPointsForRefund(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+): Promise<void> {
+  const rows = await tx.tharaRewardPointsLedger.findMany({
+    where: { sourceOrderId: orderId, reason: TharaPointsReason.REFERRAL_POINTS },
+  })
+  for (const row of rows) {
+    await tx.tharaRewardPointsLedger.create({
+      data: {
+        userId: row.userId,
+        cycleId: row.cycleId,
+        delta: -row.delta,
+        reason: TharaPointsReason.REFUND_REVERSAL,
+        sourceOrderId: orderId,
+      },
+    })
+  }
+}
+
+/** Get a user's points balance in a given cycle (or the current open cycle). */
+export async function getUserCyclePoints(
+  userId: string,
+  cycleId: string,
+): Promise<number> {
+  const agg = await prisma.tharaRewardPointsLedger.aggregate({
+    where: { userId, cycleId },
+    _sum: { delta: true },
+  })
+  return Math.max(0, agg._sum.delta ?? 0)
+}
+
+/**
+ * Close the given cycle: sum points per user, issue a TharaVoucher for each
+ * user with >0 points, ask the issuer for an Amazon code (falling back to
+ * manual issuance if the issuer defers or is not yet onboarded), stamp the
+ * cycle closed. Idempotent — a second call on the same cycle is a no-op.
+ */
+export async function closeCycle(
+  cycleId: string,
+  issuer: VoucherIssuer = selectVoucherIssuer(),
+): Promise<{ vouchersIssued: number }> {
+  const cycle = await prisma.tharaCycle.findUnique({ where: { id: cycleId } })
+  if (!cycle) throw new Error(`Cycle ${cycleId} not found`)
+  if (cycle.status === 'closed') return { vouchersIssued: 0 }
+
+  const grouped = await prisma.tharaRewardPointsLedger.groupBy({
+    by: ['userId'],
+    where: { cycleId },
+    _sum: { delta: true },
+  })
+  const eligible = grouped
+    .map((g) => ({ userId: g.userId, points: g._sum.delta ?? 0 }))
+    .filter((g) => g.points > 0)
+
+  const claimDeadlineFor = (issuedAt: Date) => {
+    const d = new Date(issuedAt)
+    d.setUTCDate(d.getUTCDate() + THARA_VOUCHER_CLAIM_DAYS)
+    return d
+  }
+
+  let count = 0
+  for (const row of eligible) {
+    // Idempotent per-user via the (userId, cycleId) unique index.
+    const existing = await prisma.tharaVoucher.findUnique({
+      where: { userId_cycleId: { userId: row.userId, cycleId } },
+    })
+    if (existing) continue
+
+    const valuePaise = row.points * THARA_VOUCHER_MULTIPLIER * 100 // points × 3 = ₹, ×100 = paise
+    const user = await prisma.user.findUnique({
+      where: { id: row.userId },
+      select: { email: true, name: true },
+    })
+
+    let amazonCode: string | null = null
+    try {
+      const result = await issuer.issue({
+        valuePaise,
+        userEmail: user?.email ?? null,
+        userName: user?.name ?? null,
+        externalReference: `cycle:${cycleId}:${row.userId}`,
+      })
+      amazonCode = result.amazonCode
+    } catch (e) {
+      // Real Amazon integration not ready — fall back to manual issuance.
+      if (e instanceof AmazonIncentivesNotConfiguredError || e instanceof AmazonIncentivesNotImplementedError) {
+        const fallback = await new ManualIssuer().issue({
+          valuePaise,
+          userEmail: user?.email ?? null,
+          userName: user?.name ?? null,
+          externalReference: `cycle:${cycleId}:${row.userId}`,
+        })
+        amazonCode = fallback.amazonCode
+      } else {
+        throw e
+      }
+    }
+
+    const issuedAt = new Date()
+    await prisma.tharaVoucher.create({
+      data: {
+        userId: row.userId,
+        cycleId,
+        points: row.points,
+        valuePaise,
+        amazonCode,
+        status: 'available',
+        issuedAt,
+        claimDeadline: claimDeadlineFor(issuedAt),
+      },
+    })
+    count += 1
+  }
+
+  await prisma.tharaCycle.update({
+    where: { id: cycleId },
+    data: { status: 'closed', closedAt: new Date() },
+  })
+  return { vouchersIssued: count }
+}
+
+/** Expire vouchers whose claimDeadline has passed. Returns the count expired. */
+export async function expireStaleVouchers(now: Date = new Date()): Promise<number> {
+  const res = await prisma.tharaVoucher.updateMany({
+    where: { status: 'available', claimDeadline: { lt: now } },
+    data: { status: 'expired' },
+  })
+  return res.count
+}
+
+export class TharaVoucherNotClaimableError extends Error {
+  constructor(reason: string) {
+    super(reason)
+    this.name = 'TharaVoucherNotClaimableError'
+  }
+}
+
+/** Mark a voucher claimed. Refuses non-available vouchers and mismatched users. */
+export async function claimVoucher(
+  voucherId: string,
+  userId: string,
+): Promise<TharaVoucher> {
+  const v = await prisma.tharaVoucher.findUnique({ where: { id: voucherId } })
+  if (!v || v.userId !== userId) {
+    throw new TharaVoucherNotClaimableError('Voucher not found.')
+  }
+  if (v.status === 'claimed') return v
+  if (v.status !== 'available') {
+    throw new TharaVoucherNotClaimableError(`Voucher is ${v.status}.`)
+  }
+  if (v.claimDeadline < new Date()) {
+    // Race: about to expire. Treat as expired.
+    throw new TharaVoucherNotClaimableError('Voucher has expired.')
+  }
+  return prisma.tharaVoucher.update({
+    where: { id: voucherId },
+    data: { status: 'claimed', claimedAt: new Date() },
+  })
+}
+
 // ─────────────────────── Sub-project E: invite emails ─────────────────────
 
 import { renderInviteEmail, sendTharaInviteEmail } from '@/lib/thara/invite'
