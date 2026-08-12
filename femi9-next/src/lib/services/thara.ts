@@ -217,6 +217,84 @@ export async function getMembershipById(id: string): Promise<TharaMembership | n
   return prisma.tharaMembership.findUnique({ where: { id } })
 }
 
+// ─────────────────────── Sub-project E: invite emails ─────────────────────
+
+import { renderInviteEmail, sendTharaInviteEmail } from '@/lib/thara/invite'
+
+export class TharaInviteNotEligibleError extends Error {
+  constructor() {
+    super('Only enrolled Thara members can send invites.')
+    this.name = 'TharaInviteNotEligibleError'
+  }
+}
+export class TharaInviteBadEmailError extends Error {
+  constructor() {
+    super('That does not look like a valid email address.')
+    this.name = 'TharaInviteBadEmailError'
+  }
+}
+export class TharaInviteSelfError extends Error {
+  constructor() {
+    super("You can't invite yourself.")
+    this.name = 'TharaInviteSelfError'
+  }
+}
+export class TharaInviteSuppressedError extends Error {
+  constructor() {
+    super("That address opted out of our emails. Share your link some other way.")
+    this.name = 'TharaInviteSuppressedError'
+  }
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+/**
+ * Send a referral invite to a friend's email. Requires the sender to be a
+ * Thara member (either purchase_pending or active), refuses suppressed
+ * addresses, refuses self-invites. Rate limiting lives at the route layer.
+ */
+export async function sendTharaInvite(
+  referrerUserId: string,
+  toEmail: string,
+): Promise<{ mock: boolean }> {
+  const to = toEmail.trim().toLowerCase()
+  if (!EMAIL_RE.test(to)) throw new TharaInviteBadEmailError()
+
+  const membership = await prisma.tharaMembership.findUnique({
+    where: { userId: referrerUserId },
+    include: { user: { select: { name: true, email: true } } },
+  })
+  if (!membership) throw new TharaInviteNotEligibleError()
+  if (membership.status !== 'active' && membership.status !== 'purchase_pending') {
+    throw new TharaInviteNotEligibleError()
+  }
+  if (membership.user.email && membership.user.email.toLowerCase() === to) {
+    throw new TharaInviteSelfError()
+  }
+
+  const suppressed = await prisma.tharaSuppressedEmail.findUnique({ where: { email: to } })
+  if (suppressed) throw new TharaInviteSuppressedError()
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL ?? ''
+  const referralUrl = base ? `${base}/r/${membership.referralCode}` : `/r/${membership.referralCode}`
+  const { subject, html, text } = renderInviteEmail({
+    referrerName: membership.user.name ?? null,
+    referralCode: membership.referralCode,
+    referralUrl,
+  })
+  return sendTharaInviteEmail({ to, subject, html, text })
+}
+
+export async function suppressEmail(email: string, reason: 'hard_bounce' | 'complaint' | 'manual'): Promise<void> {
+  const key = email.trim().toLowerCase()
+  if (!EMAIL_RE.test(key)) return
+  await prisma.tharaSuppressedEmail.upsert({
+    where: { email: key },
+    update: { reason },
+    create: { email: key, reason },
+  })
+}
+
 // ─────────────────────── Sub-project C: wallet credit ──────────────────────
 
 export const TharaCreditReason = {

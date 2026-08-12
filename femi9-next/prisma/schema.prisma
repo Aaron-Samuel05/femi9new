@@ -707,6 +707,14 @@ model TharaMembership {
   @@index([referralCode])
 }
 
+/// Hard-bounce / complaint list for Thara invite emails. Populated by the
+/// Resend webhook. Any address in here is refused by sendTharaInvite.
+model TharaSuppressedEmail {
+  email     String   @id
+  reason    String // 'hard_bounce' | 'complaint' | 'manual'
+  createdAt DateTime @default(now())
+}
+
 /// Append-only ledger of Femi9 store credit (Benefit 2: 10% commission).
 /// Every accrual, spend and refund reversal is a row. Balance = SUM(delta).
 model TharaCreditLedger {
