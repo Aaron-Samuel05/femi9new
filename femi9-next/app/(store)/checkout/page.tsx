@@ -31,7 +31,9 @@ async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
       phone: true,
       addresses: {
         where: { archivedAt: null },
-        orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+        // Address carries no createdAt; cuid() ids are timestamp-prefixed and
+        // therefore sort in creation order, so this is still "newest first".
+        orderBy: [{ isPrimary: 'desc' }, { id: 'desc' }],
         take: 1,
         select: { label: true, name: true, line: true, city: true, state: true, pincode: true, phone: true },
       },

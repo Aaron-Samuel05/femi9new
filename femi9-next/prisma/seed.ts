@@ -2,7 +2,7 @@
  * Seed only public catalog and editorial content.
  *
  * Included:
- * - products, variants, images, features and specifications
+ * - products, variants and their one catalog image
  * - blog categories and blog posts
  * - subscription cadences (reference data the subscribe flow resolves against,
  *   not demo content — without them every subscribe attempt 400s)
@@ -12,7 +12,6 @@
  */
 import { PrismaClient } from '@prisma/client'
 import { PRODUCTS, CADENCES } from '../src/data/products'
-import { EXTRAS } from '../src/data/productDetail'
 import { POSTS, CATEGORY_META } from '../src/data/blog'
 
 const prisma = new PrismaClient()
@@ -31,7 +30,6 @@ async function seedBlogCategories() {
 
 async function seedProducts() {
   for (const source of PRODUCTS) {
-    const extra = EXTRAS[source.id]
     const product = await prisma.product.upsert({
       where: { slug: source.id },
       create: {
@@ -42,7 +40,6 @@ async function seedProducts() {
         meta: source.meta,
         flow: source.flow,
         description: source.desc,
-        longDescription: extra?.long,
         tag: source.tag,
         tagClass: source.tagClass,
         rating: 0,
@@ -55,7 +52,6 @@ async function seedProducts() {
         meta: source.meta,
         flow: source.flow,
         description: source.desc,
-        longDescription: extra?.long,
         tag: source.tag,
         tagClass: source.tagClass,
         rating: 0,
@@ -105,38 +101,14 @@ async function seedProducts() {
       })
     }
 
-    await prisma.productImage.deleteMany({ where: { productId: product.id } })
-    const gallery = extra?.gallery?.filter(Boolean) ?? []
-    if (gallery.length) {
-      await prisma.productImage.createMany({
-        data: gallery.map((url, position) => ({ productId: product.id, url, position })),
-      })
-    } else if (source.img) {
+    // Gallery, features and specs used to be seeded from a hardcoded EXTRAS map.
+    // That map was deleted deliberately — the product page resolves all of it
+    // from the database now, so a shipped fixture could only disagree with what
+    // the admin console had published. The seed therefore establishes the one
+    // catalog image it knows about and leaves the rest to the console.
+    // Existing rows are left alone so re-seeding never wipes published content.
+    if (source.img && (await prisma.productImage.count({ where: { productId: product.id } })) === 0) {
       await prisma.productImage.create({ data: { productId: product.id, url: source.img, position: 0 } })
-    }
-
-    await prisma.productFeature.deleteMany({ where: { productId: product.id } })
-    if (extra?.features?.length) {
-      await prisma.productFeature.createMany({
-        data: extra.features.map((feature, position) => ({
-          productId: product.id,
-          title: feature.title,
-          body: feature.body,
-          position,
-        })),
-      })
-    }
-
-    await prisma.productSpec.deleteMany({ where: { productId: product.id } })
-    if (extra?.specs?.length) {
-      await prisma.productSpec.createMany({
-        data: extra.specs.map((spec, position) => ({
-          productId: product.id,
-          key: spec.k,
-          value: spec.v,
-          position,
-        })),
-      })
     }
   }
   console.log(`Seeded products (${PRODUCTS.length}) with catalog details`)
