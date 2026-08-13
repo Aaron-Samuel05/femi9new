@@ -130,6 +130,8 @@ locals {
     RAZORPAY_WEBHOOK_SECRET = "TODO-change-me"                            # Razorpay webhook signing secret
     MSG91_AUTH_KEY          = "TODO-change-me"                            # MSG91 OTP/SMS auth key
     RESEND_API_KEY          = "TODO-re_xxxxxxxx"                          # Resend transactional email key
+    RESEND_WEBHOOK_SECRET   = "TODO-whsec_change-me"                      # Resend/Svix webhook signing secret
+    CRON_SECRET             = "TODO-change-me"                            # EventBridge -> /api/cron shared secret
     SENTRY_DSN              = "TODO-https://public@o0.ingest.sentry.io/0" # Sentry DSN
     GOOGLE_CLIENT_ID        = "TODO-xxxx.apps.googleusercontent.com"      # Google OAuth (customer sign-in)
     GOOGLE_CLIENT_SECRET    = "TODO-GOCSPX-change-me"                     # Google OAuth client secret

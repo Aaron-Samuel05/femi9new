@@ -110,7 +110,6 @@ export function Footer() {
             <a href={IG} target="_blank" rel="noopener noreferrer">
               @femi9official
             </a>
-            <Link to="/admin">Admin dashboard</Link>
             <p className="footer-addr">222/1, Pavizham Nagar, Thindal, Erode, Tamil Nadu 638012</p>
           </div>
         </div>

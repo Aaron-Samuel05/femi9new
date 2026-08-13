@@ -27,7 +27,9 @@ describe('cycle data encryption', () => {
     expect(symptom.encryptedData).not.toContain('Cramps')
 
     const data = await getCycleData(user.id)
-    expect(data.periods).toContainEqual({ start: '2026-07-01', length: 5 })
-    expect(data.symptomLog).toContainEqual({ day: 'Cramps', level: 2 })
+    // Entries also carry the row id (the dashboard needs it to delete a log),
+    // so match on the decrypted fields rather than the whole object.
+    expect(data.periods).toContainEqual(expect.objectContaining({ start: '2026-07-01', length: 5 }))
+    expect(data.symptomLog).toContainEqual(expect.objectContaining({ day: 'Cramps', level: 2 }))
   })
 })

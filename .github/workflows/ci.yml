@@ -1,0 +1,158 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# CI — Femi9 (Next.js 15 + Prisma 6 + Postgres)
+#
+# This file MUST live at the repository root: GitHub only runs workflows from
+# `<repo>/.github/workflows`. An earlier copy sat in `femi9-next/.github/` and
+# therefore never executed once — nothing gated pushes to `master`.
+#
+# Gates, in order, all against a throwaway Postgres service container:
+#   1. npm ci                       reproducible install from package-lock.json
+#   2. prisma generate              client types must exist before typecheck
+#   3. tsc --noEmit                 strict type gate
+#   4. prisma db push               schema into the empty femi9_test DB
+#   5. npm test                     vitest unit + integration
+#   6. next build                   the app must build as it will in production
+#   7. HTTP E2E                     black-box run against a real server
+#
+# Why the E2E server runs `next dev` and not the production build: provider
+# mocks are refused when NODE_ENV=production (src/lib/runtime-mode.ts), and
+# /api/health fails closed on the production config audit. A dev server with
+# ALLOW_MOCK_PROVIDERS=true is the only mode where the E2E can drive checkout,
+# OTP and payments without real Razorpay/MSG91 credentials.
+# ─────────────────────────────────────────────────────────────────────────────
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "femi9-next/**"
+      - ".github/workflows/ci.yml"
+  pull_request:
+    paths:
+      - "femi9-next/**"
+      - ".github/workflows/ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Every step runs inside the app, which is not the repository root.
+    working-directory: femi9-next
+
+jobs:
+  verify:
+    name: Typecheck · Test · Build · E2E
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: femi9_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # DUMMY placeholders only — never real secrets. Provider keys are left EMPTY
+    # on purpose: a non-empty value makes the provider seams believe they are
+    # configured and attempt real outbound calls.
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
+      AUTH_SECRET: ci-dummy-secret-0123456789abcdef0123456789abcdef
+      ADMIN_EMAIL: admin@femi9.in
+      ADMIN_PASSWORD: femi9admin
+      RAZORPAY_KEY_ID: ""
+      RAZORPAY_KEY_SECRET: ""
+      RAZORPAY_WEBHOOK_SECRET: ""
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ""
+      MSG91_AUTH_KEY: ""
+      RESEND_API_KEY: ""
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      SENTRY_DSN: ""
+      NEXT_PUBLIC_SENTRY_DSN: ""
+      ALLOW_MOCK_PROVIDERS: "true"
+      CYCLE_DATA_ENCRYPTION_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+      NEXT_TELEMETRY_DISABLED: "1"
+      E2E_BASE_URL: http://127.0.0.1:3100
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          # The lockfile is not at the repo root, so the cache needs the path.
+          cache-dependency-path: femi9-next/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Push schema to the test database
+        run: npx prisma db push --skip-generate
+
+      - name: Run unit + integration tests
+        run: npm test
+
+      - name: Build (production)
+        run: npm run build
+
+      # ── Black-box HTTP E2E ────────────────────────────────────────────────
+      # `npm test` truncates every table, so the catalog is seeded here, after
+      # it, and before the server starts serving the storefront.
+      - name: Seed catalog
+        run: npx tsx prisma/seed.ts
+
+      - name: Start app for E2E
+        run: |
+          # Drop the production build first: `next dev` and `next build` write
+          # incompatible artifacts into the same .next directory.
+          rm -rf .next
+          nohup npx next dev -p 3100 > "$RUNNER_TEMP/app.log" 2>&1 &
+          echo "Waiting for the server to accept traffic…"
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3100/api/health > /dev/null 2>&1; then
+              echo "Server is up after ${i}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Server did not become healthy within 90s"
+          cat "$RUNNER_TEMP/app.log"
+          exit 1
+
+      # The npm scripts wrap these with `node --env-file=.env`, which aborts in
+      # CI because there is no .env file — the values come from the job env
+      # instead, so the scripts are invoked directly.
+      - name: Seed the E2E product through the admin API
+        run: node scripts/seed-e2e-product.mjs
+
+      - name: Run HTTP E2E
+        run: node scripts/e2e-http.mjs
+
+      - name: Server log (on failure)
+        if: failure()
+        run: cat "$RUNNER_TEMP/app.log" || true

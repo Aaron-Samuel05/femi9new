@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { productionReadinessIssues } from '@/lib/production-readiness'
+import { productionReadinessIssues, productionReadinessReport } from '@/lib/production-readiness'
 
 const KEYS = [
   'NODE_ENV',
@@ -83,6 +83,38 @@ describe('production readiness', () => {
         'RAZORPAY_KEY_ID(must-match-public-key)',
       ]),
     )
+  })
+
+  // Regression guard: these keys once sat in the blocking list, so a staging
+  // task without them answered /api/health with 503, never joined the ALB
+  // target group, and the ECS deployment timed out. They gate features that
+  // already fail closed on their own — they must stay warnings.
+  it('keeps optional provider secrets out of the traffic-blocking set', () => {
+    configureProduction()
+    for (const key of [
+      'RESEND_WEBHOOK_SECRET',
+      'GOOGLE_CLIENT_ID',
+      'GOOGLE_CLIENT_SECRET',
+      'GOOGLE_REDIRECT_URI',
+      'ADMIN_EMAIL',
+      'ADMIN_PASSWORD',
+      'CRON_SECRET',
+    ]) {
+      delete process.env[key]
+    }
+    const report = productionReadinessReport()
+    expect(report.blocking).toEqual([])
+    expect(report.warnings).toEqual(
+      expect.arrayContaining(['RESEND_WEBHOOK_SECRET', 'GOOGLE_CLIENT_ID', 'CRON_SECRET']),
+    )
+  })
+
+  it('warns about a bad Google redirect only once Google sign-in is configured', () => {
+    configureProduction()
+    process.env.GOOGLE_REDIRECT_URI = 'https://elsewhere.test/api/auth/google/callback'
+    const report = productionReadinessReport()
+    expect(report.blocking).toEqual([])
+    expect(report.warnings).toContain('GOOGLE_REDIRECT_URI(site-origin-mismatch)')
   })
 
   it('rejects Terraform placeholder values and missing shared rate limiting', () => {
