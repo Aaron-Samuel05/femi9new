@@ -4,12 +4,14 @@
  * Included:
  * - products, variants, images, features and specifications
  * - blog categories and blog posts
+ * - subscription cadences (reference data the subscribe flow resolves against,
+ *   not demo content — without them every subscribe attempt 400s)
  *
  * Deliberately excluded: users, reviews, rewards, orders, subscriptions,
- * settings, cadences, community posts and analytics/demo activity.
+ * settings, community posts and analytics/demo activity.
  */
 import { PrismaClient } from '@prisma/client'
-import { PRODUCTS } from '../src/data/products'
+import { PRODUCTS, CADENCES } from '../src/data/products'
 import { EXTRAS } from '../src/data/productDetail'
 import { POSTS, CATEGORY_META } from '../src/data/blog'
 
@@ -165,11 +167,30 @@ async function seedBlogPosts() {
   console.log(`Seeded blog posts (${POSTS.length})`)
 }
 
+/**
+ * Subscription cadences — reference data, not demo content. The product page
+ * offers a fixed set of three options and posts the code to /api/subscriptions,
+ * which resolves it here; without these rows every subscribe attempt is a 400.
+ * Sourced from CADENCES so the picker and the database cannot drift.
+ */
+async function seedCadences() {
+  for (const [position, cadence] of CADENCES.entries()) {
+    const row = { label: cadence.label, sub: cadence.sub, days: cadence.days, active: true, position }
+    await prisma.cadence.upsert({
+      where: { code: cadence.id },
+      create: { code: cadence.id, ...row },
+      update: row,
+    })
+  }
+  console.log(`Seeded subscription cadences (${CADENCES.length})`)
+}
+
 async function main() {
   console.log('Seeding Femi9 catalog and blog content...')
   await seedBlogCategories()
   await seedProducts()
   await seedBlogPosts()
+  await seedCadences()
   console.log('Done.')
 }
 
