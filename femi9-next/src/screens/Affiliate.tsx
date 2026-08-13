@@ -148,11 +148,31 @@ export function Affiliate() {
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
 
-  // "already a creator?" stats lookup
-  const [statsCode, setStatsCode] = useState('')
+  // Owner-scoped creator dashboard (resolved from the session, never a code).
   const [statsLoading, setStatsLoading] = useState(false)
   const [statsError, setStatsError] = useState('')
   const [stats, setStats] = useState<StatsResult | null>(null)
+  const [copied, setCopied] = useState(false)
+
+  /** The tracked share URL for a code. /a/<code> is the ONLY entry point that
+   *  drops the attribution cookie, so this is what a creator must share. */
+  const shareUrlFor = (code: string) => {
+    const origin =
+      typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL ?? ''
+    return `${origin}/a/${code}`
+  }
+
+  const copyShareUrl = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(shareUrlFor(code))
+      setCopied(true)
+      window.setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard is permission-gated; the URL is on screen either way, so the
+      // honest fallback is to say the copy did not happen.
+      setStatsError('Copying is blocked in this browser — select the link above instead.')
+    }
+  }
 
   const togglePlatform = (p: string) => {
     setPlatform((prev) =>
@@ -215,14 +235,7 @@ export function Affiliate() {
     scrollToJoin()
   }
 
-  const checkStats = async (e: FormEvent) => {
-    e.preventDefault()
-    const code = statsCode.trim()
-    if (!code) {
-      setStatsError('Enter your code to see your stats.')
-      setStats(null)
-      return
-    }
+  const checkStats = async () => {
     setStatsError('')
     setStatsLoading(true)
     setStats(null)
@@ -231,12 +244,12 @@ export function Affiliate() {
         cache: 'no-store',
       })
       if (res.status === 401) {
-        window.location.href = '/login'
+        window.location.href = '/login?next=/affiliate'
         return
       }
       if (res.status === 404) {
         setStatsError(
-          'We couldn’t find that code yet. If you just applied, we’ll email it once you’re approved.',
+          'Your code is not live yet. We email it the moment your application is approved.',
         )
         return
       }
@@ -454,36 +467,27 @@ export function Affiliate() {
               <li>{Ico.check} Track clicks &amp; earnings any time</li>
             </ul>
 
-            {/* Already a creator? Live stats lookup by code. */}
+            {/* Your creator dashboard. There used to be a "enter your code"
+                input here, but /api/affiliate/me resolves stats from the SESSION
+                and ignored the code entirely — so typing any non-empty string
+                returned your own numbers under someone else's label. */}
             <div style={{ marginTop: 30, paddingTop: 24, borderTop: '1px solid var(--line-soft)' }}>
               <span className="af-kicker" style={{ marginBottom: 10 }}>
-                Already a creator?
+                Your creator dashboard
               </span>
               <p style={{ marginTop: 0, marginBottom: 14, maxWidth: '34ch' }}>
-                Enter the code we emailed you to see your live clicks, orders and
-                earnings.
+                Signed in as an approved creator? See your live clicks, orders and
+                earnings, and copy your share link.
               </p>
-              <form className="af-field" onSubmit={checkStats} noValidate>
-                <label htmlFor="af-stats-code">Your code</label>
-                <input
-                  id="af-stats-code"
-                  type="text"
-                  autoComplete="off"
-                  spellCheck={false}
-                  placeholder="e.g. MEHER15"
-                  value={statsCode}
-                  onChange={(e) => setStatsCode(e.target.value.toUpperCase())}
-                  style={{ textTransform: 'uppercase' }}
-                />
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={statsLoading}
-                  style={{ marginTop: 12, minHeight: 48 }}
-                >
-                  {statsLoading ? 'Checking…' : 'Check my stats'}
-                </button>
-              </form>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={checkStats}
+                disabled={statsLoading}
+                style={{ minHeight: 48 }}
+              >
+                {statsLoading ? 'Loading…' : 'View my stats'}
+              </button>
 
               {statsError && (
                 <p className="af-error" role="alert" style={{ marginTop: 12 }}>
@@ -511,6 +515,19 @@ export function Affiliate() {
                     Code <strong style={{ color: 'var(--navy)', letterSpacing: '0.04em' }}>{stats.promoCode}</strong>{' '}
                     · {statusLabel(stats.status)}
                   </p>
+                  {/* THE share link. Clicks and commission are only tracked for
+                      visitors who arrive through /a/<code>, so a creator who
+                      never sees this URL can never earn anything. */}
+                  <div className="af-share">
+                    <code className="af-share-url">{shareUrlFor(stats.promoCode)}</code>
+                    <button
+                      type="button"
+                      className="btn btn-ghost af-share-copy"
+                      onClick={() => copyShareUrl(stats.promoCode)}
+                    >
+                      {copied ? 'Copied' : 'Copy link'}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

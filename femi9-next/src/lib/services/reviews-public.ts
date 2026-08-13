@@ -72,3 +72,48 @@ export async function submitReview(productSlug: string, input: ReviewInput, user
     }
   })
 }
+
+/** A moderated review, shaped for the landing testimonial carousel. */
+export interface FeaturedReview {
+  id: string
+  name: string
+  place: string | null
+  rating: number
+  quote: string
+  productName: string
+}
+
+/**
+ * Approved reviews for the landing carousel.
+ *
+ * The landing page shipped four hardcoded quotes — one of which ("Make The
+ * Switch This Month") was not even a person's name — while a moderated Review
+ * table with real customer words sat unread. Only 4- and 5-star reviews are
+ * eligible: this is a testimonial rail, not the product's rating summary, which
+ * lives on the PDP and shows everything.
+ */
+export async function listFeaturedReviews(limit = 6): Promise<FeaturedReview[]> {
+  const rows = await prisma.review.findMany({
+    where: { status: 'approved', rating: { gte: 4 } },
+    orderBy: { createdAt: 'desc' },
+    take: Math.max(1, Math.min(24, limit)),
+    select: {
+      id: true,
+      name: true,
+      place: true,
+      rating: true,
+      body: true,
+      product: { select: { name: true } },
+    },
+  })
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    place: r.place,
+    rating: r.rating,
+    // Testimonial cards are a fixed height; a long review is trimmed on a word
+    // boundary rather than mid-word.
+    quote: r.body.length > 120 ? r.body.slice(0, r.body.lastIndexOf(' ', 117)) + '…' : r.body,
+    productName: r.product.name,
+  }))
+}

@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import type { OrderStatus } from '@prisma/client'
 import { getCustomer } from '@/lib/services/admin/customers'
 import { IPin } from '@/components/AppIcons'
+import { AdjustPoints } from './_adjust-points'
 
 /**
  * Customer profile — async server component. Reads the service directly and
@@ -106,6 +107,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ id: 
             <span className="adm-stat-label">Points balance</span>
             <span className="adm-stat-value">{num.format(c.pointsBalance)}</span>
           </div>
+          <AdjustPoints customerId={c.id} balance={c.pointsBalance} />
         </div>
       </div>
 

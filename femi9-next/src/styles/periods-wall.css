@@ -474,3 +474,24 @@
     transform: none;
   }
 }
+
+/* A refused like (almost always a 401) needs a visible reason. The heart used
+   to fill optimistically and silently un-fill, leaving a signed-out visitor
+   with no idea why her tap did nothing. */
+.pw-like-error {
+  margin: 0 0 18px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--butter-soft);
+  border: 1px solid var(--line-soft);
+  color: var(--navy);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.pw-like-error-link {
+  color: var(--forest-2);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

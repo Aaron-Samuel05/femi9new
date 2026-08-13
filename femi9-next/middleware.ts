@@ -19,8 +19,15 @@ const ADMIN_PUBLIC_PATHS = new Set(['/admin/login', '/api/admin/login', '/api/ad
 
 export const config = {
   // Customer /api/auth/* is intentionally NOT matched here — those endpoints must
-  // stay public (they're how you obtain a session in the first place).
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/account/:path*', '/dashboard/:path*'],
+  // stay public (they're how you obtain a session in the first place). /welcome
+  // joins the list because onboarding writes to the signed-in user's own row:
+  // it needs a session, but NOT a complete profile (that check can't happen at
+  // the edge — it's a DB read — so it lives in the /account and /dashboard
+  // server pages, which redirect here while the profile is incomplete).
+  //
+  // Nothing outside these four prefixes is matched, so static assets, /_next
+  // and every storefront route stay untouched.
+  matcher: ['/admin/:path*', '/api/admin/:path*', '/account/:path*', '/dashboard/:path*', '/welcome/:path*'],
 }
 
 /** Verify a session JWT against AUTH_SECRET, bound to the given audience so a
@@ -85,9 +92,9 @@ function base64urlBytes(value: string): Uint8Array<ArrayBuffer> {
 }
 
 export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl
+  const { pathname, search } = req.nextUrl
 
-  // ── Admin surface (unchanged) ───────────────────────────────────────────────
+  // ── Admin surface ───────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
     if (ADMIN_PUBLIC_PATHS.has(pathname)) return NextResponse.next()
 
@@ -99,18 +106,37 @@ export async function middleware(req: NextRequest) {
     if (pathname.startsWith('/api/admin')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    // A shopper who followed a stray /admin link is not staff and never will be
+    // — the admin cookie is a different name with a different audience, so the
+    // ops sign-in form is a dead end for her. Send her to her own account
+    // instead of showing her a staff login screen.
+    if (await isValidToken(req.cookies.get(SESSION_COOKIE)?.value, 'femi9-customer')) {
+      const accountUrl = req.nextUrl.clone()
+      accountUrl.pathname = '/account'
+      accountUrl.search = ''
+      return NextResponse.redirect(accountUrl)
+    }
+
     const loginUrl = req.nextUrl.clone()
     loginUrl.pathname = '/admin/login'
     loginUrl.search = ''
     return NextResponse.redirect(loginUrl)
   }
 
-  // ── Customer surface (/account, /dashboard) ─────────────────────────────────
+  // ── Customer surface (/account, /dashboard, /welcome) ───────────────────────
   if (await isValidToken(req.cookies.get(SESSION_COOKIE)?.value, 'femi9-customer')) {
     return NextResponse.next()
   }
+
+  // Carry the requested path across sign-in so the shopper lands where she was
+  // headed. The clone keeps the original query string, so it is cleared before
+  // `next` is written — otherwise /account?verified=email would arrive at
+  // /login carrying a stray `verified` param. /login validates `next` again
+  // (must be a same-origin path, never /api and never /welcome) before using it.
   const loginUrl = req.nextUrl.clone()
   loginUrl.pathname = '/login'
   loginUrl.search = ''
+  loginUrl.searchParams.set('next', `${pathname}${search}`)
   return NextResponse.redirect(loginUrl)
 }

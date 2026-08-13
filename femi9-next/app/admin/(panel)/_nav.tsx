@@ -129,6 +129,16 @@ export function NavIcon({ name }: { name: string }) {
           <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
         </svg>
       )
+    case 'thara':
+      // A referral tree: one member, two downlines.
+      return (
+        <svg {...props}>
+          <circle cx="12" cy="5" r="2.5" />
+          <circle cx="5" cy="19" r="2.5" />
+          <circle cx="19" cy="19" r="2.5" />
+          <path d="M12 7.5v3.5M12 11H5.5a.5.5 0 0 0-.5.5v5M12 11h6.5a.5.5 0 0 1 .5.5v5" />
+        </svg>
+      )
     default:
       return null
   }

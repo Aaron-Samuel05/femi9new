@@ -142,6 +142,11 @@
 }
 .blog-news-form input::placeholder { color: rgba(255, 249, 234, .55); }
 .blog-news-form input:focus { outline: none; border-color: var(--yellow); }
+.blog-news-form input:disabled,
+.blog-news-form button:disabled { opacity: .55; cursor: not-allowed; }
+/* A real signup failure needs somewhere to land — this form used to confirm
+   unconditionally without ever sending the address anywhere. */
+.blog-news-error { margin-top: 10px; font-size: .84rem; line-height: 1.45; color: #f2c9d3; }
 
 /* ---------- home teaser ---------- */
 .journal-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: clamp(22px, 3vw, 40px); }

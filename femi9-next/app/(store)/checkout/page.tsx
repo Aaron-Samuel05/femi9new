@@ -1,9 +1,11 @@
 import Link from 'next/link'
+import { getSession } from '@/lib/auth'
+import { prisma } from '@/lib/db'
 import { getGuestToken } from '@/lib/session'
 import { EMPTY_CART, getCart } from '@/lib/services/cart'
 import { getSettings } from '@/lib/services/settings'
 import { rupees } from '@/data/products'
-import { CheckoutForm } from './CheckoutForm'
+import { CheckoutForm, type CheckoutPrefill } from './CheckoutForm'
 
 // Reads the guest cookie + live cart, so it must render per-request, never cached.
 export const dynamic = 'force-dynamic'
@@ -12,11 +14,52 @@ export const dynamic = 'force-dynamic'
 // order route recomputes the same numbers authoritatively at submit time.
 const SHIPPING_FEE = 49
 
+/**
+ * What we already know about a signed-in shopper: her account details plus her
+ * primary saved address. Nothing here is required — a guest simply gets an empty
+ * form — but a returning customer should never be retyping her own street.
+ */
+async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
+  const session = await getSession()
+  if (!session) return undefined
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.sub },
+    select: {
+      name: true,
+      email: true,
+      phone: true,
+      addresses: {
+        where: { archivedAt: null },
+        // Address carries no createdAt; cuid() ids are timestamp-prefixed and
+        // therefore sort in creation order, so this is still "newest first".
+        orderBy: [{ isPrimary: 'desc' }, { id: 'desc' }],
+        take: 1,
+        select: { label: true, name: true, line: true, city: true, state: true, pincode: true, phone: true },
+      },
+    },
+  })
+  if (!user) return undefined
+
+  const addr = user.addresses[0]
+  return {
+    name: addr?.name ?? user.name,
+    phone: addr?.phone ?? user.phone,
+    email: user.email,
+    line: addr?.line,
+    city: addr?.city,
+    state: addr?.state,
+    pincode: addr?.pincode,
+    addressLabel: addr?.label,
+  }
+}
+
 export default async function CheckoutPage() {
   const token = await getGuestToken()
-  const [cart, { freeShipThreshold }] = await Promise.all([
+  const [cart, { freeShipThreshold }, prefill] = await Promise.all([
     token ? getCart(token).catch(() => EMPTY_CART) : Promise.resolve(EMPTY_CART),
     getSettings().catch(() => ({ freeShipThreshold: 999 })),
+    resolvePrefill().catch(() => undefined),
   ])
 
   if (cart.items.length === 0) {
@@ -53,7 +96,7 @@ export default async function CheckoutPage() {
         }}
       >
         {/* Shipping details — primary action */}
-        <CheckoutForm />
+        <CheckoutForm prefill={prefill} />
 
         {/* Order summary — recomputed from the server cart */}
         <aside

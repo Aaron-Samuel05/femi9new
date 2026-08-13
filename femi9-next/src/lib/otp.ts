@@ -81,6 +81,49 @@ export async function sendSms(phone: string, code: string): Promise<SendResult> 
   return { mock: false }
 }
 
+/** What happened to a non-OTP SMS. `sent:false` with a reason is an honest
+ *  "we could not tell her", which callers log rather than swallow. */
+export interface SmsSendResult {
+  sent: boolean
+  mock: boolean
+  reason?: string
+}
+
+/**
+ * Send a plain transactional SMS (not an OTP challenge).
+ *
+ * This exists because a phone-only customer had no way to receive her redeemed
+ * reward code: the only delivery was email, guarded by `if (user.email)`, which
+ * is null for every OTP signup. MSG91's OTP endpoint cannot carry arbitrary
+ * text, so this posts to the flow endpoint, which needs its own DLT-approved
+ * template. When that template is not provisioned we report it honestly instead
+ * of pretending the message went out.
+ */
+export async function sendTextSms(
+  phone: string,
+  variables: Record<string, string>,
+): Promise<SmsSendResult> {
+  const flowTemplate = process.env.MSG91_FLOW_TEMPLATE_ID?.trim()
+  if (!smsConfigured() || !flowTemplate) {
+    if (mockProvidersAllowed()) return { sent: true, mock: true }
+    return { sent: false, mock: false, reason: 'MSG91_FLOW_TEMPLATE_ID is not configured' }
+  }
+
+  const res = await fetch('https://control.msg91.com/api/v5/flow/', {
+    method: 'POST',
+    headers: { authkey: process.env.MSG91_AUTH_KEY as string, 'content-type': 'application/json' },
+    body: JSON.stringify({
+      template_id: flowTemplate,
+      recipients: [{ mobiles: `91${phone}`, ...variables }],
+    }),
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    return { sent: false, mock: false, reason: `MSG91 flow failed (${res.status}): ${detail.slice(0, 200)}` }
+  }
+  return { sent: true, mock: false }
+}
+
 /**
  * Email a sign-in `url` to `email`.
  *

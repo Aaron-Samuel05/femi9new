@@ -3,6 +3,8 @@
 import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/store/cart'
+import { Chip } from '@/components/Chip'
+import { track } from '@/lib/track'
 
 /**
  * Checkout form — collects shipping details, POSTs /api/checkout, then drives
@@ -91,7 +93,16 @@ function loadRazorpayScript(): Promise<boolean> {
   })
 }
 
-type Field = 'name' | 'phone' | 'email' | 'line' | 'city' | 'state' | 'pincode' | 'couponCode'
+type Field =
+  | 'name'
+  | 'phone'
+  | 'email'
+  | 'line'
+  | 'city'
+  | 'state'
+  | 'pincode'
+  | 'couponCode'
+  | 'addressLabel'
 
 const EMPTY: Record<Field, string> = {
   name: '',
@@ -102,6 +113,7 @@ const EMPTY: Record<Field, string> = {
   state: '',
   pincode: '',
   couponCode: '',
+  addressLabel: 'Home',
 }
 
 const inputStyle: CSSProperties = {
@@ -123,11 +135,36 @@ const labelStyle: CSSProperties = {
   marginBottom: '.35rem',
 }
 
-export function CheckoutForm() {
+/** What we already know about a signed-in shopper, resolved server-side. */
+export interface CheckoutPrefill {
+  name?: string | null
+  phone?: string | null
+  email?: string | null
+  line?: string | null
+  city?: string | null
+  state?: string | null
+  pincode?: string | null
+  addressLabel?: string | null
+}
+
+export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
   const router = useRouter()
   const { refresh } = useCart()
 
-  const [form, setForm] = useState<Record<Field, string>>(EMPTY)
+  // Seed from the account and its primary address so a signed-in shopper is not
+  // retyping her own name, number and street on every order. Fields stay fully
+  // editable — this is a starting point, not a lock.
+  const [form, setForm] = useState<Record<Field, string>>(() => ({
+    ...EMPTY,
+    name: prefill?.name ?? '',
+    phone: prefill?.phone ?? '',
+    email: prefill?.email ?? '',
+    line: prefill?.line ?? '',
+    city: prefill?.city ?? '',
+    state: prefill?.state ?? '',
+    pincode: prefill?.pincode ?? '',
+    addressLabel: prefill?.addressLabel ?? 'Home',
+  }))
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
   const [formError, setFormError] = useState<string | null>(null)
   // Informational, non-error note (currently used for test-mode disclosure).
@@ -167,6 +204,7 @@ export function CheckoutForm() {
   async function simulateMockPayment(orderNo: string, token: string) {
     setNote('Test mode - simulating payment…')
     const okv = await postVerify({ orderNo, mock: true })
+    if (okv) track('purchase', { orderNo, mode: 'mock' })
     if (!okv) {
       setFormError('We could not confirm the test payment. Please try again.')
       setNote(null)
@@ -199,6 +237,7 @@ export function CheckoutForm() {
         contact: form.phone,
       },
       handler: (res) => {
+        track('purchase', { orderNo, mode: 'razorpay' })
         // Route to the confirmation regardless of the verify outcome: the page
         // reads the live order status, so a verify hiccup still shows the truthful
         // pending/paid state (and the webhook can still finalize it).
@@ -227,6 +266,9 @@ export function CheckoutForm() {
     if (!validate()) return
 
     setSubmitting(true)
+    // /api/events had no client instrumentation at all; checkout start and
+    // purchase are the two events the funnel is actually measured on.
+    track('checkout_start', {})
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
@@ -367,6 +409,23 @@ export function CheckoutForm() {
             onChange={(e) => onDigits('pincode', e.target.value, 6)}
             aria-invalid={!!errors.pincode}
           />
+        </FormField>
+
+        {/* The customer's own name for this address. It is saved to her address
+            book and reused on the next order, so it has to be her word — every
+            address in the system used to be stamped 'Home' regardless. */}
+        <FormField label="Save this address as" full>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {['Home', 'Work', 'Other'].map((option) => (
+              <Chip
+                key={option}
+                selected={form.addressLabel === option}
+                onClick={() => set('addressLabel', option)}
+              >
+                {option}
+              </Chip>
+            ))}
+          </div>
         </FormField>
 
         <FormField label="Coupon or reward code (optional)" full>

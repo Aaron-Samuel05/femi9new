@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, createHmac, randomBytes } from 'node:crypto'
 
 const VERSION = 'v1'
 
@@ -10,6 +10,17 @@ function key(): Buffer {
     throw new Error('CYCLE_DATA_ENCRYPTION_KEY must be exactly 32 base64-encoded bytes')
   }
   return decoded
+}
+
+/** True when the key is present and the right length — lets a read path degrade
+ *  to "we couldn't open your history" instead of throwing a 500 at the route. */
+export function cycleCryptoConfigured(): boolean {
+  try {
+    key()
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
@@ -45,4 +56,34 @@ export function decryptCyclePayload(value: string): Record<string, unknown> {
     throw new Error('Invalid encrypted cycle payload')
   }
   return parsed as Record<string, unknown>
+}
+
+/**
+ * Non-throwing decrypt. Returns null for a row this process cannot open — a
+ * rotated key, a truncated column, a payload from a future version.
+ *
+ * A single unreadable row used to throw out of getCycleData and 500 the whole
+ * /dashboard route, which meant one bad write bricked the page permanently. The
+ * read path now skips and COUNTS these instead, and the UI says so plainly.
+ */
+export function tryDecryptCyclePayload(value: string): Record<string, unknown> | null {
+  try {
+    return decryptCyclePayload(value)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Stable per-user day fingerprint, used as the uniqueness key that stops the
+ * same period start being logged twice.
+ *
+ * It is an HMAC and never the plaintext date: the entire point of encrypting
+ * `PeriodLog.encryptedData` is that a database leak must not reveal menstrual
+ * dates, and a plaintext `startDay` column alongside it would hand them straight
+ * back. Keyed off the same secret, so a leaked DB cannot be brute-forced across
+ * the small date space without it. Deterministic, so the upsert can match.
+ */
+export function periodDayHash(userId: string, startDate: string): string {
+  return createHmac('sha256', key()).update(`${userId}|${startDate}`).digest('base64url')
 }

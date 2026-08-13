@@ -135,9 +135,19 @@ async function main() {
   status('Admin API rejects anonymous access', protectedAdmin, 401)
   const protectedAccount = await request('/account')
   status('Account redirects anonymous visitors', protectedAccount, 307)
+  // The redirect now carries the requested path so sign-in can return the
+  // shopper to it, so the Location is /login?next=/account rather than a bare
+  // /login. Assert the path and that the destination survives — that return
+  // trip is the behaviour worth pinning.
+  const accountRedirect = protectedAccount.response.headers.get('location')
+  const accountRedirectUrl = accountRedirect ? new URL(accountRedirect, baseUrl) : null
   check(
     'Account redirect points to login',
-    protectedAccount.response.headers.get('location')?.endsWith('/login') === true,
+    accountRedirectUrl?.pathname === '/login',
+  )
+  check(
+    'Account redirect preserves the destination',
+    accountRedirectUrl?.searchParams.get('next') === '/account',
   )
 
   // Admin authentication + catalog visibility.
@@ -268,6 +278,20 @@ async function main() {
   check('Authenticated customer is returned', Boolean(me.body?.user?.id))
 
   const today = new Date().toISOString().slice(0, 10)
+
+  // Health data is gated on explicit consent. Prove the gate holds before
+  // granting it — a fresh account must not be able to write period data.
+  const beforeConsent = await request('/api/cycle/periods', {
+    jar: customer,
+    method: 'POST',
+    json: { startDate: today, lengthDays: 5 },
+  })
+  status('Cycle logging is refused before consent', beforeConsent, 403)
+  check('Refusal identifies the missing consent', beforeConsent.body?.code === 'consent_required')
+
+  const consent = await request('/api/cycle', { jar: customer, method: 'PATCH', json: { consent: true } })
+  status('Customer can grant cycle consent', consent, 200)
+
   const period = await request('/api/cycle/periods', {
     jar: customer,
     method: 'POST',

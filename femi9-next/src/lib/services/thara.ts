@@ -81,6 +81,7 @@ type AttributionReason =
   | 'self-referral'
   | 'dup-email'
   | 'dup-phone'
+  | 'insufficient-identity'
   | 'already-attributed'
 
 export interface AttributionInput {
@@ -111,15 +112,28 @@ export async function attributeReferralIfPresent(
   }
 
   if (referrer.user.id === user.id) return { attributed: false, reason: 'self-referral' }
-  if (
-    user.email &&
-    referrer.user.email &&
-    user.email.toLowerCase() === referrer.user.email.toLowerCase()
-  ) {
+
+  // Duplicate-identity guards. Each one is only MEANINGFUL when both operands
+  // are present — a null on either side means the comparison did not run, not
+  // that it cleared. That distinction is the whole guard: a member who enrolled
+  // by phone OTP has email null, so `user.email &&` short-circuited for every
+  // email-path signup, and vice versa. Signing up a second time through the
+  // OTHER channel produced a row sharing no non-null field, attribution
+  // succeeded, and the referrer earned 10% store credit plus reward points on
+  // her own purchase.
+  const emailComparable = Boolean(user.email && referrer.user.email)
+  const phoneComparable = Boolean(user.phone && referrer.user.phone)
+
+  if (emailComparable && user.email!.toLowerCase() === referrer.user.email!.toLowerCase()) {
     return { attributed: false, reason: 'dup-email' }
   }
-  if (user.phone && referrer.user.phone && user.phone === referrer.user.phone) {
+  if (phoneComparable && user.phone === referrer.user.phone) {
     return { attributed: false, reason: 'dup-phone' }
+  }
+  // Neither comparison could run, so we cannot tell these two apart. Refuse
+  // rather than pay a commission we cannot prove is not self-dealing.
+  if (!emailComparable && !phoneComparable) {
+    return { attributed: false, reason: 'insufficient-identity' }
   }
 
   try {
@@ -747,12 +761,19 @@ export async function computeTharaDiscount(
   return { eligible: true, slab, discountPaise }
 }
 
+/** A membership row plus just enough of the account to identify the human behind
+ *  it. The admin console searches by email, so listing without it forced the
+ *  operator to match people by referral code alone. */
+export type TharaMembershipRow = TharaMembership & {
+  user: { id: string; name: string | null; email: string | null; phone: string | null }
+}
+
 export async function listMemberships(filter: {
   status?: TharaStatus
   q?: string
   take: number
   skip: number
-}): Promise<{ rows: TharaMembership[]; total: number }> {
+}): Promise<{ rows: TharaMembershipRow[]; total: number }> {
   const where: Prisma.TharaMembershipWhereInput = {
     ...(filter.status ? { status: filter.status } : {}),
     ...(filter.q
@@ -770,6 +791,7 @@ export async function listMemberships(filter: {
       take: filter.take,
       skip: filter.skip,
       orderBy: { createdAt: 'desc' },
+      include: { user: { select: { id: true, name: true, email: true, phone: true } } },
     }),
     prisma.tharaMembership.count({ where }),
   ])

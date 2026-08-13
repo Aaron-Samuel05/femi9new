@@ -27,10 +27,17 @@ export interface ProductWithVariants extends Product {
 }
 
 export interface ProductReview {
+  id: string
   name: string
   place: string | null
   rating: number
   body: string
+  /** "Jun 2026" — preformatted. Every card used to print a hardcoded 'Jun 2026'
+   *  because the DTO carried no date at all. */
+  date: string
+  /** True only when this reviewer actually bought this product. The badge used
+   *  to read "Verified Buyer" unconditionally on every card. */
+  verified: boolean
 }
 
 export interface FullProduct {
@@ -117,9 +124,38 @@ export async function getProduct(slug: string): Promise<FullProduct | null> {
       },
     })
   if (!row) return null
+
+  // "Verified buyer" has to mean something: resolve, in one query, which of
+  // these reviewers actually has a paid order containing a variant of THIS
+  // product. Anonymous reviews (userId null) are never verified.
+  const reviewerIds = row.reviews.map((r) => r.userId).filter((id): id is string => Boolean(id))
+  const buyerIds = new Set<string>()
+  if (reviewerIds.length > 0) {
+    const buyers = await prisma.order.findMany({
+      where: {
+        userId: { in: reviewerIds },
+        status: { in: ['paid', 'processing', 'shipped', 'delivered'] },
+        items: { some: { variant: { productId: row.id } } },
+      },
+      select: { userId: true },
+      distinct: ['userId'],
+    })
+    for (const b of buyers) if (b.userId) buyerIds.add(b.userId)
+  }
+
+  const reviews: ProductReview[] = row.reviews.map((r) => ({
+    id: r.id,
+    name: r.name,
+    place: r.place,
+    rating: r.rating,
+    body: r.body,
+    date: r.createdAt.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+    verified: Boolean(r.userId && buyerIds.has(r.userId)),
+  }))
+
   return {
       product: toProduct(row),
       extra: toExtra(row),
-      reviews: row.reviews.map((r) => ({ name: r.name, place: r.place, rating: r.rating, body: r.body })),
+      reviews,
   }
 }

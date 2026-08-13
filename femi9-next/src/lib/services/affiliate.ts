@@ -1,6 +1,8 @@
 import 'server-only'
 import { Prisma, type AffiliateStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
+import { sendEmailNotification } from '@/lib/services/notifications'
 
 /**
  * Affiliate (creator) program — server-tracked application, click attribution
@@ -19,9 +21,10 @@ import { prisma } from '@/lib/db'
  *    stale or guessed link can never create tracking noise.
  */
 
-/** Cookie the storefront redirect (/r/[code]) drops so checkout can attribute
- *  a later purchase back to the referring creator. Shared here so the setter and
- *  the reader agree on one name. */
+/** Cookie the creator referral redirect (/a/[code]) drops so checkout can
+ *  attribute a later purchase back to the referring creator. Shared here so the
+ *  setter and the reader agree on one name. (/r/[code] is the separate Thara
+ *  membership referral and uses its own signed cookie.) */
 export const REF_COOKIE = 'femi9_ref'
 
 /** Commission paid to the creator on an attributed order, as a fraction of the
@@ -85,7 +88,7 @@ export async function apply(input: AffiliateApplication): Promise<void> {
     create: { email, name: input.name, role: 'affiliate' },
   })
 
-  await prisma.affiliate.upsert({
+  const affiliate = await prisma.affiliate.upsert({
     where: { userId: user.id },
     update: { handle, platform, followerBand },
     create: {
@@ -96,7 +99,29 @@ export async function apply(input: AffiliateApplication): Promise<void> {
       status: 'pending',
       promoCode: placeholderCode(user.id), // real code allocated on approval
     },
+    select: { id: true },
   })
+
+  // Tell ops a creator is waiting. Mirrors services/partner.ts — an application
+  // that lands in a table nobody watches is the same as no application. Never
+  // throws: a mail outage must not fail the applicant's submission.
+  const opsEmail = process.env.PARTNER_OPS_EMAIL?.trim()
+  if (!opsEmail) {
+    logger.warn('affiliate_application_no_ops_recipient', { affiliateId: affiliate.id })
+    return
+  }
+  try {
+    await sendEmailNotification({
+      to: opsEmail,
+      subject: `New Femi9 creator application: @${handle}`,
+      text: `${input.name} (@${handle}${platform ? `, ${platform}` : ''}${followerBand ? `, ${followerBand}` : ''}) applied. Review in the admin console.`,
+      html: `<p><strong>${input.name}</strong> (@${handle}${platform ? `, ${platform}` : ''}${followerBand ? `, ${followerBand}` : ''}) applied. Review in the admin console.</p>`,
+      template: 'affiliate-application-ops',
+      dedupeKey: `affiliate-application:${affiliate.id}:ops`,
+    })
+  } catch (err) {
+    logger.error('affiliate_application_ops_mail_failed', { affiliateId: affiliate.id, err: String(err) })
+  }
 }
 
 export interface AffiliateStats {
@@ -164,7 +189,7 @@ export async function getForUser(userId: string): Promise<AffiliateStats | null>
 }
 
 /**
- * Record a click for an approved code (the /r/[code] redirect calls this).
+ * Record a click for an approved code — called by the /a/[code] redirect.
  * Silently ignores unknown/pending/suspended codes so a bad link is harmless.
  */
 export async function logClick(promoCode: string): Promise<void> {

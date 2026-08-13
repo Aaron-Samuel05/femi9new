@@ -1,5 +1,5 @@
 import 'server-only'
-import type { User } from '@prisma/client'
+import { Prisma, type User } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { generateCode, generateToken, hashCode, sendSms, sendMagicLink } from '@/lib/otp'
 import type { GoogleProfile } from '@/lib/google-oauth'
@@ -72,7 +72,9 @@ export function normalizePhone(input: string): string {
   return digits.length > 10 ? digits.slice(-10) : digits
 }
 
-function normalizeEmail(input: string): string {
+/** Lowercased + trimmed. Exported so routes can key per-address rate limits on
+ *  the same canonical value this service stores and looks rows up by. */
+export function normalizeEmail(input: string): string {
   return (input || '').trim().toLowerCase()
 }
 
@@ -144,11 +146,14 @@ function maybeAttribute(user: User, ctx: TharaAttributionCtx | undefined) {
     })
 }
 
-export async function verifyOtp(
-  phone: string,
-  code: string,
-  attributionCtx?: TharaAttributionCtx,
-): Promise<User> {
+/**
+ * Check a live phone OTP challenge and CONSUME it on success. Shared by the
+ * sign-in path (verifyOtp, which then upserts a User) and the attach-a-number
+ * path (verifyPhoneChallenge, which must not create a second account) so both
+ * get the identical guess budget, expiry rule and replay protection.
+ * Returns the normalised phone; throws InvalidPhoneError / InvalidOtpError.
+ */
+async function consumePhoneChallenge(phone: string, code: string): Promise<string> {
   const normalized = normalizePhone(phone)
   if (normalized.length !== 10) throw new InvalidPhoneError()
 
@@ -176,16 +181,41 @@ export async function verifyOtp(
     throw new InvalidOtpError()
   }
 
-  const user = await prisma.user.upsert({
-    where: { phone: normalized },
-    update: {}, // keep existing name / profile
-    create: { phone: normalized, role: 'customer' },
-  })
-
   // Consume every challenge for this identifier so a code can't be replayed.
   await prisma.verificationToken.deleteMany({ where: { identifier } })
+  return normalized
+}
+
+export async function verifyOtp(
+  phone: string,
+  code: string,
+  attributionCtx?: TharaAttributionCtx,
+): Promise<User> {
+  const normalized = await consumePhoneChallenge(phone, code)
+
+  // Passing the challenge IS the verification, so stamp phoneVerified on both
+  // branches — a returning shopper whose row predates this column gets it
+  // backfilled on their next sign-in. Nothing else on the row is touched, so an
+  // existing name / email / avatar survives.
+  const user = await prisma.user.upsert({
+    where: { phone: normalized },
+    update: { phoneVerified: new Date() },
+    create: { phone: normalized, phoneVerified: new Date(), role: 'customer' },
+  })
+
   maybeAttribute(user, attributionCtx)
   return user
+}
+
+/**
+ * Verify an OTP for a signed-in customer who is ATTACHING this number to their
+ * existing account. Deliberately does not upsert a User: the caller already has
+ * an identity and creating a second row keyed on the phone is exactly the split
+ * that orphans an email-signup shopper's orders. Returns the normalised phone
+ * for the caller to hand to attachIdentity().
+ */
+export async function verifyPhoneChallenge(phone: string, code: string): Promise<string> {
+  return consumePhoneChallenge(phone, code)
 }
 
 export interface RequestMagicLinkResult {
@@ -198,8 +228,14 @@ export interface RequestMagicLinkResult {
  * Start an email magic-link challenge: mint a random token, store its hash, build
  * the verify URL with the RAW token, and send it (or mock). Prior challenges for
  * this email are cleared first so only the newest link works.
+ *
+ * `next` is the post-sign-in destination. It rides on the LINK rather than in the
+ * DB row because the tab that opens the mail is often not the tab that requested
+ * it, so there is no client state left to restore it from. The caller is
+ * responsible for having passed it through safeNextPath first; the verify route
+ * re-validates on the way back in, since the link is user-visible and editable.
  */
-export async function requestMagicLink(email: string): Promise<RequestMagicLinkResult> {
+export async function requestMagicLink(email: string, next?: string): Promise<RequestMagicLinkResult> {
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized)) throw new InvalidEmailError()
 
@@ -215,7 +251,8 @@ export async function requestMagicLink(email: string): Promise<RequestMagicLinkR
   // The link carries the RAW token; the DB only ever holds its hash. NEXT_PUBLIC_SITE_URL
   // is the canonical origin so the link resolves the same whatever host issued it.
   const base = process.env.NEXT_PUBLIC_SITE_URL || ''
-  const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}`
+  const nextParam = next && next !== '/account' ? `&next=${encodeURIComponent(next)}` : ''
+  const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}${nextParam}`
 
   const { mock } = await sendMagicLink(normalized, link)
   return { mock, ...(mock ? { devLink: link } : {}) }
@@ -291,4 +328,208 @@ export async function signInWithGoogle(
   })
   maybeAttribute(user, attributionCtx)
   return user
+}
+
+// ─────────────────── Attaching a second contact channel ────────────────────
+/**
+ * Both User.email and User.phone are @unique, and every signup path fills in
+ * exactly ONE of them. Adding the other later therefore always risks colliding
+ * with a row that already owns the value — the hazard the audit found in
+ * checkout's blind upsert, which either tripped P2002 into a 500 or silently
+ * dropped the value depending on how Prisma emits `not: <string>` against NULL.
+ *
+ * Every write to User.email / User.phone outside verifyOtp's own create goes
+ * through attachIdentity below, and the decision is settled: we REFUSE with a
+ * 409 and never merge implicitly. A real merge has to re-point Order, Address,
+ * Cart, PointsLedger, Subscription, Thara* and Review at a surviving row, and
+ * TharaMembership.userId / TharaReferral.referredUserId being @unique make that
+ * genuinely hard — it is not something to attempt inside a payment flow.
+ */
+
+export type IdentityField = 'email' | 'phone'
+
+export class IdentityConflictError extends Error {
+  constructor(public field: IdentityField) {
+    super(
+      field === 'email'
+        ? 'That email is already on another Femi9 account. Sign in with it instead.'
+        : 'That mobile number is already on another Femi9 account. Sign in with it instead.',
+    )
+    this.name = 'IdentityConflictError'
+  }
+}
+
+/** PrismaClient is assignable to TransactionClient, so callers pass either the
+ *  open `tx` or the bare `prisma` — same convention as services/affiliate.ts. */
+type DbClient = Prisma.TransactionClient
+
+/** Who currently owns `value` on `field`, or null when it is free. */
+async function identityOwnerId(
+  db: DbClient,
+  field: IdentityField,
+  value: string,
+): Promise<string | null> {
+  const row = await db.user.findUnique({
+    where: field === 'email' ? { email: value } : { phone: value },
+    select: { id: true },
+  })
+  return row?.id ?? null
+}
+
+/**
+ * Throw IdentityConflictError when `value` already belongs to a DIFFERENT user.
+ * Call this BEFORE an irreversible side effect — notably before spending an SMS
+ * on an OTP for a number we are going to refuse anyway.
+ */
+export async function assertIdentityFree(
+  userId: string,
+  field: IdentityField,
+  value: string,
+): Promise<void> {
+  const normalized = field === 'email' ? normalizeEmail(value) : normalizePhone(value)
+  const owner = await identityOwnerId(prisma, field, normalized)
+  if (owner && owner !== userId) throw new IdentityConflictError(field)
+}
+
+/**
+ * Attach a second contact channel to an EXISTING user row.
+ *  - value free            → UPDATE this row (P2002 retried once for the race)
+ *  - value owned by self   → written anyway (same value; the verified stamp is
+ *                            the point of a re-verify, and it cannot collide)
+ *  - value owned by OTHER  → throw IdentityConflictError, caller returns 409
+ *
+ * `db` is the caller's transaction client when one is open, else `prisma`, so a
+ * checkout can attach inside the same transaction that creates the order.
+ */
+export async function attachIdentity(
+  db: DbClient,
+  userId: string,
+  patch: { email?: string; emailVerified?: Date | null; phone?: string; phoneVerified?: Date | null },
+): Promise<void> {
+  const email = patch.email === undefined ? undefined : normalizeEmail(patch.email)
+  const phone = patch.phone === undefined ? undefined : normalizePhone(patch.phone)
+
+  if (email !== undefined && !isValidEmail(email)) throw new InvalidEmailError()
+  if (phone !== undefined && phone.length !== 10) throw new InvalidPhoneError()
+
+  // Check ownership first so the common conflict is a clean 409 rather than a
+  // caught constraint violation. The P2002 catch below is only for the race.
+  if (email !== undefined) {
+    const owner = await identityOwnerId(db, 'email', email)
+    if (owner && owner !== userId) throw new IdentityConflictError('email')
+  }
+  if (phone !== undefined) {
+    const owner = await identityOwnerId(db, 'phone', phone)
+    if (owner && owner !== userId) throw new IdentityConflictError('phone')
+  }
+
+  const data: Prisma.UserUpdateInput = {
+    ...(email !== undefined ? { email } : {}),
+    ...(patch.emailVerified !== undefined ? { emailVerified: patch.emailVerified } : {}),
+    ...(phone !== undefined ? { phone } : {}),
+    ...(patch.phoneVerified !== undefined ? { phoneVerified: patch.phoneVerified } : {}),
+  }
+  if (Object.keys(data).length === 0) return
+
+  try {
+    await db.user.update({ where: { id: userId }, data })
+  } catch (err) {
+    // Someone claimed the value between our SELECT and this UPDATE. Re-read the
+    // owner: if it is now a different row the answer really is 409, and if the
+    // row vanished (a concurrent delete) the retry surfaces the real error.
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      // meta.target names the violated index ('email' / 'phone'); fall back to
+      // whichever column this call was actually writing when it is absent.
+      const meta = err.meta as { target?: unknown } | undefined
+      const target = Array.isArray(meta?.target) ? (meta.target as string[]) : []
+      const field: IdentityField =
+        target.includes('phone') || (target.length === 0 && phone !== undefined) ? 'phone' : 'email'
+      const value = field === 'phone' ? phone : email
+      if (value !== undefined) {
+        const owner = await identityOwnerId(db, field, value)
+        if (owner && owner !== userId) throw new IdentityConflictError(field)
+      }
+      try {
+        await db.user.update({ where: { id: userId }, data })
+      } catch (retryErr) {
+        // Still colliding after a fresh look at the owner. We cannot explain the
+        // state, but "that value is taken" is a truthful 409 and a 500 is not.
+        if (retryErr instanceof Prisma.PrismaClientKnownRequestError && retryErr.code === 'P2002') {
+          throw new IdentityConflictError(field)
+        }
+        throw retryErr
+      }
+      return
+    }
+    throw err
+  }
+}
+
+/**
+ * Start an email-confirmation challenge for a SIGNED-IN user attaching or
+ * verifying an address. Reuses the magic-link machinery but under its own
+ * `attach-email:<userId>:<email>` identifier namespace, so a token minted here
+ * can never be redeemed by the sign-in verifier to mint a session for a
+ * different account.
+ */
+export async function requestAttachEmailLink(
+  userId: string,
+  email: string,
+): Promise<RequestMagicLinkResult> {
+  const normalized = normalizeEmail(email)
+  if (!isValidEmail(normalized)) throw new InvalidEmailError()
+
+  const identifier = `attach-email:${userId}:${normalized}`
+  const raw = generateToken()
+  const token = hashCode(raw)
+
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  await prisma.verificationToken.create({
+    data: { identifier, token, expires: new Date(Date.now() + LINK_TTL_MS) },
+  })
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || ''
+  const link = `${base}/api/account/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}`
+
+  const { mock } = await sendMagicLink(normalized, link)
+  return { mock, ...(mock ? { devLink: link } : {}) }
+}
+
+/**
+ * Redeem an attach-email token for `userId`. Returns the normalised address on
+ * success (the caller then runs attachIdentity to stamp emailVerified); throws
+ * InvalidMagicLinkError for a wrong / expired / already-used token, or one
+ * minted for a different user.
+ */
+export async function verifyAttachEmailToken(
+  userId: string,
+  email: string,
+  token: string,
+): Promise<string> {
+  const normalized = normalizeEmail(email)
+  if (!isValidEmail(normalized) || !token) throw new InvalidMagicLinkError()
+
+  const identifier = `attach-email:${userId}:${normalized}`
+  const hash = hashCode(token)
+
+  const challenge = await prisma.verificationToken.findFirst({
+    where: { identifier, token: hash, expires: { gt: new Date() } },
+  })
+  if (!challenge) throw new InvalidMagicLinkError()
+
+  await prisma.verificationToken.deleteMany({ where: { identifier } })
+  return normalized
+}
+
+/**
+ * Fire-and-forget dispatch of the confirm-your-email link. Used where the
+ * address is written unverified (/welcome, PATCH /api/account/profile): the
+ * write must not fail because Resend is down, and the customer can always
+ * re-request from /account.
+ */
+export function dispatchEmailVerification(userId: string, email: string): void {
+  void requestAttachEmailLink(userId, email).catch((err) => {
+    // eslint-disable-next-line no-console
+    console.error('[auth] email verification dispatch failed', err)
+  })
 }

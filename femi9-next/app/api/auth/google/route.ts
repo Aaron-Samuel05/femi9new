@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { googleConfigured, generateState, buildConsentUrl, callbackUrl, OAUTH_STATE_COOKIE } from '@/lib/google-oauth'
+import {
+  googleConfigured,
+  generateState,
+  buildConsentUrl,
+  callbackUrl,
+  OAUTH_STATE_COOKIE,
+  OAUTH_NEXT_COOKIE,
+} from '@/lib/google-oauth'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { mockProvidersAllowed } from '@/lib/runtime-mode'
+import { safeNextPath } from '@/lib/safe-next'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,12 +42,20 @@ export async function GET(req: NextRequest) {
       `${redirectUri}?mock=1&state=${state}`
 
   const res = NextResponse.redirect(target, 307)
-  res.cookies.set(OAUTH_STATE_COOKIE, state, {
+  const cookieOpts = {
     httpOnly: true,
-    sameSite: 'lax',
+    sameSite: 'lax' as const,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     maxAge: STATE_MAX_AGE,
-  })
+  }
+  res.cookies.set(OAUTH_STATE_COOKIE, state, cookieOpts)
+
+  // Park the destination for the callback. Validated on the way in AND on the way
+  // out: the cookie is httpOnly so a page script cannot forge it, but re-checking
+  // costs nothing and keeps the guarantee local to the redirect that uses it.
+  const next = safeNextPath(new URL(req.url).searchParams.get('next'), '')
+  if (next) res.cookies.set(OAUTH_NEXT_COOKIE, next, cookieOpts)
+
   return res
 }

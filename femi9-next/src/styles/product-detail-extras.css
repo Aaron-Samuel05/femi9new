@@ -1,0 +1,80 @@
+/**
+ * Product-detail additions owned by the ProductDetail screen.
+ *
+ * Lives in its own file, imported directly by src/screens/ProductDetail.tsx
+ * (the pattern cycle-tracker.css already uses), because src/styles/app.css is
+ * shared with the admin console and is not this track's to edit. Everything
+ * here supports controls that did not exist before: the review-form entry
+ * points, the empty-reviews state, and the copy-link share button.
+ *
+ * Tokens only — no new :root, no new colours.
+ */
+
+/* The share row's third control is now a <button> (Instagram has no web share
+   intent, so it copies the link instead of opening instagram.com with nothing
+   attached). It inherits .pdp-share-link, which was written for an <a>. */
+button.pdp-share-link {
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+button.pdp-share-link:focus-visible {
+  outline: 2px solid rgba(86, 49, 132, 0.45);
+  outline-offset: 2px;
+}
+
+/* "Write a review" inside the rating summary. The modal it opens was already
+   built and its endpoint already worked — nothing ever called setReviewOpen(true). */
+.pdp-write-review {
+  margin-top: 14px;
+  align-self: flex-start;
+}
+
+/* Second entry point, below the review cards. */
+.pdp-reviews-cta {
+  margin-top: clamp(20px, 3vw, 28px);
+  display: flex;
+  justify-content: center;
+}
+
+/* Shown instead of the rating bars when a product genuinely has no reviews.
+   The bars used to render a hardcoded 88/9/3/0/0 distribution regardless. */
+.pdp-reviews-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  padding: clamp(28px, 5vw, 48px) 20px;
+  background: var(--surface);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-card);
+}
+
+.pdp-reviews-empty p {
+  margin: 0;
+  max-width: 38ch;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}
+
+/* The related-product action is a real button now, not a link that only
+   navigated while wearing a bag icon. */
+button.related-add-btn-pill {
+  cursor: pointer;
+  font: inherit;
+}
+
+button.related-add-btn-pill:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button.pdp-share-link,
+  button.related-add-btn-pill {
+    transition: none;
+  }
+}

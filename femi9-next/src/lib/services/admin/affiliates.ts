@@ -1,7 +1,9 @@
 import 'server-only'
 import type { AffiliateStatus, PayoutStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
 import { isPlaceholder } from '@/lib/services/affiliate'
+import { sendEmailNotification } from '@/lib/services/notifications'
 
 /**
  * Admin affiliate service — the seam between the DB and the creator-program
@@ -174,7 +176,7 @@ async function allocateCode(handle: string): Promise<string> {
 export async function approve(id: string): Promise<AffiliateListItem | null> {
   const current = await prisma.affiliate.findUnique({
     where: { id },
-    select: { handle: true, promoCode: true },
+    select: { handle: true, promoCode: true, userId: true, user: { select: { email: true, name: true } } },
   })
   if (!current) return null
 
@@ -186,7 +188,52 @@ export async function approve(id: string): Promise<AffiliateListItem | null> {
     where: { id },
     data: { status: 'approved', promoCode },
   })
+
+  // Send the email the /affiliate page promises three separate times ("we'll
+  // email your personal Femi9 code the moment you're approved"). Until now
+  // approve() only wrote the row, so that promise was never kept and the
+  // creator had no way to learn her own code.
+  await sendApprovalEmail(id, current.user?.email ?? null, current.user?.name ?? null, promoCode)
+
   return listItem(id)
+}
+
+/** The tracked share URL. Commission is only attributed to visitors who arrive
+ *  through /a/<code>, so the code alone is not enough — send the link too. */
+function shareUrl(promoCode: string): string {
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') ?? ''
+  return `${origin}/a/${promoCode}`
+}
+
+async function sendApprovalEmail(
+  affiliateId: string,
+  email: string | null,
+  name: string | null,
+  promoCode: string,
+): Promise<void> {
+  if (!email) {
+    logger.warn('affiliate_approval_no_email', { affiliateId })
+    return
+  }
+  const url = shareUrl(promoCode)
+  const greeting = name?.trim().split(' ')[0] || 'there'
+  await sendEmailNotification({
+    to: email,
+    subject: 'You are approved — here is your Femi9 creator code',
+    text: `Hi ${greeting},
+
+You're in. Your Femi9 creator code is ${promoCode}.
+
+Share this link so your clicks and commission are tracked:
+${url}
+
+Femi9`,
+    html: `<p>Hi ${greeting},</p><p>You're in. Your Femi9 creator code is <strong>${promoCode}</strong>.</p><p>Share this link so your clicks and commission are tracked:<br><a href="${url}">${url}</a></p><p>Femi9</p>`,
+    template: 'affiliate-approved',
+    // Keyed on the allocated code, not the row, so re-approving after a
+    // suspension does not re-send an identical email.
+    dedupeKey: `affiliate-approved:${affiliateId}:${promoCode}`,
+  })
 }
 
 /** Suspend a creator (their code stops attributing). Null if the row is gone. */

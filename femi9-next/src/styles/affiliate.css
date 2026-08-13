@@ -913,3 +913,39 @@
     justify-content: center;
   }
 }
+
+/* ---------- creator share link ----------
+   The tracked /a/<code> URL. A creator who never sees this can never earn:
+   commission is only attributed to visitors who arrive through it. */
+.af-share {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.af-share-url {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 10px 14px;
+  border: 1.5px solid var(--line);
+  border-radius: 14px;
+  background: var(--cream-2);
+  color: var(--navy);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  /* A long site origin must wrap rather than push the panel sideways at 360px. */
+  overflow-wrap: anywhere;
+}
+
+.af-share-copy {
+  flex: 0 0 auto;
+  padding: 0.6em 1.15em;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 560px) {
+  .af-share-copy { flex: 1 1 100%; }
+}

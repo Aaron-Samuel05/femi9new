@@ -14,8 +14,14 @@ export function created<T>(data: T) {
   return NextResponse.json(data, { status: 201 })
 }
 
-export function badRequest(error: string, details?: unknown) {
-  return NextResponse.json({ error, details }, { status: 400 })
+/**
+ * `details` carries zod's `flatten()` output so a form can put each message next
+ * to its input. `extra` is spread at the TOP level for machine-readable keys the
+ * client branches on (e.g. `{ code: 'phone_requires_verification', field: 'phone' }`)
+ * — those belong beside `error`, not buried inside a validation payload.
+ */
+export function badRequest(error: string, details?: unknown, extra?: Record<string, unknown>) {
+  return NextResponse.json({ error, details, ...extra }, { status: 400 })
 }
 
 export function unauthorized(error = 'Unauthorized') {
@@ -28,6 +34,16 @@ export function forbidden(error = 'Forbidden') {
 
 export function notFound(error = 'Not found') {
   return NextResponse.json({ error }, { status: 404 })
+}
+
+/**
+ * 409 — the request is well-formed but collides with something that already
+ * exists. `extra` carries the machine-readable keys the client branches on
+ * (e.g. `{ code: 'identity_conflict', field: 'email' }`) so a form can put the
+ * message next to the offending input instead of in a generic banner.
+ */
+export function conflict(error: string, extra?: Record<string, unknown>) {
+  return NextResponse.json({ error, ...extra }, { status: 409 })
 }
 
 export function serverError(error = 'Internal server error') {

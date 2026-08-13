@@ -1,6 +1,7 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
 import { sendEmailNotification } from '@/lib/services/notifications'
+import { logger } from '@/lib/logger'
 
 /**
  * Partner (reseller) lead capture — the storefront write path.
@@ -46,6 +47,12 @@ export async function createApplication(input: CreateApplicationInput) {
       template: 'partner-application-ops',
       dedupeKey: `partner-application:${application.id}:ops`,
     })
+  } else {
+    // The lead is safely stored either way, but with no recipient configured
+    // nobody is told it arrived — and the visitor has just been shown a
+    // confirmation. Make that silence visible in the logs; the readiness
+    // report also lists PARTNER_OPS_EMAIL as recommended for the same reason.
+    logger.warn('partner_lead_no_ops_recipient', { applicationId: application.id })
   }
   return application
 }

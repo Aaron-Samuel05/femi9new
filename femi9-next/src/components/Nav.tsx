@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Link } from '@/lib/router-compat'
+import { Link, useRouter } from '@/lib/router-compat'
 import { useCart } from '../store/cart'
+import { usePublicSettings } from '@/lib/use-public-settings'
 import { Bag, Menu } from './Icons'
 import { IUser } from './AppIcons'
 
 const LINKS = [
-  { to: '/#products', label: 'Products' },
+  { to: '/products', label: 'Products' },
   { to: '/#why', label: 'Why Femi9' },
   { to: '/about', label: 'About Us' },
   { to: '/blog', label: 'Journal' },
@@ -20,8 +21,11 @@ const MORE = [
 
 export function Nav() {
   const { count, openCart } = useCart()
+  const router = useRouter()
+  const { tharaEnabled } = usePublicSettings()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [signingOut, setSigningOut] = useState(false)
   // Client-resolved auth state. null = signed out / unknown (the safe default),
   // so a failed/slow /api/auth/me leaves the account entry pointing at /login.
   const [user, setUser] = useState<{ firstName?: string } | null>(null)
@@ -78,6 +82,33 @@ export function Nav() {
   // Signed-in shoppers go to their account; everyone else to sign-in.
   const accountHref = user ? '/account' : '/login'
 
+  // /thara is a full working dashboard that NOTHING in the product linked to —
+  // a customer could only reach it by typing the URL. Shown only when the
+  // programme is switched on for this deployment.
+  const secondary = tharaEnabled ? [...MORE, { to: '/thara', label: 'Thara' }] : MORE
+
+  /**
+   * Sign out. /api/auth/logout existed with zero callers anywhere in the
+   * storefront: a signed-in customer had no way to end her session.
+   *
+   * refresh() after replace() matters — every member surface is server-rendered
+   * from the cookie, so without it the next paint still shows her name.
+   */
+  async function signOut() {
+    if (signingOut) return
+    setSigningOut(true)
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch {
+      // Even if the request failed, fall through: the safest visible outcome is
+      // to send her home and let the server re-resolve the session.
+    }
+    setMenuOpen(false)
+    setUser(null)
+    router.replace('/')
+    router.refresh()
+  }
+
   return (
     <header className={`nav${scrolled ? ' scrolled' : ''}`} id="nav">
       <div className="wrap nav-in">
@@ -117,7 +148,7 @@ export function Nav() {
         </div>
       </div>
       <div id="mobile-menu" className={`mobile-menu${menuOpen ? ' open' : ''}`}>
-        {[...LINKS, ...MORE].map((l) => (
+        {[...LINKS, ...secondary].map((l) => (
           <Link key={l.to} to={l.to} onClick={() => handleLinkClick(l.to)}>
             {l.label}
           </Link>
@@ -125,6 +156,11 @@ export function Nav() {
         <Link to={accountHref} onClick={() => setMenuOpen(false)}>
           {user ? (user.firstName ? `Hi, ${user.firstName}` : 'My account') : 'Sign in'}
         </Link>
+        {user && (
+          <button type="button" className="nav-signout" onClick={signOut} disabled={signingOut}>
+            {signingOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        )}
       </div>
     </header>
   )

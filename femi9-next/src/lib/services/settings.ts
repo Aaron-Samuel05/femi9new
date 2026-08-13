@@ -52,6 +52,54 @@ export async function getSettings(): Promise<Settings> {
   }
 }
 
+/** One shoppable product, for the footer column and any other nav-level list. */
+export interface ShopLink {
+  slug: string
+  name: string
+}
+
+/**
+ * Everything the storefront chrome needs from the server in one call.
+ *
+ * Extends `Settings` with the two provider flags and the real catalog, because
+ * every consumer of them is a client component:
+ *  - `googleEnabled` stops /login rendering a prominent "Continue with Google"
+ *    button that bounces the shopper back with ?error=google-config.
+ *  - `tharaEnabled` lets Nav and Footer show /thara only when the programme is
+ *    actually switched on. Until now nothing in the product linked to it at all.
+ *  - `shopLinks` replaces three hardcoded slugs in the footer, which turned into
+ *    404s on every page the moment a product was archived or renamed.
+ */
+export interface PublicSettingsPayload extends Settings {
+  googleEnabled: boolean
+  tharaEnabled: boolean
+  shopLinks: ShopLink[]
+}
+
+export async function getPublicSettings(): Promise<PublicSettingsPayload> {
+  // Imported lazily so this module stays free of the OAuth/feature-flag graph
+  // for the many server callers that only want the business numbers.
+  const [{ googleConfigured }, { isTharaEnabled }] = await Promise.all([
+    import('@/lib/google-oauth'),
+    import('@/lib/thara/feature'),
+  ])
+  const [settings, products] = await Promise.all([
+    getSettings(),
+    prisma.product.findMany({
+      where: { status: 'active' },
+      orderBy: [{ basePrice: 'desc' }],
+      take: 3,
+      select: { slug: true, name: true },
+    }),
+  ])
+  return {
+    ...settings,
+    googleEnabled: googleConfigured(),
+    tharaEnabled: isTharaEnabled(),
+    shopLinks: products,
+  }
+}
+
 /** Generic single-key getter — returns `fallback` when the row is missing or malformed. */
 export async function getSetting<T>(key: string, fallback: T): Promise<T> {
   const row = await prisma.setting.findUnique({ where: { key } })

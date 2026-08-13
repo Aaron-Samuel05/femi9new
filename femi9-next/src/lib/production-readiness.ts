@@ -59,6 +59,13 @@ export function productionReadinessReport(): ReadinessReport {
     'ADMIN_EMAIL',
     'ADMIN_PASSWORD',
     'CRON_SECRET',
+    // Without this a partner lead is stored and nobody is ever told about it.
+    'PARTNER_OPS_EMAIL',
+    // Sentry init is skipped entirely when the DSN is empty or 'TODO-'
+    // prefixed, so production can run with no error reporting and no signal
+    // that it is doing so.
+    'SENTRY_DSN',
+    'NEXT_PUBLIC_SENTRY_DSN',
   ]
   for (const key of required) if (!configuredEnv(key)) issues.push(key)
   for (const key of recommended) if (!configuredEnv(key)) warnings.push(key)

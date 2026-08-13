@@ -82,7 +82,16 @@ jobs:
       NEXT_PUBLIC_RAZORPAY_KEY_ID: ""
       MSG91_AUTH_KEY: ""
       RESEND_API_KEY: ""
-      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      # MUST match the origin the E2E server actually listens on (E2E_BASE_URL
+      # below), because it is not merely cosmetic here: the magic-link route
+      # builds its post-verification redirect against this value
+      # (app/api/auth/email/verify/route.ts — `NEXT_PUBLIC_SITE_URL || url.origin`).
+      # Pointed at :3000 while the server ran on :3100, the browser was served a
+      # correct 307 and then followed it to a port nothing was listening on, so
+      # the signup-email specs failed with ERR_CONNECTION_REFUSED that looked
+      # like a dead server but was a redirect into the void. Production is
+      # unaffected: there the shopper arrives at this same canonical origin.
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3100
       SENTRY_DSN: ""
       NEXT_PUBLIC_SENTRY_DSN: ""
       ALLOW_MOCK_PROVIDERS: "true"
@@ -127,6 +136,19 @@ jobs:
         run: npx tsx prisma/seed.ts
 
       - name: Start app for E2E
+        env:
+          # The suite drives ~50 routes and `next dev` compiles each on demand,
+          # so the heap grows all run. At Node's default limit the dev server
+          # trips its own "approaching the used memory threshold" guard and
+          # restarts mid-suite, which surfaces as a bare `fetch failed`. The
+          # runner has far more headroom than this.
+          #
+          # Headroom, kept deliberately generous now the suite also drives the
+          # member area. NOTE: the `ERR_CONNECTION_REFUSED` failures that first
+          # prompted raising this were NOT memory — app.log showed the server
+          # answering those requests 307 — they were the NEXT_PUBLIC_SITE_URL
+          # mismatch documented above. This ceiling is insurance, not that fix.
+          NODE_OPTIONS: --max-old-space-size=8192
         run: |
           # Drop the production build first: `next dev` and `next build` write
           # incompatible artifacts into the same .next directory.
@@ -163,14 +185,21 @@ jobs:
       - name: Run browser E2E
         run: npx playwright test
 
-      - name: Upload Playwright report (on failure)
-        if: failure()
+      # Always, not just on failure: the mobile audit attaches page screenshots
+      # to the report, and those are worth having from a passing run too — they
+      # are the only record of what the pages actually look like on a phone.
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
-          path: femi9-next/playwright-report
+          # test-results carries the screenshots and traces; playwright-report
+          # is the browsable HTML around them.
+          path: |
+            femi9-next/playwright-report
+            femi9-next/test-results
           retention-days: 7
-          if-no-files-found: ignore
+          if-no-files-found: warn
 
       - name: Server log (on failure)
         if: failure()

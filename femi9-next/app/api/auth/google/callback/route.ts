@@ -5,9 +5,12 @@ import {
   mockProfile,
   callbackUrl,
   OAUTH_STATE_COOKIE,
+  OAUTH_NEXT_COOKIE,
   type GoogleProfile,
 } from '@/lib/google-oauth'
+import { safeNextPath } from '@/lib/safe-next'
 import { signInWithGoogle } from '@/lib/services/auth'
+import { missingProfileFields } from '@/lib/services/account'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { mockProvidersAllowed } from '@/lib/runtime-mode'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
@@ -22,23 +25,31 @@ export const dynamic = 'force-dynamic'
  * GET /api/auth/google/callback — where Google (or, in mock mode, our own start
  * route) sends the user back. Verify the anti-CSRF state against the cookie,
  * resolve the verified profile, find-or-create the customer, set the session
- * cookie, and 307 to /account. Any failure bounces to /login?error=google. Always
- * a redirect — this is a top-level navigation, never a fetch.
+ * cookie, and 307 to /account (or /welcome while the profile is incomplete).
+ * Any failure bounces to /login?error=google. Always a redirect — this is a
+ * top-level navigation, never a fetch.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const base = process.env.NEXT_PUBLIC_SITE_URL || url.origin
-  const fail = (reason: string) => {
-    if (reason) console.error('[auth] google callback failed:', reason)
-    const res = NextResponse.redirect(new URL('/login?error=google', base), 307)
-    res.cookies.set(OAUTH_STATE_COOKIE, '', {
+  // Both handshake cookies are single-use: clear them on every exit path so an
+  // abandoned attempt cannot leave a stale destination behind for the next one.
+  const clearHandshake = (res: NextResponse) => {
+    const expire = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 0,
-    })
+    }
+    res.cookies.set(OAUTH_STATE_COOKIE, '', expire)
+    res.cookies.set(OAUTH_NEXT_COOKIE, '', expire)
     return res
+  }
+
+  const fail = (reason: string) => {
+    if (reason) console.error('[auth] google callback failed:', reason)
+    return clearHandshake(NextResponse.redirect(new URL('/login?error=google', base), 307))
   }
 
   // 1. CSRF: the state in the query must match the one we set at start.
@@ -78,7 +89,17 @@ export async function GET(req: NextRequest) {
       name: user.name ?? undefined,
     })
 
-    const res = NextResponse.redirect(new URL('/account', base), 307)
+    // Google gives us a name and an email but never a phone, so a first-time
+    // Google shopper is still incomplete and lands on /welcome — where the
+    // rendered fields are driven by `missing`, i.e. just the mobile step. Either
+    // way the destination she was headed for survives the detour.
+    const next = safeNextPath(req.cookies.get(OAUTH_NEXT_COOKIE)?.value, '/account')
+    const incomplete = missingProfileFields(user).length > 0
+    const target = incomplete
+      ? `/welcome${next !== '/account' ? `?next=${encodeURIComponent(next)}` : ''}`
+      : next
+
+    const res = NextResponse.redirect(new URL(target, base), 307)
     res.cookies.set(SESSION_COOKIE, jwt, {
       httpOnly: true,
       sameSite: 'lax',
@@ -86,13 +107,7 @@ export async function GET(req: NextRequest) {
       path: '/',
       maxAge: SESSION_MAX_AGE,
     })
-    res.cookies.set(OAUTH_STATE_COOKIE, '', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 0,
-    })
+    clearHandshake(res)
     res.cookies.set(THARA_REF_COOKIE, '', { path: '/', maxAge: 0 })
     return res
   } catch (err) {

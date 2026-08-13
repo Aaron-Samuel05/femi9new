@@ -141,9 +141,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const cart = await cartFetch(`/api/cart/items/${encodeURIComponent(variantId)}`, jsonInit('PATCH', { qty }))
       dispatch({ type: 'SET_CART', cart })
     } catch (err) {
+      // The quantity stepper and the trash control used to fail in total
+      // silence: the request 500s or the network drops, the line keeps its old
+      // number, and the shopper is left pressing a button that looks broken.
+      // Toast it and re-read the server cart so the UI stops disagreeing with
+      // what is actually stored.
       console.error('[cart] setQty failed', err)
+      dispatch({ type: 'TOAST', msg: 'Sorry, could not update that quantity' })
+      void refresh()
     }
-  }, [])
+  }, [refresh])
 
   const remove = useCallback(async (variantId: string) => {
     try {
@@ -151,8 +158,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
       dispatch({ type: 'SET_CART', cart })
     } catch (err) {
       console.error('[cart] remove failed', err)
+      dispatch({ type: 'TOAST', msg: 'Sorry, could not remove that item' })
+      void refresh()
     }
-  }, [])
+  }, [refresh])
 
   const openCart = useCallback(() => dispatch({ type: 'OPEN' }), [])
   const closeCart = useCallback(() => dispatch({ type: 'CLOSE' }), [])
