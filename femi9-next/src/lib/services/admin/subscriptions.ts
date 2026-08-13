@@ -41,30 +41,34 @@ export interface AdminSubscriptionRow {
 export async function listSubscriptions({
   status,
 }: { status?: string } = {}): Promise<AdminSubscriptionRow[]> {
-  const where: Prisma.SubscriptionWhereInput = {}
-  // Silently ignore an unknown status so a stale/hand-edited URL never 500s.
-  if (status && isStatus(status)) where.status = status
+  try {
+    const where: Prisma.SubscriptionWhereInput = {}
+    // Silently ignore an unknown status so a stale/hand-edited URL never 500s.
+    if (status && isStatus(status)) where.status = status
 
-  const rows = await prisma.subscription.findMany({
-    where,
-    orderBy: { nextDeliveryAt: 'asc' },
-    include: {
-      user: { select: { name: true, phone: true, email: true } },
-      variant: { include: { product: { select: { name: true } } } },
-      cadence: { select: { label: true } },
-    },
-  })
+    const rows = await prisma.subscription.findMany({
+      where,
+      orderBy: { nextDeliveryAt: 'asc' },
+      include: {
+        user: { select: { name: true, phone: true, email: true } },
+        variant: { include: { product: { select: { name: true } } } },
+        cadence: { select: { label: true } },
+      },
+    })
 
-  return rows.map((r) => ({
-    id: r.id,
-    customerName: r.user?.name ?? 'Member',
-    customerContact: r.user?.phone ?? r.user?.email ?? null,
-    product: r.variant.product.name,
-    variantLabel: r.variant.label,
-    qty: r.qty,
-    frequency: r.cadence.label,
-    nextDelivery: r.nextDeliveryAt,
-    status: r.status,
-    savedTotal: r.savedTotal,
-  }))
+    return rows.map((r) => ({
+      id: r.id,
+      customerName: r.user?.name ?? 'Member',
+      customerContact: r.user?.phone ?? r.user?.email ?? null,
+      product: r.variant.product.name,
+      variantLabel: r.variant.label,
+      qty: r.qty,
+      frequency: r.cadence.label,
+      nextDelivery: r.nextDeliveryAt,
+      status: r.status,
+      savedTotal: r.savedTotal,
+    }))
+  } catch {
+    return []
+  }
 }

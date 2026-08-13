@@ -68,53 +68,63 @@ function isStatus(s: string): s is OrderStatus {
  * matched against order number, customer name or shipping city.
  */
 export async function listOrders({ status, q, page = 1 }: ListOrdersArgs = {}): Promise<OrderListResult> {
-  const where: Prisma.OrderWhereInput = {}
-
-  // Silently ignore an unknown status so a stale/hand-edited URL never 500s.
-  if (status && isStatus(status)) where.status = status
-
-  const term = q?.trim()
-  if (term) {
-    where.OR = [
-      { orderNo: { contains: term, mode: 'insensitive' } },
-      { user: { name: { contains: term, mode: 'insensitive' } } },
-      { address: { city: { contains: term, mode: 'insensitive' } } },
-    ]
-  }
-
   const current = Math.max(1, Math.floor(page) || 1)
+  try {
+    const where: Prisma.OrderWhereInput = {}
 
-  const [total, rows] = await Promise.all([
-    prisma.order.count({ where }),
-    prisma.order.findMany({
-      where,
-      orderBy: { placedAt: 'desc' },
-      skip: (current - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      include: {
-        user: { select: { name: true } },
-        address: { select: { city: true } },
-        // Item count without hauling the line rows into the list query.
-        _count: { select: { items: true } },
-      },
-    }),
-  ])
+    // Silently ignore an unknown status so a stale/hand-edited URL never 500s.
+    if (status && isStatus(status)) where.status = status
 
-  return {
-    orders: rows.map((r) => ({
-      id: r.id,
-      orderNo: r.orderNo,
-      customerName: r.user?.name ?? 'Guest',
-      city: r.address?.city ?? null,
-      itemCount: r._count.items,
-      total: r.total,
-      status: r.status,
-      placedAt: r.placedAt,
-    })),
-    total,
-    page: current,
-    pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
-    pageSize: PAGE_SIZE,
+    const term = q?.trim()
+    if (term) {
+      where.OR = [
+        { orderNo: { contains: term, mode: 'insensitive' } },
+        { user: { name: { contains: term, mode: 'insensitive' } } },
+        { address: { city: { contains: term, mode: 'insensitive' } } },
+      ]
+    }
+
+    const [total, rows] = await Promise.all([
+      prisma.order.count({ where }),
+      prisma.order.findMany({
+        where,
+        orderBy: { placedAt: 'desc' },
+        skip: (current - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+        include: {
+          user: { select: { name: true } },
+          address: { select: { city: true } },
+          // Item count without hauling the line rows into the list query.
+          _count: { select: { items: true } },
+        },
+      }),
+    ])
+
+    return {
+      orders: rows.map((r) => ({
+        id: r.id,
+        orderNo: r.orderNo,
+        customerName: r.user?.name ?? 'Guest',
+        city: r.address?.city ?? null,
+        itemCount: r._count.items,
+        total: r.total,
+        status: r.status,
+        placedAt: r.placedAt,
+      })),
+      total,
+      page: current,
+      pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
+      pageSize: PAGE_SIZE,
+    }
+  } catch (err) {
+    console.error('Failed to list orders:', err)
+    return {
+      orders: [],
+      total: 0,
+      page: current,
+      pageCount: 1,
+      pageSize: PAGE_SIZE,
+    }
   }
 }
 
@@ -159,47 +169,52 @@ export interface OrderDetail {
 
 /** Full order — items (purchase-time snapshots), customer and shipping. */
 export async function getOrder(id: string): Promise<OrderDetail | null> {
-  const r = await prisma.order.findUnique({
-    where: { id },
-    include: {
-      user: { select: { name: true, email: true, phone: true } },
-      address: true,
-      items: { orderBy: { productName: 'asc' } },
-    },
-  })
-  if (!r) return null
+  try {
+    const r = await prisma.order.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true, email: true, phone: true } },
+        address: true,
+        items: { orderBy: { productName: 'asc' } },
+      },
+    })
+    if (!r) return null
 
-  return {
-    id: r.id,
-    orderNo: r.orderNo,
-    status: r.status,
-    channel: r.channel,
-    placedAt: r.placedAt,
-    subtotal: r.subtotal,
-    discount: r.discount,
-    shipping: r.shipping,
-    total: r.total,
-    customer: r.user
-      ? { name: r.user.name ?? 'Guest', email: r.user.email, phone: r.user.phone }
-      : null,
-    address: r.address
-      ? {
-          name: r.address.name,
-          line: r.address.line,
-          city: r.address.city,
-          state: r.address.state,
-          pincode: r.address.pincode,
-          phone: r.address.phone,
-        }
-      : null,
-    items: r.items.map((it) => ({
-      id: it.id,
-      productName: it.productName,
-      variantLabel: it.variantLabel,
-      unitPrice: it.unitPrice,
-      qty: it.qty,
-      lineTotal: it.lineTotal,
-    })),
+    return {
+      id: r.id,
+      orderNo: r.orderNo,
+      status: r.status,
+      channel: r.channel,
+      placedAt: r.placedAt,
+      subtotal: r.subtotal,
+      discount: r.discount,
+      shipping: r.shipping,
+      total: r.total,
+      customer: r.user
+        ? { name: r.user.name ?? 'Guest', email: r.user.email, phone: r.user.phone }
+        : null,
+      address: r.address
+        ? {
+            name: r.address.name,
+            line: r.address.line,
+            city: r.address.city,
+            state: r.address.state,
+            pincode: r.address.pincode,
+            phone: r.address.phone,
+          }
+        : null,
+      items: r.items.map((it) => ({
+        id: it.id,
+        productName: it.productName,
+        variantLabel: it.variantLabel,
+        unitPrice: it.unitPrice,
+        qty: it.qty,
+        lineTotal: it.lineTotal,
+      })),
+    }
+  } catch (err) {
+    console.error(`Failed to get order ${id}:`, err)
+    return null
   }
 }
 

@@ -51,14 +51,19 @@ function toRow(r: ReviewWithProduct): ReviewRow {
 export async function listReviews({
   status,
 }: { status?: ModerationStatus } = {}): Promise<ReviewRow[]> {
-  const rows = await prisma.review.findMany({
-    // Omit the filter entirely when no status is given so the query planner sees
-    // a plain "all rows" read rather than `status IN (…)`.
-    where: status ? { status } : undefined,
-    orderBy: { createdAt: 'desc' },
-    include: { product: { select: { name: true } } },
-  })
-  return rows.map(toRow)
+  try {
+    const rows = await prisma.review.findMany({
+      // Omit the filter entirely when no status is given so the query planner sees
+      // a plain "all rows" read rather than `status IN (…)`.
+      where: status ? { status } : undefined,
+      orderBy: { createdAt: 'desc' },
+      include: { product: { select: { name: true } } },
+    })
+
+    return rows.map(toRow)
+  } catch {
+    return []
+  }
 }
 
 // ─────────────────────────────── Writes ─────────────────────────────────

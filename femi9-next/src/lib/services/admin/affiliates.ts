@@ -96,30 +96,32 @@ function toListItem(
 
 /** Every creator, newest first, with computed clicks/orders/earnings + email. */
 export async function listAffiliates(): Promise<AffiliateListItem[]> {
-  const affiliates = await prisma.affiliate.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: { user: { select: { email: true } } },
-  })
+  try {
+    const affiliates = await prisma.affiliate.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { email: true } } },
+    })
 
-  // One groupBy over all events, then fold per affiliate — avoids an N+1 of a
-  // rollup query per creator.
-  const grouped = await prisma.affiliateEvent.groupBy({
-    by: ['affiliateId', 'type'],
-    _count: { _all: true },
-    _sum: { commission: true },
-  })
-  const totalsByAff = new Map<string, EventTotals>()
-  for (const g of grouped) {
-    const t = totalsByAff.get(g.affiliateId) ?? { ...ZERO_TOTALS }
-    if (g.type === 'click') t.clicks = g._count._all
-    else if (g.type === 'order') {
-      t.orders = g._count._all
-      t.earnings = g._sum.commission ?? 0
+    const grouped = await prisma.affiliateEvent.groupBy({
+      by: ['affiliateId', 'type'],
+      _count: { _all: true },
+      _sum: { commission: true },
+    })
+    const totalsByAff = new Map<string, EventTotals>()
+    for (const g of grouped) {
+      const t = totalsByAff.get(g.affiliateId) ?? { ...ZERO_TOTALS }
+      if (g.type === 'click') t.clicks = g._count._all
+      else if (g.type === 'order') {
+        t.orders = g._count._all
+        t.earnings = g._sum.commission ?? 0
+      }
+      totalsByAff.set(g.affiliateId, t)
     }
-    totalsByAff.set(g.affiliateId, t)
-  }
 
-  return affiliates.map((a) => toListItem(a, totalsByAff.get(a.id) ?? { ...ZERO_TOTALS }))
+    return affiliates.map((a) => toListItem(a, totalsByAff.get(a.id) ?? { ...ZERO_TOTALS }))
+  } catch {
+    return []
+  }
 }
 
 /** Refresh one row (used after a status change) or null if it's gone. */

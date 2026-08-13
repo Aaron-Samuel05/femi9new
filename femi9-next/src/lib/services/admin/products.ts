@@ -104,29 +104,33 @@ function cleanVariant(v: VariantInputT) {
 
 /** All products (every status) with image thumb, variant count + total stock. */
 export async function listAdminProducts() {
-  const rows = await prisma.product.findMany({
-    orderBy: { createdAt: 'desc' },
-    include: {
-      images: { orderBy: { position: 'asc' }, take: 1, select: { url: true } },
-      // Pull just stock to sum in-app; the catalogue is small so this is cheap
-      // and avoids a second aggregate round-trip per product.
-      variants: { select: { stock: true } },
-      _count: { select: { variants: true, images: true } },
-    },
-  })
+  try {
+    const rows = await prisma.product.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        images: { orderBy: { position: 'asc' }, take: 1, select: { url: true } },
+        // Pull just stock to sum in-app; the catalogue is small so this is cheap
+        // and avoids a second aggregate round-trip per product.
+        variants: { select: { stock: true } },
+        _count: { select: { variants: true, images: true } },
+      },
+    })
 
-  return rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    name: r.name,
-    type: r.type,
-    basePrice: r.basePrice,
-    status: r.status,
-    thumb: r.images[0]?.url ?? null,
-    variantCount: r._count.variants,
-    imageCount: r._count.images,
-    totalStock: r.variants.reduce((sum, v) => sum + v.stock, 0),
-  }))
+    return rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      name: r.name,
+      type: r.type,
+      basePrice: r.basePrice,
+      status: r.status,
+      thumb: r.images[0]?.url ?? null,
+      variantCount: r._count.variants,
+      imageCount: r._count.images,
+      totalStock: r.variants.reduce((sum, v) => sum + v.stock, 0),
+    }))
+  } catch {
+    return []
+  }
 }
 
 /** One product, fully loaded for the editor (variants/images/features/specs). */

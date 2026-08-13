@@ -62,7 +62,11 @@ export class CouponCodeTakenError extends Error {
 
 /** Every coupon, newest first — the admin list shows all (active + inactive). */
 export async function listCoupons() {
-  return prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } })
+  try {
+    return await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } })
+  } catch {
+    return []
+  }
 }
 
 // ─────────────────────────────── Writes ─────────────────────────────────

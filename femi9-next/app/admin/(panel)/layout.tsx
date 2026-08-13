@@ -1,9 +1,7 @@
 import { redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getAdminSession } from '@/lib/admin-auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
 import '@/styles/admin.css'
-import { AdminNavLink, SignOutButton } from './_nav'
+import { AdminShell } from './_shell'
 
 // Authentication is cookie-backed and must be evaluated for every request.
 export const dynamic = 'force-dynamic'
@@ -17,86 +15,6 @@ export const dynamic = 'force-dynamic'
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession()
   if (!session) redirect('/admin/login')
-  const tharaEnabled = isTharaEnabled()
 
-  return (
-    <div className="adm">
-      <aside className="adm-sidebar">
-        <div className="adm-brand">
-          <img className="adm-brand-mark" src="/assets/img/logo-mark.svg" alt="Femi9" />
-          <span className="adm-brand-badge">Ops</span>
-        </div>
-
-        <nav className="adm-nav" aria-label="Admin">
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Overview</p>
-            <AdminNavLink href="/admin" label="Dashboard" icon="dashboard" exact />
-          </div>
-
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Catalog</p>
-            <AdminNavLink href="/admin/products" label="Products" icon="products" />
-            <AdminNavLink href="/admin/inventory" label="Inventory" icon="inventory" />
-          </div>
-
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Sales</p>
-            <AdminNavLink href="/admin/orders" label="Orders" icon="orders" />
-            <AdminNavLink href="/admin/subscriptions" label="Subscriptions" icon="subscriptions" />
-            <AdminNavLink href="/admin/customers" label="Customers" icon="customers" />
-            <AdminNavLink href="/admin/coupons" label="Coupons" icon="coupons" />
-          </div>
-
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Growth</p>
-            <AdminNavLink href="/admin/affiliates" label="Affiliates" icon="affiliates" />
-            <AdminNavLink href="/admin/partners" label="Partners" icon="partners" />
-          </div>
-
-          {/* Thara is behind a feature flag, so the console entry only exists
-              where the programme itself does — every /api/admin/thara route
-              404s when it is off, and a link to a dead page is worse than none. */}
-          {tharaEnabled && (
-            <div className="adm-nav-group">
-              <p className="adm-nav-eyebrow">Programs</p>
-              <AdminNavLink href="/admin/thara" label="Thara Model" icon="thara" />
-            </div>
-          )}
-
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Content</p>
-            <AdminNavLink href="/admin/content/blog" label="Blog" icon="blog" />
-            <AdminNavLink href="/admin/reviews" label="Reviews" icon="reviews" />
-            <AdminNavLink href="/admin/community" label="Community" icon="community" />
-          </div>
-
-          <div className="adm-nav-group">
-            <p className="adm-nav-eyebrow">Configure</p>
-            <AdminNavLink href="/admin/settings" label="Settings" icon="settings" />
-            <AdminNavLink href="/admin/pricing" label="Pricing zones" icon="pricing" />
-          </div>
-        </nav>
-
-        <div className="adm-sidebar-foot">
-          <div className="adm-who">
-            <span className="adm-who-name">{session.name}</span>
-            <span className="adm-who-role">Administrator</span>
-          </div>
-          <div className="adm-foot-actions">
-            <Link className="adm-foot-link" href="/">
-              Storefront
-            </Link>
-            <SignOutButton />
-          </div>
-        </div>
-      </aside>
-
-      <div className="adm-main">
-        <header className="adm-topbar">
-          <h1 className="adm-topbar-title">Femi9 Ops</h1>
-        </header>
-        <main className="adm-content">{children}</main>
-      </div>
-    </div>
-  )
+  return <AdminShell session={session} tharaEnabled={tharaEnabled}>{children}</AdminShell>
 }

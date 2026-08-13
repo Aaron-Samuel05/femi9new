@@ -67,11 +67,15 @@ function isNotFound(err: unknown): boolean {
  * then price, so the page can build ordered groups by simple iteration.
  */
 export async function listInventory(): Promise<InventoryRow[]> {
-  const variants = await prisma.productVariant.findMany({
-    orderBy: [{ product: { name: 'asc' } }, { price: 'asc' }],
-    include: withProduct,
-  })
-  return variants.map(toRow)
+  try {
+    const variants = await prisma.productVariant.findMany({
+      orderBy: [{ product: { name: 'asc' } }, { price: 'asc' }],
+      include: withProduct,
+    })
+    return variants.map(toRow)
+  } catch {
+    return []
+  }
 }
 
 /**
