@@ -38,8 +38,12 @@ test.describe('storefront', () => {
     await expect(line).toBeVisible()
     await expect(drawer.locator('.drawer-foot .row.total span').last()).toContainText('Rs.')
 
-    // The nav badge is the shopper's at-a-glance confirmation.
-    await expect(page.locator('.cart-btn[aria-label*="Open bag"]')).toContainText('1')
+    // The nav bag is the shopper's at-a-glance confirmation. Assert the
+    // accessible name, not the badge glyph — the count span is aria-hidden.
+    await expect(page.locator('button.cart-btn[aria-label^="Open bag"]')).toHaveAttribute(
+      'aria-label',
+      'Open bag, 1 item',
+    )
   })
 
   test('quantity stepper and Remove update the bag', async ({ page }) => {
@@ -81,7 +85,13 @@ test.describe('storefront', () => {
 
     await page.locator('aside.drawer .drawer-foot a.btn-primary').click()
     await expect(page).toHaveURL(/\/checkout/)
-    await expect(page.locator('form')).toBeVisible()
+
+    // Scope to the shipping form: the footer newsletter is also a <form>, so a
+    // bare locator('form') is a strict-mode violation on every page.
+    const shipping = page.locator('form').filter({ hasText: 'Shipping details' })
+    await expect(shipping).toBeVisible()
+    // Reachable is not enough — the fields a shopper must fill have to be there.
+    await expect(shipping.locator('input[autocomplete="name"]')).toBeVisible()
   })
 
   test('a product card links through to its detail page', async ({ page }) => {
@@ -91,7 +101,7 @@ test.describe('storefront', () => {
     await card.locator('h3').click()
 
     await expect(page).toHaveURL(/\/product\//)
-    await expect(page.locator('h1')).toContainText(name)
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(name)
   })
 })
 
@@ -106,11 +116,13 @@ test.describe('cycle tracker', () => {
     await form.locator('#cyc-date').fill('2026-07-01')
 
     // The steppers are buttons, not inputs — exercise one so a broken handler
-    // fails here rather than silently submitting the default.
-    const lengthGroup = page.locator('.cyc-stepper').first()
-    const shown = await lengthGroup.locator('output, span').first().innerText()
+    // fails here rather than silently submitting the default. The value lives
+    // in .cyc-step-val b; the buttons contain their own aria-hidden glyphs.
+    const lengthGroup = page.locator('.cyc-stepper[aria-label="Cycle length"]')
+    const value = lengthGroup.locator('.cyc-step-val b')
+    const shown = Number(await value.innerText())
     await lengthGroup.locator('button[aria-label^="Increase"]').click()
-    await expect(lengthGroup.locator('output, span').first()).not.toHaveText(shown)
+    await expect(value).toHaveText(String(shown + 1))
 
     await form.locator('button.cyc-submit').click()
 
