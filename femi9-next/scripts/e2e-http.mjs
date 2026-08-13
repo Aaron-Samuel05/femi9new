@@ -135,9 +135,19 @@ async function main() {
   status('Admin API rejects anonymous access', protectedAdmin, 401)
   const protectedAccount = await request('/account')
   status('Account redirects anonymous visitors', protectedAccount, 307)
+  // The redirect now carries the requested path so sign-in can return the
+  // shopper to it, so the Location is /login?next=/account rather than a bare
+  // /login. Assert the path and that the destination survives — that return
+  // trip is the behaviour worth pinning.
+  const accountRedirect = protectedAccount.response.headers.get('location')
+  const accountRedirectUrl = accountRedirect ? new URL(accountRedirect, baseUrl) : null
   check(
     'Account redirect points to login',
-    protectedAccount.response.headers.get('location')?.endsWith('/login') === true,
+    accountRedirectUrl?.pathname === '/login',
+  )
+  check(
+    'Account redirect preserves the destination',
+    accountRedirectUrl?.searchParams.get('next') === '/account',
   )
 
   // Admin authentication + catalog visibility.
