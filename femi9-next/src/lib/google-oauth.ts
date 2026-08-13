@@ -24,6 +24,12 @@ const USERINFO_ENDPOINT = 'https://openidconnect.googleapis.com/v1/userinfo'
  *  route modules may only export handlers/config — not arbitrary constants. */
 export const OAUTH_STATE_COOKIE = 'femi9_oauth_state'
 
+/** Name of the short-lived cookie carrying the post-sign-in destination across
+ *  the round trip through Google. It cannot ride on the query string: Google
+ *  echoes back only `code` and `state`, and `state` is the CSRF nonce we compare
+ *  byte-for-byte, so widening it to carry a payload would weaken that check. */
+export const OAUTH_NEXT_COOKIE = 'femi9_oauth_next'
+
 /** Live Google only when both credentials contain real, non-placeholder values. */
 export function googleConfigured(): boolean {
   return configuredEnv('GOOGLE_CLIENT_ID') && configuredEnv('GOOGLE_CLIENT_SECRET')

@@ -228,8 +228,14 @@ export interface RequestMagicLinkResult {
  * Start an email magic-link challenge: mint a random token, store its hash, build
  * the verify URL with the RAW token, and send it (or mock). Prior challenges for
  * this email are cleared first so only the newest link works.
+ *
+ * `next` is the post-sign-in destination. It rides on the LINK rather than in the
+ * DB row because the tab that opens the mail is often not the tab that requested
+ * it, so there is no client state left to restore it from. The caller is
+ * responsible for having passed it through safeNextPath first; the verify route
+ * re-validates on the way back in, since the link is user-visible and editable.
  */
-export async function requestMagicLink(email: string): Promise<RequestMagicLinkResult> {
+export async function requestMagicLink(email: string, next?: string): Promise<RequestMagicLinkResult> {
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized)) throw new InvalidEmailError()
 
@@ -245,7 +251,8 @@ export async function requestMagicLink(email: string): Promise<RequestMagicLinkR
   // The link carries the RAW token; the DB only ever holds its hash. NEXT_PUBLIC_SITE_URL
   // is the canonical origin so the link resolves the same whatever host issued it.
   const base = process.env.NEXT_PUBLIC_SITE_URL || ''
-  const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}`
+  const nextParam = next && next !== '/account' ? `&next=${encodeURIComponent(next)}` : ''
+  const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}${nextParam}`
 
   const { mock } = await sendMagicLink(normalized, link)
   return { mock, ...(mock ? { devLink: link } : {}) }

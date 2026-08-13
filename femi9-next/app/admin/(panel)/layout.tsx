@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getAdminSession } from '@/lib/admin-auth'
+import { isTharaEnabled } from '@/lib/thara/feature'
 import '@/styles/admin.css'
 import { AdminNavLink, SignOutButton } from './_nav'
 
@@ -16,6 +17,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession()
   if (!session) redirect('/admin/login')
+  const tharaEnabled = isTharaEnabled()
 
   return (
     <div className="adm">
@@ -50,6 +52,16 @@ export default async function AdminPanelLayout({ children }: { children: React.R
             <AdminNavLink href="/admin/affiliates" label="Affiliates" icon="affiliates" />
             <AdminNavLink href="/admin/partners" label="Partners" icon="partners" />
           </div>
+
+          {/* Thara is behind a feature flag, so the console entry only exists
+              where the programme itself does — every /api/admin/thara route
+              404s when it is off, and a link to a dead page is worse than none. */}
+          {tharaEnabled && (
+            <div className="adm-nav-group">
+              <p className="adm-nav-eyebrow">Programs</p>
+              <AdminNavLink href="/admin/thara" label="Thara Model" icon="thara" />
+            </div>
+          )}
 
           <div className="adm-nav-group">
             <p className="adm-nav-eyebrow">Content</p>

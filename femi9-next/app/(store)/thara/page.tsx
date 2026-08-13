@@ -97,8 +97,13 @@ export default function TharaPage() {
     setLeaveError(null)
     try {
       const res = await fetch('/api/thara/opt-out', { method: 'POST' })
+      if (res.status === 401) {
+        window.location.href = '/login?next=/thara'
+        return
+      }
       if (!res.ok) {
-        setLeaveError('We could not update your membership. Please try again.')
+        const body = await res.json().catch(() => ({}))
+        setLeaveError(body.error ?? 'We could not update your membership. Please try again.')
         return
       }
       setConfirmLeave(false)
@@ -171,6 +176,12 @@ export default function TharaPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: invite.trim() }),
       })
+      // A session that lapsed while this page sat open reads as a generic
+      // failure otherwise, which invites the member to retype and retry forever.
+      if (res.status === 401) {
+        window.location.href = '/login?next=/thara'
+        return
+      }
       const body = await res.json().catch(() => ({}))
       if (res.ok) {
         setInvite('')
@@ -178,6 +189,8 @@ export default function TharaPage() {
       } else {
         setInviteMsg(body.error ?? 'Could not send that invite.')
       }
+    } catch {
+      setInviteMsg('We could not reach the server. Please check your connection.')
     } finally {
       setBusy(false)
     }
@@ -189,6 +202,10 @@ export default function TharaPage() {
     setActionError(null)
     try {
       const res = await fetch(`/api/thara/vouchers/${id}/claim`, { method: 'POST' })
+      if (res.status === 401) {
+        window.location.href = '/login?next=/thara'
+        return
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         setActionError(body.error ?? 'We could not claim that voucher. Please try again.')

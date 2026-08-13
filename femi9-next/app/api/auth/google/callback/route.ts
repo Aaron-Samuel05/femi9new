@@ -5,8 +5,10 @@ import {
   mockProfile,
   callbackUrl,
   OAUTH_STATE_COOKIE,
+  OAUTH_NEXT_COOKIE,
   type GoogleProfile,
 } from '@/lib/google-oauth'
+import { safeNextPath } from '@/lib/safe-next'
 import { signInWithGoogle } from '@/lib/services/auth'
 import { missingProfileFields } from '@/lib/services/account'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
@@ -30,17 +32,24 @@ export const dynamic = 'force-dynamic'
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const base = process.env.NEXT_PUBLIC_SITE_URL || url.origin
-  const fail = (reason: string) => {
-    if (reason) console.error('[auth] google callback failed:', reason)
-    const res = NextResponse.redirect(new URL('/login?error=google', base), 307)
-    res.cookies.set(OAUTH_STATE_COOKIE, '', {
+  // Both handshake cookies are single-use: clear them on every exit path so an
+  // abandoned attempt cannot leave a stale destination behind for the next one.
+  const clearHandshake = (res: NextResponse) => {
+    const expire = {
       httpOnly: true,
-      sameSite: 'lax',
+      sameSite: 'lax' as const,
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 0,
-    })
+    }
+    res.cookies.set(OAUTH_STATE_COOKIE, '', expire)
+    res.cookies.set(OAUTH_NEXT_COOKIE, '', expire)
     return res
+  }
+
+  const fail = (reason: string) => {
+    if (reason) console.error('[auth] google callback failed:', reason)
+    return clearHandshake(NextResponse.redirect(new URL('/login?error=google', base), 307))
   }
 
   // 1. CSRF: the state in the query must match the one we set at start.
@@ -82,9 +91,15 @@ export async function GET(req: NextRequest) {
 
     // Google gives us a name and an email but never a phone, so a first-time
     // Google shopper is still incomplete and lands on /welcome — where the
-    // rendered fields are driven by `missing`, i.e. just the mobile step.
+    // rendered fields are driven by `missing`, i.e. just the mobile step. Either
+    // way the destination she was headed for survives the detour.
+    const next = safeNextPath(req.cookies.get(OAUTH_NEXT_COOKIE)?.value, '/account')
     const incomplete = missingProfileFields(user).length > 0
-    const res = NextResponse.redirect(new URL(incomplete ? '/welcome' : '/account', base), 307)
+    const target = incomplete
+      ? `/welcome${next !== '/account' ? `?next=${encodeURIComponent(next)}` : ''}`
+      : next
+
+    const res = NextResponse.redirect(new URL(target, base), 307)
     res.cookies.set(SESSION_COOKIE, jwt, {
       httpOnly: true,
       sameSite: 'lax',
@@ -92,13 +107,7 @@ export async function GET(req: NextRequest) {
       path: '/',
       maxAge: SESSION_MAX_AGE,
     })
-    res.cookies.set(OAUTH_STATE_COOKIE, '', {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      path: '/',
-      maxAge: 0,
-    })
+    clearHandshake(res)
     res.cookies.set(THARA_REF_COOKIE, '', { path: '/', maxAge: 0 })
     return res
   } catch (err) {

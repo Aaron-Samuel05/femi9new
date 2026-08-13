@@ -53,7 +53,6 @@ import type {
   AccountAddress,
   AccountCoupon,
   AccountOrder,
-  AccountOrderItem,
   AccountSubscription,
   AccountUser,
   ActivityItem,
@@ -545,21 +544,12 @@ export function Account({
 
 // ── Orders ───────────────────────────────────────────────────────────────────
 
-/**
- * `AccountOrderItem` in the read model is `{ name, qty }`. Putting a past order
- * back in the bag needs the variant id, so we read it defensively: the Buy-again
- * control only renders once the read model carries one. See the track report.
- */
-type ReorderableItem = AccountOrderItem & { variantId?: string | null }
-
 function OrdersPanel({ orders }: { orders: AccountOrder[] }) {
   const { add, openCart } = useCart()
   const [reordering, setReordering] = useState<string | null>(null)
 
   async function buyAgain(order: AccountOrder) {
-    const lines = (order.items as ReorderableItem[]).filter((i): i is ReorderableItem & { variantId: string } =>
-      typeof i.variantId === 'string' && i.variantId.length > 0,
-    )
+    const lines = order.items.filter((i) => i.variantId)
     if (lines.length === 0 || reordering) return
     setReordering(order.id)
     try {
@@ -599,7 +589,7 @@ function OrdersPanel({ orders }: { orders: AccountOrder[] }) {
         <span>Total</span>
       </div>
       {orders.map((order) => {
-        const canReorder = (order.items as ReorderableItem[]).some((i) => typeof i.variantId === 'string' && i.variantId)
+        const canReorder = order.items.some((i) => i.variantId)
         const summary = order.items.map((i) => `${i.name} ×${i.qty}`).join(', ')
         return (
           <div className="m-row acct-order" key={order.id}>

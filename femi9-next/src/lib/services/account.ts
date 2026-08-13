@@ -99,6 +99,9 @@ export interface AccountUser {
 export interface AccountOrderItem {
   name: string
   qty: number
+  /** The purchased variant, so "Buy again" can put the exact line back in the
+   *  bag. OrderItem.variantId is a required FK, so this is never null. */
+  variantId: string
 }
 
 export interface AccountOrder {
@@ -345,7 +348,7 @@ export async function getAccountData(userId: string): Promise<AccountData | null
     id: o.orderNo,
     href: `/order/${o.orderNo}`,
     date: fmtDate(o.placedAt),
-    items: o.items.map((it) => ({ name: it.productName, qty: it.qty })),
+    items: o.items.map((it) => ({ name: it.productName, qty: it.qty, variantId: it.variantId })),
     total: o.total,
     status: statusLabel(o.status),
     statusKey: o.status,

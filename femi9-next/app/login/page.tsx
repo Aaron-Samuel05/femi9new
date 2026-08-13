@@ -269,7 +269,10 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/email/request', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email }),
+        // The mail may well be opened in a different tab (or a different device)
+        // from the one that asked for it, so the destination has to travel on the
+        // link itself — there is no client state left to restore it from.
+        body: JSON.stringify({ email, ...(next ? { next } : {}) }),
       })
       const data = await readJson(res)
       if (!res.ok) {
@@ -381,8 +384,13 @@ export default function LoginPage() {
             {googleEnabled && (
               <>
                 {/* A top-level navigation to the OAuth start route (not a fetch),
-                    so the browser follows Google's redirects. */}
-                <a href="/api/auth/google" className="auth-provider">
+                    so the browser follows Google's redirects. `next` is handed to
+                    the start route, which parks it in a cookie for the callback —
+                    the round trip through Google keeps no query of ours. */}
+                <a
+                  href={next ? `/api/auth/google?next=${encodeURIComponent(next)}` : '/api/auth/google'}
+                  className="auth-provider"
+                >
                   <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
                     <path
                       fill="#EA4335"

@@ -714,6 +714,29 @@
   color: var(--ink);
 }
 
+/* Chips double as filter toggles on the list consoles, so the selected one has
+   to read at a glance beside four unselected siblings. */
+button.adm-chip,
+a.adm-chip {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.adm-chip.is-active {
+  border-color: var(--plum);
+  background: var(--plum-tint);
+  color: var(--plum);
+  font-weight: 600;
+}
+
+/* A group of filter chips reads as ONE item inside .adm-toolbar's
+   space-between, instead of each chip being spread across the row. */
+.adm-chip-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 /* -----------------------------------------------------------------------------
    Utility: toolbar, pager, empty state, toast
    ----------------------------------------------------------------------------- */

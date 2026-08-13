@@ -3,6 +3,7 @@ import { ok, badRequest, handle, serviceUnavailable } from '@/lib/api'
 import { requestMagicLink, InvalidEmailError, normalizeEmail } from '@/lib/services/auth'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { safeNextPath } from '@/lib/safe-next'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -11,8 +12,11 @@ export const dynamic = 'force-dynamic'
  *  In mock mode the response includes devLink so the flow is testable now. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    const body = (await req.json().catch(() => ({}))) as { email?: unknown }
+    const body = (await req.json().catch(() => ({}))) as { email?: unknown; next?: unknown }
     const email = typeof body.email === 'string' ? body.email : ''
+    // Validated here as well as on the way back in: this value is about to be
+    // baked into a URL we email out, so it must never leave as an off-site link.
+    const next = safeNextPath(typeof body.next === 'string' ? body.next : null, '/account')
 
     // Mirrors the OTP sibling exactly, and for the same reason: requestMagicLink
     // sends to ANY syntactically valid address without upserting anything, so
@@ -26,7 +30,7 @@ export async function POST(req: NextRequest) {
     if (!addrHit.ok) return tooManyRequests(addrHit.retryAfterSec)
 
     try {
-      const { mock, devLink } = await requestMagicLink(email)
+      const { mock, devLink } = await requestMagicLink(email, next)
       return ok({ ok: true, mock, ...(devLink ? { devLink } : {}) })
     } catch (err) {
       if (err instanceof InvalidEmailError) return badRequest(err.message)
