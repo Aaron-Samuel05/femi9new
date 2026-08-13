@@ -2,6 +2,7 @@ import 'server-only'
 import { prisma } from '@/lib/db'
 import type { OrderStatus, Prisma } from '@prisma/client'
 import * as razorpay from '@/lib/razorpay'
+import { sendOrderStatusEmail } from '@/lib/services/order-mail'
 import {
   reverseTharaCreditForRefund,
   reverseTharaPointsForRefund,
@@ -224,8 +225,21 @@ const STOCK_RESERVING_STATUSES: OrderStatus[] = ['pending', 'paid', 'processing'
 export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderDetail | null> {
   // Non-cancellation transitions are a plain status flip (no stock effect).
   if (status !== 'cancelled') {
-    const res = await prisma.order.updateMany({ where: { id }, data: { status } })
-    if (res.count === 0) return null
+    // Only send on a REAL transition — the update is scoped to a differing
+    // status so an ops double-click cannot re-notify the customer. That, plus
+    // the dedupeKey on NotificationLog, makes the dispatch email single-shot.
+    const res = await prisma.order.updateMany({
+      where: { id, status: { not: status } },
+      data: { status },
+    })
+    if (res.count === 0) {
+      // Either the order does not exist or it was already in this status.
+      return getOrder(id)
+    }
+    if (status === 'shipped') {
+      const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } })
+      if (order) await sendOrderStatusEmail(order.orderNo, 'shipped')
+    }
     return getOrder(id)
   }
 

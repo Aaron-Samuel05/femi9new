@@ -191,10 +191,18 @@ export function clientIp(req: Request): string {
   return req.headers.get('x-real-ip') || 'unknown'
 }
 
-/** 429 JSON response with a Retry-After header — use when rateLimit().ok is false. */
+/** 429 JSON response with a Retry-After header — use when rateLimit().ok is false.
+ *  `retryAfterSec` is echoed in the BODY as well as the header because a fetch()
+ *  in a form can read the body it already awaits, but reading a response header
+ *  needs the caller to know it is there — and the auth screens render a live
+ *  countdown from it. */
 export function tooManyRequests(retryAfterSec: number) {
-  return new Response(JSON.stringify({ error: 'Too many requests. Please slow down and try again shortly.' }), {
-    status: 429,
-    headers: { 'content-type': 'application/json', 'retry-after': String(Math.max(1, retryAfterSec)) },
-  })
+  const seconds = Math.max(1, retryAfterSec)
+  return new Response(
+    JSON.stringify({ error: 'Too many requests. Please slow down and try again shortly.', retryAfterSec: seconds }),
+    {
+      status: 429,
+      headers: { 'content-type': 'application/json', 'retry-after': String(seconds) },
+    },
+  )
 }

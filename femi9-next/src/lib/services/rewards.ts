@@ -3,6 +3,8 @@ import { randomBytes } from 'node:crypto'
 import type { CouponType } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { sendEmailNotification } from '@/lib/services/notifications'
+import { sendTextSms } from '@/lib/otp'
+import { logger } from '@/lib/logger'
 
 /**
  * Rewards service — the catalogue of redeemable perks and the redemption itself.
@@ -109,14 +111,24 @@ export async function redeem(userId: string, rewardOptionId: string): Promise<Re
         value: option.couponValue,
         minOrder: 0,
         maxUses: 1, // one redemption == one usable coupon
+        // Bound to the customer who paid points for it. Without this anyone who
+        // learned a BLOOM- code could spend its single use; the checkout claim
+        // re-asserts the same ownership.
+        userId,
         expiresAt: new Date(Date.now() + COUPON_TTL_DAYS * 24 * 60 * 60 * 1000),
         active: true,
       },
     })
 
-    const user = await tx.user.findUnique({ where: { id: userId }, select: { email: true } })
-    return { couponCode: coupon.code, email: user?.email ?? null }
+    const user = await tx.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } })
+    return { couponCode: coupon.code, email: user?.email ?? null, phone: user?.phone ?? null }
   })
+
+  // Deliver on EVERY channel the customer actually has. Email alone stranded
+  // every phone-OTP signup (email is null for all of them), and the on-screen
+  // flash was destroyed by the very router.refresh() that follows a redeem — so
+  // the code was shown once and lost. The account page also lists owned coupons
+  // now; these sends are the belt to that braces.
   if (result.email) {
     await sendEmailNotification({
       userId,
@@ -127,6 +139,14 @@ export async function redeem(userId: string, rewardOptionId: string): Promise<Re
       template: 'reward-coupon',
       dedupeKey: `reward-coupon:${result.couponCode}`,
     })
+  }
+  if (result.phone) {
+    const sms = await sendTextSms(result.phone, { code: result.couponCode })
+    if (!sms.sent) {
+      // Never throw: the points are already spent and the coupon exists. Log so
+      // ops can see that a delivery channel is unprovisioned.
+      logger.warn('reward_coupon_sms_failed', { userId, reason: sms.reason })
+    }
   }
   return { couponCode: result.couponCode }
 }

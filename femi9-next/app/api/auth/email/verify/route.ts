@@ -1,8 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifyMagicLink } from '@/lib/services/auth'
+import { missingProfileFields } from '@/lib/services/account'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
 import { clientIp } from '@/lib/rate-limit'
+import { safeNextPath } from '@/lib/safe-next'
 import { GUEST_COOKIE } from '@/lib/session'
 import { mergeGuestCartIntoUser } from '@/lib/services/cart'
 
@@ -11,14 +13,20 @@ export const dynamic = 'force-dynamic'
 
 /**
  * GET /api/auth/email/verify?token=RAW&email=EMAIL — the destination of the
- * magic link. On success set the session cookie and 307 to /account; on any
- * failure bounce to /login?error=link. This is a top-level navigation (the user
- * clicked a link in their inbox), so it must redirect, never return JSON.
+ * magic link. On success set the session cookie and redirect; on any failure
+ * bounce to /login?error=link. This is a top-level navigation (the user clicked
+ * a link in their inbox), so it must redirect, never return JSON.
+ *
+ * Where it lands matters: a magic-link signup captures an email and nothing
+ * else — no name, no reachable phone — so an incomplete profile goes to
+ * /welcome rather than to an /account page that would render "Femi9 member"
+ * and two em-dashes. A complete profile honours a validated `next`.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const token = url.searchParams.get('token') ?? ''
   const email = url.searchParams.get('email') ?? ''
+  const next = safeNextPath(url.searchParams.get('next'), '/account')
   // Canonical origin for the redirect target; fall back to the request origin.
   const base = process.env.NEXT_PUBLIC_SITE_URL || url.origin
 
@@ -38,7 +46,14 @@ export async function GET(req: NextRequest) {
       name: user.name ?? undefined,
     })
 
-    const res = NextResponse.redirect(new URL('/account', base), 307)
+    // Carry `next` through onboarding so finishing /welcome still returns the
+    // shopper to the page that sent them to sign in.
+    const incomplete = missingProfileFields(user).length > 0
+    const destination = incomplete
+      ? `/welcome${next !== '/account' ? `?next=${encodeURIComponent(next)}` : ''}`
+      : next
+
+    const res = NextResponse.redirect(new URL(destination, base), 307)
     res.cookies.set(SESSION_COOKIE, jwt, {
       httpOnly: true,
       sameSite: 'lax',

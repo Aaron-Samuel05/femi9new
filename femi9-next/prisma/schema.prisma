@@ -201,6 +201,10 @@ model User {
   email         String?   @unique
   emailVerified DateTime?
   phone         String?   @unique
+  // Symmetric with emailVerified. An unverified phone on User is worse than no
+  // phone at all — checkout attribution and Thara's anti-self-referral guard both
+  // treat phone as an identity — so only a passed OTP challenge stamps this.
+  phoneVerified DateTime?
   image         String?
   role          Role      @default(customer)
   tier          String? // "Bloom member"
@@ -215,6 +219,7 @@ model User {
   orders        Order[]
   subscriptions Subscription[]
   points        PointsLedger[]
+  coupons       Coupon[]
   affiliate     Affiliate?
   periods       PeriodLog[]
   symptoms      SymptomLog[]
@@ -278,10 +283,15 @@ model Address {
   pincode   String?
   phone     String?
   isPrimary Boolean @default(false)
+  // Soft delete. An address referenced by Order.addressId can never be hard
+  // deleted without breaking that order, so removing it from the address book
+  // stamps this instead; every account read filters on archivedAt IS NULL.
+  archivedAt DateTime?
 
   orders Order[]
 
   @@index([userId])
+  @@index([userId, archivedAt])
 }
 
 // ────────────────────────────── Commerce ──────────────────────────────
@@ -385,8 +395,15 @@ model Coupon {
   expiresAt DateTime?
   active    Boolean    @default(true)
   createdAt DateTime   @default(now())
+  // A coupon minted by redeeming Bloom points belongs to the customer who paid
+  // for it; null means a public/campaign code anyone may use. SetNull (not
+  // Cascade) so deleting a user never voids an order's coupon row.
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   orders Order[]
+
+  @@index([userId])
 }
 
 model Subscription {
@@ -565,8 +582,15 @@ model PeriodLog {
   startDate     DateTime? // legacy plaintext; migration clears after encryption
   lengthDays    Int? // legacy plaintext; migration clears after encryption
   encryptedData String? // AES-256-GCM period payload
+  // HMAC-SHA256(CYCLE_DATA_ENCRYPTION_KEY, `${userId}|${YYYY-MM-DD}`) — an HMAC,
+  // never the plaintext day, because a readable start-date column would defeat
+  // the point of encrypting the payload. Two rows with the same start produced
+  // a gap of 0 → avgCycle 0 → NaN across the whole dashboard, so it is @@unique.
+  // Legacy rows keep NULL and Postgres treats NULLs as distinct, so no backfill.
+  startDayHash  String?
   createdAt     DateTime  @default(now())
 
+  @@unique([userId, startDayHash])
   @@index([userId])
 }
 
@@ -610,6 +634,16 @@ model BlogPost {
   updatedAt   DateTime         @updatedAt
 
   @@index([categoryId])
+}
+
+// Both newsletter forms (footer + journal) showed "you're on the list" while
+// discarding the address. This is where they land now. Deliberately NOT a User —
+// a subscriber has no account and must be removable without touching identity.
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  source    String? // 'footer' | 'journal'
+  createdAt DateTime @default(now())
 }
 
 model EventLog {

@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { badRequest, created, handle, serviceUnavailable } from '@/lib/api'
+import { getSession } from '@/lib/auth'
 import { getGuestToken } from '@/lib/session'
 import { clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit'
 import { orderToken } from '@/lib/order-token'
@@ -30,6 +31,8 @@ const CheckoutSchema = z.object({
   state: z.preprocess(blankToUndef, z.string().trim().max(120).optional()),
   pincode: z.preprocess(blankToUndef, z.string().trim().regex(/^\d{6}$/, 'Enter a valid 6-digit pincode').optional()),
   couponCode: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
+  // The shopper's own name for this address. Every order used to stamp 'Home'.
+  addressLabel: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
 })
 
 /** 409 helper — api.ts has no conflict envelope, so build it inline. */
@@ -47,6 +50,8 @@ export async function POST(req: NextRequest) {
     const token = await getGuestToken()
     if (!token) return badRequest('Your bag is empty.')
 
+    const session = await getSession()
+
     const raw = await req.json().catch(() => null)
     const parsed = CheckoutSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
@@ -55,7 +60,11 @@ export async function POST(req: NextRequest) {
       // Returns { orderNo, payment } — the payment intent (razorpay order id,
       // amount, publishable key, configured flag) the client uses to open
       // Checkout or, in mock mode, to POST the dev verify call.
-      const result = await placeOrder(token, parsed.data)
+      // A signed-in shopper's order belongs to HER account. Without this the
+      // service identified the buyer by the phone typed into the form, so a
+      // magic-link or Google customer got a second User row per order and her
+      // order history stayed empty forever.
+      const result = await placeOrder(token, parsed.data, session?.sub)
       // Hand back an unguessable capability token so the confirmation page can
       // authorize a guest (no session) without exposing PII to orderNo guessing.
       return created({ ...result, token: orderToken(result.orderNo) })

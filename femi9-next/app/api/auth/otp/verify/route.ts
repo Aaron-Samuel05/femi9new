@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { ok, badRequest, handle } from '@/lib/api'
 import { verifyOtp, InvalidOtpError, InvalidPhoneError, normalizePhone } from '@/lib/services/auth'
+import { missingProfileFields } from '@/lib/services/account'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
@@ -41,7 +42,17 @@ export async function POST(req: NextRequest) {
         name: user.name ?? undefined,
       })
 
-      const res = ok({ ok: true, user: { name: user.name, phone: user.phone } })
+      // A phone-OTP signup captures a phone and nothing else, so the client has
+      // to know whether to land on /account or on the /welcome onboarding step.
+      // verifyOtp stays a pure challenge verifier — completeness is derived here
+      // from the one shared definition, so the gate and the screen can't disagree.
+      const missing = missingProfileFields(user)
+      const res = ok({
+        ok: true,
+        user: { name: user.name, phone: user.phone },
+        needsProfile: missing.length > 0,
+        missing,
+      })
       res.cookies.set(SESSION_COOKIE, token, {
         httpOnly: true,
         sameSite: 'lax',

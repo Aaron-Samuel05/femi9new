@@ -8,6 +8,7 @@ import {
   type GoogleProfile,
 } from '@/lib/google-oauth'
 import { signInWithGoogle } from '@/lib/services/auth'
+import { missingProfileFields } from '@/lib/services/account'
 import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
 import { mockProvidersAllowed } from '@/lib/runtime-mode'
 import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
@@ -22,8 +23,9 @@ export const dynamic = 'force-dynamic'
  * GET /api/auth/google/callback — where Google (or, in mock mode, our own start
  * route) sends the user back. Verify the anti-CSRF state against the cookie,
  * resolve the verified profile, find-or-create the customer, set the session
- * cookie, and 307 to /account. Any failure bounces to /login?error=google. Always
- * a redirect — this is a top-level navigation, never a fetch.
+ * cookie, and 307 to /account (or /welcome while the profile is incomplete).
+ * Any failure bounces to /login?error=google. Always a redirect — this is a
+ * top-level navigation, never a fetch.
  */
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
@@ -78,7 +80,11 @@ export async function GET(req: NextRequest) {
       name: user.name ?? undefined,
     })
 
-    const res = NextResponse.redirect(new URL('/account', base), 307)
+    // Google gives us a name and an email but never a phone, so a first-time
+    // Google shopper is still incomplete and lands on /welcome — where the
+    // rendered fields are driven by `missing`, i.e. just the mobile step.
+    const incomplete = missingProfileFields(user).length > 0
+    const res = NextResponse.redirect(new URL(incomplete ? '/welcome' : '/account', base), 307)
     res.cookies.set(SESSION_COOKIE, jwt, {
       httpOnly: true,
       sameSite: 'lax',

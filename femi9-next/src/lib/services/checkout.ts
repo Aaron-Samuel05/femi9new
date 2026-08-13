@@ -1,6 +1,9 @@
 import 'server-only'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
+import { logger } from '@/lib/logger'
+import { IdentityConflictError, attachIdentity } from '@/lib/services/auth'
+import { sendOrderStatusEmail } from '@/lib/services/order-mail'
 import { getSettings } from '@/lib/services/settings'
 import { REF_COOKIE, attributeOrder } from '@/lib/services/affiliate'
 import { applyZonePrice, resolveZone } from '@/lib/services/pricing'
@@ -99,6 +102,9 @@ export interface CheckoutCustomer {
   state?: string
   pincode?: string
   couponCode?: string
+  /** The shopper's own name for this address ("Home" / "Work" / free text).
+   *  Every address used to be stamped 'Home' regardless. */
+  addressLabel?: string
 }
 
 /** The payment intent the client needs to open the Razorpay Checkout widget
@@ -178,7 +184,11 @@ function isOrderNoUniqueViolation(err: unknown): boolean {
  * restores stock and removes the pending order while preserving the shopper's
  * cart for a retry.
  */
-export async function placeOrder(token: string, customer: CheckoutCustomer): Promise<PlaceOrderResult> {
+export async function placeOrder(
+  token: string,
+  customer: CheckoutCustomer,
+  sessionUserId?: string,
+): Promise<PlaceOrderResult> {
   // Settings are a read of business config, not part of the atomic order write —
   // fetch them before opening the transaction to keep it short. (Loyalty points
   // are no longer awarded here; they are granted on capture in markOrderPaid.)
@@ -235,23 +245,83 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
 
     const shipping = subtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
 
-    // Guest checkouts become durable customer records, keyed by phone so a
-    // repeat buyer reuses the same User (and its address book / order history).
-    // The buyer is identified by PHONE; email is only a nice-to-have. If the
-    // supplied email already belongs to a DIFFERENT user, writing it would trip
-    // the User.email @unique index and 500 the whole checkout — so we simply
-    // skip claiming it in that case (the order still ties to the phone-user).
-    const emailFree =
-      email && !(await tx.user.findFirst({
-        where: { email, phone: { not: customer.phone } },
-        select: { id: true },
-      }))
-    const emailPatch = emailFree ? { email } : {}
-    const user = await tx.user.upsert({
-      where: { phone: customer.phone },
-      update: { name: customer.name, ...emailPatch },
-      create: { phone: customer.phone, name: customer.name, role: 'customer', ...emailPatch },
-    })
+    // ── WHO IS BUYING ────────────────────────────────────────────────────────
+    // A signed-in shopper's order belongs to HER session row, full stop. This
+    // used to identify the buyer purely by the phone typed into the form, so a
+    // magic-link or Google customer (phone null) minted a SECOND User row on
+    // every order and her /account order history, spend chart and points ledger
+    // stayed empty forever no matter how much she bought.
+    //
+    // We also stopped blind-writing the second identity column. The old
+    // `emailFree` guard compared `phone: { not: <string> }` against a NULL
+    // phone, so depending on how Prisma emits that it either tripped the
+    // User.email unique index (500 on a paid-intent checkout) or silently
+    // discarded the email. attachIdentity checks ownership first and refuses a
+    // value that belongs to someone else, so neither branch can happen.
+    let user: { id: string }
+    if (sessionUserId) {
+      const existing = await tx.user.findUnique({
+        where: { id: sessionUserId },
+        select: { id: true, name: true, email: true, phone: true },
+      })
+      if (!existing) throw new Error('Signed-in user no longer exists.')
+      user = { id: existing.id }
+
+      // Backfill ONLY the gaps. A stored name/phone/email is the verified truth;
+      // a checkout form is not a place to overwrite it.
+      if (!existing.name?.trim()) {
+        await tx.user.update({ where: { id: user.id }, data: { name: customer.name } })
+      }
+      // A phone typed at checkout is unverified, so it is only ever written when
+      // the account has none at all — and never over a verified one.
+      const gaps: { email?: string; phone?: string } = {}
+      if (!existing.email && email) gaps.email = email
+      if (!existing.phone) gaps.phone = customer.phone
+      if (Object.keys(gaps).length > 0) {
+        try {
+          await attachIdentity(tx, user.id, gaps)
+        } catch (err) {
+          // Someone else already owns that email or number. That is a real
+          // account-merge question and a payment flow is the worst possible
+          // place to answer it — the order still belongs to the session user.
+          if (!(err instanceof IdentityConflictError)) throw err
+        }
+      }
+    } else {
+      // Genuine guest: the phone is the only identity we have, so it keys a
+      // durable customer record that a repeat buyer will reuse.
+      const byPhone = await tx.user.findUnique({
+        where: { phone: customer.phone },
+        select: { id: true, email: true },
+      })
+      if (byPhone) {
+        user = { id: byPhone.id }
+        await tx.user.update({ where: { id: user.id }, data: { name: customer.name } })
+        if (!byPhone.email && email) {
+          try {
+            await attachIdentity(tx, user.id, { email })
+          } catch (err) {
+            if (!(err instanceof IdentityConflictError)) throw err
+          }
+        }
+      } else {
+        // A brand-new guest row. The email is only claimed when free; a
+        // collision means it belongs to a returning customer who did not sign
+        // in, and we must not steal it onto this new row.
+        const emailOwner = email
+          ? await tx.user.findUnique({ where: { email }, select: { id: true } })
+          : null
+        user = await tx.user.create({
+          data: {
+            phone: customer.phone,
+            name: customer.name,
+            role: 'customer',
+            ...(email && !emailOwner ? { email } : {}),
+          },
+          select: { id: true },
+        })
+      }
+    }
 
     // Thara personal discount — applies to the buyer's own orders when they are
     // an active member and the cart clears ₹3,000. Zero when the flag is off,
@@ -267,11 +337,23 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
         !coupon.active ||
         (coupon.expiresAt !== null && coupon.expiresAt <= new Date()) ||
         subtotal < coupon.minOrder ||
-        (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses)
+        (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) ||
+        // A coupon minted by redeeming Bloom points belongs to the customer who
+        // paid for it. Without this, anyone who learned a BLOOM- code could
+        // spend someone else's single use. A null userId is a public campaign
+        // code and stays open to everyone.
+        (coupon.userId !== null && coupon.userId !== user.id)
       if (unavailable || !coupon) throw new InvalidCouponError()
 
       const claimed = await tx.coupon.updateMany({
-        where: { id: coupon.id, usedCount: coupon.usedCount, active: true },
+        // Ownership is re-asserted in the claim itself so the check above cannot
+        // be raced by a concurrent checkout on the same code.
+        where: {
+          id: coupon.id,
+          usedCount: coupon.usedCount,
+          active: true,
+          OR: [{ userId: null }, { userId: user.id }],
+        },
         data: { usedCount: { increment: 1 } },
       })
       if (claimed.count !== 1) throw new InvalidCouponError()
@@ -284,21 +366,40 @@ export async function placeOrder(token: string, customer: CheckoutCustomer): Pro
     }
     let total = Math.max(0, subtotal - discount + shipping)
 
-    // First address for a user is their primary; later ones are added alongside.
-    const addressCount = await tx.address.count({ where: { userId: user.id } })
-    const address = await tx.address.create({
-      data: {
+    // Reuse an address the customer already has rather than minting a new row on
+    // every order. Three orders to the same flat used to leave three identical
+    // "Home" cards in her address book, all of them undeletable because each was
+    // referenced by an order.
+    const label = customer.addressLabel?.trim().slice(0, 40) || 'Home'
+    const existingAddress = await tx.address.findFirst({
+      where: {
         userId: user.id,
-        label: 'Home',
-        name: customer.name,
+        archivedAt: null,
         line: customer.line,
         city: customer.city,
-        state: customer.state ?? null,
         pincode: customer.pincode ?? null,
         phone: customer.phone,
-        isPrimary: addressCount === 0,
       },
+      select: { id: true },
     })
+    // First address for a user is their primary; later ones are added alongside.
+    const addressCount = await tx.address.count({ where: { userId: user.id, archivedAt: null } })
+    const address =
+      existingAddress ??
+      (await tx.address.create({
+        data: {
+          userId: user.id,
+          label,
+          name: customer.name,
+          line: customer.line,
+          city: customer.city,
+          state: customer.state ?? null,
+          pincode: customer.pincode ?? null,
+          phone: customer.phone,
+          isPrimary: addressCount === 0,
+        },
+        select: { id: true },
+      }))
 
     // Human-friendly, sequential order number continuing past the current max.
     // Zero-padded to a fixed width so lexical desc ordering == numeric ordering.
@@ -494,7 +595,7 @@ export async function markOrderPaid({
   // outside the transaction to keep it short.
   const { pointsPerRupee, firstOrderBonusPoints } = await getSettings()
 
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
       where: { orderNo },
       select: { id: true, status: true, total: true, userId: true },
@@ -592,6 +693,12 @@ export async function markOrderPaid({
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })
+
+  // Outside the transaction: a mail provider round-trip has no business holding
+  // a payment-capture lock open, and sendOrderStatusEmail is idempotent on its
+  // own dedupeKey so the webhook/verify/cron race cannot triple-send.
+  if (!result.alreadyPaid) await sendOrderStatusEmail(orderNo, 'paid')
+  return result
 }
 
 /**
