@@ -302,6 +302,46 @@
   border-radius: 3px;
 }
 
+/* ---------- save status ----------
+   The tracker used to say "it is saved to your account" in the lead copy while
+   silently discarding a 400 or a 401. This line is the only thing that speaks
+   about persistence, and it only ever reports what the response actually was. */
+.cyc-save {
+  margin-bottom: 16px;
+  padding: 11px 14px;
+  border-radius: 14px;
+  background: var(--lilac-tint);
+  color: var(--ink);
+  font-size: .88rem;
+  line-height: 1.5;
+}
+.cyc-save--ok { background: #e1f0e7; color: #2f6b47; }
+.cyc-save--err { background: #f5ebeb; color: #a54646; }
+
+/* Anchor and button share one look: "Try again" is a button because it re-runs
+   a request, "Sign in" is a link because it navigates. They must not look
+   different to the reader for that reason. */
+.cyc-save-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.cyc-save-link:hover { color: var(--navy); }
+.cyc-save--err .cyc-save-link:hover { color: #7d3434; }
+.cyc-save-link:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px rgba(86, 49, 132, .22);
+}
+
 /* product tie-in */
 .cyc-tiein {
   display: flex;
@@ -369,9 +409,15 @@
   .cyc-day { padding: 8px 1px 7px; border-radius: 12px; }
 }
 
+/* base.css kills animations under this query but not transitions, and this
+   section sits on the landing page rather than inside `.m-area`, so it carries
+   its own complete block. */
 @media (prefers-reduced-motion: reduce) {
-  .cyc-card { animation: none; }
-  .cyc-step-btn,
-  .cyc-edit,
-  .cyc-date { transition: none; }
+  .cyc *,
+  .cyc *::before,
+  .cyc *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .cyc-step-btn:active:not(:disabled) { transform: none; }
 }

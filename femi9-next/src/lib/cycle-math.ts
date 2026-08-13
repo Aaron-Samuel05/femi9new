@@ -102,9 +102,19 @@ export const daysBetween = (a: Date, b: Date) => Math.round((b.getTime() - a.get
 export const addDaysKey = (key: string, n: number) => keyFromDate(addDays(dateFromKey(key), n))
 export const daysBetweenKeys = (a: string, b: string) => daysBetween(dateFromKey(a), dateFromKey(b))
 
+/**
+ * Round into [min, max], but treat a non-finite or non-POSITIVE input as "no
+ * measurement at all" and answer with the default instead of the minimum.
+ *
+ * That distinction matters. A zero average comes from two period logs sharing a
+ * start date, which is an absent measurement — not a 21-day cycle. Snapping it
+ * to the minimum would silently invent a short cycle and predict dates a week
+ * early; falling back to the default at least says "we do not know yet", which
+ * is what the confidence score alongside it is already telling the user.
+ */
 const clampInt = (n: number, min: number, max: number, fallback: number) => {
   const v = Math.round(n)
-  if (!Number.isFinite(v)) return fallback
+  if (!Number.isFinite(v) || v <= 0) return fallback
   return Math.min(max, Math.max(min, v))
 }
 
