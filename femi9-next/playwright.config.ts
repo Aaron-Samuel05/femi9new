@@ -17,7 +17,12 @@ export default defineConfig({
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [['github'], ['list']] : [['list']],
+  // CI also writes the HTML report so a failure ships its screenshots and
+  // traces as an artifact — without it there is nothing to look at afterwards
+  // but the assertion message.
+  reporter: process.env.CI
+    ? [['github'], ['list'], ['html', { open: 'never' }]]
+    : [['list']],
   timeout: 60_000,
   expect: { timeout: 15_000 },
   use: {

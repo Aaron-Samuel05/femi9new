@@ -136,8 +136,20 @@ for (const phone of PHONES) {
       expect(box, 'drawer has no box').not.toBeNull()
       expect(Math.round(box!.width), 'drawer is wider than the screen').toBeLessThanOrEqual(phone.width)
 
-      await page.locator('aside.drawer .drawer-foot a.btn-primary').click()
-      await expect(page).toHaveURL(/\/checkout/)
+      // The CTA has to be reachable with a thumb, not just present: assert it
+      // sits fully inside the viewport rather than clipped by the screen edge.
+      const cta = page.locator('aside.drawer .drawer-foot a.btn-primary')
+      const ctaBox = await cta.boundingBox()
+      expect(ctaBox, 'checkout CTA has no box').not.toBeNull()
+      expect(ctaBox!.x, 'checkout CTA starts off-screen').toBeGreaterThanOrEqual(0)
+      expect(Math.round(ctaBox!.x + ctaBox!.width), 'checkout CTA runs past the screen edge')
+        .toBeLessThanOrEqual(phone.width)
+
+      // Navigate directly for the layout audit. Clicking through is covered by
+      // storefront.spec; doing it here as well made this test depend on the
+      // Lenis smooth-scroll settling under the pointer, which is a different
+      // failure than "does /checkout fit a phone".
+      await page.goto('/checkout')
       await page.waitForLoadState('networkidle').catch(() => {})
       const offenders = await overflowingElements(page, phone.width)
       expect(offenders, report('/checkout', phone.name, offenders)).toEqual([])
