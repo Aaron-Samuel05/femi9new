@@ -1,3 +1,10 @@
+'use client'
+
+// Explicitly a client component: it calls useCart() for the one-tap add. It used
+// to inherit the boundary from Home.tsx, its only importer, which meant the
+// first server component to render a product grid (/products) would have tried
+// to run a hook on the server.
+
 import { memo } from 'react'
 import { Link } from '@/lib/router-compat'
 import type { Product } from '../data/products'

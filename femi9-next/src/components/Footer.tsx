@@ -15,9 +15,10 @@ const SOCIALS = [
   { href: 'https://www.linkedin.com/company/femi9-official/', label: 'LinkedIn', Icon: Linkedin },
 ]
 
-/** Fallback shop column, used only until /api/settings resolves. These three
- *  slugs are also what the catalog has always shipped with, so the links are
- *  live rather than decorative — but the real list wins the moment it arrives. */
+/** Deliberately empty. Until /api/settings resolves we render a single "Browse
+ *  all products" link rather than guessing slugs — a guessed slug that has been
+ *  archived or renamed is a 404 in the footer of every page on the site, which
+ *  is exactly the bug this column used to have. */
 const FALLBACK_SHOP: { slug: string; name: string }[] = []
 
 export function Footer() {

@@ -268,7 +268,24 @@ export function PeriodsWall({ posts }: Props) {
           tags: [],
         }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        // The wall accepts guests, so there is no 401 here — but it IS rate
+        // limited at 5/min per IP, and a throttled story used to read as a
+        // generic failure the visitor would answer by pressing submit again.
+        // Say what actually happened, and how long to wait.
+        if (res.status === 429) {
+          const payload = (await res.json().catch(() => ({}))) as { retryAfterSec?: number }
+          const wait = payload.retryAfterSec
+          setError(
+            wait
+              ? `You have shared a few stories just now. Please try again in ${wait} seconds.`
+              : 'You have shared a few stories just now. Please try again shortly.',
+          )
+          return
+        }
+        setError('Something went wrong - please try again.')
+        return
+      }
 
       // Reset the form. The post is pending review, so it is NOT added to the
       // feed — instead we surface an "awaiting review" acknowledgement.
@@ -282,7 +299,7 @@ export function PeriodsWall({ posts }: Props) {
       if (confirmTimer.current) clearTimeout(confirmTimer.current)
       confirmTimer.current = setTimeout(() => setConfirmed(false), 6000)
     } catch {
-      setError('Something went wrong - please try again.')
+      setError('We could not reach the server. Please check your connection.')
     } finally {
       setSubmitting(false)
     }
