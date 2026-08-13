@@ -74,6 +74,46 @@ export default function PostForm({
   const [deleting, setDeleting] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
+  // The cover image is UPLOADED, never typed. This field used to be a free-text
+  // "Image URL" box, which meant an editor had to get the bytes onto a host by
+  // some other means first — and a typo silently shipped a post with a broken
+  // cover. The picked file now goes to /api/admin/upload, which verifies the
+  // magic number (so a spoofed .svg/.html can't be stored and served as active
+  // content from our origin), caps the size at 5MB, and persists to S3 —
+  // Cloudinary or public/uploads being the other provider branches. We keep only
+  // the URL it returns, so the save path is identical to what it always was.
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const coverInputRef = useRef<HTMLInputElement>(null)
+
+  async function onUploadCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    // Reset the input so re-picking the same file still fires onChange.
+    e.target.value = ''
+    if (!file) return
+
+    setUploadError(null)
+    setUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/admin/upload', { method: 'POST', body: fd })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok || !body?.url) {
+        // The route's messages are already editor-readable ("Image is too large
+        // (max 5MB)", "Only PNG, JPEG, or WebP images are allowed", and the
+        // 503 when storage is unconfigured), so surface them verbatim.
+        setUploadError(body?.error || 'Upload failed. Please try again.')
+        return
+      }
+      setImage(body.url as string)
+    } catch {
+      setUploadError('Network error — please try again.')
+    } finally {
+      setUploading(false)
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
@@ -220,15 +260,74 @@ export default function PostForm({
           </div>
 
           <div className="adm-field" style={{ marginBottom: 0 }}>
-            <label className="adm-label" htmlFor="b-image">Image URL</label>
+            {/* Not a <label htmlFor>: the control is a button driving a hidden
+                picker, so there is no single input for a label to address. */}
+            <span className="adm-label">Cover image</span>
+
+            {image ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                {/* Plain <img>: the source is a runtime upload URL (S3/CDN or
+                    /uploads in dev), not a build-time known asset. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={image}
+                  alt=""
+                  style={{
+                    width: 104,
+                    height: 68,
+                    objectFit: 'cover',
+                    borderRadius: 8,
+                    border: '1px solid rgba(52,32,78,.13)',
+                    background: 'rgba(52,32,78,.04)',
+                  }}
+                />
+                <button
+                  type="button"
+                  className="adm-btn adm-btn--secondary adm-btn--sm"
+                  onClick={() => coverInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? 'Uploading…' : 'Replace'}
+                </button>
+                <button
+                  type="button"
+                  className="adm-btn adm-btn--secondary adm-btn--sm"
+                  onClick={() => {
+                    setImage('')
+                    setUploadError(null)
+                  }}
+                  disabled={uploading}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="adm-btn adm-btn--secondary adm-btn--sm"
+                onClick={() => coverInputRef.current?.click()}
+                disabled={uploading}
+                style={{ alignSelf: 'flex-start', marginBottom: 8 }}
+              >
+                {uploading ? 'Uploading…' : 'Upload cover image'}
+              </button>
+            )}
+
+            {/* Hidden native picker driven by the buttons above. `accept` mirrors
+                exactly what the route's magic-number sniff allows, so the file
+                dialog cannot offer a type the server will reject. */}
             <input
-              id="b-image"
-              className="adm-input"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-              placeholder="/assets/img/blog-cycle.webp"
+              ref={coverInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={onUploadCover}
+              style={{ display: 'none' }}
             />
-            <span className="adm-help">Optional cover image for the article.</span>
+
+            {uploadError && <span className="adm-error">{uploadError}</span>}
+            <span className="adm-help">
+              Optional. PNG, JPEG or WebP up to 5MB, stored in S3 and served through the CDN.
+            </span>
           </div>
         </section>
 
