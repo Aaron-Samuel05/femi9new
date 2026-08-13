@@ -1,0 +1,4 @@
+/* ===== DASHBOARD SCREEN (/dashboard) — T4 owns this file. Prefix: .dash-*
+   app.css already defines .dash-grid, so use two-segment names that cannot
+   collide (.dash-cycle-*, .dash-ring, .dash-cal-*, .dash-log-*).
+   Never declare a .m-* rule here. ===== */

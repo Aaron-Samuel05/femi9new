@@ -1,0 +1,4 @@
+/* ===== AUTH SCREENS (/login, /welcome) — T2 owns this file. Prefix: .auth-*
+   Layout only: the centred card, the step indicator, the code-input grid.
+   Every primitive (.m-form/.m-field/.m-input/.btn) comes from member.css.
+   Never declare a .m-* rule here. ===== */

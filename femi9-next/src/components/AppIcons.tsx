@@ -78,3 +78,25 @@ export const ILeaf = (p: SVGProps<SVGSVGElement>) => (
 export const IMenu = (p: SVGProps<SVGSVGElement>) => (
   <svg {...s} {...p}><path d="M4 7h16M4 12h16M4 17h16" /></svg>
 )
+
+/* Member-area glyphs. Added by the Foundation track so the edit / delete /
+   copy / reward / receipt affordances share one weight instead of each screen
+   pasting a differently-stroked SVG. Same 24-box, 1.75 stroke, round joins. */
+export const IPencil = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><path d="M4 20h4l10-10a2.5 2.5 0 0 0-3.5-3.5L4.5 16.5V20z" /><path d="M13.5 7.5l3 3" /></svg>
+)
+export const ITrash = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><path d="M4 7h16" /><path d="M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7" /><path d="M6.5 7l.8 12.1a1.9 1.9 0 0 0 1.9 1.8h5.6a1.9 1.9 0 0 0 1.9-1.8L17.5 7" /><path d="M10.5 11v6M13.5 11v6" /></svg>
+)
+export const ICopy = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M15 6.5A2.5 2.5 0 0 0 12.5 4H6.5A2.5 2.5 0 0 0 4 6.5v6A2.5 2.5 0 0 0 6.5 15" /></svg>
+)
+export const IGift = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><rect x="3.5" y="8.5" width="17" height="4" rx="1.4" /><path d="M5 12.5V19a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6.5" /><path d="M12 8.5V21" /><path d="M12 8.5S11 3 8.6 3a2.3 2.3 0 0 0 0 5.5zM12 8.5S13 3 15.4 3a2.3 2.3 0 0 1 0 5.5z" /></svg>
+)
+export const IDownload = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><path d="M12 3.5v11" /><path d="M8 11l4 4 4-4" /><path d="M4.5 16.5V19a1.5 1.5 0 0 0 1.5 1.5h12a1.5 1.5 0 0 0 1.5-1.5v-2.5" /></svg>
+)
+export const ICard = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...s} {...p}><rect x="2.5" y="5" width="19" height="14" rx="3" /><path d="M2.5 9.5h19M6 15h3.5" /></svg>
+)

@@ -1,0 +1,4 @@
+/* ===== ACCOUNT SCREEN (/account) — T3 owns this file. Prefix: .acct-*
+   Layout only; every primitive comes from member.css.
+   Never declare a .m-* rule here, and never use the admin classes
+   (panel / pad-lg / dash-grid / col-* / dtable / badge / avatar). ===== */

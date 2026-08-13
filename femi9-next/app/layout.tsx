@@ -5,6 +5,12 @@ import Script from 'next/script'
 // smooth scroll to behave. Then app CSS in cascade order: base tokens first,
 // component styles next, responsive media queries LAST so they always win,
 // immersive overrides last of all.
+//
+// The member-area sheets load after figma-landing-responsive.css on purpose:
+// that file ships two UNSCOPED `!important` blocks that hit every .btn on the
+// site, and member.css carries the sanctioned `!important` counter-override.
+// Equal specificity + equal importance means source order decides, so these
+// four must come last.
 import 'lenis/dist/lenis.css'
 import '@/styles/base.css'
 import '@/components/Nav.css'
@@ -25,6 +31,10 @@ import '@/styles/responsive.css'
 import '@/immersive/immersive.css'
 import '@/styles/figma-landing.css'
 import '@/styles/figma-landing-responsive.css'
+import '@/styles/member.css'
+import '@/styles/auth.css'
+import '@/styles/account.css'
+import '@/styles/dashboard.css'
 
 import { Providers } from './providers'
 
