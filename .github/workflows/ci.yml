@@ -133,7 +133,13 @@ jobs:
           # trips its own "approaching the used memory threshold" guard and
           # restarts mid-suite, which surfaces as a bare `fetch failed`. The
           # runner has far more headroom than this.
-          NODE_OPTIONS: --max-old-space-size=4096
+          #
+          # 4096 was still not enough once the member-area specs landed: the
+          # browser suite died around test #45 with `socket hang up` on one run
+          # and `ERR_CONNECTION_REFUSED` on the next — the server going away
+          # mid-request, not a slow response. ubuntu-latest has 16GB, so the
+          # ceiling is raised rather than the suite trimmed.
+          NODE_OPTIONS: --max-old-space-size=8192
         run: |
           # Drop the production build first: `next dev` and `next build` write
           # incompatible artifacts into the same .next directory.

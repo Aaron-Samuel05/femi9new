@@ -398,6 +398,8 @@ export async function getCycleData(userId: string): Promise<CycleData> {
   if (periods.length === 0) {
     const nextStart = addDaysKey(todayKey, DEFAULT_CYCLE)
     const w = windowKeys(nextStart, DEFAULT_PERIOD)
+    // Inclusive of today, so a DEFAULT_CYCLE-day window ends on today.
+    const assumedCycleStart = addDaysKey(todayKey, -(DEFAULT_CYCLE - 1))
     return {
       consent: user?.cycleDataConsent ?? false,
       needsData: true,
@@ -421,13 +423,19 @@ export async function getCycleData(userId: string): Promise<CycleData> {
       upcomingEvents: [],
       cycleLengthTrend: { labels: [], values: [], measured: 0 },
       insights: [],
-      // Nothing to compare against, so nothing claims to be "this cycle".
+      // No period start is logged, so there is no MEASURED cycle boundary — but
+      // "no boundary" is not the same as "nothing is current". Flagging every
+      // entry false filed a symptom logged *today* under "Earlier", which reads
+      // as a bug to the person who just typed it. Fall back to the default
+      // cycle length, exactly as the prediction above already does, so the
+      // window is a defensible ~28 days ending today and the grouping matches
+      // the shape used once real periods exist (>= cycleStart, <= today).
       symptomLog: symptoms.slice(0, 12).map((s) => ({
         id: s.id,
         day: s.symptom,
         level: s.level,
         date: s.date,
-        inCurrentCycle: false,
+        inCurrentCycle: s.date >= assumedCycleStart && s.date <= todayKey,
         note: s.note,
       })),
       periods,

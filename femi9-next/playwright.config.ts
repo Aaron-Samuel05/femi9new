@@ -23,7 +23,14 @@ export default defineConfig({
   reporter: process.env.CI
     ? [['github'], ['list'], ['html', { open: 'never' }]]
     : [['list']],
-  timeout: 60_000,
+  // Per-TEST budget, which is the binding constraint here — not the per-action
+  // one below. `next dev` compiles each route on first hit, and a spec like
+  // admin-guard walks seven public routes in a single test, so it spends most
+  // of its budget on first-hit compiles that later specs get for free. At 60s
+  // that test timed out on whichever route happened to be cold first
+  // (/checkout on one run, /partner on the next) while passing on retry —
+  // the classic signature of a budget that is too tight rather than a bug.
+  timeout: 120_000,
   expect: { timeout: 15_000 },
   use: {
     baseURL: process.env.E2E_BASE_URL || 'http://127.0.0.1:3100',
