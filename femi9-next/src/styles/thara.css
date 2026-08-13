@@ -6,14 +6,14 @@
   font-family: -apple-system, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
 }
 .thara h1 {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--display);
   font-size: clamp(1.8rem, 4vw, 2.6rem);
   font-weight: 400;
   margin: 0 0 8px;
   color: #34204E;
 }
 .thara h2 {
-  font-family: "Fraunces", Georgia, serif;
+  font-family: var(--display);
   font-size: 1.3rem;
   font-weight: 400;
   margin: 0 0 16px;
@@ -35,7 +35,7 @@
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7F6EB9; font-weight: 600;
 }
 .thara-hero .metric .value {
-  font-family: "Fraunces", Georgia, serif; font-size: 2rem; color: #34204E; margin-top: 4px;
+  font-family: var(--display); font-size: 2rem; color: #34204E; margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }
 .thara-block {
@@ -51,7 +51,7 @@
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7F6EB9; font-weight: 600;
 }
 .thara-block .metric .value {
-  font-family: "Fraunces", Georgia, serif; font-size: 1.6rem; color: #34204E; margin-top: 4px;
+  font-family: var(--display); font-size: 1.6rem; color: #34204E; margin-top: 4px;
   font-variant-numeric: tabular-nums;
 }
 .thara-block code {
@@ -119,3 +119,37 @@
 .thara .btn-primary:disabled { background: #EDE9F4; color: #7F6EB9; cursor: not-allowed; }
 .thara .btn-ghost { background: transparent; border: 1px solid #E4DFEE; color: #34204E; }
 .thara .btn-ghost:hover { border-color: #5B3FDA; color: #5B3FDA; }
+
+/* Membership status pill.
+   The markup used to read className="status status-{s.membership.status}" —
+   JSX TEXT, not an interpolation — so every membership carried the literal
+   class `status-{s.membership.status}` and none of these could ever match.
+   Palette is the canonical member status set from the design system. */
+.thara-hero .status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.thara-hero .status-active { background: #E1F0E7; color: #3D8B5C; }
+.thara-hero .status-purchase_pending { background: #FBF0DA; color: #B8863A; }
+.thara-hero .status-suspended { background: #F5EBEB; color: #A54646; }
+.thara-hero .status-deactivated { background: #F2ECFB; color: #877D9E; }
+
+/* Failure copy for enrol / claim / opt-out / clipboard. #B03B57 is the one
+   error colour in the system (it is what .cyc-error uses); no second red. */
+.thara-error {
+  margin: 12px 0 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #B03B57;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .thara * { transition: none !important; animation: none !important; }
+}
