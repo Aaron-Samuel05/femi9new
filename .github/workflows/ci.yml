@@ -185,8 +185,11 @@ jobs:
       - name: Run browser E2E
         run: npx playwright test
 
-      - name: Upload Playwright report (on failure)
-        if: failure()
+      # Always, not just on failure: the mobile audit attaches page screenshots
+      # to the report, and those are worth having from a passing run too — they
+      # are the only record of what the pages actually look like on a phone.
+      - name: Upload Playwright report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report

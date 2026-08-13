@@ -109,6 +109,56 @@ for (const phone of PHONES) {
       })
     }
 
+    /**
+     * /about gets its own check because the overflow sweep cannot see its worst
+     * failure mode. The founder collage is absolutely positioned inside
+     * `.fl-about`, which sets `overflow: hidden` — so a portrait sized for the
+     * desktop canvas would be silently amputated rather than reported. This
+     * measures the pieces against their frame and attaches a screenshot.
+     */
+    test('/about keeps the founder collage inside its frame', async ({ page }, testInfo) => {
+      await page.goto('/about')
+      await page.waitForLoadState('networkidle').catch(() => {})
+
+      // The section reveals on intersection; make sure it has run.
+      await page.locator('.fl-about').scrollIntoViewIfNeeded()
+      await expect(page.locator('.fl-about[data-visible="true"]')).toBeVisible()
+
+      const collage = await page.locator('.fl-about__people').boundingBox()
+      expect(collage, 'collage has no box').not.toBeNull()
+
+      const figures = page.locator('.fl-founder')
+      await expect(figures).toHaveCount(3)
+
+      for (let i = 0; i < 3; i += 1) {
+        const figure = figures.nth(i)
+        const label = (await figure.getAttribute('class')) ?? `figure ${i}`
+        const box = await figure.boundingBox()
+        expect(box, `${label} has no box`).not.toBeNull()
+
+        // Every portrait must sit inside the collage frame horizontally, and
+        // inside the viewport, or the clip is eating part of a founder.
+        expect(box!.x, `${label} starts left of the collage`).toBeGreaterThanOrEqual(collage!.x - 1)
+        expect(
+          Math.round(box!.x + box!.width),
+          `${label} is cut off by the collage's right edge`,
+        ).toBeLessThanOrEqual(Math.round(collage!.x + collage!.width) + 1)
+        expect(Math.round(box!.x + box!.width), `${label} runs past the screen`).toBeLessThanOrEqual(phone.width)
+        expect(box!.height, `${label} collapsed`).toBeGreaterThan(80)
+      }
+
+      // The copy has to survive too — heading, both paragraphs and the CTA.
+      await expect(page.locator('.fl-about__copy h2')).toBeVisible()
+      await expect(page.locator('.fl-about__copy .fl-btn')).toBeVisible()
+      const cta = await page.locator('.fl-about__copy .fl-btn').boundingBox()
+      expect(Math.round(cta!.x + cta!.width), 'the About CTA runs past the screen').toBeLessThanOrEqual(phone.width)
+
+      await testInfo.attach(`about-${phone.name.replace(/\s+/g, '-')}`, {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: 'image/png',
+      })
+    })
+
     test('product and blog detail pages fit the viewport', async ({ page, request }) => {
       const products = await (await request.get('/api/products')).json()
       const blog = await (await request.get('/api/blog')).json()
