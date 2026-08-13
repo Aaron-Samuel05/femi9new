@@ -8,17 +8,22 @@ import { Account } from '@/screens/Account'
 export const dynamic = 'force-dynamic'
 
 /**
- * /account — the signed-in customer's dashboard. Middleware already gate-keeps
- * this path, but we resolve the session again here (Node runtime) to fetch the
- * user's real data. A missing session, or a session whose user record is gone,
- * bounces to /login.
+ * /account — the signed-in customer's home. Middleware already gate-keeps this
+ * path, but we resolve the session again here (Node runtime) to fetch the real
+ * data, and we re-run the onboarding gate: an account that never captured a
+ * name / email / phone cannot render a member surface honestly, so it is sent
+ * to /welcome. Typing the URL does not bypass that.
  */
 export default async function AccountPage() {
   const s = await getSession()
-  if (!s) redirect('/login')
+  // Carry the destination so /login returns the customer here rather than
+  // dropping them on a generic landing after they sign in.
+  if (!s) redirect('/login?next=/account')
 
   const [data, rewardOptions] = await Promise.all([getAccountData(s.sub), listRewardOptions()])
+  // A valid token whose user row is gone — bounce rather than render half a page.
   if (!data) redirect('/login')
+  if (!data.user.profileComplete) redirect('/welcome')
 
   return (
     <Account
@@ -26,7 +31,9 @@ export default async function AccountPage() {
       pointsBalance={data.pointsBalance}
       orders={data.orders}
       addresses={data.addresses}
-      subscription={data.subscription}
+      subscriptions={data.subscriptions}
+      coupons={data.coupons}
+      earnRates={data.earnRates}
       spendTrend={data.spendTrend}
       activity={data.activity}
       rewardOptions={rewardOptions}
