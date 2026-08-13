@@ -278,6 +278,20 @@ async function main() {
   check('Authenticated customer is returned', Boolean(me.body?.user?.id))
 
   const today = new Date().toISOString().slice(0, 10)
+
+  // Health data is gated on explicit consent. Prove the gate holds before
+  // granting it — a fresh account must not be able to write period data.
+  const beforeConsent = await request('/api/cycle/periods', {
+    jar: customer,
+    method: 'POST',
+    json: { startDate: today, lengthDays: 5 },
+  })
+  status('Cycle logging is refused before consent', beforeConsent, 403)
+  check('Refusal identifies the missing consent', beforeConsent.body?.code === 'consent_required')
+
+  const consent = await request('/api/cycle', { jar: customer, method: 'PATCH', json: { consent: true } })
+  status('Customer can grant cycle consent', consent, 200)
+
   const period = await request('/api/cycle/periods', {
     jar: customer,
     method: 'POST',
