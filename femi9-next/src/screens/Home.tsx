@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -11,6 +12,7 @@ import { Link } from '@/lib/router-compat'
 import { CycleTracker } from '@/components/CycleTracker'
 import type { ProductWithVariants } from '@/lib/services/products'
 import type { BlogPostDTO } from '@/lib/services/blog'
+import type { FeaturedReview } from '@/lib/services/reviews-public'
 import { Footer } from '@/components/Footer'
 import { Nav } from '@/components/Nav'
 import { ProductCard } from '@/components/ProductCard'
@@ -20,6 +22,9 @@ const ASSET = '/assets/figma-home/'
 interface Props {
   products: ProductWithVariants[]
   posts: BlogPostDTO[]
+  /** Approved reviews from the database. Falls back to the authored set below
+   *  only when there are too few to fill the rail. */
+  featuredReviews: FeaturedReview[]
 }
 
 function Flower({ light = false }: { light?: boolean }) {
@@ -274,7 +279,9 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
               Choose the pad size and protection level that matches your flow, then shop with confidence and comfort in mind.
             </p>
           </div>
-          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/#products">View All <span>→</span></Link>
+          {/* Was `to="/#products"` while sitting INSIDE #products — a visible
+              no-op that also implied a catalog route which did not exist. */}
+          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/products">View All <span>→</span></Link>
         </div>
         <div className="grid-products" style={{ marginTop: 44 }}>
           {cards.map((product) => (
@@ -327,6 +334,15 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
   )
 }
 
+/** Portraits used by the rail. Reused in order for database reviews — these
+ *  are stock customer imagery, never claimed to be the named reviewer. */
+const REVIEW_PORTRAITS = [
+  'testimonials-imgFrame28.png',
+  'testimonials-imgFrame29.png',
+  'testimonials-imgFrame30.png',
+  'testimonials-imgFrame32.png',
+] as const
+
 const REVIEWS = [
   { image: 'testimonials-imgFrame28.png', name: 'K', quote: 'Forget I’m Wearing One. And Zero Rash.' },
   { image: 'testimonials-imgFrame29.png', name: 'Fatima S.', quote: 'Switched The Whole Family. Zero Leaks Overnight.' },
@@ -334,9 +350,31 @@ const REVIEWS = [
   { image: 'testimonials-imgFrame32.png', name: 'Make The Switch This Month', quote: 'Overnight 425 Is A Game-Changer.' },
 ] as const
 
-function Testimonials() {
+/**
+ * Testimonial rail.
+ *
+ * Prefers real approved reviews and only falls back to the authored set when
+ * there are fewer than three — the same pattern the Journal teaser already uses
+ * for posts. The authored entries carry a portrait; DB reviews do not, so they
+ * reuse the same portraits in order as generic customer imagery rather than
+ * inventing a face for a named person.
+ */
+function Testimonials({ featuredReviews }: { featuredReviews: FeaturedReview[] }) {
   const [manualOffset, setManualOffset] = useState<number | null>(null)
-  const items = [...REVIEWS, ...REVIEWS]
+
+  const cards = useMemo(() => {
+    if (featuredReviews.length < 3) {
+      return REVIEWS.map((r) => ({ key: r.name, image: r.image, name: r.name, quote: r.quote }))
+    }
+    return featuredReviews.slice(0, 6).map((r, i) => ({
+      key: r.id,
+      image: REVIEW_PORTRAITS[i % REVIEW_PORTRAITS.length],
+      name: r.place ? `${r.name} · ${r.place}` : r.name,
+      quote: r.quote,
+    }))
+  }, [featuredReviews])
+
+  const items = [...cards, ...cards]
   const shift = manualOffset === null ? undefined : `calc(-80px - ${manualOffset * 421}px)`
 
   return (
@@ -345,13 +383,13 @@ function Testimonials() {
         <div className="fl-heading">
           <div><p className="fl-kicker fl-kicker--gold">Testimonial <Flower /></p><h2>Real Period Stories. Real Everyday Confidence.</h2></div>
           <div className="fl-testimonials__controls">
-            <button type="button" aria-label="Previous testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) - 1 + REVIEWS.length) % REVIEWS.length)}><img src={`${ASSET}testimonials-imgFrame.svg`} alt="" /></button>
-            <button type="button" aria-label="Next testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) + 1) % REVIEWS.length)}><img src={`${ASSET}testimonials-imgFrame1.svg`} alt="" /></button>
+            <button type="button" aria-label="Previous testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) - 1 + cards.length) % cards.length)}><img src={`${ASSET}testimonials-imgFrame.svg`} alt="" /></button>
+            <button type="button" aria-label="Next testimonial" onClick={() => setManualOffset((value) => ((value ?? 0) + 1) % cards.length)}><img src={`${ASSET}testimonials-imgFrame1.svg`} alt="" /></button>
           </div>
         </div>
         <div className={`fl-testimonials__track${manualOffset !== null ? ' is-manual' : ''}`} style={{ '--testimonial-shift': shift } as CSSProperties}>
           {items.map((item, index) => (
-            <article className="fl-review" key={`${item.name}-${index}`}>
+            <article className="fl-review" key={`${item.key}-${index}`}>
               <div className="fl-review__media"><img src={`${ASSET}${item.image}`} alt="Femi9 customer" /><img className="fl-review__play" src={`${ASSET}testimonials-imgGroup.svg`} alt="" /></div>
               <div className="fl-review__body"><img src={`${ASSET}testimonials-imgFrame31.svg`} alt="Five stars" /><h3>{item.name}</h3><p>“{item.quote}”</p></div>
             </article>
@@ -382,7 +420,7 @@ function Partner() {
   )
 }
 
-export function Home({ products, posts }: Props) {
+export function Home({ products, posts, featuredReviews }: Props) {
   return (
     <main className="figma-landing" id="top">
       <Nav />
@@ -407,7 +445,7 @@ export function Home({ products, posts }: Props) {
       </section>
       <Journal posts={posts} />
       <div className="fl-cycle"><CycleTracker /></div>
-      <Testimonials />
+      <Testimonials featuredReviews={featuredReviews} />
       <Partner />
       <Footer />
     </main>

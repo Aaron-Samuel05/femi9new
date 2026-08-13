@@ -57,3 +57,20 @@
 }
 @media (min-width:961px){.mobile-menu{display:none !important}}
 @media (prefers-reduced-motion:reduce){.mobile-menu,.mobile-menu a{transition:none}}
+
+/* Sign out — the storefront had no way to end a session at all; /api/auth/logout
+   existed with zero callers. Matches the mobile-menu link geometry so it reads
+   as the last row of the list rather than a foreign control. */
+.nav-signout{display:block;width:100%;text-align:left;padding:14px 2px;background:none;border:0;
+  border-bottom:1px solid rgba(255,255,255,.12);
+  font-family:"Urbanist",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:1.05rem;
+  font-weight:500;color:#fff;cursor:pointer;opacity:0;transform:translateY(8px);
+  transition:opacity .3s var(--ease),transform .3s var(--ease),color .2s var(--ease)}
+.mobile-menu.open .nav-signout{opacity:1;transform:none;transition-delay:.28s}
+.nav-signout:hover{color:#e3b846}
+.nav-signout:disabled{opacity:.55;cursor:not-allowed}
+.nav-signout:focus-visible{outline:2px solid rgba(255,255,255,.6);outline-offset:2px;border-radius:6px}
+
+@media (prefers-reduced-motion: reduce){
+  .nav-signout{transition:none;opacity:1;transform:none}
+}

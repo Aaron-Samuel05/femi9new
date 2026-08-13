@@ -1,6 +1,7 @@
 'use client'
 import '../styles/periods-wall.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from '@/lib/router-compat'
 import type { WallPostDTO } from '@/lib/services/wall'
 
 /* ============================================================
@@ -28,7 +29,6 @@ type Post = {
   body: string
   ts: number
   likes: number
-  replies: number
 }
 
 /* ---------- compose options ---------- */
@@ -73,14 +73,6 @@ function HeartIcon({ filled }: { filled: boolean }) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" className={`pw-heart-svg${filled ? ' is-on' : ''}`}>
       <path d="M12 20.6l-1.42-1.28C5.6 14.86 2.5 12.06 2.5 8.6 2.5 6 4.53 4 7.1 4c1.5 0 2.96.7 3.9 1.82C11.94 4.7 13.4 4 14.9 4 17.47 4 19.5 6 19.5 8.6c0 3.46-3.1 6.26-8.08 10.72z" />
-    </svg>
-  )
-}
-
-function ReplyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="pw-reply-svg">
-      <path d="M20 4H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3v3.2L11.4 17H20a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z" />
     </svg>
   )
 }
@@ -157,10 +149,6 @@ function PostCard({
           <HeartIcon filled={liked} />
           <span>{likeCount}</span>
         </button>
-        <span className="pw-replies">
-          <ReplyIcon />
-          {post.replies} {post.replies === 1 ? 'reply' : 'replies'}
-        </span>
       </footer>
     </article>
   )
@@ -182,7 +170,6 @@ export function PeriodsWall({ posts }: Props) {
         body: p.body,
         ts: Date.parse(p.createdAt),
         likes: p.likeCount,
-        replies: 0, // replies aren't wired yet
       })),
     [posts],
   )
@@ -191,6 +178,8 @@ export function PeriodsWall({ posts }: Props) {
   // Likes are one-way per session (the server just increments; there's no guest
   // dedupe), so a liked id stays liked and repeat clicks are ignored.
   const [likedIds, setLikedIds] = useState<Set<string>>(() => new Set())
+  // Surfaced above the feed when a like is refused — most often a 401.
+  const [likeError, setLikeError] = useState<string | null>(null)
 
   // compose form
   const [name, setName] = useState('')
@@ -217,21 +206,41 @@ export function PeriodsWall({ posts }: Props) {
     })
   }, [viewPosts, filter])
 
-  /** Like a post once. Optimistically marks it liked, then POSTs; reverts on
-   *  failure. Ignores repeat clicks so one session can't spam the counter. */
+  /**
+   * Like a post once. Optimistically marks it liked, then POSTs.
+   *
+   * The endpoint requires a session. It used to revert the heart silently on any
+   * failure, so a signed-out visitor watched it fill and un-fill with no
+   * explanation at all — she had no way to know she needed to sign in. A 401
+   * now says so and offers the way back to this page.
+   */
   function like(id: string) {
     if (likedIds.has(id)) return
+    setLikeError(null)
     setLikedIds((prev) => new Set(prev).add(id))
+
+    const revert = () =>
+      setLikedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+
     fetch(`/api/wall/${id}/like`, { method: 'POST' })
       .then((r) => {
-        if (!r.ok) throw new Error()
+        if (r.status === 401) {
+          revert()
+          setLikeError('Sign in to like a story.')
+          return
+        }
+        if (!r.ok) {
+          revert()
+          setLikeError('We could not save that like. Please try again.')
+        }
       })
       .catch(() => {
-        setLikedIds((prev) => {
-          const next = new Set(prev)
-          next.delete(id)
-          return next
-        })
+        revert()
+        setLikeError('We could not reach the server. Please check your connection.')
       })
   }
 
@@ -393,6 +402,17 @@ export function PeriodsWall({ posts }: Props) {
             </button>
           ))}
         </div>
+
+        {/* A refused like needs a visible reason. Signing out mid-session and
+            tapping a heart used to fill and un-fill it with no message at all. */}
+        {likeError && (
+          <p className="pw-like-error" role="alert">
+            {likeError}{' '}
+            <Link to="/login?next=/periods-wall" className="pw-like-error-link">
+              Sign in
+            </Link>
+          </p>
+        )}
 
         {/* ---------- feed ---------- */}
         <div className="pw-feed">

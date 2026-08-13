@@ -4,6 +4,7 @@ import { useState, type CSSProperties } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/store/cart'
 import { Chip } from '@/components/Chip'
+import { track } from '@/lib/track'
 
 /**
  * Checkout form — collects shipping details, POSTs /api/checkout, then drives
@@ -203,6 +204,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
   async function simulateMockPayment(orderNo: string, token: string) {
     setNote('Test mode - simulating payment…')
     const okv = await postVerify({ orderNo, mock: true })
+    if (okv) track('purchase', { orderNo, mode: 'mock' })
     if (!okv) {
       setFormError('We could not confirm the test payment. Please try again.')
       setNote(null)
@@ -235,6 +237,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
         contact: form.phone,
       },
       handler: (res) => {
+        track('purchase', { orderNo, mode: 'razorpay' })
         // Route to the confirmation regardless of the verify outcome: the page
         // reads the live order status, so a verify hiccup still shows the truthful
         // pending/paid state (and the webhook can still finalize it).
@@ -263,6 +266,9 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
     if (!validate()) return
 
     setSubmitting(true)
+    // /api/events had no client instrumentation at all; checkout start and
+    // purchase are the two events the funnel is actually measured on.
+    track('checkout_start', {})
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',

@@ -1,15 +1,17 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
+import '../styles/product-detail-extras.css'
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { rupees, CADENCES } from '../data/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
-import { Bag, Drop, Leaf, ShieldCheck, Check, Facebook, Instagram, Whatsapp } from '../components/Icons'
-import { IStar, IThumbDown, IThumbUp } from '../components/AppIcons'
+import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook, Whatsapp } from '../components/Icons'
+import { ICopy, IStar } from '../components/AppIcons'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
 import type { ProductExtra } from '@/data/productDetail'
 import { usePublicSettings } from '@/lib/use-public-settings'
+import { track } from '@/lib/track'
 
 interface Props {
   product: ProductWithVariants
@@ -86,6 +88,63 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     setReviewsOpen(!isMobile)
   }, [])
 
+  // /api/events existed with zero instrumentation — not a single storefront
+  // interaction was ever recorded. A product view is the cheapest useful signal.
+  useEffect(() => {
+    track('product_view', { slug: product.id, name: product.name })
+  }, [product.id, product.name])
+
+  /**
+   * The real rating distribution, computed from the reviews we were handed.
+   * Five literal bars (88/9/3/0/0%) used to sit directly beneath a genuinely
+   * computed average, so a product with three 4-star reviews still claimed 88%
+   * five-star.
+   */
+  const ratingHistogram = useMemo(
+    () =>
+      [5, 4, 3, 2, 1].map((stars) => {
+        const count = reviews.filter((r) => Math.round(r.rating) === stars).length
+        return { stars, count, pct: reviews.length ? Math.round((count / reviews.length) * 100) : 0 }
+      }),
+    [reviews],
+  )
+
+  /** Absolute URL for this product, for the share intents. */
+  const shareUrl =
+    (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL ?? '') +
+    `/product/${product.id}`
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      notify('Link copied')
+    } catch {
+      notify('Copying is blocked in this browser')
+    }
+  }
+
+  /** Open the review form. Signed-out visitors are sent to sign in first — the
+   *  endpoint requires a session and would otherwise fail after they had typed. */
+  const openReviewForm = () => {
+    setReviewOpen(true)
+    setRvState('idle')
+  }
+
+  /** The cheapest in-stock variant of a related product, mirroring ProductCard. */
+  const defaultVariantOf = (p: ProductWithVariants) =>
+    p.variants.find((v) => v.stock > 0) ?? p.variants[0]
+
+  const addRelated = async (p: ProductWithVariants) => {
+    const variant = defaultVariantOf(p)
+    if (!variant) {
+      notify('Sorry, that option is currently unavailable')
+      return
+    }
+    await add(variant.id, 1)
+    track('add_to_cart', { slug: p.id, variantId: variant.id, qty: 1 })
+    openCart()
+  }
+
   const submitReview = async (e: FormEvent) => {
     e.preventDefault()
     if (rvState === 'sending') return
@@ -102,8 +161,15 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
           body: rvBody.trim(),
         }),
       })
+      if (res.status === 401) {
+        // The endpoint needs a session. Send her to sign in and bring her back
+        // here rather than showing a generic failure after she typed a review.
+        router.push(`/login?next=/product/${product.id}`)
+        return
+      }
       if (!res.ok) throw new Error(`review submit failed: ${res.status}`)
       setRvState('sent')
+      track('review_submitted', { slug: product.id, rating: rvRating })
     } catch {
       setRvState('error')
     }
@@ -126,7 +192,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
           body: JSON.stringify({ variantId: variant.id, qty, cadenceCode: cadence }),
         })
         if (res.status === 401) {
-          router.push('/login')
+          router.push(`/login?next=/product/${product.id}`)
           return
         }
         if (!res.ok) {
@@ -141,6 +207,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     }
 
     void add(variant.id, qty)
+    track('add_to_cart', { slug: product.id, variantId: variant.id, qty })
     openCart()
   }
 
@@ -322,9 +389,13 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
               {/* Social Share Row (Reference Layout) */}
               <div className="pdp-share-row">
                 <span className="pdp-share-label">Share:</span>
+                {/* Real share intents carrying THIS product's URL. These used
+                    to point at the bare social homepages, so "share" opened
+                    facebook.com with nothing attached. Instagram has no web
+                    share intent at all, so it becomes a copy-link button. */}
                 <div className="pdp-share-links">
                   <a
-                    href="https://facebook.com"
+                    href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="pdp-share-link"
@@ -333,7 +404,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                     <Facebook />
                   </a>
                   <a
-                    href="https://whatsapp.com"
+                    href={`https://wa.me/?text=${encodeURIComponent(`${product.name} ${shareUrl}`)}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="pdp-share-link"
@@ -341,15 +412,14 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   >
                     <Whatsapp />
                   </a>
-                  <a
-                    href="https://instagram.com"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
                     className="pdp-share-link"
-                    aria-label="Share on Instagram"
+                    onClick={copyShareLink}
+                    aria-label="Copy link to this product"
                   >
-                    <Instagram />
-                  </a>
+                    <ICopy />
+                  </button>
                 </div>
               </div>
 
@@ -420,90 +490,93 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
 
             {/* 3 FEATURED REVIEW CARDS */}
             <div className="pdp-reviews-grid">
-              {reviews.slice(0, 3).map((rv: any, idx: number) => (
-                <article className="pdp-review-card" key={idx}>
+              {reviews.slice(0, 3).map((rv) => (
+                <article className="pdp-review-card" key={rv.id}>
                   <div className="pdp-review-card-head">
                     <div className="pdp-review-stars">
-                      <Stars rating={rv.rating || 5} />
+                      <Stars rating={rv.rating} />
                     </div>
-                    <span className="pdp-review-date">{rv.date || 'Jun 2026'}</span>
+                    {/* The real posting month. Every card used to read 'Jun 2026'
+                        because the DTO carried no date field at all. */}
+                    <span className="pdp-review-date">{rv.date}</span>
                   </div>
 
                   <div className="pdp-review-user-row">
-                    <div className="pdp-review-avatar">
-                      {rv.name.charAt(0)}
-                    </div>
+                    <div className="pdp-review-avatar">{rv.name.charAt(0)}</div>
                     <div className="pdp-review-user-info">
                       <b>{rv.name}</b>
-                      <span>{rv.place || 'Coimbatore'} &middot; <span className="verified-text">Verified Buyer</span></span>
+                      <span>
+                        {rv.place ?? 'Femi9 customer'}
+                        {/* Only shown when this reviewer really has a paid order
+                            for this product; it used to be unconditional. */}
+                        {rv.verified && (
+                          <>
+                            {' '}
+                            &middot; <span className="verified-text">Verified Buyer</span>
+                          </>
+                        )}
+                      </span>
                     </div>
                   </div>
-
-                  <h4 className="pdp-review-title">
-                    {idx === 0 ? 'Works wonders for overnight sleep' : idx === 1 ? 'Zero rashes & comfortable fit' : 'Magical & so soft'}
-                  </h4>
 
                   <p className="pdp-review-body">{rv.body}</p>
-
-                  <div className="pdp-review-footer">
-                    <span className="pdp-review-full-link">Full Review</span>
-                    <div className="pdp-review-helpful">
-                      <button type="button" aria-label="Helpful review"><IThumbUp aria-hidden="true" /> {idx === 0 ? 12 : idx === 1 ? 8 : 15}</button>
-                      <button type="button" aria-label="Not helpful review"><IThumbDown aria-hidden="true" /> 0</button>
-                    </div>
-                  </div>
                 </article>
               ))}
             </div>
 
-            {/* RATING DISTRIBUTION SUMMARY (No Write Review or Pill Buttons) */}
-            <div className="pdp-rating-summary-box">
-              <div className="pdp-rating-score-col">
-                <div className="pdp-rating-big">{averageRating.toFixed(2)}</div>
-                <div className="pdp-rating-summary-meta">
-                  <Stars rating={averageRating} />
-                  <span>Based on {reviewTotal} verified reviews</span>
-                </div>
+            {/* Empty state — a product with no reviews yet should invite one,
+                not show the fabricated 88/9/3/0/0 distribution that used to be
+                hardcoded here regardless of what the database held. */}
+            {reviews.length === 0 ? (
+              <div className="pdp-reviews-empty">
+                <p>No reviews yet for this product.</p>
+                <button type="button" className="btn btn-primary" onClick={openReviewForm}>
+                  Be the first to review it
+                </button>
               </div>
+            ) : (
+              <div className="pdp-rating-summary-box">
+                <div className="pdp-rating-score-col">
+                  <div className="pdp-rating-big">{averageRating.toFixed(2)}</div>
+                  <div className="pdp-rating-summary-meta">
+                    <Stars rating={averageRating} />
+                    <span>
+                      Based on {reviewTotal} {reviewTotal === 1 ? 'review' : 'reviews'}
+                    </span>
+                  </div>
+                  {/* The entry point to the review form. The modal and the
+                      endpoint behind it both worked, but setReviewOpen(true) was
+                      never called anywhere in this file — it was dead code. */}
+                  <button type="button" className="btn btn-primary pdp-write-review" onClick={openReviewForm}>
+                    Write a review
+                  </button>
+                </div>
 
-              <div className="pdp-rating-bars-col">
-                <div className="pdp-rating-bar-row">
-                  <span className="pdp-rating-label">5 <IStar aria-hidden="true" /></span>
-                  <div className="pdp-bar-track">
-                    <div className="pdp-bar-fill" style={{ width: '88%' }} />
-                  </div>
-                  <span className="pdp-bar-count">88%</span>
-                </div>
-                <div className="pdp-rating-bar-row">
-                  <span className="pdp-rating-label">4 <IStar aria-hidden="true" /></span>
-                  <div className="pdp-bar-track">
-                    <div className="pdp-bar-fill" style={{ width: '9%' }} />
-                  </div>
-                  <span className="pdp-bar-count">9%</span>
-                </div>
-                <div className="pdp-rating-bar-row">
-                  <span className="pdp-rating-label">3 <IStar aria-hidden="true" /></span>
-                  <div className="pdp-bar-track">
-                    <div className="pdp-bar-fill" style={{ width: '3%' }} />
-                  </div>
-                  <span className="pdp-bar-count">3%</span>
-                </div>
-                <div className="pdp-rating-bar-row">
-                  <span className="pdp-rating-label">2 <IStar aria-hidden="true" /></span>
-                  <div className="pdp-bar-track">
-                    <div className="pdp-bar-fill" style={{ width: '0%' }} />
-                  </div>
-                  <span className="pdp-bar-count">0%</span>
-                </div>
-                <div className="pdp-rating-bar-row">
-                  <span className="pdp-rating-label">1 <IStar aria-hidden="true" /></span>
-                  <div className="pdp-bar-track">
-                    <div className="pdp-bar-fill" style={{ width: '0%' }} />
-                  </div>
-                  <span className="pdp-bar-count">0%</span>
+                <div className="pdp-rating-bars-col">
+                  {ratingHistogram.map((row) => (
+                    <div className="pdp-rating-bar-row" key={row.stars}>
+                      <span className="pdp-rating-label">
+                        {row.stars} <IStar aria-hidden="true" />
+                      </span>
+                      <div className="pdp-bar-track">
+                        <div className="pdp-bar-fill" style={{ width: row.pct + '%' }} />
+                      </div>
+                      <span className="pdp-bar-count">{row.pct}%</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Second entry point, below the cards, for a reader who scrolled the
+                reviews rather than the summary. */}
+            {reviews.length > 0 && (
+              <div className="pdp-reviews-cta">
+                <button type="button" className="btn btn-ghost" onClick={openReviewForm}>
+                  Write a review
+                </button>
+              </div>
+            )}
           </section>
 
           {/* 5. RECOMMENDED PRODUCTS (Frequently Bought Together — Reference Layout) */}
@@ -525,15 +598,26 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   <div className="related-card-content">
                     <Link to={`/product/${p.id}`} className="related-title">{p.name}</Link>
                     <p className="related-desc">{p.desc}</p>
+                    {/* A struck-through `price * 1.18` and a literal "-15% OFF"
+                        pill used to sit here. There is no compareAtPrice in the
+                        catalog, so that MRP was synthesised — presenting a
+                        fabricated reference price is consumer-law exposure in
+                        India, not merely a UI bug. */}
                     <div className="related-price-block">
-                      <span className="related-was-price">{rupees(Math.round(p.price * 1.18))}</span>
                       <b className="related-now-price">{rupees(p.price)}</b>
-                      <span className="related-discount-pill">-15% OFF</span>
                     </div>
 
-                    <Link to={`/product/${p.id}`} className="related-add-btn-pill">
-                      <Bag /> Add to bag
-                    </Link>
+                    {/* Was a <Link> carrying a bag icon and the words "Add to
+                        bag" that only navigated. Same pattern as ProductCard,
+                        including the no-variant guard. */}
+                    <button
+                      type="button"
+                      className="related-add-btn-pill"
+                      onClick={() => addRelated(p)}
+                      disabled={!defaultVariantOf(p)}
+                    >
+                      <Bag /> {defaultVariantOf(p) ? 'Add to bag' : 'Sold out'}
+                    </button>
                   </div>
                 </article>
               ))}
@@ -548,7 +632,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
         <div className="pdp-modal" role="dialog" aria-modal="true" aria-label="Write a review">
           <button className="pdp-modal-backdrop" onClick={() => setReviewOpen(false)} aria-label="Close review form" />
           <div className="pdp-modal-card">
-            <button className="pdp-modal-close" onClick={() => setReviewOpen(false)} aria-label="Close">x</button>
+            <button className="pdp-modal-close" onClick={() => setReviewOpen(false)} aria-label="Close"><Close /></button>
             {rvState === 'sent' ? (
               <div className="review">
                 <b style={{ color: 'var(--ink)' }}>Thanks - your review is awaiting approval.</b>
@@ -594,7 +678,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
         <div className="pdp-modal pdp-image-modal" role="dialog" aria-modal="true" aria-label="Product image fullscreen">
           <button className="pdp-modal-backdrop" onClick={() => setIsFullscreen(false)} aria-label="Close image view" />
           <div className="pdp-image-modal-card">
-            <button className="pdp-modal-close" onClick={() => setIsFullscreen(false)} aria-label="Close">x</button>
+            <button className="pdp-modal-close" onClick={() => setIsFullscreen(false)} aria-label="Close"><Close /></button>
             {renderGalleryImage(true)}
           </div>
         </div>
