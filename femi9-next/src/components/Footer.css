@@ -135,6 +135,21 @@
   color: #e3b846;
 }
 
+.nl-submit:disabled,
+.nl-form input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Inline signup failure. The form used to report success unconditionally; a
+   real error needs somewhere to land that is not a toast the shopper may miss. */
+.nl-error {
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #f2c9d3;
+}
+
 /* Social icons */
 .footer-social {
   display: flex;

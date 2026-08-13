@@ -15,22 +15,55 @@ const SOCIALS = [
   { href: 'https://www.linkedin.com/company/femi9-official/', label: 'LinkedIn', Icon: Linkedin },
 ]
 
+/** Fallback shop column, used only until /api/settings resolves. These three
+ *  slugs are also what the catalog has always shipped with, so the links are
+ *  live rather than decorative — but the real list wins the moment it arrives. */
+const FALLBACK_SHOP: { slug: string; name: string }[] = []
+
 export function Footer() {
   const { notify } = useCart()
-  const { whatsappNumber } = usePublicSettings()
+  const { whatsappNumber, tharaEnabled, shopLinks } = usePublicSettings()
   const wa = `https://wa.me/${whatsappNumber}`
   const [email, setEmail] = useState('')
+  const [subscribing, setSubscribing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const socials = [...SOCIALS, { href: `https://wa.me/${whatsappNumber}`, label: 'WhatsApp', Icon: Whatsapp }]
+  const shop = shopLinks.length > 0 ? shopLinks : FALLBACK_SHOP
 
-  function onSubmit(e: FormEvent) {
+  /**
+   * Real subscription. This used to clear the input and toast "Thanks! You are
+   * on the list" without sending the address anywhere — the shopper was told
+   * she had subscribed while her email was discarded. The confirmation now only
+   * appears on a 2xx, and a failure says so inline instead of lying quietly.
+   */
+  async function onSubmit(e: FormEvent) {
     e.preventDefault()
     const value = email.trim()
+    setError(null)
     if (!value || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      notify('Please enter a valid email')
+      setError('Please enter a valid email address.')
       return
     }
-    setEmail('')
-    notify('Thanks! You are on the list')
+
+    setSubscribing(true)
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: value, source: 'footer' }),
+      })
+      const data = (await res.json().catch(() => ({}))) as { error?: string; alreadySubscribed?: boolean }
+      if (!res.ok) {
+        setError(data.error ?? 'We could not sign you up just now. Please try again.')
+        return
+      }
+      setEmail('')
+      notify(data.alreadySubscribed ? 'You are already on the list' : 'Thanks! You are on the list')
+    } catch {
+      setError('We could not reach the server. Please check your connection.')
+    } finally {
+      setSubscribing(false)
+    }
   }
 
   return (
@@ -62,11 +95,19 @@ export function Footer() {
                   aria-label="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? 'footer-newsletter-error' : undefined}
+                  disabled={subscribing}
                 />
-                <button type="submit" className="nl-submit">
-                  SUBSCRIBE
+                <button type="submit" className="nl-submit" disabled={subscribing}>
+                  {subscribing ? 'SENDING…' : 'SUBSCRIBE'}
                 </button>
               </form>
+              {error && (
+                <p id="footer-newsletter-error" role="alert" className="nl-error">
+                  {error}
+                </p>
+              )}
             </div>
 
             <div className="footer-social">
@@ -78,12 +119,20 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Column 2: SHOP */}
+          {/* Column 2: SHOP — resolved from the live catalog. Three slugs used to
+              be hardcoded here, so archiving or renaming any of them turned a
+              footer link on every page of the site into a 404 with no warning. */}
           <div className="footer-col">
             <h4>Shop Our Products</h4>
-            <Link to="/product/p330dw">330mm XL Pads (Heavy Flow)</Link>
-            <Link to="/product/p290l9">290mm Large Pads (Regular Flow)</Link>
-            <Link to="/product/p180m9">180mm Mini Pads (Light Flow & Daily Freshness)</Link>
+            {shop.length > 0 ? (
+              shop.map((p) => (
+                <Link key={p.slug} to={`/product/${p.slug}`}>
+                  {p.name}
+                </Link>
+              ))
+            ) : (
+              <Link to="/#products">Browse all products</Link>
+            )}
           </div>
 
           {/* Column 3: FEMI9 */}
@@ -93,6 +142,9 @@ export function Footer() {
             <Link to="/about">Our Story</Link>
             <Link to="/#opportunities">Impact</Link>
             <Link to="/dashboard">My dashboard</Link>
+            {/* Only shown when the programme is actually switched on — nothing
+                anywhere in the product linked to /thara before this. */}
+            {tharaEnabled && <Link to="/thara">Thara programme</Link>}
           </div>
 
           {/* Column 4: SUPPORT */}
