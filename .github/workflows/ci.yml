@@ -153,6 +153,25 @@ jobs:
       - name: Run HTTP E2E
         run: node scripts/e2e-http.mjs
 
+      # ── Browser E2E ───────────────────────────────────────────────────────
+      # What the HTTP suite cannot prove: that the buttons are wired to those
+      # APIs and the UI reflects the result (add to bag, quantity stepper,
+      # remove, checkout hand-off, cycle tracker).
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser E2E
+        run: npx playwright test
+
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: femi9-next/playwright-report
+          retention-days: 7
+          if-no-files-found: ignore
+
       - name: Server log (on failure)
         if: failure()
         run: cat "$RUNNER_TEMP/app.log" || true
