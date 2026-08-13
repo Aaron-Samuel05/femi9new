@@ -127,6 +127,13 @@ jobs:
         run: npx tsx prisma/seed.ts
 
       - name: Start app for E2E
+        env:
+          # The suite drives ~50 routes and `next dev` compiles each on demand,
+          # so the heap grows all run. At Node's default limit the dev server
+          # trips its own "approaching the used memory threshold" guard and
+          # restarts mid-suite, which surfaces as a bare `fetch failed`. The
+          # runner has far more headroom than this.
+          NODE_OPTIONS: --max-old-space-size=4096
         run: |
           # Drop the production build first: `next dev` and `next build` write
           # incompatible artifacts into the same .next directory.
