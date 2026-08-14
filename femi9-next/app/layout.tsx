@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 
 // Lenis base styles (height:auto, overscroll containment) — required for the
@@ -37,6 +37,18 @@ import '@/styles/account.css'
 import '@/styles/dashboard.css'
 
 import { Providers } from './providers'
+import { optSrc, optSrcSet } from '@/components/OptImg'
+
+/**
+ * The two images worth preloading, and the `sizes` each renders at.
+ *
+ * HERO_LCP_SIZES must stay byte-identical to the `sizes` on the `.fl-hero__lifestyle`
+ * <OptImg> in src/screens/Home.tsx; NAV_LOGO_SIZES to the one in src/components/Nav.tsx.
+ */
+const HERO_LCP = 'figma-home/hero-lifestyle' as const
+const HERO_LCP_SIZES = '(max-width: 768px) 82vw, (max-width: 1080px) 43vw, min(46vw, 680px)'
+const NAV_LOGO = 'figma-home/navbar-imgImage29' as const
+const NAV_LOGO_SIZES = '116px'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'),
@@ -49,6 +61,24 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Next only injects `width=device-width, initial-scale=1` by default, which
+ * leaves `viewport-fit` unset — and with it unset `env(safe-area-inset-*)`
+ * resolves to 0 in every browser. Several sheets already budget for the notch
+ * and the home indicator (the cart drawer foot, the PDP buy bar, the nav below),
+ * so those declarations were silently doing nothing. `cover` arms them.
+ *
+ * Deliberately NO `maximum-scale` / `user-scalable=no`: pinch-zoom must stay
+ * available. Every fixed or sticky bar that touches an edge has to carry its own
+ * `env(safe-area-inset-*)` padding now, or it paints under the notch.
+ */
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#352D78',
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
@@ -57,9 +87,30 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* LCP hero photo + nav logo are React-rendered, so the browser can't
             discover them until the bundle runs. Preloading puts them in flight
-            with the HTML. Keep in sync with Hero.tsx / Nav.tsx. */}
-        <link rel="preload" as="image" href="/assets/figma-home/image 19.png" fetchPriority="high" />
-        <link rel="preload" as="image" href="/assets/figma-home/navbar-imgImage29.png" fetchPriority="high" />
+            with the HTML.
+
+            The srcset is derived from the same generated manifest <OptImg> uses,
+            so a rebuild that changes the derivative ladder cannot leave this out
+            of step. `imageSizes` still has to be copied by hand — keep it byte-
+            identical to the `sizes` on the matching element, or the browser
+            resolves the preload to one derivative and the element to another and
+            the phone downloads both. */}
+        <link
+          rel="preload"
+          as="image"
+          href={optSrc(HERO_LCP)}
+          imageSrcSet={optSrcSet(HERO_LCP)}
+          imageSizes={HERO_LCP_SIZES}
+          fetchPriority="high"
+        />
+        <link
+          rel="preload"
+          as="image"
+          href={optSrc(NAV_LOGO)}
+          imageSrcSet={optSrcSet(NAV_LOGO)}
+          imageSizes={NAV_LOGO_SIZES}
+          fetchPriority="high"
+        />
         <link
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap"
           rel="stylesheet"

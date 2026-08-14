@@ -16,6 +16,50 @@
 # by locking the ALB to CloudFront only (custom-header secret or managed prefix list).
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Origin request policy (dynamic app traffic) ──────────────────────────────
+# Replaces the managed AllViewerExceptHostHeader policy, which forwards every
+# VIEWER header but none of the headers CloudFront GENERATES. Regional pricing
+# reads the viewer's state from CloudFront's edge geo-lookup
+# (src/lib/geo/detect.ts), and those headers only reach the origin when a policy
+# names them — so under the managed policy every visitor resolved as "location
+# unknown" and silently got the default (undiscounted) zone.
+#
+# `allViewerAndWhitelistCloudFront` is the only header behaviour that can add
+# CloudFront-generated headers, and it has no "except Host" variant, so unlike
+# the managed policy this DOES forward Host. That is safe here and arguably more
+# correct: the ALB routes on a default action with no host_header conditions
+# (alb.tf), and forwarding Host makes the origin's Host match the Origin header
+# the browser sends — which is what Next.js Server Actions compare.
+#
+# Only the geo headers this app actually reads are listed; each extra header is
+# another dimension the origin has to tolerate.
+resource "aws_cloudfront_origin_request_policy" "app" {
+  name    = "${local.name_prefix}-app-origin-request"
+  comment = "All viewer headers + CloudFront viewer-geo headers (regional pricing)"
+
+  cookies_config {
+    cookie_behavior = "all" # auth + guest-cart cookies
+  }
+
+  query_strings_config {
+    query_string_behavior = "all" # Razorpay callbacks, ?next=, admin filters
+  }
+
+  headers_config {
+    header_behavior = "allViewerAndWhitelistCloudFront"
+    headers {
+      items = [
+        "CloudFront-Viewer-Country",
+        "CloudFront-Viewer-Country-Name",
+        "CloudFront-Viewer-Country-Region",
+        "CloudFront-Viewer-Country-Region-Name",
+        "CloudFront-Viewer-City",
+        "CloudFront-Viewer-Postal-Code",
+      ]
+    }
+  }
+}
+
 resource "aws_cloudfront_distribution" "this" {
   enabled         = true
   is_ipv6_enabled = true
@@ -41,16 +85,16 @@ resource "aws_cloudfront_distribution" "this" {
     origin_access_control_id = aws_cloudfront_origin_access_control.uploads.id
   }
 
-  # Dynamic app traffic — never cache, forward all cookies/query/headers (except
-  # Host, so the origin keeps its own hostname). AllViewerExceptHostHeader keeps
-  # auth cookies + Razorpay callbacks intact.
+  # Dynamic app traffic — never cache; forward all cookies/query/viewer headers
+  # plus CloudFront's viewer-geo headers (see the policy above), which keeps auth
+  # cookies and Razorpay callbacks intact and lets regional pricing see a state.
   default_cache_behavior {
     target_origin_id         = "alb"
     viewer_protocol_policy   = "redirect-to-https"
     allowed_methods          = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
     cached_methods           = ["GET", "HEAD"]
     cache_policy_id          = "4135ea2d-6df8-44a3-9df3-4b5a84be39ad" # Managed-CachingDisabled
-    origin_request_policy_id = "b689b0a8-53d0-40ab-baf2-68738e2966ac" # Managed-AllViewerExceptHostHeader
+    origin_request_policy_id = aws_cloudfront_origin_request_policy.app.id
   }
 
   # Next.js static assets — cache hard at the edge.

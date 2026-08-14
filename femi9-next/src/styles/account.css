@@ -143,6 +143,14 @@
   accent-color: var(--forest-2);
   cursor: pointer;
 }
+/* The <label> is the whole hit area, and at 18px of box inside a 21px line it
+   was the smallest interactive element in the account flow — sitting in a sheet
+   where every other control is 44px+. Grown on touch only; the desktop dialog
+   keeps its 21px row. */
+@media (pointer: coarse) {
+  .acct-check { gap: 12px; min-height: 44px; padding: 6px 0; }
+  .acct-check input { width: 22px; height: 22px; }
+}
 
 /* The 6-digit OTP box. The trailing letter-space is padded back out on the
    right so the digits stay optically centred. */
@@ -294,6 +302,13 @@
 .acct-rw__cost { flex: none; font-size: .8rem; font-weight: 600; color: var(--forest-2); white-space: nowrap; }
 .acct-rw__btn { margin-top: auto; align-self: flex-start; padding: .68em 1.35em; font-size: .9rem; }
 .acct-rw__togo { margin-top: auto; align-self: flex-start; }
+/* This shrinks the compliant ~45px base .btn down to ~37px. "Redeem" is the one
+   action in the whole panel, so on touch it goes back up to 44px and stretches
+   across its card — the reward tile is only ~215px wide on a phone. */
+@media (pointer: coarse) {
+  .acct-rw__btn { min-height: 44px; padding: .7em 1.4em; font-size: .95rem; }
+  .acct-rw__reward .acct-rw__btn { align-self: stretch; }
+}
 
 .acct-rw__codes { display: flex; flex-direction: column; margin-top: 4px; }
 .acct-rw__code {
@@ -340,7 +355,24 @@
 .acct-rw__act-pts { flex: none; font-size: .95rem; font-weight: 600; color: var(--navy); }
 
 /* --------------------------------------------------------------------------
-   8. REDUCED MOTION
+   8. NARROW-SCREEN TYPE FLOOR
+   .acct-rw__sublabel is the section heading for "Ways to earn", "Redeem your
+   points", "Your reward codes" and "Recent activity" — the panel's whole
+   navigational structure, set in 11.5px uppercase grey. Below 480px it sits
+   beside a clamp(2.4rem, 4.6vw, 3.2rem) balance number, and at that contrast in
+   scale the small type reads as disabled. Additive, so desktop is untouched.
+   -------------------------------------------------------------------------- */
+@media (max-width: 480px) {
+  .acct-rw__sublabel { font-size: .82rem; letter-spacing: .05em; }
+  .acct-rw__label,
+  .acct-rw__cost { font-size: .88rem; }
+  .acct-rw__note { font-size: .9rem; }
+  .acct-rw__earn-pts { font-size: .88rem; }
+  .acct-tab__count { font-size: .78rem; }
+}
+
+/* --------------------------------------------------------------------------
+   9. REDUCED MOTION
    member.css §15 already kills every transition inside .m-area; this is the
    belt-and-braces for the one width animation that would otherwise be the most
    noticeable movement on the page.

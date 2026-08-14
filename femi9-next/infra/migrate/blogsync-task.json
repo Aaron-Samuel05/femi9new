@@ -1,0 +1,39 @@
+{
+  "family": "femi9-staging-blogsync",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::851725383246:role/femi9-staging-task-exec-role",
+  "taskRoleArn": "arn:aws:iam::851725383246:role/femi9-staging-task-role",
+  "runtimePlatform": {
+    "operatingSystemFamily": "LINUX",
+    "cpuArchitecture": "X86_64"
+  },
+  "containerDefinitions": [
+    {
+      "name": "blogsync",
+      "image": "public.ecr.aws/docker/library/postgres:16-alpine",
+      "essential": true,
+      "secrets": [
+        {
+          "name": "DIRECT_URL",
+          "valueFrom": "arn:aws:secretsmanager:ap-south-1:851725383246:secret:femi9-staging/DIRECT_URL-rUqtSO"
+        }
+      ],
+      "command": [
+        "sh",
+        "-c",
+        "set -e; : \"${SQL_URL:?pass the presigned S3 URL as SQL_URL in containerOverrides}\"; DSN=$(printf '%s' \"$DIRECT_URL\" | sed -e 's/schema=public&//' -e 's/[?&]schema=public//'); wget -qO /tmp/blog-sync.sql \"$SQL_URL\"; echo \"[blogsync] fetched $(wc -c < /tmp/blog-sync.sql) bytes\"; psql \"$DSN\" -v ON_ERROR_STOP=1 -f /tmp/blog-sync.sql; echo '[blogsync] categories then posts:'; psql \"$DSN\" -At -c 'select count(*) from \"BlogCategory\"' -c 'select count(*) from \"BlogPost\"'"
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/femi9-staging",
+          "awslogs-region": "ap-south-1",
+          "awslogs-stream-prefix": "blogsync"
+        }
+      }
+    }
+  ]
+}

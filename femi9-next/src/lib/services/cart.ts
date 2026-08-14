@@ -1,5 +1,6 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
+import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from '@/lib/services/pricing'
 
 /**
  * Cart service — the single seam between the database and the cart UI.
@@ -7,6 +8,11 @@ import { prisma } from '@/lib/db'
  * Guest carts only for now (keyed by cookie token); auth-linked carts land in a
  * later phase. Line prices are ALWAYS recomputed here from `ProductVariant.price`
  * so a tampered client payload can never dictate what a shopper is charged.
+ *
+ * Prices are then run through the visitor's regional PriceZone, because
+ * `placeOrder` does the same on the way to Razorpay. When the cart skipped this
+ * step it showed the standard price while the order charged the zone price, and
+ * the shopper's Total changed under her at the payment sheet.
  */
 
 export interface CartItemDTO {
@@ -14,7 +20,10 @@ export interface CartItemDTO {
   productSlug: string
   name: string
   variantLabel: string
+  /** Zone price — what this line is actually charged at. */
   unitPrice: number
+  /** Standard (pre-zone) price, for showing what the discount struck through. */
+  baseUnitPrice: number
   qty: number
   lineTotal: number
   img: string
@@ -23,11 +32,21 @@ export interface CartItemDTO {
 export interface CartDTO {
   items: CartItemDTO[]
   subtotal: number
+  /** Subtotal at standard prices; equals `subtotal` when no zone discount applies. */
+  baseSubtotal: number
   count: number
+  /** The zone these prices were computed at, for an honest line in the summary. */
+  zone: { name: string; discountPct: number } | null
 }
 
 /** A guest with no cart row yet still gets a well-formed (empty) response. */
-export const EMPTY_CART: CartDTO = { items: [], subtotal: 0, count: 0 }
+export const EMPTY_CART: CartDTO = {
+  items: [],
+  subtotal: 0,
+  baseSubtotal: 0,
+  count: 0,
+  zone: null,
+}
 
 /** Thrown when a mutation references a variant that isn't sellable; the route
  *  layer maps this to a 400 rather than letting it become a generic 500. */
@@ -48,8 +67,15 @@ export async function getOrCreateCart(token: string) {
   })
 }
 
-/** Read the guest's cart as a UI-ready DTO. Missing cart → EMPTY_CART. */
-export async function getCart(token: string): Promise<CartDTO> {
+/**
+ * Read the guest's cart as a UI-ready DTO. Missing cart → EMPTY_CART.
+ *
+ * `zone` is normally left out and resolved ambiently (saved address → edge geo
+ * → default). Checkout passes it explicitly, because there the delivery address
+ * being typed into the form is a stronger signal than anything we can infer.
+ */
+export async function getCart(token: string, zone?: ResolvedZone | null): Promise<CartDTO> {
+  const appliedZone = zone === undefined ? await resolveAmbientZone() : zone
   const cart = await prisma.cart.findUnique({
     where: { guestToken: token },
     include: {
@@ -68,13 +94,16 @@ export async function getCart(token: string): Promise<CartDTO> {
   const items: CartItemDTO[] = cart.items.map((item) => {
     const { variant } = item
     const { product } = variant
-    const unitPrice = variant.price // server is the source of truth on price
+    // Server is the source of truth on price: the catalogue row, then the zone.
+    const baseUnitPrice = variant.price
+    const unitPrice = applyZonePrice(baseUnitPrice, appliedZone)
     return {
       variantId: variant.id,
       productSlug: product.slug,
       name: product.name,
       variantLabel: variant.label,
       unitPrice,
+      baseUnitPrice,
       qty: item.qty,
       lineTotal: unitPrice * item.qty,
       img: product.images[0]?.url ?? '',
@@ -82,8 +111,18 @@ export async function getCart(token: string): Promise<CartDTO> {
   })
 
   const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
+  const baseSubtotal = items.reduce((sum, i) => sum + i.baseUnitPrice * i.qty, 0)
   const count = items.reduce((sum, i) => sum + i.qty, 0)
-  return { items, subtotal, count }
+  return {
+    items,
+    subtotal,
+    baseSubtotal,
+    count,
+    // Only worth surfacing when it actually moved the price.
+    zone: appliedZone && appliedZone.discountPct > 0
+      ? { name: appliedZone.name, discountPct: appliedZone.discountPct }
+      : null,
+  }
 }
 
 /** Add (or top up) a line. Adding a variant already in the cart increments it. */

@@ -375,19 +375,13 @@ export default function PricingZonesScreen({ initial }: { initial: ZoneRow[] }) 
                     {form.states.map((s) => (
                       <span key={s} className="adm-chip">
                         {s}
+                        {/* .adm-chip-x carries the styling so the touch-sized hit
+                            box can be scoped to coarse pointers only. */}
                         <button
                           type="button"
+                          className="adm-chip-x"
                           aria-label={`Remove ${s}`}
                           onClick={() => toggleState(s)}
-                          style={{
-                            border: 'none',
-                            background: 'transparent',
-                            color: 'var(--muted)',
-                            cursor: 'pointer',
-                            fontSize: 14,
-                            lineHeight: 1,
-                            padding: 0,
-                          }}
                         >
                           ×
                         </button>
@@ -413,7 +407,7 @@ export default function PricingZonesScreen({ initial }: { initial: ZoneRow[] }) 
                     overflowY: 'auto',
                     padding: 6,
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(min(200px, 100%), 1fr))',
                     gap: 2,
                   }}
                 >
@@ -427,13 +421,8 @@ export default function PricingZonesScreen({ initial }: { initial: ZoneRow[] }) 
                       return (
                         <label
                           key={s}
+                          className="adm-state-option"
                           style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
-                            padding: '6px 8px',
-                            borderRadius: 6,
-                            cursor: 'pointer',
                             background: checked ? 'var(--plum-tint)' : 'transparent',
                           }}
                         >

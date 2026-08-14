@@ -5,13 +5,14 @@
 // first server component to render a product grid (/products) would have tried
 // to run a hook on the server.
 
-import { memo } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { Link } from '@/lib/router-compat'
 import type { Product } from '../data/products'
 import { rupees } from '../data/products'
 import type { Variant } from '@/lib/services/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from './PantyArt'
+import { OptImg } from '@/components/OptImg'
 
 interface Props {
   // Cards from the catalog grid carry variants; the "related" strip on the PDP
@@ -20,11 +21,24 @@ interface Props {
   showInsideOnHover?: boolean
 }
 
-const INSIDE_PRODUCT_IMAGE = '/assets/figma-home/products-imgFrame206-hover.png'
+/** Rendered if the product photo 404s, so the card shows a pack instead of the
+ *  browser's broken-image glyph. There is at least one dead `img` path live. */
+const IMAGE_FALLBACK = '/assets/opt/img/sample-640.webp'
 
 export const ProductCard = memo(function ProductCard({ product, showInsideOnHover = false }: Props) {
   const { add } = useCart()
   const { id, name, price, img, meta, flow, desc, tag, tagClass, type, variants } = product
+
+  // The second "inside the pack" photo is revealed by :hover / :focus-within
+  // only. A phone has neither — tapping the media link navigates to the PDP in
+  // the same gesture — so it was a second full-size download that could never
+  // be painted. Start false so the server never emits it, and only opt in once
+  // we know the pointer can actually hover.
+  const [canHover, setCanHover] = useState(false)
+  useEffect(() => {
+    setCanHover(window.matchMedia('(hover: hover) and (pointer: fine)').matches)
+  }, [])
+  const showInside = showInsideOnHover && canHover
 
   // Pick the default purchasable variant for a one-tap add.
   const isPanty = type === 'panty'
@@ -42,18 +56,24 @@ export const ProductCard = memo(function ProductCard({ product, showInsideOnHove
         ) : (
           <>
             <img
-              className={showInsideOnHover ? 'card-media__image card-media__image--pack' : undefined}
+              className={showInside ? 'card-media__image card-media__image--pack' : undefined}
               src={img}
               alt={`Femi9 ${name} pack`}
+              width={720}
+              height={960}
               loading="lazy"
+              decoding="async"
+              onError={(e) => {
+                if (e.currentTarget.src.endsWith(IMAGE_FALLBACK)) return
+                e.currentTarget.src = IMAGE_FALLBACK
+              }}
             />
-            {showInsideOnHover && (
-              <img
+            {showInside && (
+              <OptImg
                 className="card-media__image card-media__image--inside"
-                src={INSIDE_PRODUCT_IMAGE}
+                base="figma-home/products-imgFrame206-hover"
+                sizes="(max-width: 1180px) 46vw, 300px"
                 alt=""
-                aria-hidden="true"
-                loading="lazy"
               />
             )}
           </>

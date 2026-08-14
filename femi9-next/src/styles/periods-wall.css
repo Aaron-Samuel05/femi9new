@@ -147,10 +147,7 @@
   transition: background 0.2s var(--ease), color 0.2s var(--ease),
     border-color 0.2s var(--ease), transform 0.2s var(--ease);
 }
-.pw-chip:hover {
-  border-color: var(--forest-2);
-  transform: translateY(-1px);
-}
+/* :hover lives in the hover-capability block near the end of this file. */
 .pw-chip.is-active {
   background: var(--forest-2);
   color: #fff9ea;
@@ -170,10 +167,6 @@
   height: 44px;
   border-radius: 12px;
   transition: transform 0.16s var(--ease), background 0.16s var(--ease);
-}
-.pw-star:hover {
-  background: var(--butter-soft);
-  transform: translateY(-1px);
 }
 .pw-star:focus-visible {
   outline: 2px solid var(--forest-2);
@@ -230,10 +223,6 @@
   transition: background 0.2s var(--ease), color 0.2s var(--ease),
     border-color 0.2s var(--ease), transform 0.2s var(--ease);
 }
-.pw-filter:hover {
-  border-color: var(--forest-2);
-  transform: translateY(-1px);
-}
 .pw-filter.is-active {
   background: var(--forest-2);
   color: #fff9ea;
@@ -256,10 +245,6 @@
   box-shadow: var(--shadow-sm);
   padding: clamp(20px, 3vw, 28px);
   transition: transform 0.28s var(--ease), box-shadow 0.28s var(--ease);
-}
-.pw-card:hover {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow);
 }
 
 .pw-card-head {
@@ -334,7 +319,17 @@
   font-size: 0.76rem;
   font-weight: 600;
   letter-spacing: 0.01em;
-  white-space: nowrap;
+  /* post.product is the resolved catalog name (lib/services/wall.ts), not one
+     of the five short compose chips — a 45-char product name gave this chip a
+     ~307px min-content inside a 284px card at 360px, and `nowrap` meant it
+     could not shrink, so it spilled past the card border into html's
+     `overflow-x: clip`. At >=1200px the card is 680px and nothing wraps, so
+     this renders identically on desktop. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+  min-width: 0;
+  line-height: 1.35;
 }
 .pw-stars-view {
   display: inline-flex;
@@ -372,10 +367,6 @@
   color: var(--muted);
   transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.16s var(--ease);
 }
-.pw-heart:hover {
-  background: var(--lilac-tint);
-  color: var(--forest-2);
-}
 .pw-heart:active {
   transform: scale(0.94);
 }
@@ -398,22 +389,10 @@
   transform: scale(1.12);
 }
 
-.pw-replies {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-left: 4px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  color: var(--muted);
-}
-.pw-reply-svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-}
+/* .pw-replies / .pw-reply-svg were deleted here: replies are not wired
+   (see the Post type comment in PeriodsWall.tsx) and neither class appears in
+   the markup — the card footer holds only .pw-heart. Re-add them with the
+   feature, not before it. */
 
 /* ---------- empty state ---------- */
 .pw-empty {
@@ -447,6 +426,80 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* ---------- hover, for real pointers only ----------
+   These five decorative states used to be unguarded. On iOS Safari and Chrome
+   for Android :hover latches onto the last-tapped element, so after liking a
+   story that card stayed raised and a tapped filter chip stayed outlined as if
+   still active — the feed showed two elements that both looked selected.
+   This block must stay ABOVE the reduced-motion block below, which cancels
+   these transforms and wins only by being later in source order. */
+@media (hover: hover) and (pointer: fine) {
+  .pw-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow);
+  }
+  .pw-chip:hover,
+  .pw-filter:hover {
+    border-color: var(--forest-2);
+    transform: translateY(-1px);
+  }
+  .pw-star:hover {
+    background: var(--butter-soft);
+    transform: translateY(-1px);
+  }
+  .pw-heart:hover {
+    background: var(--lilac-tint);
+    color: var(--forest-2);
+  }
+}
+
+/* ---------- touch ----------
+   The author already set .pw-star to 44x44, so 44 was the intended floor —
+   the chips, the filters and the like button were simply missed at 40px.
+   Keyed on pointer rather than width so touch tablets are covered too, and so
+   desktop is untouched at every width. */
+@media (pointer: coarse) {
+  .pw-chip {
+    min-height: 44px;
+    padding: 10px 15px;
+  }
+  .pw-filter {
+    min-height: 44px;
+    padding: 10px 16px;
+  }
+  .pw-heart {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+  /* 9px between wrapped chips is tight once each row is 44px tall. */
+  .pw-chips,
+  .pw-filters {
+    gap: 10px;
+  }
+}
+
+/* ---------- narrow phones ---------- */
+@media (max-width: 480px) {
+  /* A centred filter row reads as ragged once seven chips wrap onto three
+     lines; left-aligned it scans as a list. */
+  .pw-filters {
+    justify-content: flex-start;
+  }
+  .pw-meta,
+  .pw-label {
+    font-size: 0.88rem;
+  }
+  .pw-product {
+    font-size: 0.82rem;
+  }
+  .pw-card-head {
+    gap: 11px;
+  }
+  .pw-tags {
+    gap: 9px;
+  }
 }
 
 /* ---------- reduced motion ---------- */

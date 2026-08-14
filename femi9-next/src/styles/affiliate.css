@@ -294,11 +294,12 @@
   font-size: 0.96rem;
   line-height: 1.55;
 }
-/* connector between steps */
-.af-steps > div {
+/* connector between steps — the direct children are <li> (Rise renders as="li"
+   here so the <ol> exposes real list items to screen readers) */
+.af-steps > li {
   position: relative;
 }
-.af-steps > div:not(:last-child)::after {
+.af-steps > li:not(:last-child)::after {
   content: "";
   position: absolute;
   top: clamp(38px, 4.4vw, 52px);
@@ -641,70 +642,10 @@
   font-size: 0.98rem;
 }
 
-.af-copyfield {
-  background: var(--lilac-tint);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--r-img);
-  padding: 16px 18px;
-}
-.af-copyfield-label {
-  display: block;
-  font-size: 0.74rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 10px;
-}
-.af-copyfield-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.af-code {
-  flex: 1;
-  min-width: 0;
-  font-size: clamp(1.4rem, 4vw, 1.9rem);
-  letter-spacing: 0.08em;
-  color: var(--navy);
-  font-weight: 600;
-}
-.af-link {
-  flex: 1;
-  min-width: 0;
-  font-size: 0.94rem;
-  color: var(--navy);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.af-copybtn {
-  flex-shrink: 0;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 10px 16px;
-  border-radius: 12px;
-  background: var(--navy);
-  color: #fff9ea;
-  font-weight: 500;
-  font-size: 0.9rem;
-  transition: background 0.2s var(--ease), transform 0.15s var(--ease);
-}
-.af-copybtn svg {
-  width: 18px;
-  height: 18px;
-}
-.af-copybtn:hover {
-  background: var(--forest-2);
-}
-.af-copybtn:active {
-  transform: scale(0.97);
-}
-.af-copybtn.is-copied {
-  background: var(--yellow-deep);
-  color: var(--navy);
-}
+/* The .af-copyfield / .af-code / .af-copybtn block that used to live here was
+   removed: no .tsx references any of those class names. The share row that
+   actually renders is .af-share / .af-share-url / .af-share-copy, styled at the
+   bottom of this file. */
 
 .af-stats {
   display: grid;
@@ -886,7 +827,7 @@
   .af-steps {
     grid-template-columns: 1fr;
   }
-  .af-steps > div:not(:last-child)::after {
+  .af-steps > li:not(:last-child)::after {
     display: none;
   }
 }
@@ -896,21 +837,35 @@
   .af-tiers-row {
     grid-template-columns: 1fr;
   }
-  .af-preview-stats {
-    grid-template-columns: repeat(3, 1fr);
-  }
   .af-stats {
     grid-template-columns: 1fr;
   }
-  .af-copyfield-row {
-    flex-wrap: wrap;
+  /* `rem` resolves against <html>, which base.css never clamps, so all of these
+     sit at 11.5–12.5px on a phone. Raise them to a readable floor. */
+  .af-preview-stats span,
+  .af-stat span {
+    font-size: 0.82rem;
   }
-  .af-code {
-    flex-basis: 100%;
+  .af-preview-note {
+    font-size: 0.84rem;
   }
-  .af-copybtn {
-    flex: 1;
-    justify-content: center;
+  .af-preview-label,
+  .af-preview-live,
+  .af-dash-badge,
+  .af-tiers-label {
+    font-size: 0.78rem;
+  }
+}
+
+@media (max-width: 420px) {
+  /* Three tracks leave a ~71px content box, which wraps "Rs. 4,200" onto two
+     lines while its neighbours stay on one. Two tracks plus a full-width row
+     for the currency figure keeps every tile the same height. */
+  .af-preview-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .af-preview-stats > div:last-child {
+    grid-column: 1 / -1;
   }
 }
 
@@ -944,6 +899,13 @@
   flex: 0 0 auto;
   padding: 0.6em 1.15em;
   font-size: 0.88rem;
+}
+
+/* This override shrinks the base .btn box to ~41.7px tall, and it is the only
+   control that hands a creator their tracked /a/<code> link. Restore a 44px
+   target on touch devices; mouse pointers keep the existing compact button. */
+@media (pointer: coarse) {
+  .af-share-copy { min-height: 44px; }
 }
 
 @media (max-width: 560px) {

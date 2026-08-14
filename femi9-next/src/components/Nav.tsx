@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { useCart } from '../store/cart'
 import { usePublicSettings } from '@/lib/use-public-settings'
+import { useLenis } from '@/immersive/SmoothScroll'
+import { stickyNavHeight } from '@/lib/sticky-nav'
 import { Bag, Menu } from './Icons'
 import { IUser } from './AppIcons'
+import { OptImg } from './OptImg'
 
 const LINKS = [
   { to: '/products', label: 'Products' },
@@ -22,6 +25,7 @@ const MORE = [
 export function Nav() {
   const { count, openCart } = useCart()
   const router = useRouter()
+  const lenis = useLenis()
   const { tharaEnabled } = usePublicSettings()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -68,13 +72,43 @@ export function Nav() {
     }
   }, [])
 
+  // Escape closes the menu. `aria-expanded` on the burger advertises a
+  // disclosure widget, and a disclosure a keyboard cannot dismiss is a worse
+  // trap than no disclosure at all — on a phone with a paired keyboard there
+  // was no way out except tapping the burger again.
+  useEffect(() => {
+    if (!menuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [menuOpen])
+
   const handleLinkClick = (to: string) => {
     setMenuOpen(false)
     if (to.startsWith('/#')) {
       const hash = to.substring(1)
       const el = document.querySelector(hash)
       if (el) {
-        el.scrollIntoView({ behavior: 'smooth' })
+        // `scrollIntoView` puts the target flush with the viewport top, i.e.
+        // underneath the sticky bar, and the old ScrollManager offset of -70
+        // undershot the 76px bar by 6px and could not see the safe-area inset.
+        // Measure instead.
+        const navH = stickyNavHeight()
+        // The open menu is part of the header's flow box, so every target below
+        // it is currently sitting ~580px lower than it will be once the menu
+        // finishes collapsing. Take that back out or the page lands well short.
+        const menuH = document.getElementById('mobile-menu')?.offsetHeight ?? 0
+        // Go through Lenis where it is running, or it fights the native scroll
+        // and snaps back. Lenis is deliberately absent on coarse pointers.
+        if (lenis) {
+          lenis.scrollTo(el as HTMLElement, { offset: -(navH + 8) - menuH })
+        } else {
+          const top =
+            el.getBoundingClientRect().top + window.scrollY - menuH - navH - 8
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+        }
       }
     }
   }
@@ -113,7 +147,14 @@ export function Nav() {
     <header className={`nav${scrolled ? ' scrolled' : ''}`} id="nav">
       <div className="wrap nav-in">
         <Link to="/" className="nav-logo" aria-label="Femi9 home">
-          <img src="/assets/figma-home/navbar-imgImage29.png" alt="Femi9" />
+          {/* .nav-logo crops this square source to a 116x48 window, so it renders
+              116px wide. Preloaded in app/layout.tsx — keep the paths in step. */}
+          <OptImg
+            base="figma-home/navbar-imgImage29"
+            sizes="116px"
+            alt="Femi9"
+            priority
+          />
         </Link>
         <nav className="nav-links" aria-label="Primary">
           {LINKS.map((l) => (
@@ -147,7 +188,11 @@ export function Nav() {
           </button>
         </div>
       </div>
-      <div id="mobile-menu" className={`mobile-menu${menuOpen ? ' open' : ''}`}>
+      {/* `inert` while closed: the CSS collapse (max-height:0/opacity:0) hides
+          the menu but does not take its 8-10 links out of the tab order or the
+          accessibility tree, so keyboard and switch users used to walk through
+          a stack of invisible links that scrolled nothing into view. */}
+      <div id="mobile-menu" className={`mobile-menu${menuOpen ? ' open' : ''}`} inert={!menuOpen}>
         {[...LINKS, ...secondary].map((l) => (
           <Link key={l.to} to={l.to} onClick={() => handleLinkClick(l.to)}>
             {l.label}

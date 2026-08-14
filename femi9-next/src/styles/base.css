@@ -49,11 +49,28 @@
 
   --maxw: 1200px;
   --ease: cubic-bezier(.16,1,.3,1);
+
+  /* Height of the sticky header (.nav-in in Nav.css). Anchor offsets read this
+     instead of each re-deriving a magic number — the old ScrollManager used 70
+     against a 76px bar and undershot by 6px on every hash link. */
+  --nav-h: 76px;
+  /* Height of whatever fixed bar is pinned to the bottom of the CURRENT route
+     (PDP buy bar, cart drawer foot, member sheet foot). 0 by default; the sheet
+     that owns a bottom bar re-declares it inside its own mobile media query so
+     toasts and page-end padding can clear it. Consumed by app.css / CartDrawer.css. */
+  --bottom-bar-h: 0px;
 }
 
 /* ---------- reset-ish ---------- */
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;overflow-x:clip}
+html{
+  scroll-behavior:smooth;
+  overflow-x:clip;
+  /* Native hash landings (a pasted /#why URL, a same-page anchor) put the target
+     flush with the top of the viewport, i.e. underneath the sticky header. Inset
+     the scrollport instead of duplicating the offset in every caller. */
+  scroll-padding-top:calc(var(--nav-h) + env(safe-area-inset-top) + 8px);
+}
 @media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto} }
 body{
   margin:0;
@@ -69,6 +86,15 @@ body{
      pinned scrub in <pad-exploder>. `clip` blocks horizontal scroll the same
      way without creating one. */
   overflow-x:clip;
+}
+/* `overflow: clip` only landed in Safari 16. On iOS 15 and below BOTH the html
+   and body declarations above are dropped as invalid and the site has no
+   horizontal-overflow protection at all, which exposes every fixed-px width
+   inherited from the 1512px artboard. Fall back to `hidden` only where `clip`
+   is genuinely unsupported — accepting the sticky-positioning tradeoff on
+   browsers that could not do the right thing anyway. */
+@supports not (overflow-x: clip){
+  html,body{overflow-x:hidden}
 }
 img{max-width:100%;display:block}
 a{color:inherit;text-decoration:none}
@@ -116,22 +142,22 @@ p{margin:0}
 .reveal.d3{transition-delay:.24s}.reveal.d4{transition-delay:.32s}
 
 @keyframes floatUp{from{opacity:0;transform:translateY(26px)}to{opacity:1;transform:none}}
-/* Entrance timings are deliberately tight. These elements start at opacity:0,
-   and an invisible element is not "contentful" - so a long fade holds back both
-   the perceived load and the LCP measurement no matter how fast the bytes
-   arrive. The hero photo is preloaded and lands ~180ms in; a 1s fade starting
-   at .3s meant it was not fully on screen until ~1.3s. The stagger is kept,
-   just roughly halved. */
-@media (prefers-reduced-motion: no-preference){
-  .hero-copy>*{opacity:0;animation:floatUp .5s var(--ease) forwards}
-  .hero-copy>*:nth-child(1){animation-delay:.03s}
-  .hero-copy>*:nth-child(2){animation-delay:.08s}
-  .hero-copy>*:nth-child(3){animation-delay:.13s}
-  .hero-copy>*:nth-child(4){animation-delay:.18s}
-  .hero-copy>*:nth-child(5){animation-delay:.23s}
-  .hero-art{opacity:0;animation:floatUp .55s var(--ease) .06s forwards}
-}
+/* The staggered hero entrance that used to live here keyed off `.hero-copy` and
+   `.hero-art`, neither of which exists in any JSX any more — the landing hero is
+   `.fl-hero__*` in figma-landing.css. Rules that set `opacity:0` on a class that
+   no longer renders are worse than dead: they blank the section the moment
+   anyone reuses the name. Removed. `floatUp` is kept, it is still referenced. */
+
 @media (prefers-reduced-motion: reduce){
   .reveal{opacity:1;transform:none;transition:none}
   *{animation:none !important}
+}
+
+/* Last-resort horizontal-overflow net for the two element types that cannot be
+   made to reflow. This is deliberately narrow — a blanket `*{max-width:100%}`
+   hides layout defects instead of surfacing them, which is how this codebase
+   came to read as though mobile was handled. */
+@media (max-width:560px){
+  table{display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  pre,code{overflow-x:auto}
 }

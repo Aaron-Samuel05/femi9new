@@ -7,6 +7,11 @@ const s = {
   strokeWidth: 1.75,
   strokeLinecap: 'round' as const,
   strokeLinejoin: 'round' as const,
+  // Decorative by default: every control that renders one of these either shows a text
+  // label beside it or carries its own aria-label, so the graphic is noise to a screen
+  // reader. Spread before {...p}, so `aria-hidden={false} role="img" aria-label="…"`
+  // still works at any call site that needs a genuinely meaningful icon.
+  'aria-hidden': true,
 }
 
 export const IHome = (p: SVGProps<SVGSVGElement>) => (
@@ -60,8 +65,12 @@ export const IChevron = (p: SVGProps<SVGSVGElement>) => (
 export const IGrid = (p: SVGProps<SVGSVGElement>) => (
   <svg {...s} {...p}><rect x="4" y="4" width="7" height="7" rx="2" /><rect x="13" y="4" width="7" height="7" rx="2" /><rect x="4" y="13" width="7" height="7" rx="2" /><rect x="13" y="13" width="7" height="7" rx="2" /></svg>
 )
+/* Filled star: does not take the stroke preset, so it carries aria-hidden itself.
+   The PDP paints five of these per rating row (ProductDetail.tsx) with the numeric
+   rating rendered as text beside them — without this the row read as five unlabelled
+   graphics to assistive tech. */
 export const IStar = (p: SVGProps<SVGSVGElement>) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" {...p}><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z" /></svg>
+  <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden {...p}><path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8L12 3z" /></svg>
 )
 export const IThumbUp = (p: SVGProps<SVGSVGElement>) => (
   <svg {...s} {...p}><path d="M7 10v10H4a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2h3Z" /><path d="M7 19h9.2a3 3 0 0 0 2.9-2.3l1.2-5A2.2 2.2 0 0 0 18.2 9H14l.6-3.1A2.4 2.4 0 0 0 12.2 3L7 10v9Z" /></svg>

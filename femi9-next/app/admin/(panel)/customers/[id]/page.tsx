@@ -122,7 +122,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ id: 
         {c.addresses.length === 0 ? (
           <p className="adm-cell-muted">No saved addresses.</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(240px, 100%), 1fr))', gap: 14 }}>
             {c.addresses.map((a) => (
               <div
                 key={a.id}

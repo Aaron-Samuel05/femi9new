@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from '@/lib/router-compat'
 import { useCart } from '../store/cart'
 import { usePublicSettings } from '@/lib/use-public-settings'
+import { useMediaGate } from './useMediaGate'
 import { Instagram, Facebook, Youtube, Linkedin, Whatsapp } from './Icons'
 
 const IG = 'https://www.instagram.com/femi9official/'
@@ -29,6 +30,12 @@ export function Footer() {
   const [subscribing, setSubscribing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const socials = [...SOCIALS, { href: `https://wa.me/${whatsappNumber}`, label: 'WhatsApp', Icon: Whatsapp }]
+  // The watermark is a 2544x888 SVG stretched to min-width:800px at 120% of the
+  // footer height and then run through brightness(0) invert(1) at 8% opacity —
+  // on a 360px screen that is an unrecognisable smear that repaints on every
+  // scroll frame. Gated out of the JSX rather than `display:none`d, because
+  // display:none does not cancel a download.
+  const showWatermark = useMediaGate('(min-width: 561px)')
   const shop = shopLinks.length > 0 ? shopLinks : FALLBACK_SHOP
 
   /**
@@ -69,17 +76,44 @@ export function Footer() {
 
   return (
     <footer className="footer">
-      {/* Background Watermark SVG containing script wordmark & female silhouette */}
-      <div className="footer-watermark" aria-hidden="true">
-        <img className="footer-watermark-img" src="/assets/img/logo-mark.svg" alt="" />
-      </div>
+      {/* Background watermark: script wordmark & female silhouette.
+          Decorative only. Intrinsic size stated so the browser can reserve the
+          box instead of reflowing the footer once the SVG parses, and lazy +
+          async so a below-the-fold decoration stops competing with
+          above-the-fold content on a phone. */}
+      {showWatermark && (
+        <div className="footer-watermark" aria-hidden="true">
+          <img
+            className="footer-watermark-img"
+            src="/assets/img/logo-mark.svg"
+            alt=""
+            width="2544"
+            height="888"
+            loading="lazy"
+            decoding="async"
+          />
+        </div>
+      )}
 
       <div className="wrap footer-in">
         <div className="footer-main">
           {/* Column 1: Brand Block */}
           <div className="footer-brand">
             <Link to="/" aria-label="Femi9 Home">
-              <img className="footer-logo-white" src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" />
+              {/* 5KB — below the threshold the derivative pipeline bothers
+                  with, so it stays a plain <img>. It renders at height:44px
+                  with width:auto, which is a real CLS source until the PNG
+                  decodes; the intrinsic 212x74 gives the browser the ratio up
+                  front. */}
+              <img
+                className="footer-logo-white"
+                src="/assets/figma-home/footer-imgImage1.png"
+                alt="Femi9"
+                width="212"
+                height="74"
+                loading="lazy"
+                decoding="async"
+              />
             </Link>
             <p className="footer-tagline">Thoughtfully designed period care for comfort, confidence, and everyday movement.</p>
             <p className="footer-desc">
@@ -92,6 +126,17 @@ export function Footer() {
                 <input
                   id="footer-newsletter-email"
                   type="email"
+                  // The mobile keyboard only offers the @ / .com row when the
+                  // field asks for it, and iOS auto-capitalises the first
+                  // character of a plain text field — which fails our own
+                  // regex on the very first attempt for anyone who does not
+                  // notice.
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="send"
                   placeholder="Your email address"
                   aria-label="Email address"
                   value={email}

@@ -31,8 +31,10 @@ import { Link } from '@/lib/router-compat'
 import { MemberLayout } from '@/components/MemberLayout'
 import { Rewards } from '@/components/Rewards'
 import { Chip } from '@/components/Chip'
+import { OptImg } from '@/components/OptImg'
+import { useMediaGate } from '@/components/useMediaGate'
 import { AreaChart } from '../charts/AreaChart'
-import { fmtRs } from '../charts/util'
+import { fmtRs, fmtRsK } from '../charts/util'
 import { useCart } from '@/store/cart'
 import { INDIA_STATES } from '@/lib/geo/india-states'
 import {
@@ -288,6 +290,9 @@ export function Account({
   const [profileSheet, setProfileSheet] = useState<{ focus?: 'name' | 'email' | 'phone' } | null>(null)
   const [addressSheet, setAddressSheet] = useState<{ address: AccountAddress | null } | null>(null)
   const tabRefs = useRef<Partial<Record<TabKey, HTMLButtonElement | null>>>({})
+  /** Matches member.css's `.m-band__art` breakpoint — below it the decoration is
+   *  not painted, so it must not be fetched either. */
+  const showBandArt = useMediaGate('(min-width: 621px)')
 
   /**
    * One mutation helper for every fire-and-refresh control on this page.
@@ -475,6 +480,10 @@ export function Account({
               series={[{ name: 'Spend', color: '#563184', points: spendTrend.values }]}
               height={210}
               yFormat={fmtRs}
+              // The axis has ~50px per label: "Rs.12,000" is wider than that and
+              // painted off the card at 360px. The tooltip keeps the exact rupee
+              // figure, which is the only place it appears at all.
+              yAxisFormat={fmtRsK}
             />
           </div>
         ) : (
@@ -510,15 +519,12 @@ export function Account({
           <Link className="btn btn-primary" to="/#products">Shop the range</Link>
           <Link className="btn btn-on-forest" to="/dashboard">Track your cycle</Link>
         </div>
-        <img
-          className="m-band__art"
-          src="/assets/figma-home/products-imgFrame206.png"
-          alt=""
-          width={300}
-          height={261}
-          loading="lazy"
-          decoding="async"
-        />
+        {/* Gated, not CSS-hidden: the source is 1.7 MB at 1346px for a ~300px
+            slot, and it only ever renders above 620px. OptImg serves the ladder
+            to the tablets that do show it. */}
+        {showBandArt && (
+          <OptImg className="m-band__art" base="figma-home/products-imgFrame206" sizes="300px" alt="" />
+        )}
       </section>
 
       {profileSheet && (
@@ -565,15 +571,7 @@ function OrdersPanel({ orders }: { orders: AccountOrder[] }) {
   if (orders.length === 0) {
     return (
       <div className="m-empty">
-        <img
-          className="m-empty__photo"
-          src="/assets/img/prod-330-double.webp"
-          alt=""
-          width={132}
-          height={132}
-          loading="lazy"
-          decoding="async"
-        />
+        <OptImg className="m-empty__photo" base="img/prod-330-double" sizes="132px" alt="" />
         <h3 className="m-h3">No orders yet</h3>
         <p>Every Femi9 order lands here with its items, its total and where it has reached.</p>
         <Link className="btn btn-ghost" to="/#products">Shop the range</Link>

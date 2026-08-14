@@ -294,7 +294,7 @@ export default function AffiliatesPage() {
                       <td className="adm-td-num">{num(a.orders)}</td>
                       <td className="adm-td-num">{inr(a.earnings)}</td>
                       <td>
-                        <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span className="adm-btn-cluster" style={{ flexWrap: 'wrap' }}>
                           {a.status !== 'approved' && (
                             <button
                               type="button"
@@ -331,8 +331,11 @@ export default function AffiliatesPage() {
 
                     {isOpen && (
                       <tr>
-                        <td colSpan={7} style={{ background: 'var(--canvas)' }}>
-                          <div style={{ display: 'grid', gap: 14, padding: '4px 0' }}>
+                        {/* padding:0 + .adm-td-panel: the panel owns the padding so
+                            it can be pinned to the viewport below 900px instead of
+                            inheriting this cell's ~1000px table width. */}
+                        <td colSpan={7} style={{ background: 'var(--canvas)', padding: 0 }}>
+                          <div className="adm-td-panel" style={{ display: 'grid', gap: 14 }}>
                             <form onSubmit={(e) => submitPayout(e, a.id)} noValidate>
                               {payoutError && (
                                 <div className="adm-auth-error" role="alert" style={{ marginBottom: 12 }}>
@@ -411,6 +414,10 @@ export default function AffiliatesPage() {
                               ) : (payouts[a.id]?.length ?? 0) === 0 ? (
                                 <p className="adm-help">No payouts logged yet.</p>
                               ) : (
+                                <div
+                                  className="adm-table-wrap"
+                                  style={{ border: 'none', boxShadow: 'none', borderRadius: 0 }}
+                                >
                                 <table className="adm-table" style={{ background: 'var(--surface)' }}>
                                   <thead>
                                     <tr>
@@ -444,6 +451,7 @@ export default function AffiliatesPage() {
                                     ))}
                                   </tbody>
                                 </table>
+                                </div>
                               )}
                             </div>
                           </div>

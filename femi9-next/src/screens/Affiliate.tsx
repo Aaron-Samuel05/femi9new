@@ -39,13 +39,17 @@ function Rise({
   className = '',
   delay = 0,
   id,
+  as: Tag = 'div',
 }: {
   children: ReactNode
   className?: string
   delay?: number
   id?: string
+  /** Rise is a wrapper, so it has to be able to BE the list item when it sits
+   *  directly inside an <ol> — a <div> child makes the list expose zero items. */
+  as?: 'div' | 'li'
 }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLElement | null>(null)
   const [inView, setInView] = useState(prefersReduced)
 
   useEffect(() => {
@@ -71,14 +75,16 @@ function Rise({
   }, [])
 
   return (
-    <div
-      ref={ref}
+    <Tag
+      ref={(node: HTMLElement | null) => {
+        ref.current = node
+      }}
       id={id}
       className={`af-rise${inView ? ' in' : ''} ${className}`.trim()}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
     >
       {children}
-    </div>
+    </Tag>
   )
 }
 
@@ -371,12 +377,10 @@ export function Affiliate() {
                     d: 'You keep commission on everything they buy - tracked live and paid monthly via UPI.',
               },
             ].map((s, i) => (
-              <Rise key={s.n} delay={i * 90}>
-                <li className="af-step">
-                  <span className="af-step-num display">{s.n}</span>
-                  <h3>{s.t}</h3>
-                  <p>{s.d}</p>
-                </li>
+              <Rise as="li" key={s.n} delay={i * 90} className="af-step">
+                <span className="af-step-num display">{s.n}</span>
+                <h3>{s.t}</h3>
+                <p>{s.d}</p>
               </Rise>
             ))}
           </ol>
@@ -574,12 +578,17 @@ export function Affiliate() {
 
                 <div className="af-field">
                   <label htmlFor="af-handle">Social handle</label>
+                  {/* A social handle is never a sentence: without these three,
+                      mobile keyboards capitalise and autocorrect it. */}
                   <div className="af-handle">
                     <span aria-hidden="true">@</span>
                     <input
                       id="af-handle"
                       type="text"
                       autoComplete="off"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
                       placeholder="aisha.reads"
                       value={handle.replace(/^@+/, '')}
                       onChange={(e) =>

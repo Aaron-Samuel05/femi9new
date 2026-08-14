@@ -1,5 +1,26 @@
 import { useEffect, useRef, useState } from 'react'
 
+/**
+ * Tooltips in these charts are shown on hover and hidden on `mouseleave`. A
+ * finger has no `mouseleave`: the emulated mouse events fire once on tap and
+ * nothing ever dismisses the tip, so it sticks until the next tap somewhere
+ * else. Pair every pointer-down that OPENS a tip with this on pointer-up — it
+ * closes the tip a beat later for touch and pen, and does nothing at all for a
+ * mouse, so desktop hover is unchanged.
+ */
+export function useTouchDismiss(close: () => void, ms = 2600) {
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const latest = useRef(close)
+  latest.current = close
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current) }, [])
+  return (e: { pointerType: string }) => {
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = null
+    if (e.pointerType === 'mouse') return
+    timer.current = setTimeout(() => latest.current(), ms)
+  }
+}
+
 /** Measure an element's width (ResizeObserver) so SVG charts stay responsive with pixel-accurate hover. */
 export function useSize<T extends HTMLElement>() {
   const ref = useRef<T>(null)

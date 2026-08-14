@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { IAlert, IBox, IChevron, ICycle, IInfo, ISparkles } from '@/components/AppIcons'
+import { OptImg } from '@/components/OptImg'
+import { useMediaGate } from '@/components/useMediaGate'
 import { safeNextPath } from '@/lib/safe-next'
 
 /**
@@ -87,6 +89,9 @@ export default function LoginPage() {
   // a deploy without OAuth credentials never renders a prominent button that
   // bounces the shopper straight back here with ?error=google-config.
   const [googleEnabled, setGoogleEnabled] = useState(false)
+
+  /** Matches auth.css's 900px stack, where the brand artwork stops painting. */
+  const showAsideArt = useMediaGate('(min-width: 901px)')
 
   const phoneRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
@@ -304,7 +309,10 @@ export default function LoginPage() {
           {/* ── Brand panel ──────────────────────────────────────────────────── */}
           <aside className="auth-aside">
             <Link href="/" className="auth-aside__brand" aria-label="Femi9 home">
-              <img src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" width={86} height={30} />
+              {/* 5 KB, so no derivative ladder exists for it — a plain <img>
+                  with reserved space is the right answer. Not lazy: it is the
+                  first thing in the first viewport. */}
+              <img src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" width={86} height={30} decoding="async" />
             </Link>
 
             <div>
@@ -345,16 +353,12 @@ export default function LoginPage() {
               </li>
             </ul>
 
-            <img
-              className="auth-aside__art"
-              src="/assets/figma-home/hero-imgImage30.png"
-              alt=""
-              aria-hidden="true"
-              width={230}
-              height={250}
-              loading="lazy"
-              decoding="async"
-            />
+            {/* Gated rather than CSS-hidden: auth.css drops the artwork below
+                900px, but display:none does not cancel a 1.2 MB download, so
+                every phone was paying for a decoration it never sees. */}
+            {showAsideArt && (
+              <OptImg className="auth-aside__art" base="figma-home/hero-imgImage30" sizes="230px" alt="" />
+            )}
           </aside>
 
           {/* ── Form panel ───────────────────────────────────────────────────── */}

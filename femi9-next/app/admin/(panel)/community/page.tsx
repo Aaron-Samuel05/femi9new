@@ -170,7 +170,7 @@ export default function CommunityPage() {
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="adm-chip-group">
           {FILTERS.map((c) => {
             const active = c.value === filter
             return (
@@ -212,7 +212,9 @@ export default function CommunityPage() {
         </div>
       ) : (
         <div className="adm-table-wrap">
-          <table className="adm-table">
+          {/* --stack: below 900px each row becomes a labelled block so the
+              moderation buttons in the last column stay on screen. */}
+          <table className="adm-table adm-table--stack">
             <thead>
               <tr>
                 <th style={{ minWidth: 280 }}>Story</th>
@@ -230,10 +232,10 @@ export default function CommunityPage() {
                 const busy = pending.has(r.id)
                 return (
                   <tr key={r.id} aria-busy={busy}>
-                    <td style={{ maxWidth: 420, color: 'var(--muted)' }} title={r.body}>
+                    <td data-label="Story" style={{ maxWidth: 420, color: 'var(--muted)' }} title={r.body}>
                       {excerpt(r.body)}
                     </td>
-                    <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <td data-label="Who" style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>
                       {r.displayName}
                       {r.isAnonymous && (
                         <div className="adm-cell-muted" style={{ fontSize: 12, fontWeight: 400 }}>
@@ -241,17 +243,17 @@ export default function CommunityPage() {
                         </div>
                       )}
                     </td>
-                    <td className="adm-cell-muted">{r.product || '—'}</td>
-                    <td>
+                    <td data-label="Product" className="adm-cell-muted">{r.product || '—'}</td>
+                    <td data-label="Rating">
                       <Stars rating={r.rating} />
                     </td>
-                    <td className="adm-td-num">{r.likeCount}</td>
-                    <td>
+                    <td data-label="Likes" className="adm-td-num">{r.likeCount}</td>
+                    <td data-label="Status">
                       <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
                     </td>
-                    <td className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
+                    <td data-label="Date" className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
                     <td>
-                      <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
+                      <span className="adm-btn-cluster" style={{ justifyContent: 'flex-end' }}>
                         <button
                           type="button"
                           className="adm-btn adm-btn--secondary adm-btn--sm"

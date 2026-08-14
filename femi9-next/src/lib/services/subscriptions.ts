@@ -2,6 +2,7 @@ import 'server-only'
 import { Prisma } from '@prisma/client'
 import type { SubscriptionStatus } from '@prisma/client'
 import { prisma } from '@/lib/db'
+import { applyZonePrice, resolveZone } from '@/lib/services/pricing'
 import { getSettings } from '@/lib/services/settings'
 
 /**
@@ -284,25 +285,36 @@ async function runRenewalTxn(
     const displayName = `${variant.product.name} — ${variant.label}`
     if (variant.stock < qty) throw new RenewalOutOfStockError(displayName)
 
+    // Ship to the customer's primary address when they have one, so the renewal is
+    // actionable in ops; nullable addressId keeps it valid when they don't. Read
+    // BEFORE pricing: this address is also the regional-pricing signal, and a
+    // renewal must be priced the same way a manual checkout to the same address
+    // would be. (A renewal runs from cron, so there is no request to infer geo
+    // from — the stored address is the only signal there is.)
+    const address = await tx.address.findFirst({
+      where: { userId: sub.userId },
+      orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+      select: { id: true, state: true, pincode: true },
+    })
+    const zone = address
+      ? await resolveZone({ state: address.state, pincode: address.pincode }, tx)
+      : null
+
     // The subscribe discount is applied per unit (mirrors data/products.subPrice),
     // then represented at the order level: OrderItem carries the full catalogue
     // price snapshot (subtotal = Σ lineTotals, as in checkout), and Order.discount
     // captures the saving so total = subtotal − discount + shipping.
-    const fullUnit = variant.price
+    //
+    // The two discounts compose in a fixed order — region first, then subscribe —
+    // so `subtotal` is the regional shelf price and `discount` stays exactly the
+    // subscribe saving the customer was promised.
+    const fullUnit = applyZonePrice(variant.price, zone)
     const discountedUnit = Math.round((fullUnit * (100 - subscribeSavePct)) / 100)
     const subtotal = fullUnit * qty
     const discount = (fullUnit - discountedUnit) * qty
     const discountedSubtotal = subtotal - discount
     const shipping = discountedSubtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
     const total = discountedSubtotal + shipping
-
-    // Ship to the customer's primary address when they have one, so the renewal is
-    // actionable in ops; nullable addressId keeps it valid when they don't.
-    const address = await tx.address.findFirst({
-      where: { userId: sub.userId },
-      orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
-      select: { id: true },
-    })
 
     const orderNo = await nextOrderNo(tx)
 

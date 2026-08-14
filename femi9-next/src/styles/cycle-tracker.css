@@ -276,6 +276,10 @@
   border-radius: 50%;
   background: var(--pc);
 }
+/* Only shown on narrow screens, where the seven-column strip becomes four
+   columns and there is room to name the phase instead of relying on a `title`
+   tooltip that a touch device can never surface. */
+.cyc-day-phase { display: none; }
 .cyc-day.is-today {
   border-color: var(--navy);
   box-shadow: inset 0 0 0 1px var(--navy);
@@ -396,17 +400,43 @@
   border: 0;
 }
 
-/* ---------- responsive ---------- */
+/* ---------- responsive ----------
+   The 900px block that used to sit here (`.cyc-panel{grid-template-columns:1fr}`
+   / `.cyc-lead{max-width:none}`) could never take effect: this component is
+   only ever mounted inside `.fl-cycle`, and figma-landing.css wins both
+   declarations with `!important`. It is restated at the winning specificity so
+   the component is self-sufficient and so reading this file does not give a
+   false picture of what the tracker does on a phone. */
 @media (max-width: 900px) {
-  .cyc-panel {
-    grid-template-columns: 1fr;
-    gap: clamp(20px, 5vw, 32px);
+  .cyc-panel,
+  .fl-cycle .cyc-panel {
+    grid-template-columns: 1fr !important;
+    gap: clamp(20px, 5vw, 32px) !important;
   }
-  .cyc-lead { max-width: none; }
+  .cyc-lead,
+  .fl-cycle .cyc-lead { max-width: none !important; }
 }
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .cyc-tiein-btn { width: 100%; }
-  .cyc-day { padding: 8px 1px 7px; border-radius: 12px; }
+
+  /* Seven columns leaves ~36px cells at 360px. Four gives ~66px, which is the
+     only width at which the phase name fits — and the name is what the `title`
+     tooltip used to carry, i.e. nothing at all on a touch device. */
+  .cyc-week { grid-template-columns: repeat(4, 1fr); }
+  .cyc-day { padding: 10px 4px; border-radius: 12px; }
+  .cyc-day-phase {
+    display: block;
+    font-size: .72rem;
+    line-height: 1.2;
+    color: var(--ink);
+    text-align: center;
+  }
+
+  /* Legibility floor: these all sat between 10.9px and 13.1px inside a 284px
+     card. */
+  .cyc-day-wd { font-size: .78rem; }
+  .cyc-eyebrow-sm { font-size: .78rem; letter-spacing: .1em; }
+  .cyc-legend-item { font-size: .88rem; }
 }
 
 /* base.css kills animations under this query but not transitions, and this

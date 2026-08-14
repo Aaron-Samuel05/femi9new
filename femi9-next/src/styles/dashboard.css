@@ -61,6 +61,9 @@
 }
 .dash-onboard__list svg { width: 18px; height: 18px; flex: none; margin-top: 2px; color: var(--forest-2); }
 
+/* No `display: none` below 780px any more — hiding it in CSS still downloaded
+   the 2.5 MB source on every phone. UserDashboard gates the element out of the
+   JSX at the same width instead (useMediaGate). */
 .dash-onboard__art {
   width: min(260px, 34vw);
   height: auto;
@@ -72,7 +75,6 @@
 @media (max-width: 780px) {
   .dash-hero,
   .dash-onboard { grid-template-columns: minmax(0, 1fr); }
-  .dash-onboard__art { display: none; }
 }
 
 /* --------------------------------------------------------------------------
@@ -285,8 +287,20 @@
   background: var(--ph-symptom);
 }
 
-@media (max-width: 400px) {
-  .dash-cal__day { border-radius: 10px; }
+/* Seven columns inside a 286px card give a 37px cell at 360px, and `aspect-ratio: 1`
+   then caps the HEIGHT at that width too — so the day button, the primary control
+   on this screen, is 37×37. Trade the square for a real minimum height at the two
+   narrow widths; `aspect-ratio: auto` is load-bearing, min-height alone cannot
+   beat the ratio. */
+@media (max-width: 420px) {
+  .dash-cal__weekdays,
+  .dash-cal__grid { gap: 3px; }
+  .dash-cal__day {
+    aspect-ratio: auto;
+    min-height: 44px;
+    border-radius: 10px;
+    padding: 4px 1px;
+  }
   .dash-cal__num { font-size: .8rem; }
   .dash-cal__mark { width: 12px; }
 }
@@ -332,6 +346,9 @@
   border-bottom: 1px solid var(--line-soft);
 }
 .dash-plan__item:last-of-type { border-bottom: 0; padding-bottom: 0; }
+/* Not a data row — the "Manage subscriptions" link that closes the list. Given a
+   display so it is not a list-item, like every other <li> in this area. */
+.dash-plan__more { display: flex; }
 
 .dash-insights { display: flex; flex-direction: column; gap: 14px; }
 .dash-insight { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
@@ -356,7 +373,13 @@
    7. TREND — labelled bars, so the number is readable without reading a pixel
    height off an axis.
    -------------------------------------------------------------------------- */
-.dash-trend {
+.dash-trend { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+/* The bar row only. The summary sentence is a SIBLING of this grid, never a
+   child of it: `grid-column: 1 / -1` resolves against the EXPLICIT grid, and
+   every track here is implicit (grid-auto-flow), so `-1` collapsed to `span 1`
+   and squeezed the sentence into one ~42px bar column — where it painted
+   outside the card at 360-560px. */
+.dash-trend__bars {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(0, 1fr);
@@ -382,8 +405,9 @@
 }
 .dash-trend__value { font-size: .92rem; font-weight: 600; color: var(--navy); }
 .dash-trend__label { font-size: .75rem; color: var(--muted); }
-/* The summary sits on its own row under the whole chart. */
-.dash-trend__summary { grid-column: 1 / -1; padding-top: 10px; }
+/* Full-width sentence under the whole chart. `anywhere` because a 360px card
+   cannot break "measured" any other way. */
+.dash-trend__summary { overflow-wrap: anywhere; }
 
 /* --------------------------------------------------------------------------
    8. LOGGED HISTORY
@@ -429,6 +453,20 @@
 .dash-chips .chip-opt { flex: 0 1 auto; min-width: 0; padding: 8px 14px; font-size: .88rem; }
 
 .dash-levels { display: flex; flex-direction: column; gap: 10px; }
+/* Mild / Moderate / Severe. app.css's bare `.seg button` computes to ~30px,
+   which is the smallest control in the member area and sits on the dashboard's
+   main logging form. Grown here on touch only, so the desktop segmented
+   control keeps its compact rhythm. */
+@media (pointer: coarse) {
+  .dash-levels .seg { padding: 4px; }
+  .dash-levels .seg button {
+    min-height: 44px;
+    min-width: 68px;
+    padding: 9px 14px;
+    font-size: .85rem;
+  }
+  .dash-chips .chip-opt { min-height: 44px; padding: 11px 14px; }
+}
 .dash-levels__row {
   display: flex;
   align-items: center;
@@ -478,8 +516,16 @@
 @media (max-width: 560px) {
   .dash-log__item { align-items: flex-start; }
   .dash-log__actions { width: 100%; justify-content: flex-end; }
-  .dash-levels__row { align-items: flex-start; }
-  .dash-trend { min-height: 150px; gap: 6px; }
+  /* The name and its three-option scale each take a full row rather than
+     fighting over one — at 360px the scale had ~150px to hold three buttons. */
+  .dash-levels__row { flex-direction: column; align-items: stretch; gap: 8px; }
+  .dash-levels .seg { display: flex; width: 100%; }
+  .dash-levels .seg button { flex: 1 1 0; }
+  .dash-trend__bars { min-height: 150px; gap: 6px; }
   .dash-trend__bar { width: min(100%, 30px); }
   .dash-ring { padding-bottom: 30px; }
+
+  /* Type floor — these render identically at 360px and 1512px otherwise. */
+  .dash-cal__weekdays { font-size: .78rem; letter-spacing: .03em; }
+  .dash-trend__label { font-size: .82rem; }
 }

@@ -106,7 +106,17 @@ export function RetryPaymentButton({ orderNo, token }: { orderNo: string; token?
       <button type="button" className="btn btn-primary" onClick={retry} disabled={busy}>
         {busy ? 'Preparing payment…' : 'Retry secure payment'}
       </button>
-      {error ? <p style={{ marginTop: '.75rem', fontSize: '.85rem' }}>{error}</p> : null}
+      {/* These messages carry "Payment was received but confirmation is
+          delayed" — they have to be announced and to read as an alert, not as
+          more of the plum panel's reassurance copy. */}
+      {error ? (
+        <p
+          role="alert"
+          style={{ marginTop: '.75rem', fontSize: '.9rem', lineHeight: 1.45, color: '#FFD9DF', fontWeight: 500 }}
+        >
+          {error}
+        </p>
+      ) : null}
     </div>
   )
 }

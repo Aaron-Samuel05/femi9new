@@ -523,7 +523,11 @@
 /* ---------- responsive ---------- */
 @media (max-width: 960px) {
   .pt-steps { grid-template-columns: repeat(2, 1fr); }
-  .pt-why-grid { grid-template-columns: repeat(2, 1fr); }
+  /* `grid-auto-rows: 1fr` only exists to support the plum feature's
+     `grid-row: 1 / span 2`. That span is dropped here, so the equal-row
+     constraint has no purpose left — it just inflates every benefit card to
+     the height of the tallest row. */
+  .pt-why-grid { grid-template-columns: repeat(2, 1fr); grid-auto-rows: auto; }
   .pt-feature { grid-column: 1 / -1; grid-row: auto; }
   .pt-apply-grid { grid-template-columns: 1fr; }
   .pt-apply-intro p { max-width: none; }
@@ -531,10 +535,29 @@
 @media (max-width: 640px) {
   .pt-stats { grid-template-columns: repeat(2, 1fr); row-gap: clamp(20px, 5vw, 28px); }
   .pt-voices-grid { grid-template-columns: 1fr; }
+  /* These three all sit on the .82–.86rem floor, which is 13.1–13.8px against a
+     16px root (base.css clamps `body`, not `html`). .pt-err is the only feedback
+     a rejected applicant gets. */
+  .pt-err { font-size: .9rem; }
+  .pt-form-note { font-size: .92rem; }
+  .pt-stat-l { font-size: .9rem; }
 }
 @media (max-width: 480px) {
   .pt-steps { grid-template-columns: 1fr; }
   .pt-why-grid { grid-template-columns: 1fr; }
   .pt-form { grid-template-columns: 1fr; }
   .pt-hero-cta .btn { flex: 1 1 auto; }
+  /* The base clamp FLOORS at 2.5rem (6.4vw only reaches 40px at 625px wide), so
+     the h1 never scales for phones. New floor takes over below ~476px; the max
+     is unchanged, so anything wider is byte-identical. */
+  .pt-hero-title { font-size: clamp(1.95rem, 8.4vw, 2.5rem); line-height: 1.14; max-width: none; }
+  .pt-voices-title { line-height: 1.18; }
+  .pt-feature-t { line-height: 1.18; }
+}
+@media (max-width: 460px) {
+  /* Two 135px tracks cannot hold "Rs.8,000–20,000" at the 27.2px clamp floor;
+     it wraps after the dash and `line-height: 1` makes the halves collide. */
+  .pt-stats { grid-template-columns: 1fr; }
+  .pt-stat-n { font-size: clamp(1.5rem, 7vw, 2.9rem); line-height: 1.12; }
+  .pt-stat-l { max-width: none; }
 }

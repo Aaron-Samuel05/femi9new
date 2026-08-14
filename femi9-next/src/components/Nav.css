@@ -5,6 +5,12 @@
   border-bottom:1px solid rgba(255,255,255,.1);
   font-family:"Urbanist",system-ui,-apple-system,"Segoe UI",sans-serif;
   transition:border-color .3s, box-shadow .3s;
+  /* app/layout.tsx now ships `viewportFit: 'cover'`, so the page paints edge to
+     edge and the status bar / notch sits ON TOP of this bar rather than beside
+     it. Pad by the inset so the logo and the burger stay clear of it. Resolves
+     to 0 on every non-notched device and on desktop, so `.nav-in`'s 76px is
+     untouched there — this is not a desktop change. */
+  padding-top:env(safe-area-inset-top);
 }
 .nav.scrolled{border-color:rgba(255,255,255,.18);box-shadow:0 10px 30px -22px rgba(27,23,61,.6)}
 .nav-in{display:flex;align-items:center;justify-content:space-between;height:76px;gap:24px}
@@ -36,8 +42,26 @@
 .mobile-menu{display:flex;flex-direction:column;padding:0 24px;
   border-top:1px solid transparent;background:#352D78;
   max-height:0;overflow:hidden;opacity:0;pointer-events:none;
-  transition:max-height .42s var(--ease),opacity .3s var(--ease),padding .42s var(--ease),border-color .3s}
-.mobile-menu.open{max-height:70vh;opacity:1;pointer-events:auto;padding:8px 24px 22px;border-top-color:rgba(255,255,255,.15)}
+  /* `max-height:0` + `opacity:0` + `pointer-events:none` hide the menu visually
+     but leave its 8-10 links in sequential focus order and in the accessibility
+     tree. `visibility:hidden` is what actually removes them; it is delayed by
+     the collapse duration so the closing animation is still visible. (Nav.tsx
+     also marks the closed menu `inert`, which covers browsers mid-transition.) */
+  visibility:hidden;
+  transition:max-height .42s var(--ease),opacity .3s var(--ease),padding .42s var(--ease),border-color .3s,visibility 0s .42s}
+/* Ten rows are reachable here (5 primary + Periods Wall + Affiliate + Thara +
+   account + Sign out) at ~55px each ≈ 580px. A fixed 70vh cap on a 360x800
+   phone is 560px with `overflow:hidden` and no scroller, so the last row was
+   simply unreachable. Scroll it, and measure in `dvh` so the collapsing URL bar
+   does not push rows out of the box. */
+.mobile-menu.open{
+  max-height:min(70dvh, calc(100dvh - var(--nav-h) - env(safe-area-inset-top)));
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  opacity:1;pointer-events:auto;visibility:visible;transition-delay:0s;
+  padding:8px 24px calc(22px + env(safe-area-inset-bottom));
+  border-top-color:rgba(255,255,255,.15)}
 .mobile-menu a{padding:14px 2px;font-family:"Urbanist",system-ui,-apple-system,"Segoe UI",sans-serif;font-size:1.05rem;font-weight:500;letter-spacing:0;color:#fff;border-bottom:1px solid rgba(255,255,255,.12);
   transform:translateY(-6px);opacity:0;transition:transform .4s var(--ease),opacity .4s var(--ease)}
 .mobile-menu.open a{transform:none;opacity:1}
@@ -54,6 +78,16 @@
 @media (max-width:960px){
   .nav-links{display:none}
   .burger{display:inline-flex}
+}
+/* Below 960px the burger is the ONLY route to the primary nav, and it was a
+   40px target next to two 38px ones. The row is not space-constrained: at 360px
+   three 44px controls plus two 10px gaps is 152px beside the 116px logo, which
+   still leaves ~56px inside `.wrap`'s clamp(18px,4vw,40px) padding.
+   Both halves of the query matter: `pointer: coarse` covers touch tablets above
+   960px, the width query covers a phone-sized viewport driven by a mouse. */
+@media (max-width:960px), (pointer: coarse){
+  .burger,.cart-btn{width:44px;height:44px}
+  .nav-right{gap:10px}
 }
 @media (min-width:961px){.mobile-menu{display:none !important}}
 @media (prefers-reduced-motion:reduce){.mobile-menu,.mobile-menu a{transition:none}}
@@ -73,4 +107,12 @@
 
 @media (prefers-reduced-motion: reduce){
   .nav-signout{transition:none;opacity:1;transform:none}
+}
+
+/* Tap-target floor for the menu rows. 14px of block padding on a 1.05rem line
+   already clears 44px, but stating it means a future type change cannot quietly
+   drop below the floor. Placed at the end of the file on purpose: `.nav-signout`
+   declares `display:block` above, and at equal specificity source order decides. */
+@media (max-width:960px), (pointer: coarse){
+  .mobile-menu a,.nav-signout{min-height:44px;display:flex;align-items:center}
 }

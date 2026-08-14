@@ -18,11 +18,16 @@
 .overlay{position:fixed;inset:0;background:rgba(18,15,46,.45);opacity:0;visibility:hidden;
   transition:opacity .3s;z-index:80;backdrop-filter:blur(3px)}
 .overlay.open{opacity:1;visibility:visible}
+/* `visibility:hidden` when closed (delayed until the slide-out finishes) so the
+   drawer's ~10 controls leave the tab order instead of sitting off-screen but
+   still focusable. CartDrawer.tsx also sets `inert`; this is the CSS half. */
 .drawer{position:fixed;top:0;right:0;height:100dvh;width:min(440px,94vw);background:#fff;
-  z-index:90;transform:translateX(100%);transition:transform .4s var(--ease);
+  z-index:90;transform:translateX(100%);visibility:hidden;
+  transition:transform .4s var(--ease),visibility 0s linear .4s;
   display:flex;flex-direction:column;font-family:"Inter",system-ui,sans-serif;color:var(--cd-navy);
   box-shadow:-24px 0 70px -34px rgba(18,15,46,.55)}
-.drawer.open{transform:translateX(0)}
+.drawer.open{transform:translateX(0);visibility:visible;
+  transition:transform .4s var(--ease),visibility 0s}
 
 /* ---- head ---- */
 .drawer-head{display:flex;align-items:center;justify-content:space-between;gap:16px;
@@ -38,7 +43,11 @@
 .drawer-close svg{width:18px;height:18px}
 
 /* ---- body ---- */
-.drawer-body{flex:1;overflow-y:auto;padding:6px 24px 20px}
+/* overscroll-behavior:contain stops a flick that reaches the end of the list
+   from chaining into the storefront behind the drawer (iOS Safari ignores
+   body{overflow:hidden}; the JS lock in CartDrawer.tsx is the other half). */
+.drawer-body{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
+  padding:6px 24px 20px}
 .cart-empty{text-align:center;color:var(--cd-copy);padding:64px 12px;
   display:flex;flex-direction:column;align-items:center;gap:10px}
 .cart-empty__icon{width:76px;height:76px;display:grid;place-items:center;border-radius:50%;
@@ -64,12 +73,34 @@
   border-radius:999px;background:#fff}
 .qty button{width:30px;height:30px;border:0;border-radius:50%;background:var(--cd-lilac);color:var(--cd-deep);
   display:inline-flex;align-items:center;justify-content:center;font-size:1rem;line-height:1;
-  transition:background .2s ease}
+  position:relative;transition:background .2s ease}
 .qty button:hover{background:var(--cd-lilac-2)}
 .qty span{min-width:28px;text-align:center;font-size:14px;font-weight:600;color:var(--cd-navy)}
 .ci-remove{padding:0;border:0;background:none;font-family:inherit;font-size:13px;color:var(--cd-copy);
   transition:color .2s ease}
 .ci-remove:hover{color:var(--cd-purple);text-decoration:underline}
+
+/* ---- touch sizing ----
+   Scoped to coarse pointers so the desktop drawer is pixel-identical, and so
+   touch tablets (768x1024) are covered as well as phones. The +/- steppers and
+   Remove are the only quantity/removal affordances in the drawer — there is no
+   swipe-to-delete — and they shipped at 30x30 and ~52x16. */
+@media (pointer: coarse){
+  /* The painted pill grows a little; the tappable box grows to 44x44 via a
+     transparent ::after so the row rhythm is untouched. The wider gap stops a
+     fingertip spanning both buttons and decrementing when she meant to add. */
+  .qty{gap:6px;padding:5px}
+  .qty button{width:34px;height:34px}
+  .qty button::after{content:"";position:absolute;top:50%;left:50%;
+    transform:translate(-50%,-50%);width:44px;height:44px}
+
+  /* The negative margin absorbs the extra height so `.ci-bottom`'s 14px rhythm
+     is unchanged; the always-on underline replaces a :hover affordance that
+     never fires on touch, where this rendered as plain grey body text. */
+  .ci-remove{display:inline-flex;align-items:center;min-height:44px;padding:0 4px;margin:-12px -4px;
+    font-size:14px;text-decoration:underline;text-underline-offset:3px}
+  .ci-remove:hover,.ci-remove:focus-visible{color:var(--cd-purple)}
+}
 
 /* ---- foot ---- */
 .drawer-foot{padding:22px 24px calc(22px + env(safe-area-inset-bottom));
@@ -97,21 +128,72 @@
 .cart-empty .btn:hover{background:var(--cd-gold-hi);transform:translateY(-2px)}
 
 @media(max-width:620px){
-  .drawer{width:100vw}
-  .drawer-head,.drawer-body,.drawer-foot{padding-inline:20px}
+  .drawer{width:100vw;
+    /* Below 620px the drawer is the whole viewport, so `--cd-copy` is read at
+       arm's length against white: #747176 fails 4.5:1 at 14px, #615e66 passes. */
+    --cd-copy:#615e66}
+  /* max() so a landscape notch cannot eat the drawer's left edge once
+     viewport-fit=cover lands; identical to 20px on every other device. */
+  .drawer-head,.drawer-body,.drawer-foot{
+    padding-inline:max(20px,env(safe-area-inset-left)) max(20px,env(safe-area-inset-right))}
   .drawer-head h3{font-size:22px}
+  /* 13px secondary copy: the item count, the variant label (which pack size she
+     is actually buying) and the free-shipping progress line. */
+  .drawer-head p,
+  .ci-info small,
+  .drawer-foot .ship-hint{font-size:14px;line-height:1.45}
+  .drawer-foot .row{font-size:15px}
+}
+
+/* The close button is the ONLY dismiss control on a phone: at <=620px the
+   drawer is `width:100vw`, so no part of the overlay is reachable, and there is
+   no swipe-to-close. 40px was under the floor. */
+@media (pointer: coarse),(max-width:620px){
+  .drawer-close{width:44px;height:44px;flex:0 0 44px}
+  .drawer-close svg{width:20px;height:20px}
+}
+@media (pointer: coarse){
+  /* A tapped button keeps :hover on mobile Safari, leaving the close icon
+     stuck at 90deg. Press feedback instead. */
+  .drawer-close:hover{transform:none}
+  .drawer-close:active{background:var(--cd-lilac-2)}
 }
 @media(prefers-reduced-motion:reduce){
   .drawer-close:hover,.drawer-foot .btn:hover,.cart-empty .btn:hover{transform:none}
   .ship-bar span{transition:none}
 }
 
-/* toast */
-.toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,20px);
+/* ---- toast ----
+   Centred by an auto margin inside a left/right inset rather than by
+   `left:50%`. With `left:50%; right:auto; width:auto` a fixed box shrink-to-fits
+   against (viewport − left), i.e. 180px on a 360px phone — "Ultra Comfort
+   Overnight Pads added to bag" wrapped into a five-line sliver. The inset pair
+   plus `width:max-content` gives the same centre and the same width on desktop,
+   but lets the box use the full width on a phone.
+
+   `--bottom-bar-h` is a shared token: 0px by default, and the height of the PDP
+   buy bar inside its own mobile media query, so the toast lifts clear of that
+   fixed bar instead of landing on top of it at z-index 100. The `0px` fallback
+   means this is correct whether or not the token is declared.
+
+   `pointer-events:none` because the same action that fires the toast opens the
+   cart drawer — for 2200ms it otherwise sat over the drawer's footer CTA and
+   swallowed the tap. */
+.toast{position:fixed;left:16px;right:16px;
+  bottom:calc(26px + var(--bottom-bar-h,0px) + env(safe-area-inset-bottom));
+  margin-inline:auto;width:max-content;max-width:min(420px,calc(100vw - 32px));
+  transform:translateY(20px);
   background:var(--forest);color:#fff;padding:13px 22px;border-radius:var(--r-chip);
-  font-size:.92rem;font-weight:400;display:flex;align-items:center;gap:10px;
-  box-shadow:var(--shadow);opacity:0;visibility:hidden;
+  font-size:.92rem;font-weight:400;
+  display:flex;align-items:center;gap:10px;
+  box-shadow:var(--shadow);opacity:0;visibility:hidden;pointer-events:none;
   transition:opacity .35s var(--ease),transform .35s var(--ease),visibility 0s linear .35s;z-index:100}
-.toast svg{width:19px;height:19px;color:var(--yellow)}
-.toast.show{opacity:1;visibility:visible;transform:translate(-50%,0);
+.toast svg{flex:0 0 19px;width:19px;height:19px;color:var(--yellow)}
+.toast.show{opacity:1;visibility:visible;transform:none;
   transition:opacity .35s var(--ease),transform .35s var(--ease),visibility 0s}
+/* Only a phone-width toast actually wraps ("Ultra Comfort Overnight Pads added
+   to bag" is two lines at 328px), so tighten and centre the wrap there rather
+   than changing the single-line desktop pill. */
+@media(max-width:620px){
+  .toast{line-height:1.35;text-align:center}
+}

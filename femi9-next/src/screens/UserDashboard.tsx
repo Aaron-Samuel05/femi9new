@@ -19,6 +19,8 @@ import { useRouter } from 'next/navigation'
 import { Link } from '@/lib/router-compat'
 import { MemberLayout } from '@/components/MemberLayout'
 import { Chip } from '@/components/Chip'
+import { OptImg } from '@/components/OptImg'
+import { useMediaGate } from '@/components/useMediaGate'
 import { useCart } from '@/store/cart'
 import {
   IAlert,
@@ -224,6 +226,14 @@ export function UserDashboard(props: UserDashboardProps) {
   const [consentRefused, setConsentRefused] = useState(false)
   const gateOpen = !consent || consentRefused
 
+  /** The two decorative Figma exports on this screen are painted only above
+   *  their breakpoints (dashboard.css `.dash-onboard__art`, member.css
+   *  `.m-band__art`). They are gated out of the JSX rather than hidden in CSS,
+   *  because `display: none` still downloads — and why-imgImage22.png is 2.5 MB
+   *  that no mobile target ever shows. */
+  const showOnboardArt = useMediaGate('(min-width: 781px)')
+  const showBandArt = useMediaGate('(min-width: 621px)')
+
   const onConsentRefusal = useCallback(() => {
     setConsentRefused(true)
     router.refresh()
@@ -296,15 +306,16 @@ export function UserDashboard(props: UserDashboardProps) {
               </li>
             </ul>
           </div>
-          <img
-            className="dash-onboard__art"
-            src="/assets/figma-home/why-imgImage22.png"
-            alt=""
-            width={260}
-            height={260}
-            loading="lazy"
-            decoding="async"
-          />
+          {showOnboardArt && (
+            <OptImg
+              className="dash-onboard__art"
+              base="figma-home/why-imgImage22"
+              /* width: min(260px, 34vw) — 34vw only bites below 765px, and the
+                 gate above starts at 781px, so this is always exactly 260. */
+              sizes="260px"
+              alt=""
+            />
+          )}
         </section>
       ) : (
         <section className="m-card m-card--roomy dash-hero" aria-labelledby="dash-hero-h">
@@ -418,15 +429,7 @@ export function UserDashboard(props: UserDashboardProps) {
           </div>
           {orders.length === 0 ? (
             <div className="m-empty">
-              <img
-                className="m-empty__photo"
-                src="/assets/img/prod-330-double.webp"
-                alt=""
-                width={132}
-                height={132}
-                loading="lazy"
-                decoding="async"
-              />
+              <OptImg className="m-empty__photo" base="img/prod-330-double" sizes="132px" alt="" />
               <h3 className="m-h3">No orders yet</h3>
               <p>When you order, it will appear here so you can reorder in a tap.</p>
               <Link className="btn btn-ghost" to="/#products">
@@ -486,7 +489,10 @@ export function UserDashboard(props: UserDashboardProps) {
                   </span>
                 </li>
               ))}
-              <li>
+              {/* The only <li> in the member area without a display of its own —
+                  which, now that the UA's 40px list indent is reset, would paint
+                  a bare disc marker outside the card. */}
+              <li className="dash-plan__more">
                 <Link className="m-linkbtn" to="/account">
                   Manage subscriptions <IChevron aria-hidden="true" />
                 </Link>
@@ -712,15 +718,9 @@ export function UserDashboard(props: UserDashboardProps) {
             <IGift aria-hidden="true" /> Rewards &amp; orders
           </Link>
         </div>
-        <img
-          className="m-band__art"
-          src="/assets/figma-home/footer-imgImage9.png"
-          alt=""
-          width={300}
-          height={300}
-          loading="lazy"
-          decoding="async"
-        />
+        {showBandArt && (
+          <OptImg className="m-band__art" base="figma-home/footer-imgImage9" sizes="300px" alt="" />
+        )}
       </section>
 
       {/* ── Privacy ─────────────────────────────────────────────────────── */}
@@ -1235,18 +1235,24 @@ function TrendBars({ labels, values }: { labels: string[]; values: number[] }) {
   const max = Math.max(...values, 1)
   const min = Math.min(...values)
   return (
-    <ul className="dash-trend">
-      {values.map((v, i) => (
-        <li key={`${labels[i]}-${i}`} className="dash-trend__item">
-          <span className="dash-trend__bar" style={{ height: `${Math.round((v / max) * 100)}%` }} aria-hidden="true" />
-          <span className="dash-trend__value m-num">{v}</span>
-          <span className="dash-trend__label">{labels[i]}</span>
-        </li>
-      ))}
-      <li className="dash-trend__summary m-cap">
+    // The summary used to be a sibling <li> of the bars inside one grid, relying
+    // on `grid-column: 1 / -1` to span — which cannot work when every track is
+    // implicit, so the sentence was squeezed into bar column 1 and painted
+    // outside the card. It is now a sibling of the bar list instead.
+    <div className="dash-trend">
+      <ul className="dash-trend__bars">
+        {values.map((v, i) => (
+          <li key={`${labels[i]}-${i}`} className="dash-trend__item">
+            <span className="dash-trend__bar" style={{ height: `${Math.round((v / max) * 100)}%` }} aria-hidden="true" />
+            <span className="dash-trend__value m-num">{v}</span>
+            <span className="dash-trend__label">{labels[i]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="dash-trend__summary m-cap">
         {min === max ? `Every measured cycle was ${max} days.` : `Between ${min} and ${max} days.`}
-      </li>
-    </ul>
+      </p>
+    </div>
   )
 }
 

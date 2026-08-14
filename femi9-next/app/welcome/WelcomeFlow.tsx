@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { MemberSignOutButton } from '@/components/MemberLayout'
 import { IAlert, IBell, IBox, ICheck, IChevron, IInfo, IUser } from '@/components/AppIcons'
+import { OptImg } from '@/components/OptImg'
+import { useMediaGate } from '@/components/useMediaGate'
 import type { ProfileField } from '@/lib/services/account'
 
 /**
@@ -97,6 +99,9 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
   const [resendIn, setResendIn] = useState(0)   // resend gate, seconds
   const [leaving, setLeaving] = useState(false)
   const [focusTarget, setFocusTarget] = useState<FieldKey | null>(null)
+
+  /** Matches auth.css's 900px stack, where the brand artwork stops painting. */
+  const showAsideArt = useMediaGate('(min-width: 901px)')
 
   const nameRef = useRef<HTMLInputElement>(null)
   const emailRef = useRef<HTMLInputElement>(null)
@@ -446,7 +451,9 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
           {/* ── Brand panel ──────────────────────────────────────────────────── */}
           <aside className="auth-aside">
             <Link href="/" className="auth-aside__brand" aria-label="Femi9 home">
-              <img src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" width={86} height={30} />
+              {/* 5 KB, below the derivative-ladder threshold — plain <img> with
+                  reserved space, and not lazy: it is in the first viewport. */}
+              <img src="/assets/figma-home/footer-imgImage1.png" alt="Femi9" width={86} height={30} decoding="async" />
             </Link>
 
             <div>
@@ -471,16 +478,11 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
               ))}
             </ul>
 
-            <img
-              className="auth-aside__art"
-              src="/assets/figma-home/footer-imgImage9.png"
-              alt=""
-              aria-hidden="true"
-              width={230}
-              height={306}
-              loading="lazy"
-              decoding="async"
-            />
+            {/* Gated rather than CSS-hidden — see auth.css §10; display:none
+                does not cancel the download. */}
+            {showAsideArt && (
+              <OptImg className="auth-aside__art" base="figma-home/footer-imgImage9" sizes="230px" alt="" />
+            )}
           </aside>
 
           {/* ── Form panel ───────────────────────────────────────────────────── */}
