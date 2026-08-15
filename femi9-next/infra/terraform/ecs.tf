@@ -139,6 +139,10 @@ locals {
     { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     { name = "MSG91_TEMPLATE_ID", value = var.msg91_template_id },
     { name = "EMAIL_FROM", value = var.email_from },
+    # Thara Model. The task definition had no entry for this at all, so the
+    # deployed app always read it as unset — every /api/thara route 404'd and
+    # the storefront hid the programme, whatever the .env on a laptop said.
+    { name = "THARA_ENABLED", value = var.thara_enabled ? "true" : "false" },
   ]
 
   # Secrets injected from Secrets Manager: name → valueFrom(ARN). Because each

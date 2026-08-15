@@ -19,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Link } from '@/lib/router-compat'
 import { useCart } from '@/store/cart'
+import { usePublicSettings } from '@/lib/use-public-settings'
 import { IAlert, ICheck, IChevron, ICopy, IGift, IRupee, IStar } from './AppIcons'
 import type { RewardOptionView } from '@/lib/services/rewards'
 import type { AccountCoupon, ActivityItem, EarnRates } from '@/lib/services/account'
@@ -42,6 +43,7 @@ function rewardSub(o: RewardOptionView): string {
 export function Rewards({ pointsBalance, rewardOptions, activity, coupons, earnRates }: RewardsProps) {
   const router = useRouter()
   const { notify } = useCart()
+  const { tharaEnabled } = usePublicSettings()
 
   // The only local balance state: points spent by a redeem whose refresh has not
   // landed yet. Any new server render (a fresh `coupons` array) clears it.
@@ -190,11 +192,16 @@ export function Rewards({ pointsBalance, rewardOptions, activity, coupons, earnR
             })}
           </ul>
           {/* No points claim attached: nothing credits PointsLedger for a
-              referral. The Thara programme pays store credit, and says so. */}
-          <Link className="m-linkbtn acct-rw__refer" to="/thara">
-            Refer a friend
-            <IChevron aria-hidden="true" />
-          </Link>
+              referral. The Thara programme pays store credit, and says so.
+              Hidden when the programme is off, since /thara answers 404 from
+              its API and would strand the visitor on an error card — the same
+              gate Nav and Footer already apply. */}
+          {tharaEnabled && (
+            <Link className="m-linkbtn acct-rw__refer" to="/thara">
+              Refer a friend
+              <IChevron aria-hidden="true" />
+            </Link>
+          )}
         </div>
       </div>
 

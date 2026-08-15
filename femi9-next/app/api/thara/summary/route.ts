@@ -6,9 +6,34 @@ import {
   getTharaCreditBalance,
   currentOpenCycle,
   getUserCyclePoints,
+  getUnlockProgress,
+  syncTharaActivation,
   THARA_VOUCHER_MULTIPLIER,
+  THARA_VOUCHER_CLAIM_DAYS,
+  THARA_QUALIFYING_MIN_PAISE,
+  THARA_COMMISSION_PCT,
+  THARA_POINTS_PCT,
+  TharaDiscountSlabs,
 } from '@/lib/services/thara'
 import { prisma } from '@/lib/db'
+
+/**
+ * Every number the explainer UI prints, sent from the server rather than
+ * duplicated as copy in the page. If ops retunes a slab, the page that teaches
+ * the programme cannot drift away from the engine that applies it.
+ */
+const RULES = {
+  minOrderPaise: THARA_QUALIFYING_MIN_PAISE,
+  commissionPct: THARA_COMMISSION_PCT,
+  pointsPct: THARA_POINTS_PCT,
+  voucherMultiplier: THARA_VOUCHER_MULTIPLIER,
+  voucherClaimDays: THARA_VOUCHER_CLAIM_DAYS,
+  slabs: [
+    { minPaise: TharaDiscountSlabs.SLAB_1_MIN, maxPaise: TharaDiscountSlabs.SLAB_2_MIN - 1, pct: 10 },
+    { minPaise: TharaDiscountSlabs.SLAB_2_MIN, maxPaise: TharaDiscountSlabs.SLAB_3_MIN - 1, pct: 15 },
+    { minPaise: TharaDiscountSlabs.SLAB_3_MIN, maxPaise: null, pct: 20 },
+  ],
+} as const
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,8 +51,19 @@ export async function GET() {
     if (!session) return unauthorized()
 
     const userId = session.sub
+
+    // Promote a member whose qualifying order predates her enrolment before
+    // reading her status, so the dashboard never reports "not unlocked yet" to
+    // someone who has already paid for the unlock.
+    await syncTharaActivation(userId)
+
     const m = await getMembership(userId)
-    if (!m) return ok({ enrolled: false })
+    if (!m) {
+      // The join screen teaches the same programme with the same numbers, and
+      // tells a shopper who has already qualified that joining unlocks her
+      // immediately.
+      return ok({ enrolled: false, rules: RULES, unlock: await getUnlockProgress(userId) })
+    }
 
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? ''
     const referralUrl = base ? `${base}/r/${m.referralCode}` : `/r/${m.referralCode}`
@@ -39,6 +75,7 @@ export async function GET() {
       vouchers,
       downlineCount,
       incomingReferral,
+      unlock,
     ] = await Promise.all([
       getTharaCreditBalance(prisma, userId),
       currentOpenCycle(),
@@ -57,12 +94,15 @@ export async function GET() {
         where: { referredUserId: userId },
         include: { referrer: { select: { referralCode: true } } },
       }),
+      getUnlockProgress(userId),
     ])
 
     const currentCyclePoints = await getUserCyclePoints(userId, cycle.id)
 
     return ok({
       enrolled: true,
+      rules: RULES,
+      unlock,
       membership: {
         status: m.status,
         referralCode: m.referralCode,

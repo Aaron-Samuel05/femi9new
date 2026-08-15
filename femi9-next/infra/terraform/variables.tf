@@ -223,6 +223,12 @@ variable "email_from" {
   default     = ""
 }
 
+variable "thara_enabled" {
+  description = "Turn the Thara Model on for this environment (THARA_ENABLED). Every /api/thara route 404s and the storefront links stay hidden while false. Set true in staging."
+  type        = bool
+  default     = false
+}
+
 # ── Public (NEXT_PUBLIC_*) runtime values ────────────────────────────────────
 # NOTE: NEXT_PUBLIC_* variables are inlined into the CLIENT bundle at BUILD time
 # (`next build`), not read from the container at runtime. Set them as Docker

@@ -46,7 +46,15 @@ export async function enrollUser(
     const existing = await tx.tharaMembership.findUnique({ where: { userId } })
     if (existing) {
       if (existing.status === 'deactivated') throw new TharaDeactivatedError()
-      return { id: existing.id, status: existing.status, referralCode: existing.referralCode }
+      // A member who was already stuck in purchase_pending with a qualifying
+      // order behind her gets promoted here too, so re-opening the dashboard is
+      // enough to repair her — she does not have to buy a THIRD time.
+      const promoted = await activateFromPastOrders(tx, userId)
+      return {
+        id: existing.id,
+        status: promoted ? ('active' as TharaStatus) : existing.status,
+        referralCode: existing.referralCode,
+      }
     }
     const referralCode = await issueUniqueCode(tx)
     const created = await tx.tharaMembership.create({
@@ -58,7 +66,17 @@ export async function enrollUser(
         termsVersion,
       },
     })
-    return { id: created.id, status: created.status, referralCode: created.referralCode }
+    // The normal shopper buys FIRST and discovers the programme afterwards.
+    // Activation used to fire only inside markOrderPaid, so those orders were
+    // already in the past by the time the membership row existed and nothing
+    // ever promoted her — she stayed "purchase pending" no matter how much she
+    // had spent. Qualify off her order history at the moment she joins.
+    const promoted = await activateFromPastOrders(tx, userId)
+    return {
+      id: created.id,
+      status: promoted ? ('active' as TharaStatus) : created.status,
+      referralCode: created.referralCode,
+    }
   })
 }
 
@@ -185,6 +203,107 @@ export async function activateAndLockIfEligible(
     where: { referredUserId: order.userId, lockedAt: null },
     data: { lockedAt: new Date() },
   })
+}
+
+/**
+ * The mirror image of activateAndLockIfEligible: instead of "an order was just
+ * paid, is there a membership to promote?", it asks "there is a membership
+ * sitting in purchase_pending, is there already a paid order behind it?".
+ *
+ * Needed because activation used to exist ONLY on the payment path. A shopper
+ * who bought before she enrolled — the ordinary case, since the programme is
+ * discovered from the account page after a purchase — could never be promoted
+ * by any amount of past spending, and the dashboard told her to go and buy
+ * again. Runs on enrolment and on every dashboard read, so it self-heals
+ * members who are already stuck.
+ *
+ * Returns true when it promoted the membership.
+ */
+export async function activateFromPastOrders(
+  tx: Prisma.TransactionClient,
+  userId: string,
+): Promise<boolean> {
+  const membership = await tx.tharaMembership.findUnique({
+    where: { userId },
+    select: { id: true, status: true },
+  })
+  if (!membership || membership.status !== 'purchase_pending') return false
+
+  // Oldest qualifying order wins, so the stamped qualifyingOrderId is the order
+  // that genuinely earned the unlock. `tharaQualifyingFor: { is: null }` keeps
+  // us off an order already stamped on some membership — qualifyingOrderId is
+  // @unique and the write would otherwise blow up on P2002.
+  const qualifying = await tx.order.findFirst({
+    where: {
+      userId,
+      status: 'paid',
+      subtotal: { gte: THARA_QUALIFYING_MIN_PAISE },
+      tharaQualifyingFor: { is: null },
+    },
+    orderBy: { placedAt: 'asc' },
+    select: { id: true },
+  })
+  if (!qualifying) return false
+
+  // Compare-and-set on the status so a concurrent markOrderPaid activation
+  // cannot be double-applied; whoever loses the race writes nothing.
+  const res = await tx.tharaMembership.updateMany({
+    where: { id: membership.id, status: 'purchase_pending' },
+    data: { status: 'active', activatedAt: new Date(), qualifyingOrderId: qualifying.id },
+  })
+  return res.count > 0
+}
+
+/**
+ * Route-level wrapper for the above. Safe to call on every dashboard read: it
+ * is a no-op for anyone who is not an unpromoted member, and it never throws
+ * into the response — a repair that fails should not blank the dashboard.
+ */
+export async function syncTharaActivation(userId: string): Promise<void> {
+  if (!isTharaEnabled()) return
+  try {
+    await prisma.$transaction((tx) => activateFromPastOrders(tx, userId))
+  } catch {
+    // Best-effort self-heal. The membership stays as it is and the next read
+    // tries again.
+  }
+}
+
+/**
+ * What the member still has to do to unlock earning, in numbers the UI can
+ * render directly. The rule is ONE order of ≥ ₹3,000 — several smaller orders
+ * never add up to it, which is the single most misread part of the programme,
+ * so the dashboard shows the BIGGEST single paid order rather than a total.
+ */
+export interface TharaUnlockProgress {
+  requiredPaise: number
+  /** Largest single paid order this user has placed. 0 when she has none. */
+  bestOrderPaise: number
+  bestOrderNo: string | null
+  paidOrderCount: number
+  qualified: boolean
+  /** How much bigger ONE order has to be. 0 once qualified. */
+  shortfallPaise: number
+}
+
+export async function getUnlockProgress(userId: string): Promise<TharaUnlockProgress> {
+  const [best, paidOrderCount] = await Promise.all([
+    prisma.order.findFirst({
+      where: { userId, status: 'paid' },
+      orderBy: { subtotal: 'desc' },
+      select: { subtotal: true, orderNo: true },
+    }),
+    prisma.order.count({ where: { userId, status: 'paid' } }),
+  ])
+  const bestOrderPaise = best?.subtotal ?? 0
+  return {
+    requiredPaise: THARA_QUALIFYING_MIN_PAISE,
+    bestOrderPaise,
+    bestOrderNo: best?.orderNo ?? null,
+    paidOrderCount,
+    qualified: bestOrderPaise >= THARA_QUALIFYING_MIN_PAISE,
+    shortfallPaise: Math.max(0, THARA_QUALIFYING_MIN_PAISE - bestOrderPaise),
+  }
 }
 
 export class TharaNotFoundError extends Error {

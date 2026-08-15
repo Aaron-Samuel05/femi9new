@@ -29,7 +29,6 @@
   margin-bottom: 24px;
 }
 .thara-hero .row { display: flex; justify-content: space-between; align-items: center; gap: 24px; flex-wrap: wrap; }
-.thara-hero .status { text-transform: capitalize; }
 .thara-hero .metric { text-align: right; }
 .thara-hero .metric .label {
   font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #7F6EB9; font-weight: 600;
@@ -165,6 +164,199 @@
   color: #B03B57;
 }
 
+/* ==================================================================
+   EXPLAINER
+   The page has to teach the programme before it reports on it, so
+   most of what follows is teaching furniture: the three-step ladder,
+   the unlock meter, the benefit cards with their worked example, the
+   slab list and the FAQ. Same four colours as the dashboard above —
+   ink #34204E, lavender #7F6EB9, gold #F0C14E, line #E4DFEE.
+   ================================================================== */
+
+.thara-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #7F6EB9;
+  margin: 0 0 6px;
+}
+.thara-lede {
+  max-width: 60ch;
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+.thara-hero .metric .hint { margin-top: 2px; }
+/* The one piece of good news on the join screen: you already qualify. */
+.thara-good {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: #E1F0E7;
+  color: #2F6E48;
+  font-weight: 600;
+  line-height: 1.5;
+  max-width: 60ch;
+}
+.thara .btn-lg { margin-top: 18px; padding: 13px 26px; font-size: 15px; }
+
+/* A caution the whole bug hinged on: orders never add up. */
+.thara-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 3px solid #F0C14E;
+  background: #FDF8EC;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+/* ── Three-step ladder ─────────────────────────────────────────── */
+.thara-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+.thara-steps .step {
+  display: grid;
+  grid-template-columns: 34px 28px 1fr;
+  align-items: start;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid #E4DFEE;
+  border-radius: 12px;
+  background: #FCFBFE;
+}
+.thara-steps h3 {
+  font-family: var(--display);
+  font-size: 1.05rem;
+  font-weight: 400;
+  color: #34204E;
+  margin: 0 0 4px;
+}
+.thara-steps p { margin: 0; font-size: 14.5px; }
+.step-num {
+  width: 34px; height: 34px; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 15px;
+  background: #EDE9F4; color: #7F6EB9;
+}
+.step-icon { display: block; width: 28px; padding-top: 3px; }
+.step-icon svg {
+  width: 24px; height: 24px;
+  fill: none; stroke: #7F6EB9; stroke-width: 1.6;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.step-state {
+  display: inline-block; margin-top: 8px;
+  font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #7F6EB9;
+}
+/* Done — settled green, no longer asking for attention. */
+.step-done { background: #F4FAF6; border-color: #CFE6D8; }
+.step-done .step-num { background: #3D8B5C; color: #FFFFFF; }
+.step-done .step-icon svg { stroke: #3D8B5C; }
+.step-done .step-state { color: #3D8B5C; }
+/* Now — the one step the member is standing on. */
+.step-now { background: #FFFFFF; border-color: #34204E; box-shadow: 0 2px 14px rgba(52, 32, 78, 0.08); }
+.step-now .step-num { background: #F0C14E; color: #34204E; }
+.step-now .step-icon svg { stroke: #34204E; }
+.step-now .step-state { color: #34204E; }
+/* Later — present but quiet. */
+.step-later { opacity: 0.72; }
+
+/* ── Unlock meter ──────────────────────────────────────────────── */
+.meter-bar {
+  height: 14px;
+  border-radius: 999px;
+  background: #EDE9F4;
+  overflow: hidden;
+  margin: 4px 0 8px;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #F0C14E 0%, #E6A93A 100%);
+  transition: width 400ms ease;
+}
+.meter-legend {
+  display: flex; justify-content: space-between; gap: 12px;
+  font-size: 13px; color: #7F6EB9; font-variant-numeric: tabular-nums;
+  margin-bottom: 10px;
+}
+
+/* ── Benefits + worked example ─────────────────────────────────── */
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+.benefit {
+  padding: 18px;
+  border: 1px solid #E4DFEE;
+  border-radius: 12px;
+  background: #FCFBFE;
+}
+.benefit-tag {
+  display: inline-block; margin-bottom: 8px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: #7F6EB9;
+}
+.benefit h3 {
+  font-family: var(--display); font-size: 1.05rem; font-weight: 400;
+  color: #34204E; margin: 0 0 6px;
+}
+.benefit p { margin: 0; font-size: 14.5px; }
+
+.example {
+  margin-top: 20px;
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: linear-gradient(160deg, #EFEBFF 0%, #FBF9F3 100%);
+  border: 1px solid #E4DFEE;
+}
+.example h3 {
+  font-family: var(--display); font-size: 1.05rem; font-weight: 400;
+  color: #34204E; margin: 0 0 12px;
+}
+.example-flow { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.example-flow li {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+  padding: 9px 0; border-bottom: 1px dashed #DDD5EE;
+}
+.example-flow li:last-child { border-bottom: 0; }
+.example-flow .ex-step { color: #4A3E5D; font-size: 14.5px; }
+.example-flow strong {
+  font-family: var(--display); font-size: 1.15rem; font-weight: 400;
+  color: #34204E; font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.example .hint { margin-top: 10px; }
+
+/* ── Discount slabs ────────────────────────────────────────────── */
+.slabs { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.slabs li {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  padding: 12px 16px; border-radius: 10px; background: #FCFBFE;
+  border: 1px solid #E4DFEE;
+}
+.slab-pct {
+  font-family: var(--display); font-size: 1.25rem; color: #34204E;
+  min-width: 90px; font-variant-numeric: tabular-nums;
+}
+.slab-range { color: #4A3E5D; font-size: 14.5px; }
+
+/* ── FAQ ───────────────────────────────────────────────────────── */
+.faq { margin: 0; display: grid; gap: 2px; }
+.faq-item { padding: 14px 0; border-bottom: 1px solid #EDE9F4; }
+.faq-item:last-child { border-bottom: 0; }
+.faq dt { font-weight: 600; color: #34204E; margin-bottom: 5px; }
+.faq dd { margin: 0; color: #4A3E5D; line-height: 1.55; font-size: 14.5px; }
+
+.join-cta { text-align: center; }
+.join-cta p { max-width: 46ch; margin-inline: auto; }
+
 /* ------------------------------------------------------------------
    TOUCH
    The .thara .btn override above shrinks the compliant global primitive
@@ -213,6 +405,30 @@
   /* Invite field and the leave-confirm pair stop sitting half off the card. */
   .thara .invite-row input { flex-basis: 100%; min-width: 0; }
   .thara .invite-row .btn { width: 100%; }
+}
+
+/* ------------------------------------------------------------------
+   MOBILE — explainer
+   The step row is a 3-column grid (numeral, icon, text); at 360px the
+   text column is left with ~200px and every heading breaks mid-word.
+   Drop the icon column and let the numeral sit beside the heading.
+   ------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .thara-steps .step { grid-template-columns: 30px 1fr; gap: 12px; padding: 14px; }
+  .step-icon { display: none; }
+  .step-num { width: 30px; height: 30px; font-size: 14px; }
+
+  .thara .btn-lg { width: 100%; }
+
+  /* Label and amount stack rather than squeezing the rupee figure into a
+     column narrower than it can print. */
+  .example-flow li { flex-direction: column; align-items: flex-start; gap: 2px; }
+  .example { padding: 16px; }
+
+  .slabs li { gap: 4px; }
+  .slab-pct { min-width: 0; }
+
+  .meter-legend { font-size: 12px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

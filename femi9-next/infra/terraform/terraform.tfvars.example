@@ -57,3 +57,8 @@ email_from        = "" # e.g. "Femi9 <login@femi9.in>" (must be verified in Rese
 # intentionally using Upstash as an alternative/fallback.
 enable_rate_limit_redis = false
 single_nat_gateway      = true  # false = one NAT per AZ (HA egress, higher cost)
+
+# Thara Model (referral + loyalty programme). While false, /thara and every
+# /api/thara route return 404 and the Nav/Footer links stay hidden. Turn it on
+# in staging to exercise enrolment, unlocking and referral earning end to end.
+thara_enabled = false

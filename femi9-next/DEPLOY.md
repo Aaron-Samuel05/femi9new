@@ -66,6 +66,15 @@ routes return 404 when the flag is off. Schema migrations for the
 program ship regardless of the flag and are additive-only; rolling back
 the flag does not require a schema revert.
 
+**Setting it on a deployed environment.** The container reads it from the ECS
+task definition, not from anyone's local `.env`. Set `thara_enabled = true` in
+that environment's `terraform.tfvars` (variable defined in
+`infra/terraform/variables.tf`, injected in `infra/terraform/ecs.tf`) and apply;
+the task definition revision carries `THARA_ENABLED=true` and the service picks
+it up on the next deployment. Symptom of forgetting: `/thara` reports the
+programme as unavailable and the Nav/Footer links never appear, however the app
+is configured locally.
+
 ## First-time Terraform state bootstrap
 
 The state bucket is already bootstrapped for the current AWS account. For a new

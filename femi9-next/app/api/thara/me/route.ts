@@ -1,6 +1,6 @@
 import { handle, ok, unauthorized, notFound } from '@/lib/api'
 import { getSession } from '@/lib/auth'
-import { getMembership } from '@/lib/services/thara'
+import { getMembership, syncTharaActivation } from '@/lib/services/thara'
 import { isTharaEnabled } from '@/lib/thara/feature'
 import { prisma } from '@/lib/db'
 
@@ -13,6 +13,10 @@ export async function GET() {
 
     const session = await getSession()
     if (!session) return unauthorized()
+
+    // Same self-heal as /summary: a membership whose qualifying order predates
+    // enrolment is promoted before we report its status.
+    await syncTharaActivation(session.sub)
 
     const m = await getMembership(session.sub)
     if (!m) return ok({ enrolled: false })

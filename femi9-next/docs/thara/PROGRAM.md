@@ -64,6 +64,13 @@ The Thara Model is Femi9's **opt-in customer referral and loyalty program**. Any
 
 **Activation is server-authoritative.** The promotion `purchase_pending → active` runs inside the same database transaction as `markOrderPaid`, so a member can never end up "active" with no qualifying order behind it. Similarly, the qualifying order is stamped on the membership row (`qualifyingOrderId`) inside that same transaction.
 
+**Activation also looks backwards.** The payment path only fires for orders paid *after* the membership exists, and the ordinary sequence is the other way round: the shopper buys, then finds the programme from her account page. `activateFromPastOrders(tx, userId)` asks the mirror question — "this membership is `purchase_pending`, is there already a paid order ≥ ₹3,000 behind it?" — and promotes if so, stamping the **oldest** qualifying order as `qualifyingOrderId`. It runs:
+
+- inside `enrollUser`, so joining after a qualifying purchase unlocks immediately;
+- via `syncTharaActivation(userId)` on `GET /api/thara/me` and `GET /api/thara/summary`, so a member already stuck in `purchase_pending` repairs herself the next time she opens the dashboard.
+
+It only ever moves `purchase_pending → active`; `suspended`, `deactivated` and `active` rows are untouched, and it skips any order already stamped on another membership (`qualifyingOrderId` is `@unique`).
+
 ---
 
 ## 4. Referral link and attribution flow
@@ -392,6 +399,9 @@ Everything below is meant to be **admin-configurable** without a code deploy (bu
   - `getMembership(userId)`
   - `attributeReferralIfPresent(user, ctx)` — signup-hook helper
   - `activateAndLockIfEligible(tx, orderId)` — called from `markOrderPaid`
+  - `activateFromPastOrders(tx, userId)` — backward-looking activation (§3)
+  - `syncTharaActivation(userId)` — best-effort route-level wrapper for the above
+  - `getUnlockProgress(userId)` — biggest single paid order vs the ₹3,000 bar, for the dashboard meter
   - `suspendMembership(id, reason)` / `unsuspendMembership(id)`
   - `getMembershipById(id)` / `listMemberships(filter)`
   - `THARA_QUALIFYING_MIN_PAISE = 300_000`
@@ -428,6 +438,12 @@ Everything below is meant to be **admin-configurable** without a code deploy (bu
 ---
 
 ## 13. Common questions
+
+**Q — I placed two orders and I'm still not unlocked. Why?**
+The rule measures a **single order**, not a running total: one order of ≥ ₹3,000 unlocks; two ₹1,500 orders never do. `/thara` shows the member's **biggest single paid order** against the ₹3,000 bar for exactly this reason, and says in as many words that orders are not added together.
+
+**Q — I bought first and joined afterwards. Does my old order count?**
+Yes. `activateFromPastOrders` (§3) promotes you at enrolment off your order history, and the oldest qualifying paid order is stamped as the one that unlocked you. You do not have to buy again.
 
 **Q — What if a member enrols but never buys anything?**
 They stay in `purchase_pending` forever. Their referral link works and can capture attributions, but the moment the referred friend pays, only the friend's order+lock+activation happens — the referrer earns nothing because they themselves are not yet `active`. If the referrer later completes their own ≥ ₹3,000 order, they become `active` — and **future** downline orders start earning, but past ones don't backfill.
