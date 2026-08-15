@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client'
 import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
 import { requireAdmin } from '@/lib/admin-auth'
 import {
+  UnknownPriceTargetError,
   ZoneInputSchema,
   ZoneNameTakenError,
   createZone,
@@ -19,6 +20,7 @@ import {
 /** Map known name-collision failures to a friendly 400 the form can show. */
 function mapZoneError(err: unknown) {
   if (err instanceof ZoneNameTakenError) return badRequest(err.message)
+  if (err instanceof UnknownPriceTargetError) return badRequest(err.message)
   // DB @unique backstop for a race between the check and the insert.
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
     return badRequest('That zone name is already in use')

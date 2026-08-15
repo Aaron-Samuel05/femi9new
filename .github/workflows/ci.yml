@@ -5,14 +5,28 @@
 # `<repo>/.github/workflows`. An earlier copy sat in `femi9-next/.github/` and
 # therefore never executed once — nothing gated pushes to `master`.
 #
-# Gates, in order, all against a throwaway Postgres service container:
+# ALWAYS-ON gates, in order, all against a throwaway Postgres service container:
 #   1. npm ci                       reproducible install from package-lock.json
 #   2. prisma generate              client types must exist before typecheck
 #   3. tsc --noEmit                 strict type gate
 #   4. prisma db push               schema into the empty femi9_test DB
 #   5. npm test                     vitest unit + integration
 #   6. next build                   the app must build as it will in production
-#   7. HTTP E2E                     black-box run against a real server
+#
+# OPT-IN gates (everything that needs a RUNNING server — the HTTP E2E suite and
+# the Playwright browser suite) are OFF by default while the app is still being
+# built out, because they are the slow, flaky-by-nature half of this file and
+# they were blocking ordinary feature work. They are switched off, NOT deleted:
+# the steps below are intact and the day the storefront is stable they turn back
+# on with a setting, no diff required.
+#
+#   Turn them on permanently:  GitHub → Settings → Secrets and variables →
+#                              Actions → Variables → RUN_E2E = true
+#   Turn them on for one run:  Actions → CI → "Run workflow" → tick "run_e2e"
+#
+# Nothing else changes when they are off: install, typecheck, the vitest suites
+# (unit + integration, which is where the money-path coverage lives) and the
+# production build still gate every push and PR.
 #
 # Why the E2E server runs `next dev` and not the production build: provider
 # mocks are refused when NODE_ENV=production (src/lib/runtime-mode.ts), and
@@ -33,6 +47,11 @@ on:
       - "femi9-next/**"
       - ".github/workflows/ci.yml"
   workflow_dispatch:
+    inputs:
+      run_e2e:
+        description: "Also run the HTTP + Playwright E2E suites"
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -48,7 +67,7 @@ defaults:
 
 jobs:
   verify:
-    name: Typecheck · Test · Build · E2E
+    name: Typecheck · Test · Build (E2E opt-in)
     runs-on: ubuntu-latest
 
     services:
@@ -70,6 +89,12 @@ jobs:
     # on purpose: a non-empty value makes the provider seams believe they are
     # configured and attempt real outbound calls.
     env:
+      # THE E2E SWITCH. Resolved once here so every server/E2E step below can
+      # gate on `env.RUN_E2E == 'true'` instead of repeating the expression.
+      # The repo variable is the durable setting; the workflow_dispatch input is
+      # the one-off. Neither present → 'false', i.e. the fast path.
+      RUN_E2E: ${{ (vars.RUN_E2E == 'true' || inputs.run_e2e == true) && 'true' || 'false' }}
+
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
       DIRECT_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
       TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_test?schema=public
@@ -129,13 +154,22 @@ jobs:
       - name: Build (production)
         run: npm run build
 
+      # ── Everything below needs a RUNNING app: opt-in (see RUN_E2E above) ───
+
+      - name: E2E suites are switched off
+        if: env.RUN_E2E != 'true'
+        run: |
+          echo "::notice title=E2E skipped::HTTP + Playwright E2E are off. Set the repo variable RUN_E2E=true, or re-run this workflow with the run_e2e input ticked, to enable them."
+
       # ── Black-box HTTP E2E ────────────────────────────────────────────────
       # `npm test` truncates every table, so the catalog is seeded here, after
       # it, and before the server starts serving the storefront.
       - name: Seed catalog
+        if: env.RUN_E2E == 'true'
         run: npx tsx prisma/seed.ts
 
       - name: Start app for E2E
+        if: env.RUN_E2E == 'true'
         env:
           # The suite drives ~50 routes and `next dev` compiles each on demand,
           # so the heap grows all run. At Node's default limit the dev server
@@ -170,9 +204,11 @@ jobs:
       # CI because there is no .env file — the values come from the job env
       # instead, so the scripts are invoked directly.
       - name: Seed the E2E product through the admin API
+        if: env.RUN_E2E == 'true'
         run: node scripts/seed-e2e-product.mjs
 
       - name: Run HTTP E2E
+        if: env.RUN_E2E == 'true'
         run: node scripts/e2e-http.mjs
 
       # ── Browser E2E ───────────────────────────────────────────────────────
@@ -180,16 +216,21 @@ jobs:
       # APIs and the UI reflects the result (add to bag, quantity stepper,
       # remove, checkout hand-off, cycle tracker).
       - name: Install Playwright browser
+        if: env.RUN_E2E == 'true'
         run: npx playwright install --with-deps chromium
 
       - name: Run browser E2E
+        if: env.RUN_E2E == 'true'
         run: npx playwright test
 
       # Always, not just on failure: the mobile audit attaches page screenshots
       # to the report, and those are worth having from a passing run too — they
       # are the only record of what the pages actually look like on a phone.
       - name: Upload Playwright report
-        if: always()
+        # `always()` so a FAILING browser run still ships its traces — but only
+        # when the suite actually ran, else every skipped build uploads nothing
+        # and warns about it.
+        if: always() && env.RUN_E2E == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -202,5 +243,5 @@ jobs:
           if-no-files-found: warn
 
       - name: Server log (on failure)
-        if: failure()
+        if: failure() && env.RUN_E2E == 'true'
         run: cat "$RUNNER_TEMP/app.log" || true

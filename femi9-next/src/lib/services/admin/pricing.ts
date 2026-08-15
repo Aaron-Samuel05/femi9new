@@ -5,18 +5,50 @@ import { prisma } from '@/lib/db'
 
 /**
  * Admin pricing-zone service (write side; the read-side resolver lives in
- * ../pricing.ts). A PriceZone is a named bucket carrying a single discount off
- * the base price; STATE regions are attached via ZoneRegion. Two invariants
- * drive the design:
+ * ../pricing.ts). A PriceZone is a named bucket that prices two ways — a blanket
+ * `discountPct`, plus optional EXACT prices for individual products/variants
+ * (the custom price setter) that win wherever they are set. STATE regions are
+ * attached via ZoneRegion. Three invariants drive the design:
  *  - a region belongs to at most ONE zone (the @@unique([kind,value]) on
  *    ZoneRegion) — so attaching a state to a zone RE-POINTS it away from
  *    whichever zone held it before, never duplicates it.
  *  - exactly one zone is the `isDefault` fallback — setting a new default unsets
  *    the old one atomically, and the default can never be deleted.
+ *  - a product/variant has at most one custom price per zone, and the sent list
+ *    is the whole truth: anything the admin cleared is DELETED, so a price can
+ *    always be taken back to "follow the discount".
  */
 
 // ─────────────────────────── Validation (zod) ───────────────────────────
 // z.coerce so the JSON payload from an <input> ("10") is accepted alongside 10.
+
+/**
+ * A custom price is whole rupees, at least ₹1. It is NOT capped at the standard
+ * price: a zone may be priced above it, which is the point of typing a price
+ * rather than a discount. ₹0 is refused — a free product is never what an admin
+ * meant to type, and it would be indistinguishable from an empty box.
+ */
+const CustomPrice = z.coerce
+  .number()
+  .int('Whole rupees only')
+  .min(1, 'Price must be at least ₹1')
+  .max(1_000_000, 'Price is too large')
+
+/**
+ * The zone's custom prices, as two lists keyed by what they price. Sending a
+ * list REPLACES that list wholesale (see `reconcilePrices`); omitting `prices`
+ * leaves existing custom prices untouched.
+ */
+export const ZonePricesSchema = z.object({
+  products: z
+    .array(z.object({ productId: z.string().trim().min(1), price: CustomPrice }))
+    .default([]),
+  variants: z
+    .array(z.object({ variantId: z.string().trim().min(1), price: CustomPrice }))
+    .default([]),
+})
+
+export type ZonePrices = z.infer<typeof ZonePricesSchema>
 
 export const ZoneInputSchema = z.object({
   name: z.string().trim().min(1, 'Name is required').max(60, 'Name is too long'),
@@ -30,6 +62,9 @@ export const ZoneInputSchema = z.object({
   isDefault: z.boolean().default(false),
   // State names attached to this zone (kind 'state').
   states: z.array(z.string().trim().min(1)).default([]),
+  // Optional so existing callers (and the tests) can create a zone that prices
+  // purely by percentage.
+  prices: ZonePricesSchema.optional(),
 })
 
 export type ZoneInput = z.infer<typeof ZoneInputSchema>
@@ -46,6 +81,7 @@ export const ZonePatchSchema = z.object({
   active: z.boolean().optional(),
   isDefault: z.boolean().optional(),
   states: z.array(z.string().trim().min(1)).optional(),
+  prices: ZonePricesSchema.optional(),
 })
 
 export type ZonePatch = z.infer<typeof ZonePatchSchema>
@@ -85,6 +121,18 @@ export class CannotUnsetDefaultError extends Error {
   }
 }
 
+/**
+ * Thrown when a custom price names a product/variant that no longer exists —
+ * an editor tab left open across a catalogue change. The route maps it to a 400
+ * telling the admin to refresh, rather than a 500 from the FK.
+ */
+export class UnknownPriceTargetError extends Error {
+  constructor(kind: 'product' | 'variant') {
+    super(`A custom price refers to a ${kind} that no longer exists — refresh and try again`)
+    this.name = 'UnknownPriceTargetError'
+  }
+}
+
 /** True when `err` is a P2002 unique violation involving the given column. */
 function isUniqueOn(err: unknown, field: string): boolean {
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -97,11 +145,20 @@ function isUniqueOn(err: unknown, field: string): boolean {
 
 // ─────────────────────────────── Reads ──────────────────────────────────
 
-/** Every zone in display order, with its attached STATE names + a region count. */
+/**
+ * Every zone in display order, with its attached STATE names, a region count and
+ * the custom prices set for it (so the editor can prefill the price boxes and
+ * the table can say how many products are priced by hand).
+ */
 export async function listZones() {
   const zones = await prisma.priceZone.findMany({
     orderBy: { position: 'asc' },
-    include: { regions: true, _count: { select: { regions: true } } },
+    include: {
+      regions: true,
+      productPrices: { select: { productId: true, price: true } },
+      variantPrices: { select: { variantId: true, price: true } },
+      _count: { select: { regions: true } },
+    },
   })
   return zones.map((zone) => ({
     id: zone.id,
@@ -114,8 +171,44 @@ export async function listZones() {
     updatedAt: zone.updatedAt,
     states: zone.regions.filter((r) => r.kind === 'state').map((r) => r.value),
     regionCount: zone._count.regions,
+    prices: {
+      products: zone.productPrices.map((p) => ({ productId: p.productId, price: p.price })),
+      variants: zone.variantPrices.map((v) => ({ variantId: v.variantId, price: v.price })),
+    },
   }))
 }
+
+/**
+ * The catalogue the custom-price editor prices against: every product with its
+ * variants and their STANDARD prices, so each box can show what it is
+ * overriding.
+ *
+ * DRAFT products and INACTIVE variants are included, flagged rather than hidden.
+ * They are not sellable today, but a price may already be set against one (a
+ * product taken to draft after it was priced), and the editor sends the boxes it
+ * rendered as the complete truth — so anything it hid would be silently deleted
+ * on the next save and lost the moment the product went live again. Archived
+ * products are the one exception: those are gone for good.
+ */
+export async function listPricingCatalog() {
+  const products = await prisma.product.findMany({
+    where: { status: { not: 'archived' } },
+    orderBy: [{ status: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      basePrice: true,
+      status: true,
+      variants: {
+        orderBy: { price: 'asc' },
+        select: { id: true, label: true, price: true, active: true },
+      },
+    },
+  })
+  return products
+}
+
+export type PricingCatalogProduct = Awaited<ReturnType<typeof listPricingCatalog>>[number]
 
 // ─────────────────────────────── Writes ─────────────────────────────────
 
@@ -145,6 +238,61 @@ async function reconcileStates(tx: Prisma.TransactionClient, zoneId: string, sta
   }
 }
 
+/**
+ * Make this zone's custom prices exactly `prices`.
+ *
+ * The sent lists are the whole truth, deliberately: the editor renders a box per
+ * product/variant and sends only the filled ones, so a box the admin CLEARED
+ * must delete its row — that is the only way to put an item back on the zone's
+ * percentage. A last-write-wins upsert keyed by [zoneId, productId] /
+ * [zoneId, variantId] makes a double-submit idempotent rather than a duplicate.
+ *
+ * Later entries for the same target win, so a payload that somehow lists a
+ * product twice resolves to one row instead of failing on the unique index.
+ */
+async function reconcilePrices(tx: Prisma.TransactionClient, zoneId: string, prices: ZonePrices) {
+  const products = new Map(prices.products.map((p) => [p.productId, p.price]))
+  const variants = new Map(prices.variants.map((v) => [v.variantId, v.price]))
+
+  // A stale editor tab can carry an id for something since deleted. Checked here
+  // so it surfaces as a friendly 400 instead of a raw FK violation (500) that
+  // also aborts the rest of the save.
+  const productIds = [...products.keys()]
+  const variantIds = [...variants.keys()]
+  if (productIds.length > 0) {
+    const found = await tx.product.count({ where: { id: { in: productIds } } })
+    if (found !== productIds.length) throw new UnknownPriceTargetError('product')
+  }
+  if (variantIds.length > 0) {
+    const found = await tx.productVariant.count({ where: { id: { in: variantIds } } })
+    if (found !== variantIds.length) throw new UnknownPriceTargetError('variant')
+  }
+
+  for (const [productId, price] of products) {
+    await tx.zoneProductPrice.upsert({
+      where: { zoneId_productId: { zoneId, productId } },
+      create: { zoneId, productId, price },
+      update: { price },
+    })
+  }
+  // Everything the admin cleared goes away. The filter is built up rather than
+  // passed as `notIn: []`, whose compiled meaning is not worth relying on.
+  const staleProducts: Prisma.ZoneProductPriceWhereInput = { zoneId }
+  if (productIds.length > 0) staleProducts.productId = { notIn: productIds }
+  await tx.zoneProductPrice.deleteMany({ where: staleProducts })
+
+  for (const [variantId, price] of variants) {
+    await tx.zoneVariantPrice.upsert({
+      where: { zoneId_variantId: { zoneId, variantId } },
+      create: { zoneId, variantId, price },
+      update: { price },
+    })
+  }
+  const staleVariants: Prisma.ZoneVariantPriceWhereInput = { zoneId }
+  if (variantIds.length > 0) staleVariants.variantId = { notIn: variantIds }
+  await tx.zoneVariantPrice.deleteMany({ where: staleVariants })
+}
+
 export async function createZone(input: ZoneInput) {
   try {
     return await prisma.$transaction(async (tx) => {
@@ -161,6 +309,7 @@ export async function createZone(input: ZoneInput) {
         },
       })
       await reconcileStates(tx, zone.id, input.states)
+      if (input.prices) await reconcilePrices(tx, zone.id, input.prices)
       return zone
     })
   } catch (err) {
@@ -197,6 +346,9 @@ export async function updateZone(id: string, patch: ZonePatch) {
 
       // Only reconcile when the caller actually sent a state list.
       if (patch.states !== undefined) await reconcileStates(tx, id, patch.states)
+      // Same for custom prices: a PATCH that omits `prices` leaves them alone,
+      // one that sends them replaces the lot.
+      if (patch.prices !== undefined) await reconcilePrices(tx, id, patch.prices)
 
       return zone
     })

@@ -98,6 +98,13 @@ export default async function CheckoutPage() {
   const shipping = cart.subtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
   const total = cart.subtotal + shipping
 
+  // How much the zone took OFF. A zone can now also price an item by hand, and a
+  // typed price is not guaranteed to be lower than the standard one — so this is
+  // computed, not assumed. When it isn't positive there is nothing to strike
+  // through and the summary simply quotes the zone price as the subtotal.
+  const zoneSaving = cart.baseSubtotal - cart.subtotal
+  const showsSaving = cart.zone !== null && zoneSaving > 0
+
   return (
     <main className="wrap section" style={{ maxWidth: 1040 }}>
       <span className="eyebrow">Checkout</span>
@@ -181,13 +188,20 @@ export default async function CheckoutPage() {
           </ul>
 
           <div style={{ borderTop: '1px solid var(--line-soft)', margin: '1.2rem 0', paddingTop: '1rem', display: 'grid', gap: '.55rem' }}>
-            <Row label="Subtotal" value={rupees(cart.zone ? cart.baseSubtotal : cart.subtotal)} />
+            <Row label="Subtotal" value={rupees(showsSaving ? cart.baseSubtotal : cart.subtotal)} />
             {/* A regional discount is money off her order; she should see it
-                named, not discover a smaller number at the Razorpay sheet. */}
-            {cart.zone ? (
+                named, not discover a smaller number at the Razorpay sheet.
+                The percentage is only named when it is what actually priced the
+                cart — with a custom price set for an item it is not, and
+                printing it would be a promise the total doesn't keep. */}
+            {showsSaving && cart.zone ? (
               <Row
-                label={`${cart.zone.name} pricing (−${cart.zone.discountPct}%)`}
-                value={`− ${rupees(cart.baseSubtotal - cart.subtotal)}`}
+                label={
+                  cart.zone.custom || cart.zone.discountPct <= 0
+                    ? `${cart.zone.name} pricing`
+                    : `${cart.zone.name} pricing (−${cart.zone.discountPct}%)`
+                }
+                value={`− ${rupees(zoneSaving)}`}
                 muted
               />
             ) : null}

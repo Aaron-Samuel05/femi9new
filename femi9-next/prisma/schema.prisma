@@ -119,12 +119,13 @@ model Product {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  variants  ProductVariant[]
-  images    ProductImage[]
-  features  ProductFeature[]
-  specs     ProductSpec[]
-  reviews   Review[]
-  wallPosts WallPost[]
+  variants   ProductVariant[]
+  images     ProductImage[]
+  features   ProductFeature[]
+  specs      ProductSpec[]
+  reviews    Review[]
+  wallPosts  WallPost[]
+  zonePrices ZoneProductPrice[]
 }
 
 model ProductVariant {
@@ -143,6 +144,7 @@ model ProductVariant {
   cartItems     CartItem[]
   orderItems    OrderItem[]
   subscriptions Subscription[]
+  zonePrices    ZoneVariantPrice[]
 
   @@index([productId])
 }
@@ -689,8 +691,15 @@ model Setting {
 // discount off the base price. Regions are attached via ZoneRegion — STATES
 // now, DISTRICTS / PINCODE prefixes later WITHOUT a schema change. Pricing is
 // per-zone and resolved server-side; the isDefault zone is the fallback shown
-// when a visitor's location is unknown. (Per-product-per-zone overrides can be
-// added later as a separate table without touching this.)
+// when a visitor's location is unknown.
+//
+// A zone prices in one of two ways, and the second one WINS where it is set:
+//   1. `discountPct` — a blanket percentage off every product in the zone.
+//   2. ZoneProductPrice / ZoneVariantPrice — an EXACT rupee price the admin
+//      typed for one product (its card price) or one variant (what a cart line
+//      is charged). These are the "custom price setter": where a row exists the
+//      percentage is not consulted at all, so a zone can be priced item by item
+//      rather than only marked down as a whole.
 
 enum RegionKind {
   state
@@ -708,7 +717,9 @@ model PriceZone {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  regions ZoneRegion[]
+  regions       ZoneRegion[]
+  productPrices ZoneProductPrice[]
+  variantPrices ZoneVariantPrice[]
 }
 
 model ZoneRegion {
@@ -720,6 +731,36 @@ model ZoneRegion {
 
   @@unique([kind, value]) // a region maps to at most one zone (no ambiguity)
   @@index([zoneId])
+}
+
+// An exact price for ONE PRODUCT in one zone — the number on the card and the
+// product page's headline. It does NOT cascade down to the product's variants:
+// a pack of 9 and a pack of 18 are different money, so each variant carries its
+// own row below. Deleting the product or the zone removes the override with it.
+model ZoneProductPrice {
+  id        String    @id @default(cuid())
+  zoneId    String
+  zone      PriceZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  price     Int // whole rupees, as typed by the admin
+
+  @@unique([zoneId, productId]) // one price per product per zone
+  @@index([productId])
+}
+
+// An exact price for ONE VARIANT in one zone. This is the row that decides real
+// money: cart lines, checkout and subscription renewals all price a variant.
+model ZoneVariantPrice {
+  id        String         @id @default(cuid())
+  zoneId    String
+  zone      PriceZone      @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  price     Int // whole rupees, as typed by the admin
+
+  @@unique([zoneId, variantId]) // one price per variant per zone
+  @@index([variantId])
 }
 
 // ─────────────────────────── Thara Model ───────────────────────────

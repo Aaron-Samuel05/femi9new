@@ -308,7 +308,7 @@ async function runRenewalTxn(
     // The two discounts compose in a fixed order — region first, then subscribe —
     // so `subtotal` is the regional shelf price and `discount` stays exactly the
     // subscribe saving the customer was promised.
-    const fullUnit = applyZonePrice(variant.price, zone)
+    const fullUnit = applyZonePrice(variant.price, zone, { variantId: variant.id })
     const discountedUnit = Math.round((fullUnit * (100 - subscribeSavePct)) / 100)
     const subtotal = fullUnit * qty
     const discount = (fullUnit - discountedUnit) * qty

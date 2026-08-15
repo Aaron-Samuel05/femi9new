@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/admin-auth'
 import {
   CannotDeleteDefaultError,
   CannotUnsetDefaultError,
+  UnknownPriceTargetError,
   ZoneNameTakenError,
   ZonePatchSchema,
   deleteZone,
@@ -22,6 +23,7 @@ import {
 function mapZoneError(err: unknown) {
   if (err instanceof CannotDeleteDefaultError) return badRequest(err.message)
   if (err instanceof CannotUnsetDefaultError) return badRequest(err.message)
+  if (err instanceof UnknownPriceTargetError) return badRequest(err.message)
   if (err instanceof ZoneNameTakenError) return badRequest(err.message)
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') return badRequest('That zone name is already in use')

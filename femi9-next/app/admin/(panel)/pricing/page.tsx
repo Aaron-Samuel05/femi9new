@@ -1,13 +1,17 @@
-import { listZones } from '@/lib/services/admin/pricing'
-import PricingZonesScreen, { type ZoneRow } from './_editor'
+import { listPricingCatalog, listZones } from '@/lib/services/admin/pricing'
+import PricingZonesScreen, { type CatalogProduct, type ZoneRow } from './_editor'
 
 /**
- * Pricing Zones — set a regional discount off the standard price.
+ * Pricing Zones — what a shopper in a given region is charged.
  *
- * Server component: it does the first read through `listZones` (the admin
- * pricing service) and hands plain, serialisable rows to the client screen,
- * which owns all the interactivity (create / edit / delete via the
- * /api/admin/pricing-zones endpoints).
+ * A zone prices two ways and the second wins where it is set: a blanket
+ * percentage off every product, plus EXACT prices typed for individual products
+ * or variants (the custom price setter). Both are edited on the same screen.
+ *
+ * Server component: it does the first read through the admin pricing service —
+ * the zones and the catalogue those custom prices are set against — and hands
+ * plain, serialisable rows to the client screen, which owns all the
+ * interactivity (create / edit / delete via /api/admin/pricing-zones).
  *
  * `listZones` may expose a zone's attached states as a flat `states` array or as
  * `regions: [{ kind, value }]`; we flatten to the state values here so the
@@ -28,6 +32,10 @@ interface ServiceZone {
   position?: number
   states?: string[]
   regions?: { kind: string; value: string }[]
+  prices?: {
+    products?: { productId: string; price: number }[]
+    variants?: { variantId: string; price: number }[]
+  }
 }
 
 function toRow(z: ServiceZone): ZoneRow {
@@ -39,14 +47,36 @@ function toRow(z: ServiceZone): ZoneRow {
     active: z.active,
     position: z.position ?? 0,
     states: z.states ?? (z.regions ?? []).filter((r) => r.kind === 'state').map((r) => r.value),
+    // Flattened to plain id → price maps: that is how the editor's inputs are
+    // keyed, and it keeps the client from re-deriving the same lookup per render.
+    productPrices: Object.fromEntries((z.prices?.products ?? []).map((p) => [p.productId, p.price])),
+    variantPrices: Object.fromEntries((z.prices?.variants ?? []).map((v) => [v.variantId, v.price])),
   }
 }
 
 export default async function PricingZonesPage() {
-  const zones = (await listZones()) as ServiceZone[]
+  const [zones, catalog] = await Promise.all([
+    listZones() as Promise<ServiceZone[]>,
+    listPricingCatalog(),
+  ])
   const rows: ZoneRow[] = zones
     .map(toRow)
     .sort((a, b) => a.position - b.position || a.name.localeCompare(b.name))
+
+  const products: CatalogProduct[] = catalog.map((p) => ({
+    id: p.id,
+    name: p.name,
+    basePrice: p.basePrice,
+    // Not-yet-live rows are shown, flagged: a price may already be set against
+    // one, and the editor must never hide a box it would then delete.
+    draft: p.status !== 'active',
+    variants: p.variants.map((v) => ({
+      id: v.id,
+      label: v.label,
+      price: v.price,
+      inactive: !v.active,
+    })),
+  }))
 
   return (
     <>
@@ -65,11 +95,12 @@ export default async function PricingZonesPage() {
       </div>
 
       <p className="adm-help" style={{ maxWidth: 640, marginBottom: 20 }}>
-        Set a regional discount off the standard price. The Default zone is shown when a shopper’s
-        location is unknown. (Storefront auto-detection is wired in a later phase.)
+        Set what shoppers in a region pay: a discount off every product, and/or an exact price for
+        individual products. A custom price wins over the discount wherever you set one. The Default
+        zone is used when a shopper’s location is unknown.
       </p>
 
-      <PricingZonesScreen initial={rows} />
+      <PricingZonesScreen initial={rows} catalog={products} />
     </>
   )
 }

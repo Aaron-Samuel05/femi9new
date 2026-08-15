@@ -11,9 +11,18 @@ import { prisma } from '@/lib/db'
  * `isDefault` zone (standard price) when nothing matches — so an unknown
  * location always gets the standard price, never a broken one.
  *
- * The golden rule (see the proposal) is enforced here structurally: zones only
- * ever carry a *discount*, so a resolved price can only match or beat the base.
- * The admin never expresses a surcharge.
+ * A zone prices in one of two ways:
+ *
+ *   discountPct  — a blanket percentage off every product in the zone.
+ *   overrides    — an EXACT rupee price the admin typed for one product or one
+ *                  variant (ZoneProductPrice / ZoneVariantPrice). Where an
+ *                  override exists the percentage is not consulted at all.
+ *
+ * A percentage can only ever mark down, but a typed price is whatever the admin
+ * typed — so unlike the discount-only design this replaced, a zone price is no
+ * longer guaranteed to be ≤ the standard price. Every display that shows "you
+ * saved X" must therefore check that the number actually moved DOWN rather than
+ * assume it (see `getCart`, which only reports a zone when it did).
  *
  * Two entry points, and the difference matters:
  *
@@ -30,11 +39,37 @@ import { prisma } from '@/lib/db'
  * charged less. Every read path now goes through a zone.
  */
 
+/**
+ * The exact prices an admin typed for this zone, keyed by what they price.
+ * Absent keys fall through to `discountPct`.
+ */
+export interface ZoneOverrides {
+  /** productId → the card / headline price for that product in this zone. */
+  products: Record<string, number>
+  /** variantId → what a cart line for that variant is charged in this zone. */
+  variants: Record<string, number>
+}
+
 export interface ResolvedZone {
   id: string
   name: string
   discountPct: number
   isDefault: boolean
+  overrides: ZoneOverrides
+}
+
+/**
+ * WHAT is being priced, so a custom price can be found for it.
+ *
+ * A product override prices the product's headline only — it deliberately does
+ * NOT cascade to the variants, because "₹180 for this product" cannot mean the
+ * same thing for a 9-pack and an 18-pack. Pass `variantId` when pricing a
+ * variant and `productId` when pricing the card; passing both would be a
+ * category error, so callers pass exactly one.
+ */
+export interface PriceTarget {
+  productId?: string | null
+  variantId?: string | null
 }
 
 export interface LocationSignal {
@@ -43,12 +78,15 @@ export interface LocationSignal {
   state?: string | null
 }
 
+/** A zone with no custom prices — every product follows `discountPct`. */
+export const NO_OVERRIDES: ZoneOverrides = { products: {}, variants: {} }
+
 /**
  * A Prisma client or an open transaction — callers already inside a
  * `$transaction` pass `tx` so this read joins their transaction instead of
  * borrowing a second pooled connection while the first is held.
  */
-type Db = Pick<typeof prisma, 'zoneRegion' | 'priceZone'>
+type Db = Pick<typeof prisma, 'zoneRegion' | 'priceZone' | 'zoneProductPrice' | 'zoneVariantPrice'>
 
 /** Resolve the applicable zone for a location, or the default zone, or null. */
 export async function resolveZone(signal: LocationSignal, db: Db = prisma): Promise<ResolvedZone | null> {
@@ -75,16 +113,88 @@ export async function resolveZone(signal: LocationSignal, db: Db = prisma): Prom
         name: region.zone.name,
         discountPct: region.zone.discountPct,
         isDefault: region.zone.isDefault,
+        overrides: await loadOverrides(region.zone.id, db),
       }
     }
   }
 
   const def = await db.priceZone.findFirst({ where: { isDefault: true, active: true } })
-  return def ? { id: def.id, name: def.name, discountPct: def.discountPct, isDefault: true } : null
+  return def
+    ? {
+        id: def.id,
+        name: def.name,
+        discountPct: def.discountPct,
+        isDefault: true,
+        overrides: await loadOverrides(def.id, db),
+      }
+    : null
 }
 
-/** Apply a zone's discount to a base price (whole rupees). */
-export function applyZonePrice(basePrice: number, zone: { discountPct: number } | null): number {
+/**
+ * Every custom price the admin typed for this zone, as two flat maps.
+ *
+ * Read in one go rather than per line: a cart of six lines would otherwise cost
+ * six round trips, and both tables hold at most (zones × catalogue) rows. The
+ * two reads are sequential on purpose — `db` may be an interactive transaction
+ * client, which owns a single connection.
+ */
+async function loadOverrides(zoneId: string, db: Db): Promise<ZoneOverrides> {
+  const productRows = await db.zoneProductPrice.findMany({
+    where: { zoneId },
+    select: { productId: true, price: true },
+  })
+  const variantRows = await db.zoneVariantPrice.findMany({
+    where: { zoneId },
+    select: { variantId: true, price: true },
+  })
+
+  const products: Record<string, number> = {}
+  for (const r of productRows) products[r.productId] = r.price
+  const variants: Record<string, number> = {}
+  for (const r of variantRows) variants[r.variantId] = r.price
+  return { products, variants }
+}
+
+/**
+ * The custom price set for `target` in this zone, or null when the zone prices
+ * it by percentage. A variant is never priced off its product's override — see
+ * `PriceTarget`.
+ */
+export function zoneCustomPrice(
+  zone: { overrides?: ZoneOverrides | null } | null,
+  target?: PriceTarget,
+): number | null {
+  const overrides = zone?.overrides
+  if (!overrides || !target) return null
+
+  if (target.variantId) {
+    const price = overrides.variants[target.variantId]
+    return typeof price === 'number' ? price : null
+  }
+  if (target.productId) {
+    const price = overrides.products[target.productId]
+    return typeof price === 'number' ? price : null
+  }
+  return null
+}
+
+/**
+ * The price to charge/show for `basePrice` in this zone: the custom price the
+ * admin typed for `target` if there is one, otherwise the base with the zone's
+ * percentage taken off.
+ *
+ * `target` is optional so a caller with nothing to key on (a bare amount) still
+ * gets the percentage behaviour, but every catalogue/cart/order path passes it —
+ * omitting it silently downgrades a custom price back to the discount.
+ */
+export function applyZonePrice(
+  basePrice: number,
+  zone: { discountPct: number; overrides?: ZoneOverrides | null } | null,
+  target?: PriceTarget,
+): number {
+  const custom = zoneCustomPrice(zone, target)
+  if (custom !== null) return Math.max(0, Math.round(custom))
+
   const pct = Math.max(0, Math.min(100, zone?.discountPct ?? 0))
   return Math.round((basePrice * (100 - pct)) / 100)
 }

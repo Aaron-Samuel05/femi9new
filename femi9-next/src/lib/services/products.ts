@@ -12,10 +12,11 @@ import type { ProductExtra } from '@/data/productDetail'
  * `id` maps to the product `slug` (which we kept equal to the original id), so
  * existing /product/:id links keep working.
  *
- * Every price leaving this service is a ZONE price. The catalogue used to print
- * `variant.price` raw while checkout charged the regional price, so a shopper in
- * a discounted state was quoted one number on the card and a different one at
- * the payment sheet.
+ * Every price leaving this service is a ZONE price — the zone's custom price for
+ * that product/variant when the admin set one, else its percentage discount. The
+ * catalogue used to print `variant.price` raw while checkout charged the regional
+ * price, so a shopper in a discounted state was quoted one number on the card and
+ * a different one at the payment sheet.
  */
 
 export interface Variant {
@@ -69,17 +70,21 @@ function loadRows() {
 
 /** Map a DB row → the `Product` shape the cards/grid expect. */
 function toProduct(row: Row, zone: ResolvedZone | null): ProductWithVariants {
-  const zoned = (price: number) => applyZonePrice(price, zone)
+  // Each price is keyed by WHAT it prices, so a zone's custom price for this
+  // product/variant is found; without the key it would fall back to the zone's
+  // percentage and the card would contradict the cart.
+  const zonedVariant = (price: number, variantId: string) =>
+    applyZonePrice(price, zone, { variantId })
 
   const packs = row.variants
     .filter((v) => v.kind === 'pack')
-    .map((v) => ({ count: v.packCount ?? 0, price: zoned(v.price) }))
+    .map((v) => ({ count: v.packCount ?? 0, price: zonedVariant(v.price, v.id) }))
   const sizes = row.variants.filter((v) => v.kind === 'size').map((v) => v.size ?? v.label)
 
   return {
     id: row.slug,
     name: row.name,
-    price: zoned(row.basePrice),
+    price: applyZonePrice(row.basePrice, zone, { productId: row.id }),
     img: row.images[0]?.url ?? '',
     meta: row.meta,
     flow: row.flow,
@@ -95,7 +100,7 @@ function toProduct(row: Row, zone: ResolvedZone | null): ProductWithVariants {
       label: v.label,
       packCount: v.packCount,
       size: v.size,
-      price: zoned(v.price),
+      price: zonedVariant(v.price, v.id),
       stock: v.stock,
     })),
   }

@@ -230,7 +230,9 @@ export async function placeOrder(
       // Stock is NOT checked here — a read-then-decrement would race two
       // concurrent checkouts into overselling. The reservation below is a
       // conditional atomic decrement that is the sole guard against oversell.
-      const unitPrice = applyZonePrice(variant.price, zone)
+      // Keyed by variant so the zone's custom price (when the admin set one for
+      // this variant) is what is charged — the same number the cart showed.
+      const unitPrice = applyZonePrice(variant.price, zone, { variantId: variant.id })
       const lineTotal = unitPrice * item.qty
       subtotal += lineTotal
       return {

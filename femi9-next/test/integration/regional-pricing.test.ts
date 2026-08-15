@@ -99,7 +99,7 @@ describe('regional pricing reaches the money path', () => {
     expect(cart.subtotal).toBe(order!.subtotal)
     // The standard price is still carried, so the summary can show what was saved.
     expect(cart.baseSubtotal).toBe(398)
-    expect(cart.zone).toEqual({ name: 'Tamil Nadu', discountPct: 10 })
+    expect(cart.zone).toEqual({ name: 'Tamil Nadu', discountPct: 10, custom: false })
     expect(cart.items[0]).toMatchObject({ unitPrice: 179, baseUnitPrice: 199 })
   })
 
@@ -133,6 +133,117 @@ describe('regional pricing reaches the money path', () => {
     const result = await placeOrder(token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
     expect(order!.subtotal).toBe(225)
+  })
+})
+
+/**
+ * The custom price setter: an exact price typed for one variant in one zone.
+ *
+ * The percentage and the typed price are two different mechanisms and the typed
+ * one wins, so these tests pin the properties the discount tests cannot: that a
+ * custom price reaches the CHARGE (not just the display), that it is used even
+ * when the zone's percentage is 0, and that a zone with no custom price for an
+ * item still discounts it as before.
+ */
+describe('per-zone custom prices', () => {
+  beforeEach(async () => {
+    await resetDb()
+    await seedSettings()
+  })
+
+  it('charges the typed price instead of the zone percentage, and shows the same number', async () => {
+    const { tn } = await seedZones() // Tamil Nadu, −10%
+    const { variant } = await makeProduct({ price: 199, stock: 50 })
+    // 10% off 199 would be 179; the admin has typed 149 for this variant.
+    await prisma.zoneVariantPrice.create({
+      data: { zoneId: tn.id, variantId: variant.id, price: 149 },
+    })
+    const token = await cartWith('guest-custom-tn', variant.id, 2)
+
+    const zone = await resolveZone({ state: 'Tamil Nadu' })
+    const cart = await getCart(token, zone)
+    expect(cart.items[0]).toMatchObject({ unitPrice: 149, baseUnitPrice: 199 })
+    expect(cart.subtotal).toBe(298)
+    // The percentage is no longer what priced this cart, and the summary is told
+    // so — printing "−10%" next to a ₹100 saving would be a lie.
+    expect(cart.zone).toEqual({ name: 'Tamil Nadu', discountPct: 10, custom: true })
+
+    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const order = await prisma.order.findUnique({
+      where: { orderNo: result.orderNo },
+      include: { items: true },
+    })
+    expect(order!.items[0]!.unitPrice).toBe(149)
+    expect(order!.subtotal).toBe(298)
+  })
+
+  it('prices by hand in a zone whose percentage is 0', async () => {
+    const { def } = await seedZones() // Default, 0% — the location-unknown fallback
+    const { variant } = await makeProduct({ price: 225, stock: 10 })
+    await prisma.zoneVariantPrice.create({
+      data: { zoneId: def.id, variantId: variant.id, price: 199 },
+    })
+    const token = await cartWith('guest-custom-default', variant.id, 1)
+
+    const zone = await resolveZone({ state: 'Karnataka' }) // → Default
+    const cart = await getCart(token, zone)
+    expect(cart.subtotal).toBe(199)
+    expect(cart.baseSubtotal).toBe(225)
+    // A 0% zone still moved the price, so the cart must not stay silent about it.
+    expect(cart.zone).toEqual({ name: 'Default', discountPct: 0, custom: true })
+
+    const result = await placeOrder(token, customer('Karnataka'))
+    const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
+    expect(order!.subtotal).toBe(199)
+  })
+
+  it('leaves a variant with no custom price on the zone percentage', async () => {
+    const { tn } = await seedZones()
+    const priced = await makeProduct({ slug: 'priced-by-hand', price: 199, stock: 10 })
+    const other = await makeProduct({ slug: 'follows-discount', price: 199, stock: 10 })
+    await prisma.zoneVariantPrice.create({
+      data: { zoneId: tn.id, variantId: priced.variant.id, price: 149 },
+    })
+
+    const token = await cartWith('guest-mixed', priced.variant.id, 1)
+    await cartWith(token, other.variant.id, 1)
+
+    const cart = await getCart(token, await resolveZone({ state: 'Tamil Nadu' }))
+    const byVariant = Object.fromEntries(cart.items.map((i) => [i.variantId, i.unitPrice]))
+    expect(byVariant[priced.variant.id]).toBe(149) // typed
+    expect(byVariant[other.variant.id]).toBe(179) // 199 − 10%
+  })
+
+  it('a custom price ABOVE the standard price is charged as typed, with nothing struck through', async () => {
+    // A typed price is not a discount: it can be higher. The cart must still be
+    // internally consistent rather than reporting a negative saving.
+    const { tn } = await seedZones()
+    const { variant } = await makeProduct({ price: 199, stock: 10 })
+    await prisma.zoneVariantPrice.create({
+      data: { zoneId: tn.id, variantId: variant.id, price: 249 },
+    })
+    const token = await cartWith('guest-above', variant.id, 1)
+
+    const cart = await getCart(token, await resolveZone({ state: 'Tamil Nadu' }))
+    expect(cart.subtotal).toBe(249)
+    expect(cart.baseSubtotal).toBe(199)
+    // The checkout summary only strikes through when baseSubtotal > subtotal.
+    expect(cart.baseSubtotal - cart.subtotal).toBeLessThan(0)
+
+    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
+    expect(order!.subtotal).toBe(249)
+  })
+
+  it('deleting a zone takes its custom prices with it', async () => {
+    const { tn } = await seedZones()
+    const { variant } = await makeProduct({ price: 199, stock: 10 })
+    await prisma.zoneVariantPrice.create({
+      data: { zoneId: tn.id, variantId: variant.id, price: 149 },
+    })
+
+    await prisma.priceZone.delete({ where: { id: tn.id } })
+    expect(await prisma.zoneVariantPrice.count({ where: { zoneId: tn.id } })).toBe(0)
   })
 })
 

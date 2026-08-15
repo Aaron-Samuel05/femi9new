@@ -1,6 +1,11 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
-import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from '@/lib/services/pricing'
+import {
+  applyZonePrice,
+  resolveAmbientZone,
+  zoneCustomPrice,
+  type ResolvedZone,
+} from '@/lib/services/pricing'
 
 /**
  * Cart service — the single seam between the database and the cart UI.
@@ -22,7 +27,9 @@ export interface CartItemDTO {
   variantLabel: string
   /** Zone price — what this line is actually charged at. */
   unitPrice: number
-  /** Standard (pre-zone) price, for showing what the discount struck through. */
+  /** Standard (pre-zone) price, for showing what the discount struck through.
+   *  A zone custom price is not guaranteed to be lower, so never render this as
+   *  a strike-through without checking it is above `unitPrice`. */
   baseUnitPrice: number
   qty: number
   lineTotal: number
@@ -35,8 +42,12 @@ export interface CartDTO {
   /** Subtotal at standard prices; equals `subtotal` when no zone discount applies. */
   baseSubtotal: number
   count: number
-  /** The zone these prices were computed at, for an honest line in the summary. */
-  zone: { name: string; discountPct: number } | null
+  /** The zone these prices were computed at, for an honest line in the summary.
+   *  Present only when the zone actually moved a price. `custom` is true when at
+   *  least one line took an exact price the admin typed rather than the zone's
+   *  percentage — in which case `discountPct` does not describe this cart and
+   *  must not be printed as the reason. */
+  zone: { name: string; discountPct: number; custom: boolean } | null
 }
 
 /** A guest with no cart row yet still gets a well-formed (empty) response. */
@@ -91,12 +102,16 @@ export async function getCart(token: string, zone?: ResolvedZone | null): Promis
   })
   if (!cart) return EMPTY_CART
 
+  let anyCustom = false
   const items: CartItemDTO[] = cart.items.map((item) => {
     const { variant } = item
     const { product } = variant
-    // Server is the source of truth on price: the catalogue row, then the zone.
+    // Server is the source of truth on price: the catalogue row, then the zone —
+    // the zone's custom price for THIS variant if the admin set one, else its
+    // percentage. `placeOrder` prices the same line the same way.
     const baseUnitPrice = variant.price
-    const unitPrice = applyZonePrice(baseUnitPrice, appliedZone)
+    if (zoneCustomPrice(appliedZone, { variantId: variant.id }) !== null) anyCustom = true
+    const unitPrice = applyZonePrice(baseUnitPrice, appliedZone, { variantId: variant.id })
     return {
       variantId: variant.id,
       productSlug: product.slug,
@@ -118,9 +133,11 @@ export async function getCart(token: string, zone?: ResolvedZone | null): Promis
     subtotal,
     baseSubtotal,
     count,
-    // Only worth surfacing when it actually moved the price.
-    zone: appliedZone && appliedZone.discountPct > 0
-      ? { name: appliedZone.name, discountPct: appliedZone.discountPct }
+    // Only worth surfacing when it actually moved the price. Tested against the
+    // totals, not against `discountPct`: a zone can move a price with a custom
+    // price alone while its percentage is 0.
+    zone: appliedZone && subtotal !== baseSubtotal
+      ? { name: appliedZone.name, discountPct: appliedZone.discountPct, custom: anyCustom }
       : null,
   }
 }
