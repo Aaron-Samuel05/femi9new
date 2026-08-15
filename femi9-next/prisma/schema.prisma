@@ -763,6 +763,50 @@ model ZoneVariantPrice {
   @@index([variantId])
 }
 
+// An IPv6 prefix that has been OBSERVED to serve one Indian telecom circle.
+//
+// Why this table exists: mobile carriers CGNAT their IPv4, so the address the CDN
+// resolves is a regional gateway and not the shopper — which is why regional
+// pricing misfires on Jio/Airtel and works over WiFi. They do NOT NAT IPv6, and
+// its prefixes are allocated per licensed service area ("telecom circle"), which
+// is drawn on state lines. The prefix therefore still carries roughly the
+// granularity a zone needs.
+//
+// It ships EMPTY on purpose. No registry publishes prefix→circle, so the rows are
+// LEARNED: every order pairs the viewer's IP with a delivery pincode the shopper
+// typed, which is ground truth. `observations` counts the confirmed deliveries
+// behind a row, and src/lib/geo/circles.ts refuses to price from a row until it
+// clears a threshold — one order proves nothing. Guessing prefixes by hand would
+// misprice real shoppers, which is worse than the bug being fixed.
+model IpCircleRange {
+  id     String @id @default(cuid())
+  // Nibble-aligned IPv6 prefix key, e.g. "24052011/32" — hex nibbles, then the
+  // length in bits. Prisma cannot express Postgres `inet` containment, so the
+  // lookup probes a fixed set of lengths and takes the longest hit instead.
+  prefix String @unique
+  // Circle slug from TELECOM_CIRCLES in src/lib/geo/circles.ts ("tamil-nadu").
+  // Several circles span more than one state and yield no state at all.
+  circle String
+  // The carrier this prefix belongs to, when known. Diagnostic only.
+  asn    Int?
+
+  // Confirmed deliveries backing this row, and how much they agree. A prefix
+  // that has shipped to its circle 200 times out of 210 is trustworthy; 3 out of
+  // 5 is noise. `active` lets ops retire a row that has started lying without
+  // deleting the evidence.
+  observations Int     @default(0)
+  conflicts    Int     @default(0)
+  active       Boolean @default(true)
+  // "observed" (learned from orders) | "manual" (an admin typed it).
+  source       String  @default("observed")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([circle])
+  @@index([asn])
+}
+
 // ─────────────────────────── Thara Model ───────────────────────────
 // Sub-project A: identity spine (enrolment + attribution). Sub-projects
 // B–F (personal discount, wallet credit, points, invite email, dashboards)

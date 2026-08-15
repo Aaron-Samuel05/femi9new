@@ -43,6 +43,11 @@ vitest.config.ts
 prisma/*.db
 prisma/*.db-journal
 
+# A developer's local GeoLite2 copy — tens of MB of build context for nothing.
+# The build stage downloads its own via scripts/fetch-geoip.mjs.
+data/geoip/*.mmdb
+data/geoip/*.partial
+
 # Docs & markdown.
 *.md
 docs

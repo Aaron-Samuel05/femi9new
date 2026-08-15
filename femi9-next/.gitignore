@@ -19,6 +19,12 @@ npm-debug.log*
 # prisma
 /prisma/*.db
 
+# GeoLite2 databases — downloaded by scripts/fetch-geoip.mjs, never committed.
+# They are large binaries under MaxMind's licence, and they go stale; the image
+# build fetches its own copy. See docs/GEOIP.md.
+/data/geoip/*.mmdb
+/data/geoip/*.partial
+
 # Terraform local state and operator values contain generated DB/auth secrets.
 /infra/terraform/.terraform/
 /infra/terraform/*.tfstate

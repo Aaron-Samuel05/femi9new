@@ -81,6 +81,23 @@ ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL \
     NEXT_PUBLIC_RAZORPAY_KEY_ID=$NEXT_PUBLIC_RAZORPAY_KEY_ID \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 
+# GeoLite2 databases for the geo resolver (src/lib/geo/mmdb.ts). Baked into the
+# image on purpose: every task then gets an identical, immutable database with no
+# writable volume and no runtime network egress — the same property the Prisma
+# engines above are shipped for. Refreshing means rebuilding; MaxMind publishes
+# weekly and the ASN data this app leans on is stable.
+#
+# The licence key is a BuildKit secret, so it never lands in an image layer or in
+# `docker history`:
+#   docker build --secret id=maxmind_license_key,env=MAXMIND_LICENSE_KEY .
+#
+# Entirely optional — with no secret mounted the script writes an empty directory
+# and exits 0. The app runs fine that way: geo lookups return null and the
+# resolver falls back to the CloudFront viewer headers.
+RUN --mount=type=secret,id=maxmind_license_key \
+    MAXMIND_LICENSE_KEY="$(cat /run/secrets/maxmind_license_key 2>/dev/null || true)" \
+    node scripts/fetch-geoip.mjs
+
 # Produce the optimized production build. With `output: 'standalone'` this writes
 # .next/standalone (server.js + minimal node_modules) and .next/static.
 RUN npm run build
@@ -132,6 +149,12 @@ COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=build --chown=nextjs:nodejs /app/scripts ./scripts
 # Keep the static catalog available to the idempotent Prisma seed task.
 COPY --from=build --chown=nextjs:nodejs /app/src/data ./src/data
+
+# The GeoLite2 databases (or an empty directory, if the build had no licence key).
+# Next's standalone tracer only follows JS imports, so a data file it never sees
+# referenced has to be copied explicitly — same reason `public/` is copied above.
+# Paths are relative to the working directory, which is where server.js runs.
+COPY --from=build --chown=nextjs:nodejs /app/data ./data
 COPY --from=build --chown=nextjs:nodejs /app/src/lib/cycle-crypto.ts ./src/lib/cycle-crypto.ts
 
 # Recreate the `.bin/prisma` shim so `npx prisma ...` resolves the locally-copied

@@ -55,6 +55,25 @@ resource "aws_cloudfront_origin_request_policy" "app" {
         "CloudFront-Viewer-Country-Region-Name",
         "CloudFront-Viewer-City",
         "CloudFront-Viewer-Postal-Code",
+
+        # ── Added for the mobile-carrier gate (src/lib/geo/) ──────────────────
+        # The region headers above are read off the viewer's IP, and Indian
+        # mobile carriers CGNAT their IPv4: a Coimbatore phone on Jio egresses
+        # through a Mumbai gateway, so CloudFront correctly resolves an address
+        # that is nowhere near the shopper. That is why regional pricing works on
+        # WiFi and misfires on mobile data.
+        #
+        # -ASN identifies the network, so a carrier can be recognised and its
+        # region answer discarded rather than priced on. -Address carries the
+        # viewer's actual IP, which lets the origin see whether the request came
+        # in over IPv6 — carriers do NOT NAT IPv6, and its prefixes are allocated
+        # per telecom circle, so that address still carries usable location where
+        # the IPv4 one carries none.
+        #
+        # Both are CloudFront-GENERATED headers, so they only arrive under the
+        # `allViewerAndWhitelistCloudFront` behaviour set above.
+        "CloudFront-Viewer-ASN",
+        "CloudFront-Viewer-Address",
       ]
     }
   }
