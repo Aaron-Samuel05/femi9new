@@ -86,21 +86,25 @@ function splitBody(raw: string): string[] {
 
 /** All posts (every status) newest first, each with its category name. */
 export async function listPostsAdmin() {
-  const rows = await prisma.blogPost.findMany({
-    orderBy: { publishedAt: 'desc' },
-    include: { category: { select: { name: true } } },
-  })
+  try {
+    const rows = await prisma.blogPost.findMany({
+      orderBy: { publishedAt: 'desc' },
+      include: { category: { select: { name: true } } },
+    })
 
-  return rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    title: r.title,
-    author: r.author,
-    status: r.status,
-    featured: r.featured,
-    categoryName: r.category.name,
-    publishedAt: r.publishedAt,
-  }))
+    return rows.map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      title: r.title,
+      author: r.author,
+      status: r.status,
+      featured: r.featured,
+      categoryName: r.category.name,
+      publishedAt: r.publishedAt,
+    }))
+  } catch {
+    return []
+  }
 }
 
 /** One post, fully loaded for the editor (includes its category). */
@@ -113,10 +117,14 @@ export async function getPostAdmin(id: string) {
 
 /** Categories for the editor's <select>, alphabetical. */
 export async function listCategoriesAdmin() {
-  return prisma.blogCategory.findMany({
-    orderBy: { name: 'asc' },
-    select: { id: true, name: true },
-  })
+  try {
+    return await prisma.blogCategory.findMany({
+      orderBy: { name: 'asc' },
+      select: { id: true, name: true },
+    })
+  } catch {
+    return []
+  }
 }
 
 // ─────────────────────────────── Writes ─────────────────────────────────

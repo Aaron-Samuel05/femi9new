@@ -62,6 +62,17 @@
   text-rendering: optimizeLegibility;
 }
 
+/* Force lock root viewport when admin console is mounted to prevent Lenis / global CSS bleed */
+html:has(.adm),
+body:has(.adm) {
+  height: 100% !important;
+  height: 100dvh !important;
+  max-height: 100% !important;
+  overflow: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 /* Numeric data reads as columns, so lock to tabular figures wherever numbers
    line up (stat values, numeric table cells). */
 .adm-stat-value,
@@ -77,39 +88,48 @@
 .adm {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  /* 100vh first as the fallback; dvh tracks the mobile URL bar so short pages
-     don't overflow the visible area by the bar's height. */
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh !important;
+  height: 100dvh !important;
+  max-height: 100vh !important;
+  max-height: 100dvh !important;
+  overflow: hidden !important;
   background: var(--canvas);
 }
 
 .adm-sidebar {
-  position: sticky;
-  top: 0;
-  height: 100vh;
-  height: 100dvh;
-  max-height: 100vh;
-  max-height: 100dvh;
-  overflow: hidden;
+  height: 100% !important;
+  height: 100dvh !important;
+  max-height: 100dvh !important;
+  min-height: 0 !important; /* Prevents CSS Grid item expansion */
+  box-sizing: border-box;
+  overflow: hidden !important;
   display: flex;
   flex-direction: column;
-  padding: 12px 10px 12px;
+  padding: 12px 12px 14px;
   background: var(--surface);
   border-right: 1px solid var(--line);
   z-index: 50;
+}
+
+/* Completely hide native browser scrollbar buttons (arrows ▲/▼) */
+.adm-sidebar::-webkit-scrollbar-button,
+.adm-nav::-webkit-scrollbar-button,
+.adm-main::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .adm-brand {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 2px 6px 8px;
+  padding: 2px 4px 10px;
   flex: none;
 }
 
 .adm-brand-mark {
-  height: 20px;
+  height: 22px;
   width: auto;
   display: block;
 }
@@ -124,58 +144,76 @@
   color: var(--plum);
   background: var(--plum-tint);
   border-radius: 999px;
-  padding: 1px 8px;
+  padding: 2px 9px;
 }
 
 .adm-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: none; /* Hide default scrollbars across browsers */
-  -ms-overflow-style: none;
-  padding-right: 2px;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  padding-right: 4px;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 75, 138, 0.25) transparent;
 }
 
+/* Sleek, subtle 4px scrollbar thumb matching top SaaS tools (Linear/Vercel) */
 .adm-nav::-webkit-scrollbar {
-  display: none; /* Hide Chrome/Edge native scrollbar and arrow buttons */
-  width: 0;
-  height: 0;
+  width: 4px;
+}
+
+.adm-nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.adm-nav::-webkit-scrollbar-thumb {
+  background: rgba(90, 75, 138, 0.2);
+  border-radius: 999px;
+  transition: background 0.2s ease;
+}
+
+.adm-nav:hover::-webkit-scrollbar-thumb {
+  background: rgba(90, 75, 138, 0.5);
 }
 
 .adm-nav-group {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 2px;
+  margin-bottom: 6px;
 }
 
 .adm-nav-eyebrow {
   font-family: var(--sans);
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--muted);
-  padding: 3px 8px 1px;
+  padding: 8px 10px 4px;
   margin: 0;
-  opacity: 0.75;
+  opacity: 0.85;
 }
 
 .adm-nav-link {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 9px;
-  border-radius: 7px;
-  font-size: 12.5px;
+  gap: 10px;
+  padding: 7.5px 12px;
+  border-radius: 8px;
+  font-size: 13px;
   font-weight: 500;
   color: #4a4266;
   text-decoration: none;
-  transition: all 0.15s ease;
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .adm-nav-icon {
@@ -184,8 +222,8 @@
   justify-content: center;
   color: #7a7296;
   transition: color 0.15s ease, transform 0.15s ease;
-  width: 16px;
-  height: 16px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
 }
 
@@ -197,10 +235,12 @@
 .adm-nav-link:hover {
   background: #f2edf8;
   color: var(--plum);
+  transform: translateX(2px);
 }
 
 .adm-nav-link:hover .adm-nav-icon {
   color: var(--plum);
+  transform: scale(1.1);
 }
 
 .adm-nav-link:active {
@@ -212,7 +252,7 @@
   background: var(--plum);
   color: #ffffff !important;
   font-weight: 600;
-  box-shadow: 0 3px 10px rgba(90, 75, 138, 0.22);
+  box-shadow: 0 4px 12px rgba(90, 75, 138, 0.24);
 }
 
 .adm-nav-link.is-active .adm-nav-icon {
@@ -222,9 +262,9 @@
 .adm-nav-link.is-active::before {
   content: "";
   position: absolute;
-  left: -10px;
-  top: 18%;
-  bottom: 18%;
+  left: -14px;
+  top: 15%;
+  bottom: 15%;
   width: 3.5px;
   background: var(--gold);
   border-radius: 0 3px 3px 0;
@@ -232,14 +272,14 @@
 
 .adm-sidebar-foot {
   flex: none;
-  margin-top: 6px;
-  padding: 8px 10px;
+  margin-top: auto;
+  padding: 12px 14px;
   background: #f8f6fc;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 10px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 .adm-who {
@@ -282,9 +322,19 @@
 }
 
 .adm-main {
+  height: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0; /* CRITICAL: Prevents CSS Grid item expansion */
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
   min-width: 0; /* lets wide tables scroll instead of stretching the page. */
   display: flex;
   flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 75, 138, 0.2) transparent;
 }
 
 .adm-topbar {
@@ -987,13 +1037,31 @@ a.adm-chip {
   outline-offset: 2px;
 }
 
-/* -----------------------------------------------------------------------------
-   Responsive: under 900px the sidebar becomes a horizontal top strip so the
-   page never scrolls sideways and the nav stays reachable without a drawer.
+/* Desktop defaults for mobile elements */
+.adm-sidebar-header {
+  display: block;
+}
 
-   The strip wraps onto two rows — brand + account actions above, the full-width
-   scrolling link rail below. A single row would leave the rail ~100px wide next
-   to the brand and the footer, which is not a usable target for 15 links.
+.adm-close-btn {
+  display: none;
+}
+
+.adm-menu-toggle {
+  display: none;
+}
+
+.adm-topbar-brand {
+  display: none;
+}
+
+.adm-scrim {
+  display: none;
+}
+
+/* -----------------------------------------------------------------------------
+   Responsive Mobile & Tablet Drawer (≤ 900px):
+   Replaces cramped horizontal scrolling with a modern Hamburger Menu (☰)
+   that opens a smooth slide-out Drawer navigation with backdrop blur.
    ----------------------------------------------------------------------------- */
 @media (max-width: 900px) {
   /* Block, not a 1-column grid: a grid item's sticky containing block is its own
@@ -1004,43 +1072,126 @@ a.adm-chip {
     display: block;
   }
 
+  .adm-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 18, 48, 0.45);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 90;
+    animation: admFadeIn 0.2s ease-out;
+  }
+
+  @keyframes admFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   .adm-sidebar {
-    position: sticky;
+    position: fixed;
     top: 0;
-    height: auto;
-    max-height: none;
-    z-index: 30;
-    flex-direction: row;
-    flex-wrap: wrap;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    max-width: 88vw;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    background: var(--surface);
+    box-shadow: 16px 0 48px rgba(0, 0, 0, 0.28);
+    z-index: 100;
+    transform: translateX(-105%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 16px 14px 24px;
+    border-right: 1px solid var(--line);
+    border-bottom: none;
+  }
+
+  .adm-sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .adm-sidebar-header {
+    display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    /* The rail inside owns the scroll; the bar must not clip it. */
-    overflow: visible;
-    border-right: none;
+    justify-content: space-between;
+    padding-bottom: 14px;
+    margin-bottom: 10px;
     border-bottom: 1px solid var(--line);
   }
 
-  .adm-brand {
-    padding: 0;
+  .adm-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: #f8f6fc;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .adm-close-btn:hover {
+    background: var(--plum-tint);
+    color: var(--plum);
+  }
+
+  .adm-nav {
+    flex-direction: column;
+    gap: 4px;
     flex: none;
-    order: 1;
+    overflow: visible;
+  }
+
+  .adm-nav-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+  }
+
+  .adm-nav-eyebrow {
+    display: block;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 10px 4px;
+    margin: 0;
+  }
+
+  .adm-nav-link {
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
   }
 
   .adm-sidebar-foot {
-    flex: none;
-    order: 2;
-    flex-direction: row;
-    align-items: center;
-    gap: 12px;
-    margin: 0 0 0 auto;
-    padding: 0;
-    background: transparent;
-    border: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: #f8f6fc;
+    border-radius: 10px;
   }
 
   .adm-who {
-    display: none; /* identity is not essential in the compact bar. */
+    display: flex;
   }
 
   .adm-foot-actions {
@@ -1055,67 +1206,115 @@ a.adm-chip {
     font-size: 13px;
   }
 
-  /* The link rail: full-width second row, and the ONLY horizontal scroller.
-     The base rule clips it (`overflow-x:hidden`), which used to hide 14 of the
-     15 links behind a zero-minimum flex item. */
-  .adm-nav {
-    order: 3;
-    flex: 1 0 100%;
-    min-width: 0;
-    flex-direction: row;
+  .adm-topbar {
+    padding: 0 16px;
+    min-height: 60px;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior-x: contain;
-    scroll-snap-type: x proximity;
-    padding-right: 0;
+    gap: 12px;
   }
 
-  .adm-nav-group {
-    flex: none;
-    flex-direction: row;
+  .adm-menu-toggle {
+    display: flex;
     align-items: center;
-    gap: 6px;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--plum);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
-  /* Group labels are noise in a compact horizontal bar. */
-  .adm-nav-eyebrow {
-    display: none;
+  .adm-menu-toggle:hover {
+    background: var(--plum-tint);
+    border-color: var(--plum);
+  }
+
+  .adm-topbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .adm-topbar-title {
+    font-size: 1.15rem;
+    margin: 0;
+  }
+
+  .adm-content {
+    padding: 16px;
+  }
+}
+
+/* -----------------------------------------------------------------------------
+   Mobile optimization (< 768px): collapse toolbars, stack action buttons,
+   reflow all card grids to single column, and ensure 44px touch tap targets.
+   ----------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .adm-grid {
+    grid-template-columns: 1fr !important;
   }
 
   .adm-nav-link {
     min-height: 44px;
-    padding: 0 14px;
-    font-size: 13.5px;
-    white-space: nowrap;
-    scroll-snap-align: start;
+    display: flex;
+    align-items: center;
   }
 
-  /* The gold rail is a sidebar-edge marker; in a horizontal strip it floats
-     10px to the left of the pill over nothing. The plum pill already carries
-     the active state. (The old `.adm-nav-link::before` here matched nothing —
-     the mark is generated by `.adm-nav-link.is-active::before`.) */
-  .adm-nav-link.is-active::before {
-    display: none;
+  .adm-foot-link {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
   }
 
-  /* The topbar only ever renders a static title, so it must not spend 60px of
-     sticky viewport; the nav strip above is the thing worth pinning. */
+  .adm-close-btn,
+  .adm-menu-toggle {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
   .adm-topbar {
-    position: static;
-    height: auto;
-    min-height: 0;
-    padding: 10px 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    white-space: nowrap;
+    padding: 0 14px;
   }
 
   .adm-topbar-title {
-    font-size: 18px;
+    white-space: nowrap;
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  .adm-sidebar {
+    width: 285px;
+    padding: 14px 12px 20px;
   }
 
   .adm-content {
-    padding: 18px;
+    padding: 14px;
+  }
+
+  .adm-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .adm-btn {
+    width: 100%;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .adm-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 8px;
   }
 
   /* --- Typography: desktop density is unreadable at 360-414px --------------- */

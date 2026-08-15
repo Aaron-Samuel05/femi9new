@@ -97,85 +97,107 @@ export interface CustomerDetail {
 export async function listCustomers(
   opts: { q?: string; page?: number } = {},
 ): Promise<CustomerListResult> {
-  const q = opts.q?.trim()
-  const page = Math.max(1, Math.floor(opts.page ?? 1))
-  const skip = (page - 1) * PAGE_SIZE
-
-  const where: Prisma.UserWhereInput = {
-    role: 'customer',
-    ...(q
-      ? {
-          OR: [
-            { name: { contains: q, mode: 'insensitive' } },
-            { email: { contains: q, mode: 'insensitive' } },
-            { phone: { contains: q, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
+  const emptyResult: CustomerListResult = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: PAGE_SIZE,
+    totalPages: 0,
   }
 
-  const [total, users] = await Promise.all([
-    prisma.user.count({ where }),
-    prisma.user.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      skip,
-      take: PAGE_SIZE,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        tier: true,
-        // Primary address first (Postgres orders false < true, so desc = primary
-        // on top); take one for the location column.
-        addresses: {
-          orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
-          take: 1,
-          select: { city: true, state: true },
-        },
-      },
-    }),
-  ])
+  try {
+    const q = opts.q?.trim()
+    const page = Math.max(1, Math.floor(opts.page ?? 1))
+    const skip = (page - 1) * PAGE_SIZE
 
-  const ids = users.map((u) => u.id)
-
-  // Empty page → no aggregates to fetch. Skip the extra round-trips entirely.
-  if (ids.length === 0) {
-    return { items: [], total, page, pageSize: PAGE_SIZE, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) }
-  }
-
-  const [orderCounts, revenue, points] = await Promise.all([
-    prisma.order.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _count: true }),
-    prisma.order.groupBy({
-      by: ['userId'],
-      where: { userId: { in: ids }, status: { in: REVENUE_STATUSES } },
-      _sum: { total: true },
-    }),
-    prisma.pointsLedger.groupBy({ by: ['userId'], where: { userId: { in: ids } }, _sum: { delta: true } }),
-  ])
-
-  const countMap = new Map(orderCounts.map((r) => [r.userId, r._count]))
-  const spendMap = new Map(revenue.map((r) => [r.userId, r._sum.total ?? 0]))
-  const pointsMap = new Map(points.map((r) => [r.userId, r._sum.delta ?? 0]))
-
-  const items: CustomerListItem[] = users.map((u) => {
-    const primary = u.addresses[0]
-    return {
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      phone: u.phone,
-      tier: u.tier,
-      city: primary?.city ?? null,
-      state: primary?.state ?? null,
-      orderCount: countMap.get(u.id) ?? 0,
-      totalSpent: spendMap.get(u.id) ?? 0,
-      pointsBalance: pointsMap.get(u.id) ?? 0,
+    const where: Prisma.UserWhereInput = {
+      role: 'customer',
+      ...(q
+        ? {
+            OR: [
+              { name: { contains: q, mode: 'insensitive' } },
+              { email: { contains: q, mode: 'insensitive' } },
+              { phone: { contains: q, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     }
-  })
 
-  return { items, total, page, pageSize: PAGE_SIZE, totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE)) }
+    const [total, users] = await Promise.all([
+      prisma.user.count({ where }),
+      prisma.user.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: PAGE_SIZE,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          tier: true,
+          addresses: {
+            orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+            take: 1,
+            select: { city: true, state: true },
+          },
+        },
+      }),
+    ])
+
+    const userIds = users.map((u) => u.id)
+    if (userIds.length === 0) {
+      return { items: [], total, page, pageSize: PAGE_SIZE, totalPages: Math.ceil(total / PAGE_SIZE) }
+    }
+
+    const [orderCountGroups, revenueGroups, pointsGroups] = await Promise.all([
+      prisma.order.groupBy({
+        by: ['userId'],
+        where: { userId: { in: userIds } },
+        _count: { _all: true },
+      }),
+      prisma.order.groupBy({
+        by: ['userId'],
+        where: { userId: { in: userIds }, status: { in: REVENUE_STATUSES } },
+        _sum: { total: true },
+      }),
+      prisma.pointsLedger.groupBy({
+        by: ['userId'],
+        where: { userId: { in: userIds } },
+        _sum: { delta: true },
+      }),
+    ])
+
+    const countMap = new Map(orderCountGroups.map((g) => [g.userId, g._count._all]))
+    const spentMap = new Map(revenueGroups.map((g) => [g.userId, g._sum.total ?? 0]))
+    const pointsMap = new Map(pointsGroups.map((g) => [g.userId, g._sum.delta ?? 0]))
+
+    const items: CustomerListItem[] = users.map((u) => {
+      const primaryAddr = u.addresses[0] ?? null
+      return {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        phone: u.phone,
+        tier: u.tier,
+        city: primaryAddr?.city ?? null,
+        state: primaryAddr?.state ?? null,
+        orderCount: countMap.get(u.id) ?? 0,
+        totalSpent: spentMap.get(u.id) ?? 0,
+        pointsBalance: pointsMap.get(u.id) ?? 0,
+      }
+    })
+
+    return {
+      items,
+      total,
+      page,
+      pageSize: PAGE_SIZE,
+      totalPages: Math.ceil(total / PAGE_SIZE),
+    }
+  } catch {
+    return emptyResult
+  }
 }
 
 /**
