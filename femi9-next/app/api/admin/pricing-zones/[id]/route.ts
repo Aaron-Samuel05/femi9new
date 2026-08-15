@@ -4,6 +4,7 @@ import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
 import { requireAdmin } from '@/lib/admin-auth'
 import {
   CannotDeleteDefaultError,
+  CannotUnsetDefaultError,
   ZoneNameTakenError,
   ZonePatchSchema,
   deleteZone,
@@ -20,6 +21,7 @@ import {
 /** Map known service / Prisma failures to friendly responses. */
 function mapZoneError(err: unknown) {
   if (err instanceof CannotDeleteDefaultError) return badRequest(err.message)
+  if (err instanceof CannotUnsetDefaultError) return badRequest(err.message)
   if (err instanceof ZoneNameTakenError) return badRequest(err.message)
   if (err instanceof Prisma.PrismaClientKnownRequestError) {
     if (err.code === 'P2002') return badRequest('That zone name is already in use')

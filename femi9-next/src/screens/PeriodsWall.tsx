@@ -333,6 +333,9 @@ export function PeriodsWall({ posts }: Props) {
             id="pw-name"
             className="pw-input"
             type="text"
+            autoComplete="name"
+            autoCapitalize="words"
+            enterKeyHint="next"
             value={name}
             maxLength={40}
             onChange={(e) => setName(e.target.value)}

@@ -21,6 +21,16 @@
 .tip .k { color: rgba(255, 255, 255, .7); }
 .tip .v { margin-left: auto; font-weight: 500; padding-left: 12px; }
 
+/* Narrow screens. The axis glyphs are 11px at every width; the y-axis pad is
+   derived from the label in AreaChart/BarChart, so widening them here cannot
+   push a money label out of the card. The tooltip on the leftmost or rightmost
+   datum is translated -50%, so without a cap it overhangs the card edge. */
+@media (max-width: 560px) {
+  .axis-label,
+  .axis-y { font-size: 12px; }
+  .tip { max-width: calc(100vw - 48px); white-space: normal; }
+}
+
 /* legend */
 .legend { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 14px; }
 .legend .li { display: inline-flex; align-items: center; gap: 8px; font-size: .84rem; color: #41506a; font-weight: 300; }

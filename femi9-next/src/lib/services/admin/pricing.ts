@@ -68,6 +68,23 @@ export class CannotDeleteDefaultError extends Error {
   }
 }
 
+/**
+ * Thrown when a PATCH would clear `isDefault` on the only default zone.
+ *
+ * `deleteZone` already refused to orphan the fallback, but the same store could
+ * be left with zero defaults by simply unticking the box — and then every
+ * shopper whose state matched no zone resolved to `null`, i.e. no zone at all.
+ * (That is how staging ended up with two zones and no default.) The supported
+ * way to move the default is to promote another zone, which demotes this one in
+ * the same transaction.
+ */
+export class CannotUnsetDefaultError extends Error {
+  constructor() {
+    super('Promote another zone to default instead of clearing this one')
+    this.name = 'CannotUnsetDefaultError'
+  }
+}
+
 /** True when `err` is a P2002 unique violation involving the given column. */
 function isUniqueOn(err: unknown, field: string): boolean {
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -160,6 +177,13 @@ export async function updateZone(id: string, patch: ZonePatch) {
           where: { isDefault: true, NOT: { id } },
           data: { isDefault: false },
         })
+      } else if (patch.isDefault === false) {
+        // Demoting the default leaves the store with no fallback price.
+        const current = await tx.priceZone.findUnique({
+          where: { id },
+          select: { isDefault: true },
+        })
+        if (current?.isDefault) throw new CannotUnsetDefaultError()
       }
 
       const data: Prisma.PriceZoneUpdateInput = {}

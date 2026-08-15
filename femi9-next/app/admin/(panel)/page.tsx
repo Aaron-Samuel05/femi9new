@@ -111,7 +111,20 @@ export default async function AdminDashboardPage() {
             </span>
           </div>
           {cityBars.length ? (
-            <CityBars data={cityBars} />
+            <>
+              <CityBars data={cityBars} />
+              {/* The bar chart prints its values only in a hover tooltip, which a
+                  touch device cannot reach. Below 900px this list carries them
+                  instead (the donut card already lists its own values). */}
+              <ul className="adm-chart-values">
+                {cityBars.map((c) => (
+                  <li key={c.label}>
+                    <span>{c.label}</span>
+                    <span className="adm-td-num adm-cell-muted">{num(c.value)}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           ) : (
             <div className="adm-empty">
               <span className="adm-empty-title">No locations yet</span>

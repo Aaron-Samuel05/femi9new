@@ -3,85 +3,17 @@
 }
 
 @media (max-width: 900px) {
-  .fl-hero__second-product {
-    width: 560px;
-    height: auto;
-    left: auto;
-    right: -80px;
-    top: 330px;
-    opacity: .6;
-  }
-
   .fl-hero__copy--second > p,
-  .fl-hero h2 {
+  .fl-hero :is(h1, h2) {
     width: min(100%, 680px);
   }
 
-  .fl-about__layout {
-    min-height: 1010px;
-  }
-
-  .fl-about__people {
-    position: relative;
-    inset: auto;
-    height: 520px;
-  }
-
-  .fl-founder--doctor {
-    width: 298px;
-    height: 335.084px;
-    left: 0;
-    top: 40px;
-  }
-
-  .fl-founder--woman {
-    width: 484.657px;
-    height: 248.803px;
-    left: 34px;
-    top: 350px;
-  }
-
-  .fl-founder--man {
-    width: 347px;
-    height: 343.855px;
-    left: 317px;
-    top: 102px;
-  }
-
-  .fl-about__copy {
-    position: relative;
-    left: auto;
-    top: auto;
-    width: auto;
-    transform: none;
-  }
-
-  .fl-products__grid,
-  .fl-products__grid.has-hover-1,
-  .fl-products__grid.has-hover-2,
-  .fl-products__grid.has-hover-3,
-  .fl-products__grid.has-hover-4 {
-    width: 100%;
-    height: auto;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: stretch;
-  }
-
-  .fl-products[data-visible=true] .fl-product,
-  .fl-products[data-visible=true] .fl-product.is-active {
-    width: 100%;
-    height: 403px;
-    transform: none;
-  }
-
-  .has-hover-1 .fl-product.is-active .fl-product__media,
-  .has-hover-2 .fl-product.is-active .fl-product__media,
-  .has-hover-3 .fl-product.is-active .fl-product__media,
-  .has-hover-3 .fl-product:nth-child(4) .fl-product__media,
-  .has-hover-4 .fl-product.is-active .fl-product__media {
-    height: 272px;
-    flex-basis: 272px;
-  }
+  /* The first-pass About geometry that used to live here was shadowed in full
+     by the 810-1037 pass below (and its 484.657px/347px widths were the desktop
+     artboard values verbatim, which made the live numbers unfindable by grep).
+     The `.fl-products__grid` / `.fl-product*` / `.has-hover-*` rules that
+     followed it target markup this app has not rendered since ProductCard
+     replaced them — the live grid is `.grid-products` with `.card` children. */
 
   .fl-journal {
     height: auto;
@@ -162,31 +94,6 @@
 }
 
 @media (max-width: 620px) {
-  .fl-hero__second-product {
-    width: 450px;
-    right: -170px;
-    top: 400px;
-  }
-
-  .fl-products__grid,
-  .fl-products__grid.has-hover-1,
-  .fl-products__grid.has-hover-2,
-  .fl-products__grid.has-hover-3,
-  .fl-products__grid.has-hover-4 {
-    grid-template-columns: 1fr;
-  }
-
-  .fl-products[data-visible=true] .fl-product.is-active {
-    height: 430px;
-    transform: translateY(-8px);
-  }
-
-  .fl-about__people {
-    transform: scale(.75);
-    transform-origin: left top;
-    width: 540px;
-  }
-
   .fl-journal {
     min-height: 1600px;
   }
@@ -203,11 +110,15 @@
   html,
   body {
     max-width: 100%;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
+  /* Nav is a DESCENDANT of .figma-landing (Home.tsx), and `overflow-x:hidden`
+     here made this box the sticky nav's scrollport — the header scrolled away
+     and never came back. `clip` hides the same bleed without creating one. */
   .figma-landing {
-    overflow-x: hidden;
+    overflow-x: clip;
+    overflow-y: visible;
   }
 
   .fl-shell {
@@ -237,8 +148,9 @@
     line-height: 1.55;
   }
 
+  /* `.fl-product__buy` was in this list and matches nothing — ProductCard
+     renders `.add`, which keeps the 48px floor. */
   .fl-btn,
-  .fl-product__buy,
   .add {
     min-height: 48px;
     border-radius: 999px;
@@ -246,32 +158,10 @@
     text-align: center;
   }
 
-  .fl-nav {
-    height: 72px;
-    padding: 14px 18px;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 12px;
-  }
-
-  .fl-nav__logo {
-    width: 88px;
-    height: 38px;
-  }
-
-  .fl-nav__actions {
-    flex: 0 0 auto;
-    gap: 12px;
-  }
-
-  .fl-nav__mobile {
-    top: 72px;
-  }
-
-  .fl-nav__mobile.is-open {
-    max-height: calc(100dvh - 72px);
-    overflow-y: auto;
-  }
+  /* The `.fl-nav*` block that sat here styled the Figma nav markup. Nav.tsx has
+     rendered `.nav` / `.burger` / `.mobile-menu` (Nav.css, 960px breakpoint)
+     for a long time, so every one of those rules was inert — and misleading,
+     because it read as though the landing page had its own mobile header. */
 
   .fl-hero {
     height: 760px;
@@ -324,74 +214,36 @@
     gap: 10px 18px;
   }
 
-  .fl-hero__model {
-    width: min(410px, 92vw);
-    height: auto;
-    left: auto;
-    right: -116px;
-    top: auto;
-    bottom: 30px;
-    opacity: .5;
-  }
-
-  .fl-hero__pad,
-  .fl-hero__cloud,
-  .fl-hero__flower {
-    display: none;
-  }
-
-  .fl-hero__second-product {
-    width: min(360px, 92vw);
-    height: auto;
-    left: auto;
-    right: -98px;
-    top: auto;
-    bottom: 44px;
-    opacity: .45;
-  }
-
-  .fl-hero__second-shape {
-    opacity: .35;
-  }
+  /* Deleted: `.fl-hero__model`, `.fl-hero__pad`, `.fl-hero__cloud`,
+     `.fl-hero__flower` (NOT the same class as `.fl-hero__flower-icon`),
+     `.fl-hero__second-product`, `.fl-hero__second-shape`. None of them has been
+     in the hero markup since the carousel was rebuilt, which is why this whole
+     breakpoint looked as though it repositioned the hero art and did nothing.
+     The `.fl-hero__pager button` sizes that were here lost on specificity to
+     `.figma-landing .fl-hero__pager button`; the real touch target is now in
+     the `pointer: coarse` block further down. */
 
   .fl-hero__pager {
     bottom: 22px;
-  }
-
-  .fl-hero__pager button {
-    width: 14px;
-    height: 14px;
-  }
-
-  .fl-hero__pager button.is-active {
-    width: 58px;
   }
 
   .fl-products,
   .fl-why,
   .fl-journal,
   .fl-testimonials,
-  .fl-partner,
-  .fl-footer {
+  .fl-partner {
     height: auto;
     min-height: 0;
     padding-block: 56px;
   }
 
+  /* These four are `loading="lazy"` in Home.tsx, so display:none here means the
+     phone never requests them at all. */
   .fl-products__ribbon,
   .fl-journal__ribbon,
   .fl-journal__polygon,
-  .fl-partner__ribbon,
-  .fl-footer__flower {
+  .fl-partner__ribbon {
     display: none;
-  }
-
-  .fl-products .cta-group {
-    width: 100%;
-  }
-
-  .fl-products .cta-group .fl-btn {
-    flex: 1 1 220px;
   }
 
   .grid-products {
@@ -623,73 +475,17 @@
     border-radius: 16px;
   }
 
-  .fl-footer__cta {
-    height: auto;
-    min-height: 420px;
-    padding: 28px;
-    align-items: flex-start;
-    border-radius: 18px;
-  }
-
-  .fl-footer__cta > div,
-  .fl-footer__cta p {
-    width: 100%;
-  }
-
-  .fl-footer__cta h2 {
-    font-size: clamp(30px, 8vw, 40px);
-    line-height: 1.12;
-  }
-
-  .fl-footer__cta p {
-    font-size: 16px;
-    line-height: 1.55;
-  }
-
-  .fl-footer__packs {
-    width: min(390px, 100vw);
-    height: auto;
-    left: auto;
-    top: auto;
-    right: -84px;
-    bottom: -92px;
-    opacity: .48;
-  }
-
-  .fl-footer__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px 20px;
-    padding-top: 42px;
-  }
-
-  .fl-footer__brand,
-  .fl-footer__newsletter {
-    grid-column: 1 / -1;
-  }
-
-  .fl-footer__grid a {
-    font-size: 16px;
-    line-height: 1.8;
-  }
+  /* The `.fl-footer*` block that lived here (CTA card, packs art, link grid,
+     newsletter) styled the Figma footer export. Footer.tsx renders `.footer` /
+     `.footer-main` / `.footer-col` / `.nl-form` / `.nl-submit`, so none of it
+     ever applied. The genuinely useful parts — stacked newsletter form,
+     full-width submit, two-column link grid — belong on those real class names
+     in src/components/Footer.css (WS2 owns that file). */
 }
 
 @media (max-width: 620px) {
   .fl-shell {
     padding-inline: 18px;
-  }
-
-  .fl-nav {
-    grid-template-columns: auto 1fr auto;
-    padding-inline: 16px;
-  }
-
-  .fl-nav__logo {
-    width: 82px;
-  }
-
-  .fl-nav__icon {
-    width: 30px;
-    height: 30px;
   }
 
   .fl-hero__scene {
@@ -722,19 +518,9 @@
     align-items: flex-start;
   }
 
-  .fl-hero__proof i {
-    display: none;
-  }
-
-  .fl-hero__model {
-    right: -145px;
-    width: 385px;
-  }
-
-  .fl-hero__second-product {
-    right: -118px;
-    width: 330px;
-  }
+  /* `.fl-hero__proof i` was here to drop the pipe when the row stacks. The
+     divider is a `<span class="fl-hero__proof-divider">`, so it hid nothing —
+     if this column layout is ever restored, hide THAT class instead. */
 
   .fl-btn {
     width: 100%;
@@ -749,10 +535,6 @@
 
   .card-media {
     aspect-ratio: 3 / 4;
-  }
-
-  .fl-products .cta-group {
-    flex-direction: column;
   }
 
   .fl-benefit {
@@ -785,22 +567,6 @@
 
   .fl-partner__actions {
     flex-direction: column;
-  }
-
-  .fl-footer__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .fl-footer__newsletter form {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 8px;
-    padding: 10px;
-    border-radius: 18px;
-  }
-
-  .fl-footer__newsletter button {
-    width: 100%;
   }
 }
 
@@ -852,9 +618,9 @@
     text-transform: none;
   }
 
-  .fl-about__shape {
-    opacity: .4;
-  }
+  /* `.fl-about__shape{opacity:.4}` used to be the only mobile treatment these
+     four got. Their real mobile geometry — and the opacity — is at the foot of
+     this file, together, so the whole story is in one place. */
 
   .fl-founder__portrait {
     clip-path: none !important;
@@ -915,12 +681,12 @@
     transform-origin: left top;
   }
 
-  .fl-founder__hover-name,
-  .fl-founder__hover-arrow {
-    opacity: 1;
-  }
-
+  /* The names are the touch fallback for a :hover reveal and must stay on. The
+     ARROWS must not: they are one-at-a-time pointing affordances, and pinning
+     all three open at once draws three hand-drawn squiggles across the collage
+     at 768px, which reads as a rendering bug. */
   .fl-founder__hover-name {
+    opacity: 1;
     font-size: 14px;
   }
 
@@ -936,79 +702,106 @@
   }
 }
 
+@media (hover: none) {
+  .fl-founder__hover-arrow {
+    display: none;
+  }
+}
+
+@media (hover: hover) and (max-width: 900px) {
+  .fl-founder__hover-arrow {
+    opacity: 0;
+  }
+
+  .fl-founder:hover .fl-founder__hover-arrow,
+  .fl-founder:focus-within .fl-founder__hover-arrow {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 620px) {
   .fl-about {
     padding: 78px 0 50px;
   }
 
+  /* Percentages of the stage, not two hard-coded pixel widths that sum past it.
+     The old 170px doctor + 178px right-anchored man needed 348px of a stage
+     that is 324px wide at a 360px viewport (`.fl-shell` keeps 18px each side),
+     so the two portraits overlapped by 20px over a 98px band on every phone
+     narrower than 384px. 47% + 49% leaves a 4% gutter at any width. */
   .fl-about__people {
     width: min(100%, 360px);
-    height: 442px;
+    height: min(442px, 123vw);
     transform: none;
   }
 
   .fl-founder figcaption {
-    padding: 7px 9px;
-    font-size: 10px;
+    padding: 5px 9px;
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: .2px;
   }
 
   .fl-founder--doctor {
-    width: 170px;
-    height: 218px;
+    width: 47%;
+    height: 60%;
     left: 0;
-    top: 16px;
+    top: 3.6%;
   }
 
   .fl-founder--doctor .fl-founder__portrait {
-    top: 38px;
-    width: 166px;
-    height: 168px;
+    left: 0;
+    top: 17%;
+    width: 97%;
+    height: 77%;
   }
 
+  /* The collage deliberately layers Vignesh's card over the bottom-left of the
+     doctor's, and at this size that lands exactly on her pill — it was reduced
+     to a navy sliver at the edge. Her figure spans 3.6%-63.6% of the stage and
+     his starts at 55%, i.e. 86% of the way down her box, so lifting the pill to
+     18% from her bottom clears him. Both boxes are percentages of the same
+     stage, so this holds at every width in this range rather than only at 360. */
   .fl-founder--doctor figcaption {
     left: 10px;
-    bottom: 8px;
-  }
-
-  .fl-founder--doctor .fl-founder__hover-name,
-  .fl-founder--doctor .fl-founder__hover-arrow {
-    display: none;
+    bottom: 18%;
   }
 
   .fl-founder--man {
-    width: 178px;
-    height: 218px;
+    width: 49%;
+    height: 60%;
     right: 0;
-    top: 82px;
+    left: auto;
+    top: 18.5%;
   }
 
   .fl-founder--man .fl-founder__portrait {
-    top: 42px;
-    width: 154px;
-    height: 158px;
+    left: 0;
+    top: 19%;
+    width: 86%;
+    height: 72%;
   }
 
+  /* The portrait is 86% of the figure box and left-aligned, so the pill is
+     anchored inside that, not to the figure's right edge. */
   .fl-founder--man figcaption {
-    left: 72px;
+    left: auto;
+    right: 25px;
     bottom: 8px;
   }
 
-  .fl-founder--man .fl-founder__spark,
-  .fl-founder--man .fl-founder__hover-name,
-  .fl-founder--man .fl-founder__hover-arrow {
-    display: none;
-  }
-
   .fl-founder--woman {
-    width: 260px;
-    height: 176px;
-    left: 18px;
-    top: 258px;
+    width: 72%;
+    height: 38%;
+    left: 5%;
+    top: 55%;
   }
 
   .fl-founder--woman .fl-founder__portrait {
-    width: 226px;
-    height: 176px;
+    left: 0;
+    top: 0;
+    width: 87%;
+    height: 100%;
   }
 
   .fl-founder--woman figcaption {
@@ -1016,10 +809,44 @@
     bottom: 8px;
   }
 
-  .fl-founder--woman .fl-founder__hover-name,
-  .fl-founder--woman .fl-founder__hover-arrow {
-    display: none;
+  /* The names used to be display:none on every phone, so the collage rendered
+     as three anonymous photos — and, being display:none, they were gone from
+     the accessibility tree too, leaving three identical "Femi9 founder" alts.
+     There is no hover on a phone, so they become static captions instead. Each
+     sits in the headroom its own figure box leaves above the portrait; the
+     woman's portrait fills her box, so hers goes underneath it. */
+  .fl-founder__hover-name {
+    opacity: 1;
+    max-width: 100%;
+    font-size: 14px;
+    line-height: 1.25;
+    white-space: normal;
+    pointer-events: auto;
   }
+
+  .fl-founder--doctor .fl-founder__hover-name {
+    left: 0;
+    right: auto;
+    top: 0;
+  }
+
+  .fl-founder--man .fl-founder__hover-name {
+    left: auto;
+    right: 0;
+    top: 0;
+    text-align: right;
+  }
+
+  .fl-founder--woman .fl-founder__hover-name {
+    left: 0;
+    right: auto;
+    top: 100%;
+    margin-top: 5px;
+  }
+
+  /* No `display:none` for the arrows and sparks here: About.tsx gates all six
+     out of the markup below 621px (useMediaGate), which is the 184KB of SVG a
+     phone used to download and then hide. A rule here would match nothing. */
 
   .fl-about__copy {
     margin-top: 24px;
@@ -1111,20 +938,6 @@
   animation: none;
 }
 
-.figma-landing .fl-hero__eyebrow {
-  width: auto;
-  max-width: none;
-  height: auto;
-  display: block;
-  margin: 0 0 20px;
-  color: #4a4286;
-  font-size: 13px;
-  line-height: 1.2;
-  font-weight: 700;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
 .figma-landing .fl-hero h1,
 .figma-landing .fl-hero h2 {
   width: auto;
@@ -1140,8 +953,8 @@
   text-transform: none;
 }
 
-.figma-landing .fl-hero__copy > p:not(.fl-hero__eyebrow),
-.figma-landing .fl-hero__copy--second > p:not(.fl-hero__eyebrow) {
+.figma-landing .fl-hero__copy > p,
+.figma-landing .fl-hero__copy--second > p {
   width: auto;
   max-width: 520px;
   height: auto;
@@ -1181,22 +994,9 @@
 }
 
 .figma-landing .fl-hero__actions .fl-btn--gold:focus-visible,
-.figma-landing .fl-hero__link:focus-visible,
 .figma-landing .fl-hero__pager button:focus-visible {
   outline: 3px solid rgba(74, 66, 134, .36);
   outline-offset: 4px;
-}
-
-.figma-landing .fl-hero__link {
-  color: #4a4286;
-  font-size: 16px;
-  font-weight: 800;
-  text-decoration: none;
-  text-underline-offset: 5px;
-}
-
-.figma-landing .fl-hero__link:hover {
-  text-decoration: underline;
 }
 
 .figma-landing .fl-hero__visual {
@@ -1297,10 +1097,58 @@
   }
 }
 
-@media (max-width: 760px) {
+/* 768, not 760: the hero has to flatten at the same width its typography
+   shrinks (the universal block further down is 768), or 761-768px — iPad
+   portrait, one of the target viewports — gets the desktop two-column hero set
+   at phone type scale. */
+@media (max-width: 768px) {
+  /* Both scenes are `position:absolute;inset:0` (figma-landing.css:19), so the
+     hero had NO in-flow children and its height was whatever min-height said —
+     720px — while the stacked mobile scene measures ~850px. `overflow:hidden`
+     then ate the difference, including the Buy Now button. Stacking the two
+     scenes in one grid cell lets the taller one define the height and keeps the
+     cross-fade. Desktop (>768px) still uses the absolute layout untouched. */
   .figma-landing .fl-hero {
-    height: 720px;
-    min-height: 720px;
+    height: auto;
+    min-height: 0;
+    display: grid;
+    grid-template-areas: "stack";
+    overflow: clip;
+  }
+
+  .figma-landing .fl-hero__scene {
+    grid-area: stack;
+    position: relative;
+    inset: auto;
+    min-height: 0;
+  }
+
+  .figma-landing .fl-hero__background {
+    grid-area: stack;
+    position: absolute;
+    inset: 0;
+  }
+
+  .figma-landing .fl-hero__inner {
+    height: auto;
+    min-height: 0;
+  }
+
+  /* The inactive scene keeps its box on purpose — dropping it out of flow would
+     resize the hero every 6 seconds and shove the page around. It is still
+     opacity:0 (so it paints nothing), pointer-events:none (figma-landing.css)
+     and `inert` in the markup, so it cannot be seen, tapped or tabbed to. The
+     cross-fade is therefore intact here, unlike a visibility/display swap. */
+
+  /* Auto-placed into the implicit second row, under the tallest scene, instead
+     of floating over whichever CTA happens to be at the bottom. */
+  .figma-landing .fl-hero__pager {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    justify-content: center;
+    margin: 8px auto 20px;
   }
 
   .figma-landing .fl-hero::after {
@@ -1337,11 +1185,6 @@
     border-radius: 22px;
   }
 
-  .figma-landing .fl-hero__eyebrow {
-    margin-bottom: 14px;
-    font-size: 12px;
-  }
-
   .figma-landing .fl-hero h1,
   .figma-landing .fl-hero h2 {
     max-width: 12ch;
@@ -1349,8 +1192,16 @@
     line-height: 1.08;
   }
 
-  .figma-landing .fl-hero__copy > p:not(.fl-hero__eyebrow),
-  .figma-landing .fl-hero__copy--second > p:not(.fl-hero__eyebrow) {
+  /* The 12ch cap above was only ever reset for the lifestyle slide, so the
+     product slide's heading was squeezed into ~178px of a 320px column. */
+  .figma-landing .fl-hero__scene--first h1,
+  .figma-landing .fl-hero__scene--first h2 {
+    max-width: 100%;
+    text-wrap: balance;
+  }
+
+  .figma-landing .fl-hero__copy > p,
+  .figma-landing .fl-hero__copy--second > p {
     max-width: 330px;
     margin-top: 18px;
     font-size: 15px;
@@ -1366,14 +1217,6 @@
 
   .figma-landing .fl-hero__actions .fl-btn--gold {
     width: 100%;
-  }
-
-  .figma-landing .fl-hero__link {
-    font-size: 15px;
-  }
-
-  .figma-landing .fl-hero__pager {
-    bottom: 22px;
   }
 }
 
@@ -1428,7 +1271,7 @@
   align-self: flex-start;
 }
 
-.figma-landing .fl-hero__scene--second h2 {
+.figma-landing .fl-hero__scene--second :is(h1, h2) {
   max-width: 700px;
   color: #fff !important;
   font-size: clamp(50px, 4.15vw, 64px);
@@ -1438,7 +1281,7 @@
   text-align: left;
 }
 
-.figma-landing .fl-hero__scene--second h2 span {
+.figma-landing .fl-hero__scene--second :is(h1, h2) span {
   color: #21184d;
 }
 
@@ -1550,7 +1393,7 @@
     padding-inline: 48px;
   }
 
-  .figma-landing .fl-hero__scene--second h2 {
+  .figma-landing .fl-hero__scene--second :is(h1, h2) {
     font-size: 48px;
   }
 
@@ -1564,12 +1407,7 @@
   }
 }
 
-@media (max-width: 760px) {
-  .figma-landing .fl-hero {
-    height: auto !important;
-    min-height: 720px !important;
-  }
-
+@media (max-width: 768px) {
   .figma-landing .fl-hero__scene--second .fl-hero__inner {
     display: flex !important;
     flex-direction: column !important;
@@ -1603,24 +1441,11 @@
     filter: drop-shadow(0 20px 32px rgba(25, 17, 63, .35)) !important;
   }
 
-  .figma-landing .fl-hero__girl-pad {
-    position: absolute !important;
-    left: 50% !important;
-    transform: translateX(-50%) rotate(5deg) !important;
-    bottom: -8px !important;
-    width: min(240px, 58vw) !important;
-    height: auto !important;
-    z-index: 4 !important;
-    opacity: 0.85 !important;
-  }
-
-  .figma-landing .fl-hero__girl-clouds {
-    right: -10%;
-    bottom: 10%;
-    width: 120%;
-    height: 80%;
-    opacity: 0.8;
-  }
+  /* No `.fl-hero__girl-pad` / `.fl-hero__girl-clouds` rules here on purpose:
+     Home.tsx gates both out of the markup below 769px (useMediaGate), so a
+     display:none rule would match nothing. They earn nothing on a phone anyway
+     — the pad sits at z-index 4 under a cutout 43% wider than it, and the cloud
+     wash is painted over by everything above it. */
 
   .figma-landing .fl-hero__girl-flower-outline {
     top: 15%;
@@ -1654,7 +1479,7 @@
     align-self: center !important;
   }
 
-  .figma-landing .fl-hero__scene--second h2 {
+  .figma-landing .fl-hero__scene--second :is(h1, h2) {
     max-width: 100% !important;
     font-size: clamp(28px, 7.5vw, 36px) !important;
     line-height: 1.2 !important;
@@ -1677,7 +1502,7 @@
     align-items: center !important;
     gap: 8px 14px !important;
     margin: 14px auto 0 !important;
-    font-size: 12.5px !important;
+    font-size: 14px !important;
     align-self: center !important;
   }
 
@@ -1699,9 +1524,56 @@
     min-width: 160px !important;
     align-self: center !important;
   }
+}
 
-  .figma-landing .fl-hero.is-second .fl-hero__pager {
-    bottom: 14px !important;
+/* Hero pager: 44x44 hit box, unchanged 10px painted dot.
+   Gated on `pointer: coarse` rather than a width query so touch tablets are
+   covered and the mouse-driven desktop rendering is byte-identical. */
+@media (pointer: coarse) {
+  .figma-landing .fl-hero__pager {
+    gap: 4px;
+  }
+
+  .figma-landing .fl-hero__pager button {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    padding: 0;
+    background: none;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+  }
+
+  .figma-landing .fl-hero__pager button::before {
+    content: "";
+    display: block;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(74, 66, 134, .22);
+    transition: width 800ms ease-in-out, background-color 800ms ease-in-out;
+  }
+
+  .figma-landing .fl-hero__pager button.is-active {
+    width: 60px;
+  }
+
+  .figma-landing .fl-hero__pager button.is-active::before {
+    width: 40px;
+    background: rgba(74, 66, 134, .66);
+  }
+
+  .figma-landing .fl-hero.is-second .fl-hero__pager button {
+    background: none;
+  }
+
+  .figma-landing .fl-hero.is-second .fl-hero__pager button::before {
+    background: rgba(255, 255, 255, .28);
+  }
+
+  .figma-landing .fl-hero.is-second .fl-hero__pager button.is-active::before {
+    background: rgba(255, 255, 255, .62);
   }
 }
 
@@ -1761,32 +1633,23 @@
   transform: rotate(30deg) translateX(100%);
 }
 
-/* 2. Product & Card Elevation Micro-Interactions */
-.fl-product-card,
-.fl-journal__card,
+/* 2. Card Elevation Micro-Interactions.
+   `.fl-product-card`, `.fl-journal__card` and `.fl-partner__stat` (singular)
+   are not rendered anywhere — the live classes are `.card`, `.fl-blog` and
+   `.fl-partner__stats span`. The lift is left on the two elements that do
+   exist, and gated on a real pointer so it cannot fire as a tap-highlight. */
 .fl-review,
-.cyc-card,
-.fl-partner__stat {
+.cyc-card {
   transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1) !important;
   will-change: transform, box-shadow;
 }
 
-.fl-product-card:hover,
-.fl-journal__card:hover,
-.fl-review:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 20px 42px -12px rgba(39, 35, 85, 0.16) !important;
-}
-
-.fl-product-card img,
-.fl-journal__card img {
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.fl-product-card:hover img,
-.fl-journal__card:hover img {
-  transform: scale(1.05);
+@media (hover: hover) {
+  .fl-review:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 42px -12px rgba(39, 35, 85, 0.16) !important;
+  }
 }
 
 /* 3. Gentle Ambient Floating Flowers */
@@ -1800,10 +1663,25 @@
   animation: flGentleFloat 5s ease-in-out infinite;
 }
 
+/* The reduced-motion block 200 lines up covers a different, earlier set of
+   selectors and only cancels `transition` — it could never have reached this
+   animation. */
+@media (prefers-reduced-motion: reduce) {
+  .fl-hero__flower-icon,
+  .fl-flower img {
+    animation: none !important;
+  }
+}
+
 /* 4. Strict Mobile Layout & Touch-Screen Optimizations */
 @media (max-width: 768px) {
+  /* `clip`, never `hidden`, and never `!important`. `hidden` makes <body> a
+     scroll container, which silently kills `position: sticky` for every
+     descendant — the sticky nav on this page and the checkout order summary at
+     768px. `clip` suppresses the same horizontal bleed without creating a
+     scrollport. base.css:56 documents the same decision for <html>. */
   html, body {
-    overflow-x: hidden !important;
+    overflow-x: clip;
     touch-action: manipulation;
   }
 
@@ -1816,6 +1694,16 @@
 
   p, span, small {
     line-height: 1.5 !important;
+  }
+
+  /* `height: auto` is forced on the BLOCK text elements only, never on <span>.
+     On a real (non-replaced, inline) text span `height` has no effect at all, so
+     including spans here bought nothing — but the landing markup also uses spans
+     as sized layout boxes (.fl-founder__portrait, .fl-flower,
+     .fl-founder__spark), and on those the `!important` beat their own
+     `height: 100%`. The founder portraits then collapsed to their images'
+     intrinsic aspect ratio and grew past the collage into the copy below it. */
+  p, small {
     height: auto !important;
   }
 
@@ -1840,7 +1728,7 @@
     flex-wrap: wrap !important;
     align-items: center !important;
     gap: 8px 12px !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     line-height: 1.4 !important;
     margin-top: 14px !important;
   }
@@ -1851,29 +1739,27 @@
     opacity: 0.5 !important;
   }
 
-  /* Clean mobile pill buttons */
-  .fl-btn,
-  .btn,
-  .fl-btn--gold,
-  .fl-btn--outline,
-  .fl-btn--primary,
-  .fl-partner__actions .fl-btn,
-  .fl-hero .fl-btn--gold {
-    min-width: 0 !important;
-    width: auto !important;
-    max-width: 100% !important;
-    min-height: 46px !important;
-    height: auto !important;
-    padding: 10px 24px !important;
-    font-size: 14.5px !important;
-    line-height: 1.2 !important;
-    border-radius: 999px !important;
-    box-sizing: border-box !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    white-space: nowrap !important;
-    word-break: normal !important;
+  /* Clean mobile pill buttons.
+     SCOPED to `.figma-landing` on purpose. This list used to include a bare
+     `.btn` with `width:auto!important;white-space:nowrap!important`, which
+     outranked even inline styles and collapsed the checkout pay button, the
+     cart drawer footer button and the cycle tracker CTA on every route at
+     <=768px. It never needed to reach past the landing page: `.fl-btn` is only
+     rendered by Home.tsx and About.tsx. The width/height/white-space clamps are
+     gone with it — a CTA that wants to be full width may now be full width. */
+  .figma-landing .fl-btn,
+  .figma-landing .fl-btn--gold,
+  .figma-landing .fl-btn--outline,
+  .figma-landing .fl-partner__actions .fl-btn {
+    min-height: 46px;
+    padding: 10px 24px;
+    font-size: 14.5px;
+    line-height: 1.2;
+    border-radius: 999px;
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .fl-partner__actions {
@@ -1919,36 +1805,12 @@
     line-height: 1.3 !important;
   }
 
-  .fl-hero__pager button {
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .fl-product {
-    height: auto !important;
-    min-height: 380px !important;
-    padding: 16px !important;
-    border-radius: 16px !important;
-    box-sizing: border-box !important;
-  }
-
-  .fl-product__media {
-    height: 220px !important;
-    flex-basis: 220px !important;
-    width: 100% !important;
-  }
-
-  .fl-product__buy {
-    width: 100% !important;
-    min-height: 44px !important;
-    padding: 10px 16px !important;
-    font-size: 14px !important;
-    border-radius: 999px !important;
-    margin-top: 8px !important;
-  }
+  /* Deleted here: a 24px `.fl-hero__pager button` that lost on specificity to
+     `.figma-landing .fl-hero__pager button` and so never shipped (the real
+     44x44 target is in the `pointer: coarse` block above), and the
+     `.fl-product` / `.fl-product__media` / `.fl-product__buy` trio, which is
+     the markup ProductCard replaced. Its `min-height:44px;width:100%` is the
+     one thing worth keeping and it now lives on `.add` in the 900px block. */
 
   .fl-benefit {
     height: auto !important;
@@ -1960,26 +1822,178 @@
     margin-bottom: 12px !important;
   }
 
+  /* This grid was flipped to a horizontal flex rail whose only item-sizing rule
+     targeted `.fl-journal__card` — a class the page does not render (the cards
+     are `.fl-blog`). With no flex-basis the three cards shrank to min-content,
+     about 140px each, one word per line. A single column is what the section
+     was designed to do on a phone; it also restores the `1fr` rule at the
+     900px breakpoint that this block was overriding. */
   .fl-journal__grid {
-    display: flex !important;
-    overflow-x: auto !important;
-    scroll-snap-type: x mandatory !important;
-    -webkit-overflow-scrolling: touch;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
     gap: 16px !important;
-    padding-bottom: 16px !important;
+    overflow: visible !important;
+    padding-bottom: 0 !important;
+  }
+}
+
+/* =============================================================================
+   MOBILE REPAIR PASS — reveal safety net, touch affordances, type floors
+   ============================================================================= */
+
+/* 1. Reveal safety net.
+   Everything below the hero ships as opacity:0 in the server HTML and is only
+   revealed by a client-side IntersectionObserver, so on a slow phone the page
+   below the fold paints blank for the whole hydration window — and the journal
+   cards are parked 610-1233px down over the cycle tracker while they wait. On
+   a phone the entrance choreography is worth less than seeing the page, so
+   below 900px the sections simply start where they belong. This also
+   neutralises the 530px horizontal parking offset on `.fl-benefit--left/right`
+   (which is the reason a global overflow guard was needed at all) and the
+   421px desktop step that the testimonial arrows apply to the rail. */
+@media (max-width: 900px) {
+  .fl-why .fl-heading,
+  .fl-benefit,
+  .fl-why__product,
+  .fl-journal .fl-heading,
+  .fl-blog,
+  .fl-testimonials .fl-heading,
+  .fl-testimonials__track,
+  .fl-partner__copy,
+  .fl-partner__image,
+  .fl-founder {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* 2. Blog card: the "read" chip is a 78x17 box with `overflow:hidden` that only
+   opens to 40px on :hover, so on touch the arrow — the card's only "this is
+   tappable" cue — is permanently clipped out of view. */
+@media (hover: none) {
+  .fl-blog__meta {
+    align-items: flex-end;
   }
 
-  .fl-journal__card {
-    flex: 0 0 78vw !important;
-    max-width: 320px !important;
-    height: auto !important;
-    border-radius: 16px !important;
-    scroll-snap-align: center !important;
-    box-sizing: border-box !important;
+  .fl-blog__read {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    overflow: visible;
   }
 
-  .fl-journal__card img {
-    height: 180px !important;
-    object-fit: cover !important;
+  .fl-blog__arrow {
+    align-self: auto;
+  }
+}
+
+/* 3. #about-femi9 — the one landing section with no responsive coverage at all,
+   because every value was an inline style object that no media query can
+   reach. The desktop numbers below are the exact ones that were inline.
+   `--bg-light` and `--font-display` are NOT defined anywhere in this app: both
+   declarations are invalid at computed-value time and resolve to `unset`, which
+   is exactly what the inline styles did, so the desktop rendering is unchanged.
+   They are kept verbatim rather than "fixed" for that reason — giving them real
+   values would repaint the section. */
+.about-section {
+  padding: 80px 0;
+  background: var(--bg-light);
+}
+
+.about-section .fl-shell {
+  max-width: 800px;
+  margin-inline: auto;
+  text-align: center;
+}
+
+.about-section h2 {
+  margin-bottom: 24px;
+  color: var(--navy);
+  font-family: var(--font-display);
+  font-size: 2.2rem;
+}
+
+.about-section p {
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.about-section p:first-of-type {
+  margin-bottom: 16px;
+}
+
+.about-section p:last-of-type {
+  margin-bottom: 32px;
+}
+
+@media (max-width: 620px) {
+  .about-section {
+    padding: 48px 0;
+  }
+
+  .about-section h2 {
+    margin-bottom: 16px;
+    font-size: clamp(26px, 7.5vw, 32px);
+  }
+
+  .about-section p {
+    font-size: 1rem;
+  }
+}
+
+/* 4. Cycle tracker: the fineprint is pinned to 12px by figma-landing.css with
+   `!important`, under the 14px floor, on muted grey. */
+@media (max-width: 900px) {
+  .fl-cycle .cyc-fineprint {
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+  }
+
+  .fl-cycle .cyc-form-title p {
+    font-size: 14px !important;
+  }
+
+  /* Four decorative blobs sized as percentages of a box that is ~1200px tall
+     once `.fl-cycle` goes height:auto — a round blob renders as a 6x vertical
+     streak. They are aria-hidden decoration, and unreadable at this size. */
+  .fl-cycle .cyc-fig-vectors {
+    display: none;
+  }
+}
+
+/* 5. About page decorative shapes. Below 900px they kept their desktop
+   coordinates: --bottom starts at x=676 and --edge at x=1012 on a 360px
+   viewport, so both were laid out entirely off-canvas and swallowed by
+   `.fl-about{overflow:hidden}`, while --top spread 849px of flat wash over a
+   360px section. (--edge is dropped from the markup below 901px.) */
+@media (max-width: 900px) {
+  .fl-about__shape {
+    opacity: .35;
+  }
+
+  .fl-about__shape--corner {
+    width: 220px;
+    left: -40px;
+    top: -20px;
+  }
+
+  .fl-about__shape--top {
+    width: 380px;
+    height: auto;
+    left: -60px;
+    top: -30px;
+  }
+
+  .fl-about__shape--bottom {
+    width: 320px;
+    height: auto;
+    left: auto;
+    right: -80px;
+    top: auto;
+    bottom: -40px;
   }
 }

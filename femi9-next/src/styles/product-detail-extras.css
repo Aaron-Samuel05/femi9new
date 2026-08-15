@@ -72,6 +72,66 @@ button.related-add-btn-pill:disabled {
   cursor: not-allowed;
 }
 
+/* ---------------------------------------------------------------------------
+   Mobile / touch
+   --------------------------------------------------------------------------- */
+
+/* Facebook, WhatsApp and copy-link sit side by side at 32x32 with a 10px gap —
+   a 42px pitch on three adjacent controls, and the copy-link one has no other
+   entry point. Coarse pointers rather than a width query so touch tablets are
+   covered too; the painted circle grows with the box, which is fine because the
+   row has room at every viewport. */
+@media (pointer: coarse) {
+  .pdp-share-link {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pdp-share-link svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .pdp-share-links {
+    gap: 12px;
+  }
+}
+
+/* The review modal is a centred card with a `vh`-based cap. `vh` does not shrink
+   when the soft keyboard opens, so the submit button ended up behind it. Docking
+   the card to the bottom as a sheet and capping it in `dvh` keeps the whole form
+   reachable while typing, and the safe-area padding keeps the submit button off
+   the home indicator. */
+@media (max-width: 768px) {
+  .pdp-modal {
+    align-items: end;
+    padding: 0;
+  }
+
+  .pdp-modal-card {
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    max-height: min(88dvh, 100%);
+    /* Longhand on purpose: app.css sets padding-top on coarse pointers to keep
+       the enlarged close button off the first field, and a shorthand here would
+       silently undo it depending on which sheet loads last. */
+    padding-right: 18px;
+    padding-left: 18px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+
+  /* The fullscreen image viewer stays centred — it has no form to keep clear. */
+  .pdp-image-modal-card {
+    max-height: min(88dvh, 100%);
+    margin: auto;
+  }
+
+  .pdp-image-modal-card img,
+  .pdp-image-modal-card svg {
+    max-height: calc(88dvh - 24px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   button.pdp-share-link,
   button.related-add-btn-pill {

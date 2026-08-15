@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCart } from '@/store/cart'
 import { Chip } from '@/components/Chip'
@@ -116,24 +116,52 @@ const EMPTY: Record<Field, string> = {
   addressLabel: 'Home',
 }
 
-const inputStyle: CSSProperties = {
-  width: '100%',
-  padding: '.72rem .95rem',
-  borderRadius: 14,
-  border: '1.5px solid var(--line)',
-  background: 'var(--surface)',
-  color: 'var(--ink)',
-  font: 'inherit',
-  outline: 'none',
-}
-
-const labelStyle: CSSProperties = {
-  display: 'block',
-  fontSize: '.82rem',
-  fontWeight: 600,
-  color: 'var(--ink)',
-  marginBottom: '.35rem',
-}
+/**
+ * Indian states and union territories, for the State picker.
+ *
+ * A free-text State box on a phone is a 133px field, an open keyboard and no
+ * validation — "TN", "tamilnadu" and outright typos all reached the shipping
+ * label. A native <select> renders as a scroll wheel on iOS and a full-screen
+ * list on Android, so it costs no keyboard at all.
+ */
+const STATES = [
+  'Andaman and Nicobar Islands',
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chandigarh',
+  'Chhattisgarh',
+  'Dadra and Nagar Haveli and Daman and Diu',
+  'Delhi',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jammu and Kashmir',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Ladakh',
+  'Lakshadweep',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Puducherry',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+] as const
 
 /** What we already know about a signed-in shopper, resolved server-side. */
 export interface CheckoutPrefill {
@@ -326,10 +354,10 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
     >
       <h2 style={{ fontSize: '1.15rem', marginBottom: '1.25rem' }}>Shipping details</h2>
 
-      <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
+      <div className="co-fields">
         <FormField label="Full name" error={errors.name} full>
           <input
-            style={inputStyle}
+            className="co-input"
             type="text"
             autoComplete="name"
             placeholder="e.g. Lakshmi Priya"
@@ -341,9 +369,9 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
 
         <FormField label="Phone number" error={errors.phone}>
           <input
-            style={inputStyle}
+            className="co-input"
             type="tel"
-            inputMode="numeric"
+            inputMode="tel"
             autoComplete="tel-national"
             placeholder="10-digit mobile"
             value={form.phone}
@@ -354,9 +382,13 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
 
         <FormField label="Email (optional)" error={errors.email}>
           <input
-            style={inputStyle}
+            className="co-input"
             type="email"
+            inputMode="email"
             autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="you@example.com"
             value={form.email}
             onChange={(e) => set('email', e.target.value)}
@@ -365,7 +397,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
 
         <FormField label="Address" error={errors.line} full>
           <input
-            style={inputStyle}
+            className="co-input"
             type="text"
             autoComplete="street-address"
             placeholder="House / flat, street, area"
@@ -377,7 +409,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
 
         <FormField label="City" error={errors.city}>
           <input
-            style={inputStyle}
+            className="co-input"
             type="text"
             autoComplete="address-level2"
             placeholder="e.g. Coimbatore"
@@ -388,21 +420,33 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
         </FormField>
 
         <FormField label="State (optional)">
-          <input
-            style={inputStyle}
-            type="text"
+          <select
+            className="co-select"
             autoComplete="address-level1"
-            placeholder="e.g. Tamil Nadu"
             value={form.state}
             onChange={(e) => set('state', e.target.value)}
-          />
+          >
+            <option value="">Select state</option>
+            {/* A prefilled address may hold a value typed before this was a
+                picker ("TN", a typo). Keep it selectable so switching the
+                control does not silently blank a saved address. */}
+            {form.state && !STATES.includes(form.state as (typeof STATES)[number]) && (
+              <option value={form.state}>{form.state}</option>
+            )}
+            {STATES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
         </FormField>
 
         <FormField label="Pincode (optional)" error={errors.pincode}>
           <input
-            style={inputStyle}
+            className="co-input"
             type="text"
             inputMode="numeric"
+            pattern="[0-9]*"
             autoComplete="postal-code"
             placeholder="6-digit pincode"
             value={form.pincode}
@@ -430,9 +474,12 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
 
         <FormField label="Coupon or reward code (optional)" full>
           <input
-            style={inputStyle}
+            className="co-input"
             type="text"
             autoComplete="off"
+            autoCapitalize="characters"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="e.g. BLOOM-XXXXXXXXXX"
             value={form.couponCode}
             onChange={(e) => set('couponCode', e.target.value.toUpperCase())}
@@ -458,18 +505,21 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
         </p>
       )}
 
-      <button
-        type="submit"
-        className="btn btn-primary"
-        disabled={submitting}
-        style={{ width: '100%', marginTop: '1.4rem', opacity: submitting ? 0.75 : 1 }}
-      >
-        {submitting ? 'Preparing payment…' : 'Continue to secure payment'}
-      </button>
+      {/* On a phone the CTA sat ~1200px down the page; .co-paybar makes this a
+          sticky footer inside the form below 720px so it is always reachable.
+          Above 720px the wrapper is inert and the button renders as before. */}
+      <div className="co-paybar">
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={submitting}
+          style={{ width: '100%', opacity: submitting ? 0.75 : 1 }}
+        >
+          {submitting ? 'Preparing payment…' : 'Continue to secure payment'}
+        </button>
+      </div>
 
-      <p style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: '.8rem', textAlign: 'center' }}>
-        Pay securely with Razorpay. UPI, cards and netbanking are supported.
-      </p>
+      <p className="co-note">Pay securely with Razorpay. UPI, cards and netbanking are supported.</p>
     </form>
   )
 }
@@ -487,11 +537,18 @@ function FormField({
   children: React.ReactNode
 }) {
   return (
-    <div style={{ gridColumn: full ? '1 / -1' : 'auto' }}>
-      <label style={labelStyle}>{label}</label>
+    // Deliberately a <div> + unassociated <label>, as before: one of these
+    // fields wraps a row of Chip <button>s, and <button> is a labelable
+    // element — a wrapping <label> would make a click on the label text
+    // activate the first chip.
+    <div className={full ? 'co-field co-field--full' : 'co-field'}>
+      <label className="co-label">{label}</label>
       {children}
+      {/* role="alert" so a validation failure is announced, not just painted. */}
       {error && (
-        <span style={{ display: 'block', marginTop: '.35rem', color: '#b4322f', fontSize: '.78rem' }}>{error}</span>
+        <span className="co-error" role="alert">
+          {error}
+        </span>
       )}
     </div>
   )

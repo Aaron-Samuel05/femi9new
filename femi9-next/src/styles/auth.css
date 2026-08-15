@@ -75,6 +75,14 @@
   filter: brightness(0) invert(1);
 }
 
+/* The lockup is 30px tall, so the link that wraps it was a 30px tap target — the
+   only route home from the auth panel. Pad it to 44px vertically rather than
+   scaling the mark, and pull the padding back out with a negative margin so the
+   panel's spacing is unchanged. */
+@media (pointer: coarse) {
+  .auth-aside__brand { padding-block: 7px; margin-block: -7px; }
+}
+
 .auth-aside .eyebrow { color: var(--yellow); }
 .auth-aside .eyebrow::before { background: var(--yellow); }
 
@@ -213,6 +221,12 @@
 /* app.css gives .seg no focus treatment, and this one is a primary control on a
    keyboard-only sign-in. Same ring recipe as every other focusable surface. */
 .auth-methods .seg button:focus-visible { outline: 2px solid rgba(86, 49, 132, .45); outline-offset: 2px; }
+/* 42px is 2px under the touch minimum, on the first decision of the sign-in
+   screen. 48px + the track's own 4px padding makes the control 56px, matching
+   the 48px .m-input rhythm below it. Touch only — the desktop card keeps 42px. */
+@media (pointer: coarse) {
+  .auth-methods .seg button { min-height: 48px; padding: 12px; }
+}
 
 /* --------------------------------------------------------------------------
    6. FIELDS
@@ -379,20 +393,27 @@
   }
   .auth-aside {
     gap: 16px;
+    /* The shell is edge-to-edge and 100dvh from here down, so the brand band is
+       the thing under the notch — pad the top out by the inset. */
     padding: clamp(22px, 6vw, 32px);
+    padding-top: calc(clamp(22px, 6vw, 32px) + env(safe-area-inset-top, 0px));
   }
   .auth-aside__title { font-size: clamp(21px, 5vw, 26px); }
   /* The three value lines are the first thing scrolled past on a phone and the
-     form is the point of the screen, so they fold away with the artwork. */
-  .auth-points,
-  .auth-aside__art { display: none; }
+     form is the point of the screen, so they fold away. (The artwork is not
+     hidden here — it is gated out of the JSX instead, because display:none does
+     not cancel a 1.2 MB download.) */
+  .auth-points { display: none; }
   .auth-main { padding: clamp(22px, 6vw, 32px); }
 }
 
 @media (max-width: 560px) {
   .auth-aside { padding: 20px; }
   .auth-aside__copy { display: none; }
-  .auth-main { gap: 18px; padding: 22px 20px 28px; }
+  /* .auth-foot is margin-top:auto inside a panel that is exactly 100dvh and
+     edge-to-edge, so "Back to shop" / "Keep shopping" / Sign out land on the
+     iPhone home indicator. The env() term is the only thing between them. */
+  .auth-main { gap: 18px; padding: 22px 20px calc(28px + env(safe-area-inset-bottom, 0px)); }
   .auth-foot { flex-direction: column; align-items: stretch; }
   .auth-foot__end { justify-content: space-between; }
   .auth-foot .btn { flex: 1 1 auto; }

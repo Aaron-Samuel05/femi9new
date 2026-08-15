@@ -164,13 +164,13 @@ export async function listCustomers(
       prisma.pointsLedger.groupBy({
         by: ['userId'],
         where: { userId: { in: userIds } },
-        _sum: { amount: true },
+        _sum: { delta: true },
       }),
     ])
 
     const countMap = new Map(orderCountGroups.map((g) => [g.userId, g._count._all]))
     const spentMap = new Map(revenueGroups.map((g) => [g.userId, g._sum.total ?? 0]))
-    const pointsMap = new Map(pointsGroups.map((g) => [g.userId, g._sum.amount ?? 0]))
+    const pointsMap = new Map(pointsGroups.map((g) => [g.userId, g._sum.delta ?? 0]))
 
     const items: CustomerListItem[] = users.map((u) => {
       const primaryAddr = u.addresses[0] ?? null

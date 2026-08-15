@@ -7,6 +7,7 @@ import { CycleModeProvider } from '@/immersive/CycleMode'
 import { SmoothScroll, useLenis } from '@/immersive/SmoothScroll'
 import { CartDrawer } from '@/components/CartDrawer'
 import { Toast } from '@/components/Toast'
+import { stickyNavHeight } from '@/lib/sticky-nav'
 
 /**
  * On route change, reset scroll to top (or to a hash target if present).
@@ -22,8 +23,19 @@ function ScrollManager() {
     if (hash) {
       const el = document.getElementById(hash.slice(1))
       if (el) {
-        if (lenis) lenis.scrollTo(el, { offset: -70 })
-        else el.scrollIntoView({ behavior: 'smooth' })
+        // The offset used to be a hardcoded -70 against a 76px sticky bar, so
+        // every hash landing hid 6px of the heading — and it could not know
+        // about `env(safe-area-inset-top)`, which is non-zero now that the root
+        // viewport is `viewport-fit: cover`. Measure the bar instead, using the
+        // same helper the Nav's own in-page links use so the two cannot drift.
+        const navH = stickyNavHeight()
+        if (lenis) lenis.scrollTo(el, { offset: -(navH + 8) })
+        else {
+          // `scrollIntoView` takes no offset, and this is the branch that runs
+          // on every phone (Lenis is off for coarse pointers).
+          const top = el.getBoundingClientRect().top + window.scrollY - navH - 8
+          window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+        }
         return
       }
     }

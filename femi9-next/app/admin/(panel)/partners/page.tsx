@@ -194,7 +194,7 @@ export default function PartnersPage() {
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="adm-chip-group">
           {FILTERS.map((c) => {
             const active = c.value === filter
             return (
@@ -246,7 +246,10 @@ export default function PartnersPage() {
           </div>
 
           <div className="adm-table-wrap">
-            <table className="adm-table">
+            {/* --stack: below 900px each row renders as a labelled block, so the
+                notes editor in the last column is not 600px off-screen inside
+                the horizontal scroller. */}
+            <table className="adm-table adm-table--stack">
               <thead>
                 <tr>
                   <th>Applicant</th>
@@ -264,7 +267,7 @@ export default function PartnersPage() {
                   const dirty = isDirty(r)
                   return (
                     <tr key={r.id} aria-busy={busy}>
-                      <td style={{ fontWeight: 600 }}>
+                      <td data-label="Applicant" style={{ fontWeight: 600 }}>
                         {r.name}
                         {r.reason && (
                           <div className="adm-cell-muted" style={{ fontSize: 12, fontWeight: 400, maxWidth: 220 }} title={r.reason}>
@@ -272,17 +275,20 @@ export default function PartnersPage() {
                           </div>
                         )}
                       </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtPhone(r.phone)}</td>
-                      <td>{r.city || <span className="adm-cell-muted">—</span>}</td>
-                      <td>{r.situation || <span className="adm-cell-muted">—</span>}</td>
-                      <td>
+                      <td data-label="Phone" style={{ whiteSpace: 'nowrap' }}>{fmtPhone(r.phone)}</td>
+                      <td data-label="City">{r.city || <span className="adm-cell-muted">—</span>}</td>
+                      <td data-label="Situation">{r.situation || <span className="adm-cell-muted">—</span>}</td>
+                      <td data-label="Status">
                         <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
                       </td>
-                      <td className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
-                      <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 300 }}>
+                      <td data-label="Applied" className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
+                      <td data-label="Notes & actions">
+                        {/* minWidth 0: the <th> already floors this column at 320px
+                            on desktop, and a floor here would force the stacked
+                            mobile row wider than the phone. */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
                           {/* Status controls */}
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                          <div className="adm-btn-cluster" style={{ display: 'flex', flexWrap: 'wrap' }}>
                             {ACTIONS.map((a) => (
                               <button
                                 key={a.status}

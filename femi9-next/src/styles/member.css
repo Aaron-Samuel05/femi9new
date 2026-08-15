@@ -32,6 +32,20 @@
   min-height: 60vh;
 }
 
+/* base.css ships no list reset, so every <ul>/<ol> in this area was carrying the
+   UA defaults: `padding-inline-start: 40px` and `margin-block: 1em`. Fourteen
+   lists render here (the cycle legend, the trend bars, the logged history, the
+   rewards ledger, the sign-in value props …) and at 360px that indent is 40 of
+   the 286 usable pixels inside a card — 14% of the width, spent on a marker
+   column that cannot even paint, because every one of those <li>s is display:
+   flex or grid and so has no marker box at all.
+   `list-style` is deliberately NOT touched: the markers are already suppressed
+   by the item's own display, and setting `none` here would drop these lists out
+   of VoiceOver's list semantics for no gain.
+   `:where()` keeps this at single-class specificity, so every .dash-* / .acct-* /
+   .auth-* list rule still overrides it (they all load after this file). */
+.m-area :where(ul, ol) { margin: 0; padding: 0; }
+
 /* Screen top/bottom breathing room. Tighter than the marketing .section
    rhythm (64-120px), which is far too airy for a data screen. */
 .m-page { padding-block: clamp(26px, 3.4vw, 44px); }
@@ -48,7 +62,6 @@
 .m-span-4 { grid-column: span 4; }
 .m-span-6 { grid-column: span 6; }
 .m-span-8 { grid-column: span 8; }
-.m-span-12 { grid-column: span 12; }
 @media (max-width: 900px) {
   .m-span-4, .m-span-6, .m-span-8 { grid-column: span 12; }
 }
@@ -298,6 +311,25 @@
 .m-iconbtn--danger:hover { background: #F5EBEB; border-color: #A54646; color: #A54646; }
 .m-iconbtn[disabled] { color: var(--muted); cursor: not-allowed; background: var(--cream-2); border-color: var(--line-soft); }
 
+/* ---- TOUCH TARGETS -------------------------------------------------------
+   Three controls in this kit are painted smaller than a finger: .m-linkbtn is
+   a 34px box with 2px of horizontal slop ("Resend code", "Change number",
+   "Today", "Shop" and ~30 more), .m-iconbtn is 36px (the calendar month
+   arrows, every row's edit/delete). .m-sheet__close gets the same treatment in
+   §13, next to its own declaration — a media query adds no specificity, so the
+   override has to sit after the rule it beats.
+
+   Keyed on `pointer: coarse` rather than a width, so a 768px touch tablet is
+   covered and a 1512px mouse pointer keeps the compact desktop rhythm exactly
+   as it is today. The negative inline margin on .m-linkbtn preserves its
+   optical left edge, so growing the hit box shifts nothing.
+   -------------------------------------------------------------------------- */
+@media (pointer: coarse) {
+  .m-linkbtn { min-height: 44px; padding: 6px 10px; margin-inline: -10px; }
+  .m-iconbtn { width: 44px; height: 44px; }
+  .m-iconbtn svg { width: 19px; height: 19px; }
+}
+
 /* --------------------------------------------------------------------------
    5. CHIPS + STATUS PILLS
    Colour carries STATUS, never identity. The four pairs below are the whole
@@ -354,7 +386,6 @@
   box-shadow: var(--shadow-sm);
 }
 .m-card--roomy { padding: clamp(22px, 2.8vw, 32px); border-radius: var(--panel-r); }
-.m-card--flush { padding: 0; overflow: hidden; }   /* media-topped card */
 
 .m-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .m-card__head h2, .m-card__head h3 {
@@ -368,14 +399,6 @@
 .m-card__head p { margin-top: 3px; font-size: .84rem; line-height: 1.45; color: var(--muted); }
 .m-card__head-end { display: flex; align-items: center; gap: 8px; flex: none; }
 
-.m-card__media {
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border-radius: 16px 16px 0 0;
-  background: linear-gradient(160deg, #FFF7DE, #FFECB8);
-}
-.m-card__media img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
-.m-card__body { padding: clamp(18px, 2.2vw, 26px); }   /* pairs with --flush */
 .m-card__foot {
   margin-top: auto;
   padding-top: 14px;
@@ -385,7 +408,6 @@
   gap: 10px;
   flex-wrap: wrap;
 }
-.m-card__rule { margin: 2px 0; border: 0; border-top: 1px solid var(--line-soft); }
 
 /* Only an INTERACTIVE card lifts. The values are .card:hover from Products.css,
    copied exactly so member cards and product cards move identically. */
@@ -447,8 +469,11 @@ a.m-card:focus-visible, button.m-card:focus-visible { outline: 2px solid rgba(86
   line-height: 1.55;
 }
 .m-band__actions { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; }
-.m-band__rule { margin: 22px 0; border: 0; border-top: 1px solid rgba(255, 255, 255, .14); }
-/* Real product photography only — see the asset list in the design spec §7. */
+/* Real product photography only — see the asset list in the design spec §7.
+   There is deliberately NO `@media (max-width: 620px) { display: none }` here
+   any more: display:none does not cancel a download, and the source is a 1.7 MB
+   PNG. The consumers gate the element out of the JSX at the same 620px instead
+   (useMediaGate), so a phone never requests it. */
 .m-band__art {
   position: absolute;
   right: -6%;
@@ -459,7 +484,6 @@ a.m-card:focus-visible, button.m-card:focus-visible { outline: 2px solid rgba(86
   opacity: .9;
   pointer-events: none;
 }
-@media (max-width: 620px) { .m-band__art { display: none; } }
 
 /* --------------------------------------------------------------------------
    8. FIGURE — the numeric stat tile.
@@ -501,10 +525,6 @@ a.m-card:focus-visible, button.m-card:focus-visible { outline: 2px solid rgba(86
   font-variant-numeric: tabular-nums;
 }
 .m-figure__note { margin-top: auto; font-size: .78rem; line-height: 1.4; color: var(--muted); }
-.m-figure__delta { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; font-weight: 600; }
-.m-figure__delta svg { width: 13px; height: 13px; }
-.m-figure__delta--up { color: #3D8B5C; }
-.m-figure__delta--down { color: #A54646; }
 
 /* --------------------------------------------------------------------------
    9. LIST + ROW — use these instead of <table>.
@@ -615,6 +635,9 @@ a.m-row:focus-visible, button.m-row:focus-visible { outline: 2px solid rgba(86, 
    -------------------------------------------------------------------------- */
 .m-form { display: grid; gap: 18px; }
 .m-form__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+/* Kept deliberately: no JSX references it yet, but the checkout form is about to
+   (a full-width row inside .m-form__grid). Every other unused primitive in this
+   kit was deleted in the mobile pass. */
 .m-form__grid--full { grid-column: 1 / -1; }
 @media (max-width: 560px) { .m-form__grid { grid-template-columns: 1fr; } }
 
@@ -807,6 +830,9 @@ a.m-row:focus-visible, button.m-row:focus-visible { outline: 2px solid rgba(86, 
 .m-sheet__close:hover { background: var(--butter-soft); border-color: var(--yellow); }
 .m-sheet__close:focus-visible { outline: 2px solid rgba(86, 49, 132, .45); outline-offset: 2px; }
 .m-sheet__close svg { width: 18px; height: 18px; }
+/* Declared here rather than in §4's coarse block: a media query carries no
+   specificity, so an override of .m-sheet__close has to come after it. */
+@media (pointer: coarse) { .m-sheet__close { width: 44px; height: 44px; } }
 .m-sheet__foot { margin-top: 24px; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 
 @media (max-width: 560px) {
@@ -817,8 +843,27 @@ a.m-row:focus-visible, button.m-row:focus-visible { outline: 2px solid rgba(86, 
     max-height: 92dvh;
     border-radius: 22px 22px 0 0;
     transform: translateY(28px);
+    /* The foot supplies its own bottom padding, safe-area included. */
+    padding-bottom: 0;
   }
-  .m-sheet__foot { justify-content: stretch; }
+  /* As a true bottom sheet the foot sits flush with the viewport edge, which on
+     an iPhone puts the primary button under the 34px home indicator — and the
+     sheet is its own scroller with the page locked behind it, so once the
+     keyboard opens on the address form there is nothing left to scroll the
+     button into view. Sticking the foot to the bottom of that scroller keeps it
+     reachable, and the env() term clears the indicator.
+     (`interactiveWidget: 'resizes-content'` in app/layout.tsx — WS2 — is the
+     other half of the keyboard fix.) */
+  .m-sheet__foot {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin: 24px calc(clamp(20px, 2.6vw, 28px) * -1) 0;
+    padding: 14px clamp(20px, 2.6vw, 28px) calc(14px + env(safe-area-inset-bottom, 0px));
+    background: var(--surface);
+    box-shadow: 0 -1px 0 var(--line-soft);
+    justify-content: stretch;
+  }
   .m-sheet__foot .btn { flex: 1 1 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .m-scrim, .m-sheet { transition: none; } }
@@ -887,7 +932,25 @@ a.m-row:focus-visible, button.m-row:focus-visible { outline: 2px solid rgba(86, 
 .m-note--danger svg { color: #A54646; }
 
 /* --------------------------------------------------------------------------
-   15. REDUCED MOTION
+   15. NARROW-SCREEN TYPE FLOOR
+   The metadata roles above are rem/px-fixed, so they render at exactly the same
+   11-12.5px on a 360px phone as on a 1512px desktop — .m-status is the order
+   state ("Out for delivery"), .m-cap carries the calendar caption, the ring's
+   confidence figure and the trend summary. One additive block rather than
+   editing each rule, so nothing above 560px moves.
+   -------------------------------------------------------------------------- */
+@media (max-width: 560px) {
+  .m-cap { font-size: 13px; }
+  .m-status { font-size: .82rem; }
+  .m-chip,
+  .m-figure__label,
+  .m-figure__note { font-size: .84rem; }
+  /* .m-list__head is NOT bumped: §9 already sets it to display:none below
+     560px, so a font-size here would match nothing. */
+}
+
+/* --------------------------------------------------------------------------
+   16. REDUCED MOTION
    base.css already kills *animations* under this query, but not transitions.
    This block is declared once, here; no track re-declares it.
    -------------------------------------------------------------------------- */

@@ -1,38 +1,28 @@
-/* ===== RESPONSIVE (loaded last so media queries win) ===== */
-@media (max-width:1000px){
-  .grid-products{grid-template-columns:repeat(2,1fr)}
-  .footer-main{grid-template-columns:1fr 1fr 1fr}
-  .footer-brand{grid-column:1 / -1;max-width:none;margin-bottom:12px}
-}
-@media (max-width:860px){
-  .hero-in{grid-template-columns:1fr;min-height:auto;text-align:center;padding-block:40px 20px}
-  .hero-copy{max-width:none;margin-inline:auto}
-  .hero-actions,.hero-meta{justify-content:center}
-  .hero-art{order:-1;max-width:340px}
-  .trust-in{grid-template-columns:1fr 1fr}
-  .trust .t+.t{border-left:none}
-  .trust .t:nth-child(2){border-left:1px solid rgba(255,255,255,.12)}
-  .trust .t:nth-child(4){border-left:1px solid rgba(255,255,255,.12)}
-  .trust .t:nth-child(3),.trust .t:nth-child(4){border-top:1px solid rgba(255,255,255,.12)}
-  .bento{grid-template-columns:1fr 1fr}
-  .cell-wide{grid-column:span 2}
-  .cell-tall{grid-row:span 1}
-  .story-in{grid-template-columns:1fr}
-  .impact-in{grid-template-columns:1fr}
-}
+/* ===== RESPONSIVE =====
+   Loaded LAST of the component sheets (app/layout.tsx), so anything in here
+   beats the sheet that owns the component at equal specificity. That made it a
+   trap: it used to re-force `.grid-products` to two columns at <=560px and
+   `.footer-main` to two/three columns, overriding the correct single-column
+   collapses in Products.css and Footer.css purely on source order. With
+   `.card{overflow:hidden}` the two-up catalog card then amputated the Add
+   button at every width <=560px.
+
+   Grid ownership now lives with the component sheets. Nineteen further rules in
+   here targeted markup that was deleted long ago (`.hero-in`, `.trust-in`,
+   `.bento`, `.story-in`, `.impact-in`, `.stats`, `.sec-head`); they are gone
+   too. Do not reintroduce layout rules here — put them in the sheet that owns
+   the component, where they can be found. */
+
 @media (max-width:560px){
-  .grid-products{grid-template-columns:1fr 1fr;gap:14px}
+  /* Catalog card interior only — Products.css owns the grid itself. */
   .card-body{padding:14px}
   .card h3{font-size:1rem}
   .price b{font-size:1.15rem}
-  .bento{grid-template-columns:1fr}
-  .cell-wide{grid-column:span 1}
-  .stats{grid-template-columns:1fr}
-  .trust-in{grid-template-columns:1fr}
-  .trust .t{border-left:none !important}
-  .trust .t+.t{border-top:1px solid rgba(255,255,255,.12)}
-  .footer-main{grid-template-columns:1fr 1fr}
-  .nl-form{max-width:none}
-  .footer-bottom{flex-direction:column;gap:8px}
-  .sec-head{flex-direction:column;align-items:flex-start}
+}
+
+/* A real floor for form controls: anything under 16px makes iOS Safari zoom the
+   layout viewport on focus and never zoom back out. Component sheets may raise
+   this, none may lower it. */
+@media (max-width:560px){
+  input,select,textarea{font-size:16px}
 }

@@ -45,14 +45,70 @@
   flex-shrink:0;text-decoration:none;
 }
 .add:hover,.add:focus-visible{background:#494286;transform:translateY(-2px)}
-.add:active{transform:translateY(0) scale(.98)}
+/* Touch never fires the :hover lift above, so :active carries the same colour
+   change — it is the only press feedback a phone gets on the primary
+   conversion control. */
+.add:active{background:#494286;transform:translateY(0) scale(.98)}
 .add:disabled{opacity:.45;cursor:not-allowed;transform:none}
 
 @media(max-width:1180px){
   .grid-products{grid-template-columns:repeat(2,1fr);gap:20px}
 }
 @media(max-width:620px){
+  /* Authoritative single-column collapse. responsive.css used to force a 2-up
+     grid here, which clipped the card foot; that rule is being removed. */
   .grid-products{grid-template-columns:1fr;gap:16px}
+
+  /* The foot is price + Buy Now, stacked so the CTA gets a full-width row
+     instead of whatever the price leaves.
+
+     Do NOT reintroduce `flex-wrap: wrap` with a percentage flex-basis here.
+     figma-landing-responsive.css already sets `flex-direction: column` on this
+     foot at <=900px, and in a COLUMN container `flex-basis: 100%` resolves
+     against the height — an item that cannot fit wraps into a second COLUMN
+     beside the price and shoots off the card, where `.card{overflow:hidden}`
+     silently amputates it. Column + nowrap is the whole fix; `.add` gets its
+     full width from that same sheet's `width: 100%`. */
+  .card-foot{flex-wrap:nowrap;row-gap:12px}
+  .add{flex:0 0 auto;min-width:0;min-height:48px}
+
+  /* Body copy floor. This is the SKU-comparison text (flow, description and
+     the "10 pads · 290mm" unit line) and it was rendering at 11.8-13.8px. */
+  .card-desc{font-size:.9rem;line-height:1.5}
+  .card-flow{font-size:.8rem}
+  .price span{font-size:.8rem}
+
+  /* Absorbs the .card-body padding responsive.css used to set at 560px. The
+     heading/price shrink that lived beside it is dropped: at one card per row
+     there is width for the full type scale. */
+  .card-body{padding:16px 16px 18px}
+}
+
+/* 40px is 4px short of the touch minimum on the card's Buy Now. Raised only for
+   coarse pointers so the desktop card foot keeps its exact current height. */
+@media(pointer:coarse){
+  .add{min-height:44px}
+
+  /* The product name is the card's primary link — tapping it opens the PDP —
+     but it wraps only its <h3>, so its box was the 28px text line. Pad it to 44
+     and pull the padding straight back out with a matching negative margin, so
+     the hit area grows into the space the flex gap already leaves while the copy
+     stays exactly where it was. Deliberately NOT an ::after overlay: that grows
+     the clickable region without growing the element's box, which means neither
+     the mobile-quality gate nor a browser a11y audit can see the target size. */
+  .card-body>a{display:block;padding-block:8px;margin-block:-8px}
+}
+
+/* The "inside the pack" photo is reachable only on :hover / :focus-within, and
+   tapping the card navigates away in the same gesture — so on touch it is a
+   second full-size download that can never be displayed. ProductCard.tsx also
+   gates it out of the markup entirely; this is the belt-and-braces half, and it
+   keeps the pack shot from being faded out by the sticky-hover state iOS leaves
+   behind after a tap. */
+@media(hover:none){
+  .card-media .card-media__image--inside{display:none}
+  .card:hover .card-media__image--pack,
+  .card:focus-within .card-media__image--pack{opacity:1;transform:none}
 }
 
 @media(prefers-reduced-motion:reduce){

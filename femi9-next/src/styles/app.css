@@ -226,6 +226,22 @@
   font-weight: 600; font-family: inherit; cursor: pointer;
   transition: all .2s var(--ease);
 }
+/* The chip's computed height was ~43px — 1px under the touch minimum, with
+   nothing guaranteeing it. 46px is the floor .size-pill already declares below,
+   so this is the value the family was always meant to share.
+   Scoped to .chip-opt on purpose: .pack-opt lays a <b> over a <span> as blocks,
+   so it must not become a centred row. */
+.chip-opt {
+  display: inline-flex; align-items: center; justify-content: center;
+}
+@media (pointer: coarse) {
+  .chip-opt { min-height: 46px; }
+}
+/* 88px is too wide a floor for a three-up chip group at 360px — it forces a
+   wrap that leaves one chip alone on its own row. */
+@media (max-width: 400px) {
+  .chip-opt { min-width: 72px; }
+}
 .pack-opt b, .size-pill b { display: block; font-size: .95rem; font-weight: 600; color: inherit; }
 .pack-opt span { display: block; font-size: .78rem; color: var(--muted); margin-top: 2px; transition: color .2s var(--ease); }
 
@@ -513,7 +529,11 @@
   background-color: var(--cream);
   color: var(--text);
   font-family: var(--font-main);
+  /* 100vh is the URL-bar-collapsed height on mobile, so the page is ~60-90px
+     taller than what is actually visible. dvh tracks the real viewport; the vh
+     line stays as the fallback for browsers without dvh. */
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .pdp-nav {
@@ -935,10 +955,21 @@
   transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-.pdp-share-link:hover {
-  transform: translateY(-2px);
+/* A hover lift is the only press affordance these had, and touch never fires
+   it — worse, iOS leaves the sticky-hover state behind after a tap. Keep the
+   lift for real pointers and give touch a genuine :active response. */
+@media (hover: hover) {
+  .pdp-share-link:hover {
+    transform: translateY(-2px);
+    background: var(--lavender, #e3dcff);
+    color: var(--ink, #272355);
+  }
+}
+
+.pdp-share-link:active {
   background: var(--lavender, #e3dcff);
   color: var(--ink, #272355);
+  transform: scale(0.94);
 }
 
 .pdp-share-link svg {
@@ -1044,6 +1075,22 @@
   align-items: center;
   gap: 8px;
   margin: -16px 0 0;
+  /* ~361px of content (5 SVG stars that cannot shrink + four labels) in a 324px
+     line at 360px. Without wrap the text spans break mid-phrase into a ragged
+     three-line block; desktop has room, so this never engages there. */
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+.pdp-rating-row .stars {
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
+  .pdp-rating-divider,
+  .pdp-rating-sub {
+    display: none;
+  }
 }
 
 .stars {
@@ -1243,7 +1290,14 @@
 
 .add-to-bag-btn {
   flex: 1;
-  height: 50px;
+  /* Was a hard height:50px with zero horizontal padding. The label is
+     "Start subscription — Rs.2,025" in subscribe mode, which wraps in the
+     192px the stepper leaves and then clipped. min-height keeps the desktop
+     resting size identical while letting a wrapped label grow. */
+  min-height: 50px;
+  padding: 12px 18px;
+  text-align: center;
+  line-height: 1.25;
   border-radius: 14px;
   background: var(--mustard);
   color: var(--ink);
@@ -1342,7 +1396,31 @@
 .spec-val {
   color: var(--ink);
   font-weight: 600;
-  flex-shrink: 0;
+  /* Key and value were both flex-shrink:0, so the row's minimum width was
+     key + 20 + value with no upper bound — spec text is admin-authored free
+     text, and "100% certified organic cotton top sheet" pushed the whole page
+     sideways. Letting the value wrap costs desktop nothing: it only engages
+     when the row would otherwise overflow. */
+  flex-shrink: 1;
+  min-width: 0;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 620px) {
+  .spec-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .spec-dash {
+    display: none;
+  }
+
+  .spec-val {
+    text-align: left;
+  }
 }
 
 /* ---------- Reviews Strip ---------- */
@@ -1679,40 +1757,13 @@
   }
 }
 
-@media (max-width: 900px) {
-  .pdp {
-    grid-template-columns: 1fr;
-    gap: 32px;
-  }
-  .pdp-gallery {
-    position: relative;
-    top: 0;
-  }
-  .pdp-gallery-frame,
-  .pdp-main {
-    max-width: 100%;
-  }
-  .reviews-layout {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  .reviews {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .pdp-related-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 560px) {
-  .reviews {
-    grid-template-columns: 1fr;
-  }
-  .pdp-related-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 16px;
-  }
-}
+/* The 900px and 560px blocks that used to live here targeted the pre-rewrite
+   gallery — .pdp, .pdp-gallery, .pdp-gallery-frame, .pdp-main, .reviews-layout,
+   .reviews, .pdp-related-grid. None of those class names is emitted by
+   ProductDetail.tsx any more (it renders .pdp-grid, .pdp-gallery-layout,
+   .pdp-thumb-stack, .pdp-reviews-grid, .related-grid), so every declaration in
+   them was inert. The live mobile behaviour is the 992/768px blocks near the
+   end of this file. */
 
 .pdp-modal {
   position: fixed;
@@ -1766,12 +1817,33 @@
   z-index: 2;
   width: 34px;
   height: 34px;
+  display: grid;
+  place-items: center;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: var(--surface);
   color: var(--navy);
   font-size: 1rem;
   line-height: 1;
+  cursor: pointer;
+}
+
+/* 34px is 10px short of the touch minimum. Grown only on coarse pointers, and
+   only together with the extra card padding below, so the bigger hit area does
+   not land on the first line of the review form. */
+@media (pointer: coarse) {
+  .pdp-modal-close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pdp-modal-card {
+    padding-top: 60px;
+  }
+
+  .pdp-image-modal-card .pdp-modal-close {
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  }
 }
 
 .review-form {
@@ -1779,125 +1851,22 @@
   gap: 14px;
 }
 
+/* Hidden by default; the 768px block below is what turns it on. ProductDetail
+   now actually renders this element — for a long time it did not, so the only
+   Add-to-bag button was ~1400px down a 360px page with three full sections
+   beneath it and no way back. */
 .pdp-mobile-bar {
   display: none;
 }
 
-@media (max-width: 1080px) {
-  .pdp {
-    grid-template-columns: 1fr;
-  }
-
-  .pdp-info h1 {
-    max-width: 16ch;
-  }
-
-  .pdp-gallery-frame {
-    max-width: 780px;
-    margin-inline: auto;
-  }
-
-  .reviews-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .reviews-summary {
-    position: static;
-  }
-
-  .reviews {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .review:nth-child(3n) {
-    border-right: 1px solid var(--line-soft);
-  }
-
-  .review:nth-child(2n) {
-    border-right: 0;
-  }
-
-  .pdp-related-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 620px) {
-  .pdp-section {
-    padding: 22px 0 42px;
-  }
-
-  .pdp-gallery-frame {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .pdp-main {
-    min-height: 0;
-    border-radius: 3px;
-  }
-
-  .pdp-thumbs {
-    flex-direction: row;
-    justify-content: flex-start;
-    order: 0;
-  }
-
-  .pdp-thumb {
-    width: 58px;
-    flex-basis: 58px;
-  }
-
-  .pdp-info h1 {
-    max-width: none;
-    font-size: clamp(2rem, 11vw, 3.2rem);
-  }
-
-  .pdp-rating {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .pack-opts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .pack-opt {
-    border-radius: 3px;
-    padding: 10px 8px;
-  }
-
-  .sub-detail {
-    padding-left: 16px;
-  }
-
-  .sub-cadences {
-    grid-template-columns: 1fr;
-  }
-
-  .buy-row {
-    padding-bottom: 76px;
-  }
-
-  .reviews {
-    grid-template-columns: 1fr;
-  }
-
-  .review,
-  .review:nth-child(2n),
-  .review:nth-child(3n) {
-    border-right: 0;
-  }
-
-  .pdp-related-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .pdp-related-body p {
-    min-height: 0;
-  }
-
+/* The 1080px and 620px blocks that used to follow styled the pre-rewrite PDP
+   (.pdp, .pdp-info h1, .pdp-gallery-frame, .pdp-thumbs, .pack-opts, .sub-detail,
+   .sub-cadences, .buy-row, .reviews, .pdp-related-grid). Grepping every one of
+   those names across src/ and app/ returns nothing, so the PDP's whole mobile
+   story rested on the single 768px block at the end of this file. Only the
+   .pdp-mobile-bar rules survived, rewired below to the same 768px breakpoint
+   the rest of the PDP mobile layout uses. */
+@media (max-width: 768px) {
   .pdp-mobile-bar {
     position: fixed;
     right: 0;
@@ -1913,6 +1882,7 @@
   .pdp-mobile-bar .btn {
     width: 100%;
     white-space: normal;
+    min-height: 48px;
   }
 }
 
@@ -1942,14 +1912,18 @@
 
 .pdp-sec-title {
   font-family: "Instrument Sans", sans-serif;
-  font-size: 2.2rem;
+  /* Was a flat 2.2rem (35px), which out-sized the product H1's clamped 28px cap
+     on every phone and wrapped "Frequently Bought Together" to three lines in a
+     284px column. The clamp max is the former value, so the desktop artboard is
+     pinned: 5.2vw only falls below 2.2rem under ~677px. */
+  font-size: clamp(1.45rem, 5.2vw, 2.2rem);
   font-weight: 600;
   color: var(--ink, #120f2e);
   line-height: 1.18;
 }
 
 .pdp-sec-subtitle {
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 3.4vw, 1rem);
   color: var(--muted, #7c7c7c);
   margin-top: 10px;
   line-height: 1.55;
@@ -1968,6 +1942,11 @@
 
 .pdp-benefits-full-img {
   width: 100%;
+  /* Paired with the width/height attributes the markup now emits: the browser
+     derives the aspect ratio from them and reserves the exact box before decode,
+     instead of the element occupying 0px and then jumping to full height. A
+     hardcoded aspect-ratio here would be wrong — the banner is 16:9 and the
+     per-product fallback photo is 3:4. */
   height: auto;
   display: block;
   object-fit: contain;
@@ -2400,6 +2379,18 @@
   .pdp-rating-summary-box {
     grid-template-columns: 1fr;
     gap: 24px;
+    /* 36px 40px left the distribution bars ~100px of track at 360px, so a 9%
+       bar and a 100% bar looked alike. This plus the tighter bar tracks below
+       recovers ~48px. */
+    padding: 24px 18px;
+    margin-top: 28px;
+  }
+  .pdp-rating-bar-row {
+    grid-template-columns: 34px 1fr 36px;
+    gap: 10px;
+  }
+  .pdp-rating-big {
+    font-size: 2.6rem;
   }
   .pdp-rating-score-col {
     border-right: none;
@@ -2433,8 +2424,21 @@
    MOBILE PRODUCT DETAIL PAGE (PDP) GALLERY & LAYOUT OPTIMIZATIONS
    ============================================================================= */
 @media (max-width: 768px) {
+  /* The toast is rendered by app/providers.tsx as a sibling of the page, not a
+     descendant of .pdp-page, so a custom property declared on .pdp-page would
+     never reach it. Hoisting the declaration to <body> is what actually lets
+     CartDrawer.css's `bottom: calc(26px + var(--bottom-bar-h,0px) + ...)` clear
+     the buy bar. Where :has() is unsupported the token stays at its 0px default
+     and the toast simply sits where it always did. */
+  body:has(.pdp-page) {
+    --bottom-bar-h: 78px;
+  }
+
   .pdp-page {
     padding-top: 6px;
+    /* Clearance for the fixed .pdp-mobile-bar. */
+    --bottom-bar-h: 78px;
+    padding-bottom: calc(78px + env(safe-area-inset-bottom));
   }
 
   .crumbs {
@@ -2496,9 +2500,9 @@
     scroll-snap-align: start !important;
   }
 
-  .pdp-hero-gap-banner {
-    display: none !important; /* Hide duplicate sample banner on mobile */
-  }
+  /* The duplicate sample banner used to be hidden here with display:none, which
+     does not cancel the 284KB fetch. ProductDetail.tsx now simply does not
+     render it below 769px, so there is nothing left to hide. */
 
   .pdp-right-col {
     max-width: 100% !important;
@@ -2515,6 +2519,99 @@
     grid-template-columns: repeat(2, 1fr) !important;
     gap: 10px !important;
   }
+
+  /* Mobile switches the stage to 1:1 while the desktop rule keeps object-fit:
+     cover, so a 4:5 pack shot lost 20% off the top and bottom. Every other
+     product image in the app is `contain`, and the stage is already white so the
+     letterboxing is invisible. */
+  .pdp-hero-stage img {
+    object-fit: contain;
+    padding: 12px;
+  }
+
+  /* iOS keeps the hover state after the tap that opens the fullscreen modal,
+     which left the stage image permanently zoomed. */
+  .pdp-hero-stage:hover img {
+    transform: none;
+  }
+
+  /* Purchase options: the two labels shared ~256px side by side, so both wrapped
+     mid-phrase and the price stopped visually belonging to its option. */
+  .sub-row {
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .sub-radio-dot {
+    margin-top: 3px;
+  }
+
+  .sub-row-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+  }
+
+  .sub-row-content span {
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  /* A flex-shrink:0 120px stepper left the CTA 192px for a label reading
+     "Start subscription — Rs.2,025". Stack them so each gets the full row. */
+  .cta-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .qty-stepper {
+    width: 100%;
+    height: 52px;
+    padding: 0 8px;
+  }
+
+  .qty-stepper button {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+  }
+
+  /* :hover is the only press affordance the stepper has and it never fires on
+     touch. */
+  .qty-stepper button:active {
+    background: var(--lavender);
+  }
+
+  .add-to-bag-btn {
+    width: 100%;
+    min-height: 52px;
+  }
+}
+
+/* =============================================================================
+   LEGAL / POLICY PAGES
+   Long-form prose pages (privacy, terms) carried no type scale at all, so their
+   headings fell back to the UA's `em` defaults — 2em h1 next to a 1.5em h2 with
+   no line-height control, which reads as a browser error page on a phone. The
+   clamp maxima are the sizes those pages already rendered at on a wide screen,
+   so this is a mobile floor, not a desktop change. Applied by the page wrapper's
+   `legal` class.
+   ============================================================================= */
+.legal h1 {
+  font-size: clamp(1.85rem, 6vw, 2.6rem);
+  line-height: 1.12;
+}
+
+.legal h2 {
+  font-size: clamp(1.15rem, 3.4vw, 1.45rem);
+  line-height: 1.25;
+  margin-top: 36px;
+}
+
+.legal p {
+  font-size: 1rem;
+  line-height: 1.65;
 }
 
 

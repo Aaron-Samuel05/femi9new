@@ -98,7 +98,10 @@ export const PRODUCTS: Product[] = [
     id: 'p180m9',
     name: 'Femi9 180mm Mini Pads',
     price: 99,
-    img: '/assets/img/prod-180-mini.webp',
+    // prod-180-mini.webp was never shipped — the file is absent from public/assets/img,
+    // so this card rendered a broken-image glyph at every viewport. Point at a real pack
+    // shot until the 180mm photography lands.
+    img: '/assets/img/prod-290-large3.webp',
     meta: '30 pads · 180mm',
     flow: 'Light Flow · Daily Freshness',
     desc: 'Ultra-thin, breathable everyday protection for light flow, daily discharge, spotting, and minor urinary leakage.',

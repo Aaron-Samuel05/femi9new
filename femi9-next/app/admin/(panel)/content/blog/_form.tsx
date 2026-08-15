@@ -196,7 +196,7 @@ export default function PostForm({
 
       {/* Two-column core: Details + Publishing. Collapses to one column when narrow. */}
       <div
-        style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}
+        style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))' }}
       >
         <section className="adm-card">
           <div className="adm-card-head">

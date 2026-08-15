@@ -75,7 +75,10 @@ export function Blog({ posts, categories }: Props) {
 
       <section className="wrap">
         <div className="bmosaic">
-          {featured[0] && <MosaicTile post={featured[0]} big />}
+          {/* The lead tile is above the fold at every viewport and is the
+              listing's LCP element, so it fetches eagerly; the four companions
+              stay lazy. */}
+          {featured[0] && <MosaicTile post={featured[0]} big priority />}
           {featured.slice(1, 5).map((p) => (
             <MosaicTile key={p.slug} post={p} />
           ))}
@@ -85,12 +88,19 @@ export function Blog({ posts, categories }: Props) {
       <section className="wrap blog-latest">
         <div className="blog-latest-head">
           <h2 className="display">The latest</h2>
-          <div className="bchips" role="tablist" aria-label="Filter articles by topic">
+          {/*
+            These used to declare role="tablist"/role="tab" without a tabpanel,
+            without aria-controls and without roving tabindex, so a mobile screen
+            reader announced "tab 3 of 7" and then found no panel to move into.
+            They are a filter, not a tab set: plain buttons with aria-pressed are
+            both simpler and correct, and they keep normal Tab order.
+          */}
+          <div className="bchips" role="group" aria-label="Filter articles by topic">
             {(['All', ...categories.map((c) => c.name)] as Filter[]).map((c) => (
               <button
                 key={c}
-                role="tab"
-                aria-selected={filter === c}
+                type="button"
+                aria-pressed={filter === c}
                 className={`bchip ${filter === c ? 'is-active' : ''}`}
                 onClick={() => setFilter(c)}
               >
@@ -100,7 +110,7 @@ export function Blog({ posts, categories }: Props) {
           </div>
         </div>
 
-        <div className="bgrid">
+        <div className="bgrid" aria-live="polite">
           {list.map((p) => (
             <ArticleCard key={p.slug} post={p} />
           ))}
@@ -120,6 +130,10 @@ export function Blog({ posts, categories }: Props) {
             <form className="blog-news-form" onSubmit={subscribe} noValidate>
               <input
                 type="email"
+                inputMode="email"
+                autoComplete="email"
+                autoCapitalize="none"
+                spellCheck={false}
                 placeholder="Your email address"
                 aria-label="Email address"
                 value={email}

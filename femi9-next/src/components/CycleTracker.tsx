@@ -290,11 +290,15 @@ export function CycleTracker() {
 
   return (
     <section id="tracker" className="section cyc" aria-labelledby="cyc-heading">
+      {/* Decorative only, and display:none below 900px (figma-landing-responsive.css)
+          where the section goes height:auto and the percentage boxes stretch a
+          round blob into a 6x vertical streak. `loading="lazy"` means a phone
+          does not fetch them at all. */}
       <div className="cyc-fig-vectors" aria-hidden="true">
-        <img data-node-id="198:2531" src="/assets/figma-home/tracker-imgVector.svg" alt="" />
-        <img data-node-id="198:2540" src="/assets/figma-home/tracker-imgVector1.svg" alt="" />
-        <img data-node-id="198:2549" src="/assets/figma-home/tracker-imgVector2.svg" alt="" />
-        <img data-node-id="198:2558" src="/assets/figma-home/tracker-imgVector3.svg" alt="" />
+        <img data-node-id="198:2531" src="/assets/figma-home/tracker-imgVector.svg" alt="" width={1508} height={700} loading="lazy" decoding="async" />
+        <img data-node-id="198:2540" src="/assets/figma-home/tracker-imgVector1.svg" alt="" width={554} height={557} loading="lazy" decoding="async" />
+        <img data-node-id="198:2549" src="/assets/figma-home/tracker-imgVector2.svg" alt="" width={518} height={381} loading="lazy" decoding="async" />
+        <img data-node-id="198:2558" src="/assets/figma-home/tracker-imgVector3.svg" alt="" width={140} height={151} loading="lazy" decoding="async" />
       </div>
       <div className="wrap">
         <div className={`cyc-panel${mode === 'result' ? ' is-result' : ''}`}>
@@ -414,11 +418,16 @@ export function CycleTracker() {
                         key={d.key}
                         className={`cyc-day${d.isToday ? ' is-today' : ''}`}
                         style={{ '--pc': meta.color, '--pt': meta.tint } as React.CSSProperties}
-                        title={`${fmtDayKey(d.key)} · ${name}`}
                       >
                         <span className="cyc-day-wd">{d.label}</span>
                         <span className="cyc-day-num">{d.num}</span>
                         <span className="cyc-day-dot" aria-hidden="true" />
+                        {/* The phase name used to live only in a `title`
+                            tooltip, which never fires on touch: a phone showed
+                            seven coloured squares and asked the reader to match
+                            11px legend swatches by colour. It is rendered for
+                            real below 480px and stays sr-only above it. */}
+                        <span className="cyc-day-phase" aria-hidden="true">{name}</span>
                         <span className="visually-hidden">
                           {fmtDayKey(d.key)}: {name}
                         </span>

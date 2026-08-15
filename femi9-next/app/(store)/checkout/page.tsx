@@ -3,9 +3,14 @@ import { getSession } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { getGuestToken } from '@/lib/session'
 import { EMPTY_CART, getCart } from '@/lib/services/cart'
+import { resolveZone } from '@/lib/services/pricing'
 import { getSettings } from '@/lib/services/settings'
 import { rupees } from '@/data/products'
 import { CheckoutForm, type CheckoutPrefill } from './CheckoutForm'
+
+// Route-scoped sheet — keeps the money path off the shared stylesheets whose
+// load order app/layout.tsx pins deliberately.
+import './checkout.css'
 
 // Reads the guest cookie + live cart, so it must render per-request, never cached.
 export const dynamic = 'force-dynamic'
@@ -56,11 +61,24 @@ async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
 
 export default async function CheckoutPage() {
   const token = await getGuestToken()
-  const [cart, { freeShipThreshold }, prefill] = await Promise.all([
-    token ? getCart(token).catch(() => EMPTY_CART) : Promise.resolve(EMPTY_CART),
+  const [{ freeShipThreshold }, prefill] = await Promise.all([
     getSettings().catch(() => ({ freeShipThreshold: 999 })),
     resolvePrefill().catch(() => undefined),
   ])
+
+  // Price the summary at the zone for the address this order will actually ship
+  // to. The prefilled address is what the form submits unless she edits it, so
+  // it beats the ambient (edge-geo) guess; with no prefill we fall back to that
+  // guess by leaving `zone` undefined. Either way `placeOrder` re-resolves from
+  // the submitted address and is the authority — this only decides what she is
+  // SHOWN, which previously ignored zones entirely and quoted her a total the
+  // payment sheet then contradicted.
+  const zone =
+    prefill?.state || prefill?.pincode
+      ? await resolveZone({ state: prefill.state, pincode: prefill.pincode }).catch(() => null)
+      : undefined
+
+  const cart = token ? await getCart(token, zone).catch(() => EMPTY_CART) : EMPTY_CART
 
   if (cart.items.length === 0) {
     return (
@@ -95,19 +113,26 @@ export default async function CheckoutPage() {
           alignItems: 'start',
         }}
       >
-        {/* Shipping details — primary action */}
+        {/* Shipping details — primary action.
+            Stays FIRST in the DOM (so it is what a screen reader and the tab
+            order reach first) — checkout.css lifts the summary above it visually
+            below 720px, where stacking otherwise put the Total ~400px BELOW the
+            pay button. */}
         <CheckoutForm prefill={prefill} />
 
-        {/* Order summary — recomputed from the server cart */}
+        {/* Order summary — recomputed from the server cart.
+            `position:sticky` now lives in checkout.css behind a min-width query:
+            inline it also applied to the stacked mobile layout, where it does
+            nothing (the aside's grid area is exactly its own height) and could
+            not be undone from CSS. */}
         <aside
+          className="co-summary"
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--line-soft)',
             borderRadius: 'var(--r-card)',
             boxShadow: 'var(--shadow-sm)',
             padding: 'clamp(20px,3vw,28px)',
-            position: 'sticky',
-            top: 24,
           }}
         >
           <h2 style={{ fontSize: '1.15rem', marginBottom: '1rem' }}>Order summary</h2>
@@ -126,17 +151,25 @@ export default async function CheckoutPage() {
                   }}
                 >
                   {it.img ? (
+                    // Stays a plain <img>: `it.img` is an admin-uploaded URL
+                    // resolved at request time, so it is not in the OptImg
+                    // manifest and has no pre-built ladder. width/height match
+                    // the 52px box, and the decode is deferred.
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={it.img}
                       alt={it.name}
+                      width={52}
+                      height={52}
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : null}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: '.95rem' }}>{it.name}</div>
-                  <div style={{ color: 'var(--muted)', fontSize: '.82rem' }}>
+                  <div className="co-meta" style={{ color: 'var(--muted)' }}>
                     {it.variantLabel} · Qty {it.qty}
                   </div>
                 </div>
@@ -148,7 +181,16 @@ export default async function CheckoutPage() {
           </ul>
 
           <div style={{ borderTop: '1px solid var(--line-soft)', margin: '1.2rem 0', paddingTop: '1rem', display: 'grid', gap: '.55rem' }}>
-            <Row label="Subtotal" value={rupees(cart.subtotal)} />
+            <Row label="Subtotal" value={rupees(cart.zone ? cart.baseSubtotal : cart.subtotal)} />
+            {/* A regional discount is money off her order; she should see it
+                named, not discover a smaller number at the Razorpay sheet. */}
+            {cart.zone ? (
+              <Row
+                label={`${cart.zone.name} pricing (−${cart.zone.discountPct}%)`}
+                value={`− ${rupees(cart.baseSubtotal - cart.subtotal)}`}
+                muted
+              />
+            ) : null}
             <Row label="Shipping" value={shipping === 0 ? 'Free' : rupees(shipping)} muted={shipping === 0} />
           </div>
 
@@ -167,8 +209,10 @@ export default async function CheckoutPage() {
             <span>{rupees(total)}</span>
           </div>
 
-          <p style={{ color: 'var(--muted)', fontSize: '.78rem', marginTop: '1rem', lineHeight: 1.5 }}>
-            Your total is recomputed securely on the server before Razorpay opens.
+          <p className="co-note" style={{ marginTop: '1rem', textAlign: 'left' }}>
+            {cart.zone
+              ? 'Regional pricing follows your delivery address. Your total is recomputed securely on the server before Razorpay opens.'
+              : 'Your total is recomputed securely on the server before Razorpay opens.'}
           </p>
         </aside>
       </div>

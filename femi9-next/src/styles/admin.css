@@ -371,7 +371,10 @@ body:has(.adm) {
    ----------------------------------------------------------------------------- */
 .adm-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  /* min() floor: identical to a bare 220px track wherever the container is
+     wider than 220px, but on a 360px phone it can never exceed the container
+     and push the page into horizontal scroll. */
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 16px;
 }
 
@@ -449,6 +452,12 @@ body:has(.adm) {
   font-size: 8px;
 }
 
+/* Fallback readout for a chart whose values live only in a hover tooltip.
+   Hidden wherever hovering works; the mobile block switches it on. */
+.adm-chart-values {
+  display: none;
+}
+
 /* -----------------------------------------------------------------------------
    Data table — hairline grid, sticky header, right-aligned numerics
    ----------------------------------------------------------------------------- */
@@ -517,6 +526,13 @@ body:has(.adm) {
 
 .adm-cell-muted {
   color: var(--muted);
+}
+
+/* An expanded editing panel living inside a colSpan cell. It carries the cell's
+   padding so the cell itself can be padding:0 — which lets the panel be pinned
+   to the viewport instead of the (much wider) table on narrow screens. */
+.adm-td-panel {
+  padding: 16px;
 }
 
 /* -----------------------------------------------------------------------------
@@ -710,6 +726,33 @@ body:has(.adm) {
   border-radius: 7px;
 }
 
+/* A row of sibling actions (often a destructive one beside a constructive one).
+   Owns the gap so the mobile block can open it up without touching desktop. */
+.adm-btn-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Inline −/value/+ stepper (inventory stock). Classed rather than inline-styled
+   so the touch sizes below can be scoped to a media query. */
+.adm-stock-editor {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.adm-stepper-btn {
+  padding: 6px 10px;
+}
+
+/* Must follow .adm-input (same specificity) to win the width/padding. */
+.adm-stepper-input {
+  width: 68px;
+  padding: 6px 8px;
+}
+
 /* -----------------------------------------------------------------------------
    Badges + chips
    ----------------------------------------------------------------------------- */
@@ -792,6 +835,46 @@ a.adm-chip {
   gap: 8px;
 }
 
+/* The "×" that detaches a chip's value. The painted glyph stays small; on touch
+   the hit box grows around it via negative margins so the chip does not resize.
+   Scoped to `pointer: coarse` so mouse users keep the compact desktop chip. */
+.adm-chip-x {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+}
+
+@media (pointer: coarse) {
+  .adm-chip-x {
+    font-size: 18px;
+    padding: 8px;
+    margin: -8px -8px -8px 0;
+    min-width: 34px;
+    min-height: 34px;
+  }
+}
+
+/* A row in the state multi-select — the label IS the target, so it carries the
+   height rather than the 16px checkbox inside it. */
+.adm-state-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .adm-state-option {
+    padding: 11px 8px;
+  }
+}
+
 /* -----------------------------------------------------------------------------
    Utility: toolbar, pager, empty state, toast
    ----------------------------------------------------------------------------- */
@@ -855,6 +938,7 @@ a.adm-chip {
    ----------------------------------------------------------------------------- */
 .adm-auth {
   min-height: 100vh;
+  min-height: 100dvh; /* no vertical jitter as the mobile URL bar collapses. */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -980,8 +1064,12 @@ a.adm-chip {
    that opens a smooth slide-out Drawer navigation with backdrop blur.
    ----------------------------------------------------------------------------- */
 @media (max-width: 900px) {
+  /* Block, not a 1-column grid: a grid item's sticky containing block is its own
+     auto-height grid area (zero travel), so `position:sticky` on the sidebar was
+     inert. Under `display:block` it resolves against the viewport and the strip
+     actually stays put. `.adm-main { min-width: 0 }` still applies. */
   .adm {
-    grid-template-columns: 1fr;
+    display: block;
   }
 
   .adm-scrim {
@@ -1106,6 +1194,18 @@ a.adm-chip {
     display: flex;
   }
 
+  .adm-foot-actions {
+    gap: 12px;
+  }
+
+  .adm-foot-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
   .adm-topbar {
     padding: 0 16px;
     min-height: 60px;
@@ -1215,6 +1315,239 @@ a.adm-chip {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     border-radius: 8px;
+  }
+
+  /* --- Typography: desktop density is unreadable at 360-414px --------------- */
+  .adm,
+  .adm-auth {
+    font-size: 15px;
+  }
+
+  /* The login card's 32px side padding leaves ~248px of usable width at 360px. */
+  .adm-auth {
+    padding: 16px;
+  }
+
+  .adm-auth-card {
+    padding: 26px 20px 24px;
+  }
+
+  /* (.adm-stat-delta is in the class contract but no page composes it today, so
+     it is deliberately not listed here — a mobile rule matching nothing is what
+     made this sheet read as though mobile was already covered.) */
+  .adm-help,
+  .adm-cell-muted,
+  .adm-error {
+    font-size: 14px;
+  }
+
+  .adm-badge,
+  .adm-stat-label,
+  .adm-table thead th {
+    font-size: 12px;
+  }
+
+  .adm-label {
+    font-size: 13px;
+  }
+
+  .adm-table {
+    font-size: 14px;
+  }
+
+  /* --- Form controls: <16px makes iOS Safari zoom on focus and never restore  */
+  .adm-input,
+  .adm-select,
+  .adm-textarea {
+    font-size: 16px;
+    padding: 11px 12px;
+  }
+
+  .adm-select {
+    padding-right: 36px;
+  }
+
+  /* --- Touch targets ------------------------------------------------------- */
+  .adm-btn {
+    min-height: 44px;
+    padding: 12px 18px;
+  }
+
+  .adm-btn--sm {
+    min-height: 40px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  /* In-table actions sit next to destructive siblings — give them the full box. */
+  .adm-table td .adm-btn--sm {
+    min-height: 44px;
+  }
+
+  button.adm-chip,
+  a.adm-chip {
+    min-height: 40px;
+    padding: 9px 14px;
+    font-size: 13px;
+  }
+
+  .adm-chip-group {
+    gap: 10px;
+  }
+
+  /* The pager is a nowrap row of [caption][Previous][Next] — at 360px the two
+     44px buttons and the caption cannot share one line. */
+  .adm-pager {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    font-size: 13px;
+  }
+
+  /* Neighbouring Approve/Suspend/Delete targets must not abut on touch. */
+  .adm-btn-cluster {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* Chart values a hover tooltip would otherwise keep out of reach on touch. */
+  .adm-chart-values {
+    display: block;
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+  }
+
+  .adm-chart-values li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .adm-chart-values li > :last-child {
+    margin-left: auto;
+  }
+
+  /* --- Toast: 360px + a 22px offset cannot fit a 360px viewport ------------- */
+  .adm-toast {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+    text-align: center;
+  }
+
+  /* --- Tables --------------------------------------------------------------
+     A bounded height gives the sticky `thead th` real scroll travel (with no
+     max-height the wrap is a scroll container whose height IS its content, so
+     the header never had anything to stick to), and the layered gradients are
+     the affordance that says "this scrolls sideways". */
+  .adm-table-wrap {
+    max-height: 72vh;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    background:
+      linear-gradient(90deg, var(--surface) 30%, rgba(255, 255, 255, 0)) left / 24px 100% no-repeat,
+      linear-gradient(270deg, var(--surface) 30%, rgba(255, 255, 255, 0)) right / 24px 100% no-repeat,
+      radial-gradient(farthest-side at 0 50%, rgba(36, 29, 51, 0.14), transparent) left / 10px 100%
+        no-repeat,
+      radial-gradient(farthest-side at 100% 50%, rgba(36, 29, 51, 0.14), transparent) right / 10px
+        100% no-repeat,
+      var(--surface);
+    background-attachment: local, local, scroll, scroll, local;
+  }
+
+  /* A stacked table has no sideways scroll to advertise and no header to pin,
+     so it keeps the plain surface and grows with the page. */
+  .adm-table-wrap:has(.adm-table--stack) {
+    max-height: none;
+    background: var(--surface);
+  }
+
+  /* Stacked rows — opt-in per table (`.adm-table adm-table--stack`) for the
+     consoles whose right-hand columns hold the controls. Each cell becomes a
+     labelled block, so nothing lives 600px off-screen inside the scroller. */
+  .adm-table--stack,
+  .adm-table--stack tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .adm-table--stack thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+
+  .adm-table--stack tbody tr {
+    display: block;
+    border-bottom: 1px solid var(--line);
+    padding: 10px 4px;
+  }
+
+  .adm-table--stack tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  .adm-table--stack tbody td {
+    display: block;
+    border: 0;
+    padding: 4px 12px;
+    text-align: left;
+  }
+
+  .adm-table--stack tbody td::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Group/section cells (colSpan banners) carry no label — don't reserve a line. */
+  .adm-table--stack tbody td:not([data-label])::before {
+    content: none;
+  }
+
+  /* An expanded panel inside a colSpan cell is pinned to the viewport width so
+     it stays readable however far the table itself is scrolled sideways. */
+  .adm-td-panel {
+    position: sticky;
+    left: 0;
+    width: calc(100vw - 36px); /* .adm-content padding is 18px a side here. */
+    box-sizing: border-box;
+  }
+
+  /* !important because the affected fields carry inline `flex` basis values
+     from TSX, which CSS cannot otherwise reach. */
+  .adm-td-panel .adm-row > .adm-field {
+    flex: 1 1 100% !important;
+  }
+
+  /* Stock stepper: real 44px targets, left-aligned now the cell is a block.
+     Declared after .adm-btn--sm / .adm-input above so it wins on equal
+     specificity. */
+  .adm-stock-editor {
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .adm-stepper-btn {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0 12px;
+    font-size: 18px;
+  }
+
+  .adm-stepper-input {
+    width: 84px;
+    min-height: 44px;
+    padding: 8px 10px;
   }
 }
 

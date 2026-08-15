@@ -1,21 +1,13 @@
 'use client'
 
 import { Link } from '@/lib/router-compat'
-import { CATEGORY_META, type BlogCategory } from '../data/blog'
 import { BlogCover } from './BlogCover'
 import type { BlogPostDTO } from '@/lib/services/blog'
 
-export function CatChip({ post, onDark = false }: { post: BlogPostDTO; onDark?: boolean }) {
-  const { color } = CATEGORY_META[post.category as BlogCategory] ?? { color: '#7B4FA6' }
-  return (
-    <span
-      className={`bcat ${onDark ? 'bcat--dark' : ''}`}
-      style={onDark ? undefined : { color, background: `${color}1a` }}
-    >
-      {post.category}
-    </span>
-  )
-}
+/* `CatChip` used to live here, emitting the .bcat / .bcat--dark pill. Nothing
+   ever mounted it — BlogPost.tsx imported it and never rendered it — so it and
+   its CSS have been removed rather than left to imply mobile coverage that was
+   not there. */
 
 function Meta({ post }: { post: BlogPostDTO }) {
   return (
@@ -29,7 +21,7 @@ function Meta({ post }: { post: BlogPostDTO }) {
   )
 }
 
-/** Standard editorial card used in the grids and the home teaser. */
+/** Standard editorial card used in the listing grid and "Keep reading". */
 export function ArticleCard({ post }: { post: BlogPostDTO }) {
   return (
     <Link to={`/blog/${post.slug}`} className="bcard interactive">
@@ -46,10 +38,19 @@ export function ArticleCard({ post }: { post: BlogPostDTO }) {
 }
 
 /** Full-bleed overlay tile used in the featured mosaic. */
-export function MosaicTile({ post, big = false }: { post: BlogPostDTO; big?: boolean }) {
+export function MosaicTile({
+  post,
+  big = false,
+  priority = false,
+}: {
+  post: BlogPostDTO
+  big?: boolean
+  /** The lead tile is the listing's LCP — it must not be fetched lazily. */
+  priority?: boolean
+}) {
   return (
     <Link to={`/blog/${post.slug}`} className={`mtile interactive ${big ? 'mtile--big' : ''}`}>
-      <BlogCover post={post} variant="deep" />
+      <BlogCover post={post} variant="deep" priority={priority} />
       <span className="mtile-scrim">
         <h3>{post.title}</h3>
         <span className="mtile-read">{post.readTime} min read</span>

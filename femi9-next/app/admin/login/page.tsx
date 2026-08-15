@@ -66,7 +66,11 @@ export default function AdminLoginPage() {
             id="adm-email"
             className="adm-input"
             type="email"
+            inputMode="email"
             autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             autoFocus
             required
             value={email}

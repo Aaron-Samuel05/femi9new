@@ -168,7 +168,7 @@ export default function ReviewsPage() {
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="adm-chip-group">
           {FILTERS.map((c) => {
             const active = c.value === filter
             return (
@@ -210,7 +210,9 @@ export default function ReviewsPage() {
         </div>
       ) : (
         <div className="adm-table-wrap">
-          <table className="adm-table">
+          {/* --stack: below 900px each row becomes a labelled block so the
+              moderation buttons in the last column stay on screen. */}
+          <table className="adm-table adm-table--stack">
             <thead>
               <tr>
                 <th>Product</th>
@@ -227,8 +229,8 @@ export default function ReviewsPage() {
                 const busy = pending.has(r.id)
                 return (
                   <tr key={r.id} aria-busy={busy}>
-                    <td style={{ fontWeight: 600 }}>{r.productName}</td>
-                    <td>
+                    <td data-label="Product" style={{ fontWeight: 600 }}>{r.productName}</td>
+                    <td data-label="Reviewer">
                       {r.name}
                       {r.place && (
                         <div className="adm-cell-muted" style={{ fontSize: 12 }}>
@@ -236,18 +238,18 @@ export default function ReviewsPage() {
                         </div>
                       )}
                     </td>
-                    <td>
+                    <td data-label="Rating">
                       <Stars rating={r.rating} />
                     </td>
-                    <td style={{ maxWidth: 380, color: 'var(--muted)' }} title={r.body}>
+                    <td data-label="Review" style={{ maxWidth: 380, color: 'var(--muted)' }} title={r.body}>
                       {excerpt(r.body)}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
                     </td>
-                    <td className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
+                    <td data-label="Date" className="adm-td-num adm-cell-muted">{fmtDate(r.createdAt)}</td>
                     <td>
-                      <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', whiteSpace: 'nowrap' }}>
+                      <span className="adm-btn-cluster" style={{ justifyContent: 'flex-end' }}>
                         <button
                           type="button"
                           className="adm-btn adm-btn--secondary adm-btn--sm"

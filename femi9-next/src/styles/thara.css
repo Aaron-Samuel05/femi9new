@@ -88,6 +88,21 @@
   min-height: 40vh; display: flex; align-items: center; justify-content: center;
   color: #7F6EB9;
 }
+/* Horizontal scroller for the voucher / credit tables.
+   The five single-word <th> labels are uppercase with 0.08em tracking and
+   cannot wrap, so the table min-contents to ~343px while a 360px phone leaves
+   only ~264px inside .thara + .thara-block. html and body are both
+   `overflow-x: clip` (base.css), so without this container the Status pill,
+   the Claim button and the voucher code are painted outside the clip and can
+   never be seen or tapped. At >=1200px the block is ~800px wide, so the
+   min-width never engages and this renders identically to before. */
+.thara-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.thara-scroll .thara-table { min-width: 460px; }
+
 .thara-table {
   width: 100%; border-collapse: collapse; font-size: 14px;
   font-variant-numeric: tabular-nums;
@@ -148,6 +163,56 @@
   font-weight: 500;
   line-height: 1.45;
   color: #B03B57;
+}
+
+/* ------------------------------------------------------------------
+   TOUCH
+   The .thara .btn override above shrinks the compliant global primitive
+   (base.css .btn computes to ~45px) down to ~37px. Rather than raise it
+   everywhere — which would move every desktop button in this dashboard —
+   the 44px floor is restored only where a finger is doing the tapping.
+   ------------------------------------------------------------------ */
+@media (pointer: coarse) {
+  .thara .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 11px 18px;
+    font-size: 15px;
+  }
+  /* Below 16px, mobile Safari zooms the viewport on focus and never zooms
+     back — and with html/body `overflow-x: clip` the member cannot pan back
+     to the left edge. Desktop keeps the 15px optical size. */
+  .thara .invite-row input { font-size: 16px; }
+}
+
+/* ------------------------------------------------------------------
+   MOBILE
+   Every padding in this file was a desktop constant: .thara 32/20,
+   .thara-hero 28/32, .thara-block 24/28 — 76px of horizontal chrome,
+   21% of a 360px viewport, before any content is laid out.
+   ------------------------------------------------------------------ */
+@media (max-width: 640px) {
+  .thara { padding: 24px 16px 80px; }
+  .thara-hero { padding: 22px 18px; }
+  .thara-block { padding: 20px 16px; }
+
+  /* The right-aligned hero metric reads as a stray fragment once the row
+     wraps, so stack it instead of wrapping it. */
+  .thara-hero .row { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .thara-hero .metric { text-align: left; }
+  .thara-block .row { gap: 16px; }
+  .thara-block .metric { min-width: 140px; }
+
+  /* Bleed the scroller to the card edge so the swipe affordance is visible
+     and the first/last column are not cropped by the card padding. */
+  .thara-scroll { margin-inline: -16px; padding-inline: 16px; }
+  .thara-table th, .thara-table td { padding: 10px 8px; }
+
+  /* Invite field and the leave-confirm pair stop sitting half off the card. */
+  .thara .invite-row input { flex-basis: 100%; min-width: 0; }
+  .thara .invite-row .btn { width: 100%; }
 }
 
 @media (prefers-reduced-motion: reduce) {

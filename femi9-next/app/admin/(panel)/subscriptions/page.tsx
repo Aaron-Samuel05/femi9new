@@ -45,7 +45,7 @@ export default async function SubscriptionsPage(
     <div>
       <div className="adm-toolbar">
         {/* Status filter chips (links keep this a server component). */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <div className="adm-chip-group">
           {chips.map((c) => {
             const active = (c.value ?? undefined) === (status ?? undefined)
             return (

@@ -1,8 +1,26 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { CATEGORY_META, type BlogCategory } from '../data/blog'
 import type { BlogPostDTO } from '@/lib/services/blog'
+import { OptImg } from '@/components/OptImg'
+import { OPT_IMAGES, type OptImageBase } from '@/lib/opt-images'
+
+/**
+ * Cover URLs arrive as runtime strings from Postgres, so they cannot be typed
+ * against the generated derivative manifest at the call site. Normalise the
+ * public path onto a manifest key ('/assets/img/blogs/pcos-pcod.png' →
+ * 'img/blogs/pcos-pcod') and return null when there is no ladder on disk — an
+ * editor-supplied absolute URL, or an asset too small to be worth resizing.
+ */
+export function optImageBase(src: string): OptImageBase | null {
+  const key = src
+    .trim()
+    .replace(/^\/+/, '')
+    .replace(/^assets\//, '')
+    .replace(/\.[a-z0-9]+$/i, '')
+  return Object.prototype.hasOwnProperty.call(OPT_IMAGES, key) ? (key as OptImageBase) : null
+}
 
 /* ============================================================
    BlogCover — a designed editorial cover for every post.
@@ -163,14 +181,35 @@ function miniGlyph(cat: BlogCategory, x: number, y: number, size: number, c: str
   }
 }
 
+/* How wide the cover actually renders, per breakpoint. Getting this wrong is the
+   one way to defeat the srcset, so these track the real CSS boxes:
+   - deep  = .mtile, 1 column under 560px, 2 up to 900px, ~480px in the 1120px wrap
+   - light = .bcard-poster in .bgrid, 1 column under 560px, up to 3 tracks desktop
+   The article hero passes its own, wider value. */
+const SIZES_DEEP = '(max-width: 560px) 92vw, (max-width: 900px) 48vw, 480px'
+const SIZES_LIGHT = '(max-width: 560px) 92vw, (max-width: 900px) 44vw, 360px'
+
 export function BlogCover({
   post,
   variant = 'light',
   className = '',
+  priority = false,
+  sizes,
+  svgFit = 'slice',
 }: {
   post: BlogPostDTO
   variant?: 'light' | 'deep'
   className?: string
+  /** Set on the article hero only — it is that page's LCP element. */
+  priority?: boolean
+  /** Override the default `sizes` when the cover renders in a wider box. */
+  sizes?: string
+  /**
+   * The generated SVG cover is authored at 320x220 (1.45). `slice` fills a box
+   * of a similar ratio; `meet` letterboxes instead of cropping, which is what a
+   * wide hero needs. The parent paints the gradient behind it either way.
+   */
+  svgFit?: 'slice' | 'meet'
 }) {
   // category arrives as a plain string on the DTO; narrow it to the known union
   // for the CATEGORY_META lookup and the motif helpers below.
@@ -180,29 +219,44 @@ export function BlogCover({
   const r = makeRng(post.slug + variant)
 
   if (post.image) {
+    const base = optImageBase(post.image)
+    const imgSizes = sizes ?? (deep ? SIZES_DEEP : SIZES_LIGHT)
+    // CSS drives the painted size; the width/height attributes OptImg emits are
+    // what reserve the box before the bytes land.
+    const fill: CSSProperties = {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      objectPosition: 'center',
+      display: 'block',
+    }
     return (
       <span
         className={`bcover bcover--has-image bcover--${variant} ${className}`}
         style={{ position: 'absolute', inset: 0, overflow: 'hidden', display: 'block', background: '#272355' }}
         aria-hidden="true"
       >
-        <img
-          src={post.image}
-          alt=""
-          loading="lazy"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
-          }}
-          style={{
-            position: 'absolute',
-            inset: 0,
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            objectPosition: 'center',
-            display: 'block',
-          }}
-        />
+        {base ? (
+          /* Serves the pre-built WebP ladder: a 360px phone pulls a ~30 KB 360w
+             file instead of the 4.9 MB 2718x1818 PNG this used to hand it. */
+          <OptImg base={base} sizes={imgSizes} alt="" priority={priority} style={fill} />
+        ) : (
+          <img
+            src={post.image}
+            alt=""
+            width={1280}
+            height={808}
+            loading={priority ? 'eager' : 'lazy'}
+            fetchPriority={priority ? 'high' : undefined}
+            decoding="async"
+            onError={(e) => {
+              e.currentTarget.style.display = 'none'
+            }}
+            style={fill}
+          />
+        )}
         {deep && (
           <span
             style={{
@@ -238,7 +292,13 @@ export function BlogCover({
 
   return (
     <span className={`bcover bcover--${variant} ${className}`} style={{ background: bg }} aria-hidden="true">
-      <svg className="bcover-art" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid slice" role="presentation">
+      <svg
+        className="bcover-art"
+        viewBox="0 0 320 220"
+        preserveAspectRatio={`xMidYMid ${svgFit}`}
+        role="presentation"
+        focusable="false"
+      >
         <defs>
           <radialGradient id={gid} cx="50%" cy="50%" r="60%">
             <stop offset="0%" stopColor={ink} stopOpacity={deep ? 0.24 : 0.16} />

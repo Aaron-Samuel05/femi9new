@@ -204,7 +204,9 @@ export default function InventoryPage() {
         </div>
       ) : (
         <div className="adm-table-wrap">
-          <table className="adm-table">
+          {/* --stack: below 900px each variant becomes a labelled block, so the
+              Stock stepper is not 420px off-screen inside the scroller. */}
+          <table className="adm-table adm-table--stack">
             <thead>
               <tr>
                 <th style={{ minWidth: 220 }}>Product / Variant</th>
@@ -275,10 +277,10 @@ function GroupRows({
       </tr>
       {group.rows.map((r) => (
         <tr key={r.variantId}>
-          <td style={{ paddingLeft: 28 }}>{r.label}</td>
-          <td className="adm-cell-muted">{r.sku ?? '—'}</td>
-          <td className="adm-td-num">{rupees(r.price)}</td>
-          <td className="adm-td-num">
+          <td data-label="Variant" style={{ paddingLeft: 28 }}>{r.label}</td>
+          <td data-label="SKU" className="adm-cell-muted">{r.sku ?? '—'}</td>
+          <td data-label="Price" className="adm-td-num">{rupees(r.price)}</td>
+          <td data-label="Stock" className="adm-td-num">
             <StockEditor
               row={r}
               busy={pending.has(r.variantId)}
@@ -286,7 +288,7 @@ function GroupRows({
               onAdjust={(delta) => onAdjust(r.variantId, delta)}
             />
           </td>
-          <td>
+          <td data-label="Status">
             <StatusBadge row={r} />
           </td>
         </tr>
@@ -328,14 +330,11 @@ function StockEditor({
   }
 
   return (
-    <span
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'flex-end', gap: 6 }}
-      aria-busy={busy}
-    >
+    <span className="adm-stock-editor" aria-busy={busy}>
       <button
         type="button"
-        className="adm-btn adm-btn--secondary adm-btn--sm"
-        style={{ padding: '6px 10px', opacity: busy ? 0.6 : 1 }}
+        className="adm-btn adm-btn--secondary adm-btn--sm adm-stepper-btn"
+        style={{ opacity: busy ? 0.6 : 1 }}
         aria-label={`Decrease ${row.label} stock`}
         onClick={() => onAdjust(-1)}
         disabled={busy || row.stock <= 0}
@@ -343,8 +342,8 @@ function StockEditor({
         −
       </button>
       <input
-        className="adm-input"
-        style={{ width: 68, textAlign: 'right', padding: '6px 8px' }}
+        className="adm-input adm-stepper-input"
+        style={{ textAlign: 'right' }}
         inputMode="numeric"
         pattern="[0-9]*"
         value={draft}
@@ -366,8 +365,8 @@ function StockEditor({
       />
       <button
         type="button"
-        className="adm-btn adm-btn--secondary adm-btn--sm"
-        style={{ padding: '6px 10px', opacity: busy ? 0.6 : 1 }}
+        className="adm-btn adm-btn--secondary adm-btn--sm adm-stepper-btn"
+        style={{ opacity: busy ? 0.6 : 1 }}
         aria-label={`Increase ${row.label} stock`}
         onClick={() => onAdjust(1)}
         disabled={busy}

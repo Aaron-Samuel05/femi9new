@@ -284,6 +284,11 @@ export default function TharaPage() {
         <div className="invite-row">
           <input
             type="email"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             placeholder="friend@example.com"
             value={invite}
             onChange={(e) => setInvite(e.target.value)}
@@ -314,6 +319,11 @@ export default function TharaPage() {
       {s.vouchers.length > 0 && (
         <section className="thara-block">
           <h2>Vouchers</h2>
+          {/* The five uppercase single-word headers cannot wrap, so this table
+              min-contents wider than a 360px phone allows. html/body are
+              `overflow-x: clip`, so without the scroller the Status pill and
+              the whole Action column are unreachable. */}
+          <div className="thara-scroll">
           <table className="thara-table">
             <thead><tr><th>Issued</th><th>Points</th><th>Value</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
@@ -336,6 +346,7 @@ export default function TharaPage() {
               ))}
             </tbody>
           </table>
+          </div>
           {actionError && <p className="thara-error" role="alert">{actionError}</p>}
         </section>
       )}
@@ -343,6 +354,7 @@ export default function TharaPage() {
       {s.credit.recentRows.length > 0 && (
         <section className="thara-block">
           <h2>Recent credit activity</h2>
+          <div className="thara-scroll">
           <table className="thara-table">
             <thead><tr><th>Date</th><th>Reason</th><th>Change</th><th>Balance</th></tr></thead>
             <tbody>
@@ -358,6 +370,7 @@ export default function TharaPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </section>
       )}
 

@@ -1,5 +1,6 @@
 import 'server-only'
 import { prisma } from '@/lib/db'
+import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from '@/lib/services/pricing'
 import type { Product, ProductType } from '@/data/products'
 import type { ProductExtra } from '@/data/productDetail'
 
@@ -10,6 +11,11 @@ import type { ProductExtra } from '@/data/productDetail'
  * the storefront components can consume live data with no structural change.
  * `id` maps to the product `slug` (which we kept equal to the original id), so
  * existing /product/:id links keep working.
+ *
+ * Every price leaving this service is a ZONE price. The catalogue used to print
+ * `variant.price` raw while checkout charged the regional price, so a shopper in
+ * a discounted state was quoted one number on the card and a different one at
+ * the payment sheet.
  */
 
 export interface Variant {
@@ -62,16 +68,18 @@ function loadRows() {
 }
 
 /** Map a DB row → the `Product` shape the cards/grid expect. */
-function toProduct(row: Row): ProductWithVariants {
+function toProduct(row: Row, zone: ResolvedZone | null): ProductWithVariants {
+  const zoned = (price: number) => applyZonePrice(price, zone)
+
   const packs = row.variants
     .filter((v) => v.kind === 'pack')
-    .map((v) => ({ count: v.packCount ?? 0, price: v.price }))
+    .map((v) => ({ count: v.packCount ?? 0, price: zoned(v.price) }))
   const sizes = row.variants.filter((v) => v.kind === 'size').map((v) => v.size ?? v.label)
 
   return {
     id: row.slug,
     name: row.name,
-    price: row.basePrice,
+    price: zoned(row.basePrice),
     img: row.images[0]?.url ?? '',
     meta: row.meta,
     flow: row.flow,
@@ -87,7 +95,7 @@ function toProduct(row: Row): ProductWithVariants {
       label: v.label,
       packCount: v.packCount,
       size: v.size,
-      price: v.price,
+      price: zoned(v.price),
       stock: v.stock,
     })),
   }
@@ -107,8 +115,8 @@ function toExtra(row: Row): ProductExtra {
 
 /** All active products, in the `Product` shape (catalog grid / cards). */
 export async function listProducts(): Promise<ProductWithVariants[]> {
-  const rows = await loadRows()
-  return rows.map(toProduct)
+  const [rows, zone] = await Promise.all([loadRows(), resolveAmbientZone()])
+  return rows.map((row) => toProduct(row, zone))
 }
 
 /** One product by slug, with detail extras and moderated reviews. */
@@ -154,7 +162,7 @@ export async function getProduct(slug: string): Promise<FullProduct | null> {
   }))
 
   return {
-      product: toProduct(row),
+      product: toProduct(row, await resolveAmbientZone()),
       extra: toExtra(row),
       reviews,
   }

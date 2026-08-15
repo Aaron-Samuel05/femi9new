@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { fmtInt } from './util'
+import { fmtInt, useTouchDismiss } from './util'
 
 export interface Slice {
   label: string
@@ -17,6 +17,7 @@ interface Props {
 
 export function DonutChart({ data, size = 180, thickness = 22, centerLabel = 'Total', format = fmtInt }: Props) {
   const [active, setActive] = useState<number | null>(null)
+  const dismiss = useTouchDismiss(() => setActive(null))
   const total = data.reduce((s, d) => s + d.value, 0)
   const r = (size - thickness) / 2
   const c = 2 * Math.PI * r
@@ -35,7 +36,7 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel = 'To
 
   return (
     <div className="donut-wrap" style={{ width: size, height: size }}>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ touchAction: 'pan-y' }}>
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(11,42,91,.06)" strokeWidth={thickness} />
           {segs.map(({ i, d, len, dash }) => (
@@ -53,6 +54,10 @@ export function DonutChart({ data, size = 180, thickness = 22, centerLabel = 'To
               style={{ transition: 'stroke-width .15s, opacity .15s', cursor: 'pointer' }}
               onMouseEnter={() => setActive(i)}
               onMouseLeave={() => setActive(null)}
+              // Touch has no enter/leave pair, so the centre label was stuck on
+              // whatever the last tap landed on — or never changed at all.
+              onPointerDown={() => setActive(i)}
+              onPointerUp={dismiss}
             />
           ))}
         </g>

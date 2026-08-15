@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getAdminSession } from '@/lib/admin-auth'
+import { isTharaEnabled } from '@/lib/thara/feature'
 import '@/styles/admin.css'
 import { AdminShell } from './_shell'
 
@@ -15,6 +16,7 @@ export const dynamic = 'force-dynamic'
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const session = await getAdminSession()
   if (!session) redirect('/admin/login')
+  const tharaEnabled = isTharaEnabled()
 
   return <AdminShell session={session} tharaEnabled={tharaEnabled}>{children}</AdminShell>
 }

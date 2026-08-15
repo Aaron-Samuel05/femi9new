@@ -8,6 +8,8 @@ import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
 import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook, Whatsapp } from '../components/Icons'
 import { ICopy, IStar } from '../components/AppIcons'
+import { OptImg } from '@/components/OptImg'
+import type { OptImageBase } from '@/lib/opt-images'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
 import type { ProductExtra } from '@/data/productDetail'
 import { usePublicSettings } from '@/lib/use-public-settings'
@@ -30,12 +32,19 @@ const rvInput: CSSProperties = {
   background: 'var(--surface)',
   color: 'var(--ink)',
   font: 'inherit',
-  fontSize: '.92rem',
+  // Must stay >= 16px. iOS Safari zooms the visual viewport in on focus for any
+  // control below that and never zooms back out on blur; because this is an
+  // inline style no breakpoint could have rescued it.
+  fontSize: '16px',
 }
 
 function Stars({ rating }: { rating: number }) {
+  // Five bare <svg>s used to be announced as five unlabelled graphics. role=img
+  // + a label makes the group a single leaf that reads the rating once — which
+  // matters most on the review cards, where the stars are the only place that
+  // review's score appears.
   return (
-    <span className="stars">
+    <span className="stars" role="img" aria-label={`Rated ${rating.toFixed(1)} out of 5`}>
       {[0, 1, 2, 3, 4].map((i) => (
         <IStar key={i} style={{ opacity: i < Math.round(rating) ? 1 : 0.24 }} />
       ))}
@@ -60,6 +69,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   const [reviewOpen, setReviewOpen] = useState(false)
   const [specsOpen, setSpecsOpen] = useState(true)
   const [reviewsOpen, setReviewsOpen] = useState(true)
+  const [showGapBanner, setShowGapBanner] = useState(false)
   const { add, openCart, notify } = useCart()
   const router = useRouter()
 
@@ -82,10 +92,27 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   const reviewTotal = reviews.length || extra.reviews
   const shortDescription = extra.long || product.desc
 
+  /**
+   * The benefits banner. The two size-specific shots are in the image manifest,
+   * so they can go through the WebP ladder; a product whose id matches neither
+   * falls back to its own catalog photo, which is DB-authored and therefore not
+   * in the manifest.
+   */
+  const benefitsBase: OptImageBase | null = product.id.includes('330')
+    ? 'img/330mm'
+    : product.id.includes('290') || !product.img
+    ? 'img/290mm'
+    : null
+
   useEffect(() => {
     const isMobile = window.matchMedia('(max-width: 620px)').matches
     setSpecsOpen(!isMobile)
     setReviewsOpen(!isMobile)
+    // The gap-filler banner exists only to square off the desktop gallery
+    // column. It used to be hidden below 769px with display:none, which does
+    // not cancel the fetch — every phone paid 284KB for pixels never painted.
+    // Gating it in JSX is the only way to actually not download it.
+    setShowGapBanner(window.matchMedia('(min-width: 769px)').matches)
   }, [])
 
   // /api/events existed with zero instrumentation — not a single storefront
@@ -215,7 +242,18 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     isPanty ? (
       <PantyArt variant={extra.gallery[imgIdx] as 'lilac' | 'plum' | 'gold'} />
     ) : (
-      <img src={extra.gallery[imgIdx]} alt={full ? `${product.name} enlarged` : product.name} />
+      // Gallery URLs are DB-authored, so there is no manifest entry to hang an
+      // OptImg ladder off. No width/height here on purpose: both the stage and
+      // the fullscreen card size this image entirely from CSS, and the
+      // fullscreen card sets only `width`, so a height attribute would become
+      // the used height and letterbox it. This is the page's LCP image, hence
+      // eager (the default) with a high fetch priority rather than lazy.
+      <img
+        src={extra.gallery[imgIdx]}
+        alt={full ? `${product.name} enlarged` : product.name}
+        decoding="async"
+        fetchPriority={full ? undefined : 'high'}
+      />
     )
   )
 
@@ -241,7 +279,11 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                     onClick={() => setImgIdx(i)}
                     aria-label={`View photo ${i + 1}`}
                   >
-                    {isPanty ? <PantyArt variant={g as 'lilac' | 'plum' | 'gold'} /> : <img src={g} alt="" />}
+                    {isPanty ? (
+                      <PantyArt variant={g as 'lilac' | 'plum' | 'gold'} />
+                    ) : (
+                      <img src={g} alt="" width={76} height={76} loading="lazy" decoding="async" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -252,10 +294,16 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   {renderGalleryImage()}
                 </div>
 
-                {/* Gap Filling Image Banner */}
-                <div className="pdp-hero-gap-banner">
-                  <img src="/assets/img/sample.jpeg" alt="Femi9 Organic Care Quality" />
-                </div>
+                {/* Gap Filling Image Banner — desktop only, see the effect above */}
+                {showGapBanner && (
+                  <div className="pdp-hero-gap-banner">
+                    <OptImg
+                      base="img/sample"
+                      sizes="(max-width: 1200px) 46vw, 620px"
+                      alt="Femi9 Organic Care Quality"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -438,7 +486,10 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                       {extra.specs.map((s) => (
                         <div className="spec-item" key={s.k}>
                           <dt className="spec-key">{s.k}</dt>
-                          <dd className="spec-dash" />
+                          {/* Decorative leader line. It used to be an empty
+                              <dd>, which made VoiceOver announce a blank
+                              definition before every real one. */}
+                          <span className="spec-dash" aria-hidden="true" />
                           <dd className="spec-val">{s.v}</dd>
                         </div>
                       ))}
@@ -465,17 +516,27 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             </div>
 
             <div className="pdp-benefits-banner-wrapper">
-              <img
-                src={
-                  product.id.includes('330')
-                    ? '/assets/img/330mm.jpeg'
-                    : product.id.includes('290')
-                    ? '/assets/img/290mm.jpeg'
-                    : product.img || '/assets/img/290mm.jpeg'
-                }
-                alt={`${product.name} product benefits`}
-                className="pdp-benefits-full-img"
-              />
+              {/* 420KB served at full desktop resolution into a 324px column,
+                  eagerly, with no intrinsic size to reserve the box. OptImg
+                  emits the WebP ladder plus width/height/lazy/decoding. */}
+              {benefitsBase ? (
+                <OptImg
+                  base={benefitsBase}
+                  sizes="(max-width: 768px) 100vw, 1120px"
+                  alt={`${product.name} product benefits`}
+                  className="pdp-benefits-full-img"
+                />
+              ) : (
+                <img
+                  src={product.img}
+                  alt={`${product.name} product benefits`}
+                  className="pdp-benefits-full-img"
+                  width={720}
+                  height={960}
+                  loading="lazy"
+                  decoding="async"
+                />
+              )}
             </div>
           </section>
 
@@ -593,7 +654,14 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 <article className="related-card" key={p.id}>
                   <Link to={`/product/${p.id}`} className="related-img-box">
                     <span className="related-badge">{p.flow || 'Sanitary Care'}</span>
-                    <img src={p.img || '/assets/img/pad-detail-1.webp'} alt={p.name} loading="lazy" />
+                    <img
+                      src={p.img || '/assets/img/pad-detail-1.webp'}
+                      alt={p.name}
+                      width={720}
+                      height={960}
+                      loading="lazy"
+                      decoding="async"
+                    />
                   </Link>
                   <div className="related-card-content">
                     <Link to={`/product/${p.id}`} className="related-title">{p.name}</Link>
@@ -626,6 +694,17 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
         </div>
       </main>
 
+      {/* Persistent mobile add-to-bag bar. app.css has styled `.pdp-mobile-bar`
+          — safe-area padding, z-index and all — since before this rewrite, but
+          nothing ever rendered it: the only CTA was the `.cta-row` roughly
+          1400px down a 360px page, with the benefits banner, the reviews and the
+          related strip below it and no way back. `display:none` above 768px, so
+          desktop never sees it. */}
+      <div className="pdp-mobile-bar">
+        <button className="btn btn-primary" onClick={submit}>
+          <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} &mdash; {rupees(effPrice * qty)}
+        </button>
+      </div>
 
       {/* Review Modal */}
       {reviewOpen && (
@@ -660,9 +739,32 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                     </button>
                   ))}
                 </span>
-                <input value={rvName} onChange={(e) => setRvName(e.target.value)} placeholder="Your name" required style={rvInput} />
-                <input value={rvPlace} onChange={(e) => setRvPlace(e.target.value)} placeholder="City (optional)" style={rvInput} />
-                <textarea value={rvBody} onChange={(e) => setRvBody(e.target.value)} placeholder="Share your experience" required rows={4} style={{ ...rvInput, resize: 'vertical' }} />
+                <input
+                  value={rvName}
+                  onChange={(e) => setRvName(e.target.value)}
+                  placeholder="Your name"
+                  aria-label="Your name"
+                  autoComplete="name"
+                  required
+                  style={rvInput}
+                />
+                <input
+                  value={rvPlace}
+                  onChange={(e) => setRvPlace(e.target.value)}
+                  placeholder="City (optional)"
+                  aria-label="City (optional)"
+                  autoComplete="address-level2"
+                  style={rvInput}
+                />
+                <textarea
+                  value={rvBody}
+                  onChange={(e) => setRvBody(e.target.value)}
+                  placeholder="Share your experience"
+                  aria-label="Share your experience"
+                  required
+                  rows={4}
+                  style={{ ...rvInput, resize: 'vertical' }}
+                />
                 {rvState === 'error' && <p style={{ color: 'var(--mustard-deep)', fontSize: '.88rem', margin: 0 }}>Something went wrong. Please try again.</p>}
                 <button type="submit" className="add-to-bag-btn" disabled={rvState === 'sending'}>
                   {rvState === 'sending' ? 'Submitting...' : 'Submit review'}

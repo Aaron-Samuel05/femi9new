@@ -363,6 +363,7 @@ export function Partner() {
                 <input
                   id="pt-city"
                   type="text"
+                  autoComplete="address-level2"
                   placeholder="e.g. Coimbatore"
                   value={form.city}
                   onChange={(e) => update('city', e.target.value)}
