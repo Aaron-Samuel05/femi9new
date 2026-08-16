@@ -69,6 +69,12 @@
   font-family: 'Newsreader', Georgia, serif !important;
   font-weight: 400 !important;
 }
+/* Cycle-tracker section title ("Know Your Cycle…") pins Instrument Sans via a
+   `font:` shorthand !important at (0,2,1); this (0,3,1) !important, loaded last,
+   flips it to the display serif like every other section heading. */
+.figma-landing .fl-cycle .cyc-intro h2 {
+  font-family: 'Newsreader', Georgia, serif !important;
+}
 
 /* ── Eyebrows → Hanken 800 · .2em · UPPERCASE · gold-deep ──────────────────────
    The reference's `.ey`. Base is `font:600 20px/1 "Instrument Sans"` in gold. */

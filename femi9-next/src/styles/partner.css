@@ -4,25 +4,33 @@
    Everything here is scoped under .partner / .pt- to avoid collisions.
    ============================================================ */
 
+/* Body / UI / labels / small sub-headings + eyebrow → Hanken Grotesk. */
 .partner,
-.partner h1,
-.partner h2,
 .partner h3,
 .partner h4,
-.partner .display,
 .partner .eyebrow,
-.pt-hero-title,
 .pt-hero-sub,
-.pt-stat-n,
 .pt-stat-l,
-.pt-head h2,
 .pt-head p,
-.pt-step-n,
 .pt-step-t,
-.pt-step-d,
-.pt-card-t,
-.pt-feature-title {
-  font-family: "Instrument Sans", "Urbanist", system-ui, sans-serif !important;
+.pt-step-d {
+  font-family: "Hanken Grotesk", system-ui, sans-serif !important;
+}
+
+/* Display / headings + the big stat & step numerals → Newsreader serif, matching
+   the site-wide re-skin (home hero, /about, /products). Listed AFTER the Hanken
+   block so `.display` wins over the h3/h4 reset for the statements that opt into
+   it (the bento feature title, the success message, the closing line). This whole
+   set used to be forced to Instrument Sans !important, which is why Opportunities
+   read sans while every other page read serif. */
+.partner h1,
+.partner h2,
+.partner .display,
+.pt-hero-title,
+.pt-head h2,
+.pt-voices-title,
+.pt-stat-n {
+  font-family: "Newsreader", Georgia, "Times New Roman", serif !important;
 }
 
 .partner { position: relative; }

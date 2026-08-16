@@ -39,7 +39,9 @@ h2.display,
 .article-body h2,
 .article-related h2,
 .pdp-info h1,
-.pdp-title {
+.pdp-title,
+.pdp-sec-title,
+.pdp-rating-big {
   font-family: 'Newsreader', Georgia, serif !important;
 }
 .display {
