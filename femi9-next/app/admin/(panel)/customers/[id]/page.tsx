@@ -142,7 +142,7 @@ export default async function CustomerDetailPage(props: { params: Promise<{ id: 
                 <div style={{ lineHeight: 1.5 }}>
                   <div style={{ fontWeight: 600 }}>{a.name}</div>
                   <div>{a.line}</div>
-                  <div>{location(a.city, a.state) || a.city}{a.pincode ? ` — ${a.pincode}` : ''}</div>
+                  <div>{location(a.city, a.state) || a.city}{a.pincode ? ` - ${a.pincode}` : ''}</div>
                   {a.phone ? <div className="adm-cell-muted">{a.phone}</div> : null}
                 </div>
               </div>

@@ -122,10 +122,10 @@ export default async function CustomersPage(
                             {c.phone ? <span>{c.phone}</span> : null}
                           </div>
                         ) : (
-                          '—'
+                          '-'
                         )}
                       </td>
-                      <td>{loc || <span className="adm-cell-muted">—</span>}</td>
+                      <td>{loc || <span className="adm-cell-muted">-</span>}</td>
                       <td className="adm-td-num">{num.format(c.orderCount)}</td>
                       <td className="adm-td-num">{inr.format(c.totalSpent)}</td>
                       <td className="adm-td-num">{num.format(c.pointsBalance)}</td>

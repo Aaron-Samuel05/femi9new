@@ -529,7 +529,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
             {leaving ? (
               <p className="m-note" role="status">
                 <IInfo aria-hidden="true" />
-                <span>All set — taking you to your account.</span>
+                <span>All set - taking you to your account.</span>
               </p>
             ) : step === 'details' ? (
               <form className="m-form" onSubmit={submitDetails} noValidate>
@@ -674,7 +674,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
                   <p className="m-note m-note--warning auth-dev">
                     <IInfo aria-hidden="true" />
                     <span>
-                      Dev mode — your code is <code>{devCode}</code>
+                      Dev mode - your code is <code>{devCode}</code>
                     </span>
                   </p>
                 )}
@@ -730,7 +730,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
 
             <div className="auth-foot">
               <p className="auth-legal">
-                Nothing is lost if you leave — every detail is saved as you enter it, and this screen picks up where you
+                Nothing is lost if you leave - every detail is saved as you enter it, and this screen picks up where you
                 stopped.
               </p>
               <div className="auth-foot__end">

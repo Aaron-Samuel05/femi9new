@@ -108,7 +108,7 @@ export default function PostForm({
       }
       setImage(body.url as string)
     } catch {
-      setUploadError('Network error — please try again.')
+      setUploadError('Network error - please try again.')
     } finally {
       setUploading(false)
     }
@@ -157,7 +157,7 @@ export default function PostForm({
       )
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSaving(false)
     }
@@ -178,7 +178,7 @@ export default function PostForm({
       const resBody = await res.json().catch(() => ({}))
       setFormError(resBody?.error || 'Could not delete this post.')
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setDeleting(false)
     }

@@ -129,7 +129,7 @@ export default function PartnersPage() {
         reconcile(updated)
       } catch (err) {
         setToast(
-          `Couldn't update ${row.name} — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't update ${row.name} - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -163,7 +163,7 @@ export default function PartnersPage() {
         setToast(`Notes saved for ${row.name}`)
       } catch (err) {
         setToast(
-          `Couldn't save notes for ${row.name} — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't save notes for ${row.name} - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -190,7 +190,7 @@ export default function PartnersPage() {
             Partners
           </h2>
           <p className="adm-help" style={{ margin: '2px 0 0' }}>
-            Reseller lead pipeline — advance each lead from new to onboarded, and keep call notes.
+            Reseller lead pipeline - advance each lead from new to onboarded, and keep call notes.
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
@@ -276,8 +276,8 @@ export default function PartnersPage() {
                         )}
                       </td>
                       <td data-label="Phone" style={{ whiteSpace: 'nowrap' }}>{fmtPhone(r.phone)}</td>
-                      <td data-label="City">{r.city || <span className="adm-cell-muted">—</span>}</td>
-                      <td data-label="Situation">{r.situation || <span className="adm-cell-muted">—</span>}</td>
+                      <td data-label="City">{r.city || <span className="adm-cell-muted">-</span>}</td>
+                      <td data-label="Situation">{r.situation || <span className="adm-cell-muted">-</span>}</td>
                       <td data-label="Status">
                         <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
                       </td>
@@ -305,7 +305,7 @@ export default function PartnersPage() {
                           <textarea
                             className="adm-textarea"
                             style={{ minHeight: 60 }}
-                            placeholder="Call notes — who spoke, next step, follow-up date…"
+                            placeholder="Call notes - who spoke, next step, follow-up date…"
                             value={draftFor(r)}
                             onChange={(e) =>
                               setNotesDraft((d) => ({ ...d, [r.id]: e.target.value }))

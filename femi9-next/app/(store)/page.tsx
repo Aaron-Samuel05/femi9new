@@ -7,7 +7,7 @@ import { listFeaturedReviews } from '@/lib/services/reviews-public'
 export const metadata: Metadata = {
   title: 'Femi9 Sanitary Pads | Rash-Free, Cotton-Soft Period Care India',
   description:
-    'Shop Femi9 sanitary pads—cotton-soft, breathable, and reliably absorbent. Discover rash-free period care designed for everyday confidence. Made in India.',
+    'Shop Femi9 sanitary pads-cotton-soft, breathable, and reliably absorbent. Discover rash-free period care designed for everyday confidence. Made in India.',
 }
 
 // The catalog + journal teaser come from Postgres, so this page must render at

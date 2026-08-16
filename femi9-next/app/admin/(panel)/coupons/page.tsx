@@ -36,9 +36,9 @@ function formatValue(c: Pick<CouponRow, 'type' | 'value'>): string {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
@@ -164,7 +164,7 @@ export default function CouponsPage() {
       if (body?.details?.fieldErrors) setErrors(body.details.fieldErrors as FieldErrors)
       setFormError(body?.details?.formErrors?.[0] || body?.error || 'Could not create the coupon.')
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSaving(false)
     }
@@ -183,7 +183,7 @@ export default function CouponsPage() {
       const updated = (await res.json()) as CouponRow
       setRows((rs) => rs.map((r) => (r.id === row.id ? updated : r)))
     } catch (err) {
-      setToast(`Couldn't update ${row.code} — ${err instanceof Error ? err.message : 'try again'}`)
+      setToast(`Couldn't update ${row.code} - ${err instanceof Error ? err.message : 'try again'}`)
     } finally {
       setPendingFor(row.id, false)
     }
@@ -199,7 +199,7 @@ export default function CouponsPage() {
       setRows((rs) => rs.filter((r) => r.id !== row.id))
       setToast(`Coupon ${row.code} deleted`)
     } catch (err) {
-      setToast(`Couldn't delete ${row.code} — ${err instanceof Error ? err.message : 'try again'}`)
+      setToast(`Couldn't delete ${row.code} - ${err instanceof Error ? err.message : 'try again'}`)
     } finally {
       setPendingFor(row.id, false)
     }
@@ -404,7 +404,7 @@ export default function CouponsPage() {
                       </span>
                     </td>
                     <td className="adm-td-num">{formatValue(c)}</td>
-                    <td className="adm-td-num">{c.minOrder > 0 ? rupees(c.minOrder) : '—'}</td>
+                    <td className="adm-td-num">{c.minOrder > 0 ? rupees(c.minOrder) : '-'}</td>
                     <td className="adm-td-num">
                       {c.usedCount} / {c.maxUses ?? '∞'}
                     </td>

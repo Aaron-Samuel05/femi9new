@@ -208,7 +208,7 @@ export function Rewards({ pointsBalance, rewardOptions, activity, coupons, earnR
       {/* redeem */}
       <span className="acct-rw__sublabel">Redeem your points</span>
       {rewardOptions.length === 0 ? (
-        <p className="m-cap">No rewards in the catalogue just yet — check back soon.</p>
+        <p className="m-cap">No rewards in the catalogue just yet - check back soon.</p>
       ) : (
         <div className="acct-rw__redeem">
           {sorted.map((r) => {

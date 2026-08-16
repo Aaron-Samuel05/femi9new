@@ -354,7 +354,7 @@ export default function PricingZonesScreen({
         body?.details?.formErrors?.[0] || body?.error || 'Could not save the zone. Please try again.',
       )
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSaving(false)
     }
@@ -372,7 +372,7 @@ export default function PricingZonesScreen({
       setToast(`Zone “${z.name}” deleted`)
       await load()
     } catch (err) {
-      setToast(`Couldn't delete “${z.name}” — ${err instanceof Error ? err.message : 'try again'}`)
+      setToast(`Couldn't delete “${z.name}” - ${err instanceof Error ? err.message : 'try again'}`)
     } finally {
       setPendingId(null)
     }
@@ -494,7 +494,7 @@ export default function PricingZonesScreen({
                   <span className="adm-label">Set as default zone</span>
                   <span className="adm-help" style={{ display: 'block' }}>
                     {editingDefault
-                      ? 'Already the default — set another zone as default to move it.'
+                      ? 'Already the default - set another zone as default to move it.'
                       : 'Shown when a shopper’s location is unknown.'}
                   </span>
                 </span>
@@ -618,7 +618,7 @@ export default function PricingZonesScreen({
                   </button>
                 </div>
                 <span className="adm-help" style={{ display: 'block', marginTop: 4 }}>
-                  Type a price to charge exactly that in this zone — it overrides the discount for
+                  Type a price to charge exactly that in this zone - it overrides the discount for
                   that item. Leave a box empty to follow the discount.
                 </span>
 
@@ -781,14 +781,14 @@ export default function PricingZonesScreen({
                           {priced} {priced === 1 ? 'item' : 'items'}
                         </span>
                       ) : (
-                        <span className="adm-cell-muted">—</span>
+                        <span className="adm-cell-muted">-</span>
                       )}
                     </td>
                     <td>
                       {z.isDefault ? (
                         <span className="adm-cell-muted">Fallback (location unknown)</span>
                       ) : z.states.length === 0 ? (
-                        <span className="adm-cell-muted">—</span>
+                        <span className="adm-cell-muted">-</span>
                       ) : z.states.length <= 3 ? (
                         <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 6 }}>
                           {z.states.map((s) => (

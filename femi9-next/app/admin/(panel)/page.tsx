@@ -240,7 +240,7 @@ export default async function AdminDashboardPage() {
                         {v.productName}
                         <span className="adm-cell-muted"> · {v.label}</span>
                       </td>
-                      <td className="adm-cell-muted">{v.sku ?? '—'}</td>
+                      <td className="adm-cell-muted">{v.sku ?? '-'}</td>
                       <td className="adm-td-num">
                         {/* Under 15 is urgent (red), otherwise a low-stock warning. */}
                         <span

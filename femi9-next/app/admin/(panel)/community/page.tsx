@@ -44,7 +44,7 @@ const excerpt = (body: string) =>
 
 /** Five stars, filled up to `rating`; renders a dash when unrated. Gold for legibility. */
 function Stars({ rating }: { rating: number | null }) {
-  if (!rating) return <span className="adm-cell-muted">—</span>
+  if (!rating) return <span className="adm-cell-muted">-</span>
   const n = Math.max(0, Math.min(5, Math.round(rating)))
   return (
     <span
@@ -126,7 +126,7 @@ export default function CommunityPage() {
         )
       } catch (err) {
         setToast(
-          `Couldn't update ${row.displayName}'s story — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't update ${row.displayName}'s story - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -149,7 +149,7 @@ export default function CommunityPage() {
         setRows((rs) => rs.filter((r) => r.id !== row.id))
       } catch (err) {
         setToast(
-          `Couldn't delete ${row.displayName}'s story — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't delete ${row.displayName}'s story - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -166,7 +166,7 @@ export default function CommunityPage() {
             Community wall
           </h2>
           <p className="adm-help" style={{ margin: '2px 0 0' }}>
-            Moderate wall stories — approve, hide, or delete. New submissions arrive as pending.
+            Moderate wall stories - approve, hide, or delete. New submissions arrive as pending.
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
@@ -243,7 +243,7 @@ export default function CommunityPage() {
                         </div>
                       )}
                     </td>
-                    <td data-label="Product" className="adm-cell-muted">{r.product || '—'}</td>
+                    <td data-label="Product" className="adm-cell-muted">{r.product || '-'}</td>
                     <td data-label="Rating">
                       <Stars rating={r.rating} />
                     </td>

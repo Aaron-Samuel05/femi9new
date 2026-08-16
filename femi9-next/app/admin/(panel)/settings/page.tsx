@@ -41,7 +41,7 @@ const FIELDS: FieldDef[] = [
   {
     key: 'whatsappNumber',
     label: 'WhatsApp number',
-    help: 'Support / ordering number — digits only, with country code (e.g. 919042916499).',
+    help: 'Support / ordering number - digits only, with country code (e.g. 919042916499).',
     numeric: false,
     placeholder: '919042916499',
   },
@@ -153,7 +153,7 @@ export default function SettingsPage() {
       setErrors(mapped)
       setFormError(body?.details?.formErrors?.[0] || body?.error || 'Could not save. Please try again.')
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSaving(false)
     }
@@ -167,7 +167,7 @@ export default function SettingsPage() {
             Settings
           </h2>
           <p className="adm-help" style={{ margin: '2px 0 0' }}>
-            Business rules that power the storefront — shipping, subscriptions, loyalty and support.
+            Business rules that power the storefront - shipping, subscriptions, loyalty and support.
           </p>
         </div>
       </div>

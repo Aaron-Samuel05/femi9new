@@ -26,11 +26,11 @@ const money = (rupees: number) => `Rs.${rupees.toLocaleString('en-IN')}`
 const COPY = {
   paid: {
     subject: (orderNo: string) => `Your Femi9 order ${orderNo} is confirmed`,
-    lead: 'Thank you — your payment went through and we are getting your order ready.',
+    lead: 'Thank you - your payment went through and we are getting your order ready.',
   },
   shipped: {
     subject: (orderNo: string) => `Your Femi9 order ${orderNo} is on its way`,
-    lead: 'Good news — your order has left our warehouse.',
+    lead: 'Good news - your order has left our warehouse.',
   },
 } as const
 
@@ -69,7 +69,7 @@ export async function sendOrderStatusEmail(orderNo: string, status: OrderMailSta
     const copy = COPY[status]
     const greeting = order.user?.name?.trim().split(' ')[0] || 'there'
     const lines = order.items
-      .map((it) => `${it.productName} — ${it.variantLabel} x${it.qty} — ${money(it.lineTotal)}`)
+      .map((it) => `${it.productName} - ${it.variantLabel} x${it.qty} - ${money(it.lineTotal)}`)
       .join('\n')
     const addr = order.address
       ? [order.address.name, order.address.line, order.address.city, order.address.state, order.address.pincode]
@@ -99,7 +99,7 @@ export async function sendOrderStatusEmail(orderNo: string, status: OrderMailSta
 <ul>${order.items
       .map(
         (it) =>
-          `<li>${escapeHtml(it.productName)} — ${escapeHtml(it.variantLabel)} &times;${it.qty} — ${money(it.lineTotal)}</li>`,
+          `<li>${escapeHtml(it.productName)} - ${escapeHtml(it.variantLabel)} &times;${it.qty} - ${money(it.lineTotal)}</li>`,
       )
       .join('')}</ul>
 <p><strong>Total paid: ${money(order.total)}</strong></p>

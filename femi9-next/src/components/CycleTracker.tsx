@@ -312,7 +312,7 @@ export function CycleTracker() {
                 line under the result says what actually happened. */}
             <p className="cyc-lead">
               {mode === 'setup'
-                ? 'A gentle, private tracker. Tell us three things to see when your next period is likely to arrive — and if you are signed in with cycle tracking on, we will keep it with your account.'
+                ? 'A gentle, private tracker. Tell us three things to see when your next period is likely to arrive - and if you are signed in with cycle tracking on, we will keep it with your account.'
                 : 'Here is your rhythm at a glance, so you can plan your days and your Femi9 pack with a little more calm.'}
             </p>
             <ul className="cyc-assurances" aria-label="How this tracker treats your data">
@@ -499,7 +499,7 @@ function SaveStatus({ state, onRetry }: { state: SaveState; onRetry: () => void 
         <Link to="/login?next=/dashboard" className="cyc-save-link">
           Sign in to save it to your account
         </Link>{' '}
-        — we will offer to bring these dates across.
+        - we will offer to bring these dates across.
       </p>
     )
   }

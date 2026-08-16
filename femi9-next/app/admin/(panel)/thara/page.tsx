@@ -255,7 +255,7 @@ export default function TharaAdmin() {
           <h2 className="adm-card-title">Cycle controls</h2>
           {metrics.currentCycle && (
             <span className="adm-cell-muted">
-              Current cycle: {dt(metrics.currentCycle.startDate)} — {dt(metrics.currentCycle.endDate)}
+              Current cycle: {dt(metrics.currentCycle.startDate)} - {dt(metrics.currentCycle.endDate)}
             </span>
           )}
         </div>
@@ -366,7 +366,7 @@ export default function TharaAdmin() {
                       <td>
                         {/* Deactivation is terminal in the service, so it offers no control. */}
                         {m.status === 'deactivated' ? (
-                          <span className="adm-cell-muted">—</span>
+                          <span className="adm-cell-muted">-</span>
                         ) : m.status === 'suspended' ? (
                           <button
                             type="button"
@@ -454,7 +454,7 @@ export default function TharaAdmin() {
 
       <section className="adm-card">
         <div className="adm-card-head">
-          <h2 className="adm-card-title">Voucher queue — needs Amazon code</h2>
+          <h2 className="adm-card-title">Voucher queue - needs Amazon code</h2>
         </div>
         {rows.length === 0 ? (
           <div className="adm-empty">

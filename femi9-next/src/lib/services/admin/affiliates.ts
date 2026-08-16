@@ -221,7 +221,7 @@ async function sendApprovalEmail(
   const greeting = name?.trim().split(' ')[0] || 'there'
   await sendEmailNotification({
     to: email,
-    subject: 'You are approved — here is your Femi9 creator code',
+    subject: 'You are approved - here is your Femi9 creator code',
     text: `Hi ${greeting},
 
 You're in. Your Femi9 creator code is ${promoCode}.

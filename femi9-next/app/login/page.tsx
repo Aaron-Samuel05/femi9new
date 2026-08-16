@@ -320,7 +320,7 @@ export default function LoginPage() {
               <h2 className="auth-aside__title">Your cycle, your orders and your rewards in one place.</h2>
             </div>
             <p className="auth-aside__copy">
-              One account across everything Femi9 — no password to remember, just your mobile number or your inbox.
+              One account across everything Femi9 - no password to remember, just your mobile number or your inbox.
             </p>
 
             <ul className="auth-points">
@@ -366,7 +366,7 @@ export default function LoginPage() {
             <div className="auth-head">
               <h1 className="m-h2">Sign in or create your account</h1>
               <p className="auth-sub">
-                New to Femi9? The same step signs you in and creates your account — there is nothing separate to fill in.
+                New to Femi9? The same step signs you in and creates your account - there is nothing separate to fill in.
               </p>
             </div>
 
@@ -498,7 +498,7 @@ export default function LoginPage() {
                     <p className="m-note m-note--warning auth-dev">
                       <IInfo aria-hidden="true" />
                       <span>
-                        Dev mode — your code is <code>{devCode}</code>
+                        Dev mode - your code is <code>{devCode}</code>
                       </span>
                     </p>
                   )}
@@ -576,7 +576,7 @@ export default function LoginPage() {
                   <p className="m-note" role="status">
                     <IInfo aria-hidden="true" />
                     <span>
-                      A sign-in link is on its way to <b>{email}</b>. It expires in 15 minutes — open it on this device
+                      A sign-in link is on its way to <b>{email}</b>. It expires in 15 minutes - open it on this device
                       to stay signed in here.
                     </span>
                   </p>
@@ -584,7 +584,7 @@ export default function LoginPage() {
                     <p className="m-note m-note--warning auth-dev">
                       <IInfo aria-hidden="true" />
                       <span>
-                        Dev mode — open your link:{' '}
+                        Dev mode - open your link:{' '}
                         <a href={devLink}>{devLink}</a>
                       </span>
                     </p>

@@ -47,7 +47,7 @@ const num = (n: number): string => n.toLocaleString('en-IN')
 
 function fmtDate(iso: string): string {
   const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return '—'
+  if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
@@ -122,11 +122,11 @@ export default function AffiliatesPage() {
       setRows((rs) => rs.map((r) => (r.id === row.id ? updated : r)))
       setToast(
         action === 'approve'
-          ? `${updated.handle} approved${updated.promoCode ? ` — code ${updated.promoCode}` : ''}`
+          ? `${updated.handle} approved${updated.promoCode ? ` - code ${updated.promoCode}` : ''}`
           : `${updated.handle} suspended`,
       )
     } catch (err) {
-      setToast(`Couldn't update ${row.handle} — ${err instanceof Error ? err.message : 'try again'}`)
+      setToast(`Couldn't update ${row.handle} - ${err instanceof Error ? err.message : 'try again'}`)
     } finally {
       setBusyFor(row.id, false)
     }
@@ -181,7 +181,7 @@ export default function AffiliatesPage() {
       const body = await res.json().catch(() => ({}))
       setPayoutError(body?.details?.formErrors?.[0] || body?.error || 'Could not log the payout.')
     } catch {
-      setPayoutError('Network error — please try again.')
+      setPayoutError('Network error - please try again.')
     } finally {
       setPayoutSaving(false)
     }
@@ -286,7 +286,7 @@ export default function AffiliatesPage() {
                           {a.platform ? ` · ${a.platform}` : ''}
                         </div>
                       </td>
-                      <td className="adm-cell-muted">{a.email ?? '—'}</td>
+                      <td className="adm-cell-muted">{a.email ?? '-'}</td>
                       <td>
                         <span className={`adm-badge ${STATUS_BADGE[a.status]}`}>{a.status}</span>
                       </td>
@@ -435,7 +435,7 @@ export default function AffiliatesPage() {
                                         <td className="adm-cell-muted">
                                           {fmtDate(p.periodStart)} – {fmtDate(p.periodEnd)}
                                         </td>
-                                        <td className="adm-cell-muted">{p.reference ?? '—'}</td>
+                                        <td className="adm-cell-muted">{p.reference ?? '-'}</td>
                                         <td>
                                           <span
                                             className={

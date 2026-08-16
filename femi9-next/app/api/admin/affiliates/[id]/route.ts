@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError) {
         // Collision on the freshly-allocated promoCode (race with another approve).
-        if (err.code === 'P2002') return badRequest('Could not allocate a unique code — please retry.')
+        if (err.code === 'P2002') return badRequest('Could not allocate a unique code - please retry.')
         // Payout references an affiliate that no longer exists.
         if (err.code === 'P2003' || err.code === 'P2025') return notFound('Affiliate not found')
       }

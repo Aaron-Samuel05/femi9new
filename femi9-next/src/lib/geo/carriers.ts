@@ -48,7 +48,7 @@ export interface CarrierMatch {
  */
 const MOBILE_ASNS = new Map<number, string>([
   [55836, 'Reliance Jio Infocomm'],
-  [45609, 'Bharti Airtel — mobile'],
+  [45609, 'Bharti Airtel - mobile'],
   [55644, 'Idea Cellular'],
   [38266, 'Vodafone India'],
 ])
@@ -70,8 +70,8 @@ const MOBILE_ASNS = new Map<number, string>([
  * MaxMind's PAID GeoIP2 databases, not in GeoLite2.)
  */
 const MIXED_ASNS = new Map<number, string>([
-  [24560, 'Bharti Airtel — Telemedia + mobile'],
-  [9498, 'Bharti Airtel — backbone'],
+  [24560, 'Bharti Airtel - Telemedia + mobile'],
+  [9498, 'Bharti Airtel - backbone'],
   [9829, 'BSNL National Internet Backbone'],
   [17813, 'MTNL Mumbai'],
   [18101, 'Reliance Communications'],

@@ -176,7 +176,7 @@ export function Affiliate() {
     } catch {
       // Clipboard is permission-gated; the URL is on screen either way, so the
       // honest fallback is to say the copy did not happen.
-      setStatsError('Copying is blocked in this browser — select the link above instead.')
+      setStatsError('Copying is blocked in this browser - select the link above instead.')
     }
   }
 

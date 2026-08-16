@@ -128,7 +128,7 @@ export class CannotUnsetDefaultError extends Error {
  */
 export class UnknownPriceTargetError extends Error {
   constructor(kind: 'product' | 'variant') {
-    super(`A custom price refers to a ${kind} that no longer exists — refresh and try again`)
+    super(`A custom price refers to a ${kind} that no longer exists - refresh and try again`)
     this.name = 'UnknownPriceTargetError'
   }
 }

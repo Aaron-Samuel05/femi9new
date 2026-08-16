@@ -118,8 +118,8 @@ const dt = (iso: string) => new Date(iso).toLocaleDateString('en-IN', { day: 'nu
 /** Plain-English name for each membership state. "purchase_pending" is a
  *  database word; nobody should have to read it. */
 const STATUS_LABEL: Record<Status, string> = {
-  purchase_pending: 'Joined — not unlocked yet',
-  active: 'Unlocked — you are earning',
+  purchase_pending: 'Joined - not unlocked yet',
+  active: 'Unlocked - you are earning',
   suspended: 'Paused by our team',
   deactivated: 'You left the programme',
 }
@@ -177,7 +177,7 @@ function Steps({
     {
       icon: <IconShare />,
       title: `Place one order of ${rs(rules.minOrderPaise)} or more`,
-      body: `That single order switches your earning on. It must be ${rs(rules.minOrderPaise)} in ONE order — two smaller orders do not add up to it.`,
+      body: `That single order switches your earning on. It must be ${rs(rules.minOrderPaise)} in ONE order - two smaller orders do not add up to it.`,
       cls: state(unlocked, enrolled && !unlocked),
     },
     {
@@ -189,7 +189,7 @@ function Steps({
   ]
   return (
     <section className="thara-block">
-      <h2>How Thara works — three steps</h2>
+      <h2>How Thara works - three steps</h2>
       <ol className="thara-steps">
         {steps.map((s, i) => (
           <li key={s.title} className={`step step-${s.cls}`}>
@@ -232,7 +232,7 @@ function UnlockMeter({ rules, unlock }: { rules: Rules; unlock: Unlock }) {
         <div className="meter-fill" style={{ width: `${Math.max(pct, 3)}%` }} />
       </div>
       <div className="meter-legend">
-        <span>{rs(unlock.bestOrderPaise)} — your biggest single order</span>
+        <span>{rs(unlock.bestOrderPaise)} - your biggest single order</span>
         <span>{rs(unlock.requiredPaise)} needed</span>
       </div>
       {unlock.paidOrderCount === 0 ? (
@@ -247,7 +247,7 @@ function UnlockMeter({ rules, unlock }: { rules: Rules; unlock: Unlock }) {
       )}
       <p className="thara-note">
         <strong>Important:</strong> orders are not added together. Two orders of {rs(Math.round(rules.minOrderPaise / 2))} do
-        not unlock the programme — one order of {rs(rules.minOrderPaise)} does.
+        not unlock the programme - one order of {rs(rules.minOrderPaise)} does.
       </p>
     </section>
   )
@@ -322,7 +322,7 @@ function Slabs({ rules }: { rules: Rules }) {
       </ul>
       <p className="hint">
         Orders under {rs(rules.slabs[0]?.minPaise ?? rules.minOrderPaise)} are priced as normal. If you also have a coupon
-        code, we apply whichever saves you more — the two are not added together.
+        code, we apply whichever saves you more - the two are not added together.
       </p>
     </section>
   )
@@ -336,7 +336,7 @@ function Faq({ rules }: { rules: Rules }) {
     },
     {
       q: 'Is the money real?',
-      a: `The ${rules.commissionPct}% is Femi9 money — it comes off your next Femi9 order automatically. It cannot be sent to a bank or UPI. The Amazon voucher is a real Amazon gift code.`,
+      a: `The ${rules.commissionPct}% is Femi9 money - it comes off your next Femi9 order automatically. It cannot be sent to a bank or UPI. The Amazon voucher is a real Amazon gift code.`,
     },
     {
       q: 'I placed two orders. Why am I still locked?',
@@ -396,7 +396,7 @@ export default function TharaPage() {
       // Clipboard access is permission-gated and absent over plain HTTP. The URL
       // is printed below the button either way, so say plainly that the copy did
       // not happen rather than leaving the label stuck on "Copy link".
-      setCopyError('Copying is blocked in this browser — select the link below instead.')
+      setCopyError('Copying is blocked in this browser - select the link below instead.')
     }
   }
 
@@ -498,7 +498,7 @@ export default function TharaPage() {
       const body = await res.json().catch(() => ({}))
       if (res.ok) {
         setInvite('')
-        setInviteMsg(body.mock ? 'Invite queued (mock mode — check dev logs).' : 'Invite sent.')
+        setInviteMsg(body.mock ? 'Invite queued (mock mode - check dev logs).' : 'Invite sent.')
       } else {
         setInviteMsg(body.error ?? 'Could not send that invite.')
       }
@@ -563,12 +563,12 @@ export default function TharaPage() {
           </p>
           {unlock.qualified && (
             <p className="thara-good">
-              Good news — your {rs(unlock.bestOrderPaise)} order already meets the {rs(rules.minOrderPaise)} rule. Join
+              Good news - your {rs(unlock.bestOrderPaise)} order already meets the {rs(rules.minOrderPaise)} rule. Join
               now and you are unlocked immediately.
             </p>
           )}
           <button className="btn btn-primary btn-lg" disabled={busy} onClick={() => void enrol()}>
-            {busy ? 'Joining…' : 'Join Thara — free'}
+            {busy ? 'Joining…' : 'Join Thara - free'}
           </button>
           {actionError && <p className="thara-error" role="alert">{actionError}</p>}
         </section>
@@ -582,7 +582,7 @@ export default function TharaPage() {
           <h2>Ready?</h2>
           <p>Joining is free, takes one tap, and you can leave whenever you like.</p>
           <button className="btn btn-primary btn-lg" disabled={busy} onClick={() => void enrol()}>
-            {busy ? 'Joining…' : 'Join Thara — free'}
+            {busy ? 'Joining…' : 'Join Thara - free'}
           </button>
           {actionError && <p className="thara-error" role="alert">{actionError}</p>}
         </section>
@@ -625,7 +625,7 @@ export default function TharaPage() {
       {!unlocked && st !== 'deactivated' && <UnlockMeter rules={rules} unlock={unlock} />}
 
       <section className="thara-block">
-        <h2>Your link — this is what you share</h2>
+        <h2>Your link - this is what you share</h2>
         <div className="code-row">
           <code>{s.membership.referralCode}</code>
           <button className="btn btn-primary" onClick={() => void copyReferral(s.membership.referralUrl)}>
@@ -635,7 +635,7 @@ export default function TharaPage() {
         {copyError && <p className="thara-error" role="alert">{copyError}</p>}
         <p className="url">{s.membership.referralUrl}</p>
         <p>
-          Send it on WhatsApp, put it in your bio, message it to a friend — anywhere. When someone opens it and later
+          Send it on WhatsApp, put it in your bio, message it to a friend - anywhere. When someone opens it and later
           buys, we know they came from you.
         </p>
         <p className="hint">
@@ -764,7 +764,7 @@ export default function TharaPage() {
         <section className="thara-block">
           <h2>Leaving the programme</h2>
           <p className="hint">
-            Opting out stops new referral earnings and cannot be undone — rejoining later is not
+            Opting out stops new referral earnings and cannot be undone - rejoining later is not
             possible. Credit you have already earned stays on your account, and any issued voucher
             remains claimable until its deadline.
           </p>

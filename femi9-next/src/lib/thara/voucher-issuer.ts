@@ -65,7 +65,7 @@ export class AmazonIncentivesNotConfiguredError extends Error {
 }
 export class AmazonIncentivesNotImplementedError extends Error {
   constructor() {
-    super('Amazon Incentives API integration is not implemented yet — use the manual issuer.')
+    super('Amazon Incentives API integration is not implemented yet - use the manual issuer.')
     this.name = 'AmazonIncentivesNotImplementedError'
   }
 }

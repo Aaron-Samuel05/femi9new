@@ -132,7 +132,7 @@ export default async function OrdersPage(props: { searchParams: Promise<Search> 
                     </td>
                     <td className="adm-cell-muted">{fmtDate(o.placedAt)}</td>
                     <td>{o.customerName}</td>
-                    <td className="adm-cell-muted">{o.city ?? '—'}</td>
+                    <td className="adm-cell-muted">{o.city ?? '-'}</td>
                     <td className="adm-td-num">{o.itemCount}</td>
                     <td className="adm-td-num">{inr(o.total)}</td>
                     <td>

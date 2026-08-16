@@ -254,7 +254,7 @@ export function UserDashboard(props: UserDashboardProps) {
       lead={
         needsData
           ? 'Track your cycle privately, and your dashboard will start predicting your next period, fertile window and PMS days.'
-          : 'Your cycle, your orders and your Bloom points — all from what you have actually logged.'
+          : 'Your cycle, your orders and your Bloom points - all from what you have actually logged.'
       }
       actions={
         <Link to="/account" className="btn btn-ghost">
@@ -270,7 +270,7 @@ export function UserDashboard(props: UserDashboardProps) {
           <span>
             We could not read {unreadableRows} entr{unreadableRows === 1 ? 'y' : 'ies'} from your history, so
             {unreadableRows === 1 ? ' it is' : ' they are'} left out of the numbers below. Everything else is
-            intact — you can re-log {unreadableRows === 1 ? 'that day' : 'those days'} at any time.
+            intact - you can re-log {unreadableRows === 1 ? 'that day' : 'those days'} at any time.
           </span>
         </p>
       )}
@@ -292,7 +292,7 @@ export function UserDashboard(props: UserDashboardProps) {
             <p className="m-body">
               {gateOpen
                 ? 'Once tracking is on, tell us when your last period started and this page fills in with your next date, your fertile window and your PMS days.'
-                : 'Tell us when your last period started and we will predict your next one, map your fertile and PMS windows, and keep your calendar in sync — all from your own data, never an average.'}
+                : 'Tell us when your last period started and we will predict your next one, map your fertile and PMS windows, and keep your calendar in sync - all from your own data, never an average.'}
             </p>
             <ul className="dash-onboard__list">
               <li>
@@ -803,7 +803,7 @@ function ConsentGate({ onGranted, notify }: { onGranted: () => void; notify: (m:
           <ICheck aria-hidden="true" />
           <span>
             <b>How to stop.</b> Switch tracking off at the bottom of this page at any time. Withdrawing deletes
-            every period and symptom you have logged — not just future ones.
+            every period and symptom you have logged - not just future ones.
           </span>
         </li>
       </ul>
@@ -1172,7 +1172,7 @@ function PhaseCalendar({
               // the calendar costs one tab stop rather than thirty-one.
               tabIndex={isSelected || (!inView && key === days[0]) ? 0 : -1}
               aria-pressed={isSelected}
-              aria-label={`${fmtFullKey(key)} — ${phaseName}${hasSymptoms ? ', symptoms logged' : ''}${isToday ? ', today' : ''}`}
+              aria-label={`${fmtFullKey(key)} - ${phaseName}${hasSymptoms ? ', symptoms logged' : ''}${isToday ? ', today' : ''}`}
               onClick={() => setSelected(key)}
               onFocus={() => setSelected(key)}
             >
@@ -1190,7 +1190,7 @@ function PhaseCalendar({
       <div className="dash-cal__detail" role="status">
         <b>{fmtFullKey(selected)}</b>
         <span>
-          {selectedPhase ? `${PHASE_LABEL[selectedPhase]} — ${PHASE_HINT[selectedPhase]}` : 'Nothing predicted for this day.'}
+          {selectedPhase ? `${PHASE_LABEL[selectedPhase]} - ${PHASE_HINT[selectedPhase]}` : 'Nothing predicted for this day.'}
         </span>
         {selectedSymptoms.length > 0 && (
           <span>

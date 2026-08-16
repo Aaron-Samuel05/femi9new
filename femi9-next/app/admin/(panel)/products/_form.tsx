@@ -185,7 +185,7 @@ export default function ProductForm({
       }
       setImages((rows) => [...rows, { _key: nextKey(), url: body.url as string }])
     } catch {
-      setUploadError('Network error — please try again.')
+      setUploadError('Network error - please try again.')
     } finally {
       setUploading(false)
     }
@@ -246,7 +246,7 @@ export default function ProductForm({
       )
       formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setSaving(false)
     }
@@ -267,7 +267,7 @@ export default function ProductForm({
       const body = await res.json().catch(() => ({}))
       setFormError(body?.error || 'Could not archive this product.')
     } catch {
-      setFormError('Network error — please try again.')
+      setFormError('Network error - please try again.')
     } finally {
       setArchiving(false)
     }

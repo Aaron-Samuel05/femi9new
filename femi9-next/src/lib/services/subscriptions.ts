@@ -282,7 +282,7 @@ async function runRenewalTxn(
     if (!variant) throw new VariantNotFoundError(sub.variantId)
 
     const qty = sub.qty
-    const displayName = `${variant.product.name} — ${variant.label}`
+    const displayName = `${variant.product.name} - ${variant.label}`
     if (variant.stock < qty) throw new RenewalOutOfStockError(displayName)
 
     // Ship to the customer's primary address when they have one, so the renewal is

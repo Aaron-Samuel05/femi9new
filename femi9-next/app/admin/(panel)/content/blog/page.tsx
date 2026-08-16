@@ -89,7 +89,7 @@ export default async function AdminBlogPage() {
                   <td>
                     <span className="adm-badge adm-badge--plum">{p.categoryName}</span>
                   </td>
-                  <td>{p.author || <span className="adm-cell-muted">—</span>}</td>
+                  <td>{p.author || <span className="adm-cell-muted">-</span>}</td>
                   <td>
                     <span className={`adm-badge ${STATUS_BADGE[p.status] ?? 'adm-badge--gray'}`}>
                       {p.status}

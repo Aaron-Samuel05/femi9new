@@ -372,7 +372,7 @@ export function Account({
       }}
       active="overview"
       title={user.greeting}
-      lead="Your orders, Bloom points, refills and delivery details — all in one place."
+      lead="Your orders, Bloom points, refills and delivery details - all in one place."
       actions={
         <button type="button" className="btn btn-ghost" onClick={() => setProfileSheet({})}>
           <IPencil aria-hidden="true" />
@@ -974,7 +974,7 @@ function ProfilePanel({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ email: user.email }),
       })
-      notify(res.ok ? 'Verification link sent — check your inbox.' : (await readFailure(res)).message)
+      notify(res.ok ? 'Verification link sent - check your inbox.' : (await readFailure(res)).message)
     } catch {
       notify('We could not reach the server. Check your connection and try again.')
     } finally {
@@ -1563,7 +1563,7 @@ function AddressSheet({
       onClose={onClose}
       wide
       title={editing ? 'Edit address' : 'Add a delivery address'}
-      description="Every field is on this one screen — nothing you type is lost if something needs fixing."
+      description="Every field is on this one screen - nothing you type is lost if something needs fixing."
     >
       <form className="m-form" onSubmit={submit} noValidate>
         <div className="m-field">

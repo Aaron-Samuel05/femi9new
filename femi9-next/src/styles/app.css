@@ -1035,12 +1035,21 @@
   color: var(--teal);
 }
 
+/* `margin-top: 0`, not the -16px this used to carry. `.pdp-eyebrow` already
+   pulls the pair together with `margin-bottom: -10px` (line 783), and the two
+   negatives stacked: against `.pdp-right-col`'s flex gap (20px desktop, 16px
+   mobile) the title's line box ended up 6px / 10px ABOVE the eyebrow's, so the
+   ascenders of the product name punched through "SANITARY & PERIOD CARE". The
+   eyebrow's own -10px is kept, so the kicker stays tight to the title — 10px
+   apart on desktop, 6px on mobile — instead of overlapping it.
+   Also un-collides the review form heading, where `.pdp-title` follows a
+   `.pdp-label` with an inline `marginBottom: 8` and the -16px ate all of it. */
 .pdp-title {
   font-size: 34px;
   font-weight: 800;
   line-height: 1.15;
   color: var(--ink);
-  margin: -16px 0 0;
+  margin: 0;
   letter-spacing: -0.02em;
 }
 

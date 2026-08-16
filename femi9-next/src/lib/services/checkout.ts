@@ -462,7 +462,7 @@ export async function placeOrder(
         where: { id: l.variantId, stock: { gte: l.qty } },
         data: { stock: { decrement: l.qty } },
       })
-      if (res.count === 0) throw new OutOfStockError(`${l.productName} — ${l.variantLabel}`)
+      if (res.count === 0) throw new OutOfStockError(`${l.productName} - ${l.variantLabel}`)
     }
 
     // ── LOYALTY ──────────────────────────────────────────────────────────────

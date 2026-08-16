@@ -257,7 +257,7 @@ const BENEFITS = [
   { image: 'figma-home/why-imgImage25', art: 'anion', title: 'Reliable Absorbency & Leak Protection', copy: 'Designed to absorb quickly and keep you protected through regular and heavier flow days.' },
   { image: 'figma-home/why-imgImage26', art: 'clean', title: 'Rash-Conscious Comfort', copy: 'Thoughtfully made for women who want gentle, comfortable pads without unnecessary irritants.' },
   { image: 'figma-home/why-imgImage25', art: 'anion', title: 'Freshness & Odour Control', copy: 'Stay feeling fresh and confident, whether you\'re at work, traveling, or resting.' },
-  { image: 'figma-home/why-imgImage26', art: 'clean', title: 'Made for Everyday Movement', copy: 'A lightweight fit that supports freedom of movement—focus on your day, not your pad.' },
+  { image: 'figma-home/why-imgImage26', art: 'clean', title: 'Made for Everyday Movement', copy: 'A lightweight fit that supports freedom of movement-focus on your day, not your pad.' },
 ] as const
 
 function Benefit({ item, side }: { item: (typeof BENEFITS)[number]; side: 'left' | 'right' }) {
@@ -516,7 +516,7 @@ export function Home({ products, posts, featuredReviews }: Props) {
         <div className="fl-shell">
           <h2>Designed for Her. Driven by Care. Made to Move With Her.</h2>
           <p>
-            Femi9 was created with one simple purpose: to make period care more comfortable, thoughtful, and reliable. We design our sanitary pads around what real women need—softness against your skin, breathable comfort that actually works, absorbency you can count on, and protection you can trust.
+            Femi9 was created with one simple purpose: to make period care more comfortable, thoughtful, and reliable. We design our sanitary pads around what real women need-softness against your skin, breathable comfort that actually works, absorbency you can count on, and protection you can trust.
           </p>
           <p>
             Beyond just products, Femi9 is about encouraging better menstrual hygiene choices, building awareness, and giving women the confidence they deserve throughout their cycle.

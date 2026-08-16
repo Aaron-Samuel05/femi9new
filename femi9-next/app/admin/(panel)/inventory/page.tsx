@@ -119,7 +119,7 @@ export default function InventoryPage() {
         // Revert only this row to its pre-edit value.
         setRows((rs) => rs.map((r) => (r.variantId === variantId ? snapshot : r)))
         setToast(
-          `Couldn't update ${snapshot.productName} · ${snapshot.label} — ${
+          `Couldn't update ${snapshot.productName} · ${snapshot.label} - ${
             err instanceof Error ? err.message : 'try again'
           }`,
         )
@@ -278,7 +278,7 @@ function GroupRows({
       {group.rows.map((r) => (
         <tr key={r.variantId}>
           <td data-label="Variant" style={{ paddingLeft: 28 }}>{r.label}</td>
-          <td data-label="SKU" className="adm-cell-muted">{r.sku ?? '—'}</td>
+          <td data-label="SKU" className="adm-cell-muted">{r.sku ?? '-'}</td>
           <td data-label="Price" className="adm-td-num">{rupees(r.price)}</td>
           <td data-label="Stock" className="adm-td-num">
             <StockEditor
