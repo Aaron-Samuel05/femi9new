@@ -35,6 +35,17 @@ import '@/styles/member.css'
 import '@/styles/auth.css'
 import '@/styles/account.css'
 import '@/styles/dashboard.css'
+// ── De-slab craft layer — imported LAST so its polish overrides win over the
+//    base stylesheets above. craft.css holds the shared tokens/utilities; each
+//    craft-<area>.css targets one area's existing selectors. ──
+import '@/styles/craft.css'
+import '@/styles/craft-nav.css'
+import '@/styles/craft-footer.css'
+import '@/styles/craft-home.css'
+import '@/styles/craft-type.css'
+import '@/styles/craft-home-type.css'
+import '@/styles/craft-buttons.css'
+import '@/styles/craft-cart.css'
 
 import { Providers } from './providers'
 import { optSrc, optSrcSet } from '@/components/OptImg'
@@ -112,7 +123,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           fetchPriority="high"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Instrument+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Urbanist:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,600&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,300;1,6..72,400&family=Hanken+Grotesk:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
         <script
@@ -133,11 +144,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           }}
         />
       </head>
-      <body>
+      {/* suppressHydrationWarning: browser extensions (e.g. ColorZilla adds
+          `cz-shortcut-listen`, Grammarly adds `data-gr-*`) inject attributes onto
+          <body> before React hydrates. That is the one element they reliably
+          touch, so we tolerate attribute diffs here — this does NOT hide real
+          hydration mismatches elsewhere in the tree. */}
+      <body suppressHydrationWarning>
         <Providers>{children}</Providers>
         {/* <pad-exploder> web component (zero-dep custom element). Loaded here
             rather than bundled so it stays framework-agnostic. */}
         <Script src="/pad-exploder.js" strategy="afterInteractive" />
+        {/* Press Ripple for cart buttons (Femi9 "Five Animations"): a ripple
+            blooms from the click point. Delegated + zero-dep; honours reduced motion. */}
+        <Script id="f9-btn-ripple" strategy="afterInteractive">{`
+          document.addEventListener('click', function (e) {
+            var btn = e.target.closest && e.target.closest('.add-to-bag-btn, .related-add-btn-pill, [data-ripple]');
+            if (!btn) return;
+            if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+            var r = btn.getBoundingClientRect();
+            var size = Math.max(r.width, r.height) * 2.2;
+            var s = document.createElement('span');
+            s.style.cssText = 'position:absolute;border-radius:999px;background:rgba(255,255,255,.5);pointer-events:none;transform:scale(0);opacity:1;width:' + size + 'px;height:' + size + 'px;left:' + (e.clientX - r.left - size / 2) + 'px;top:' + (e.clientY - r.top - size / 2) + 'px;animation:f9ripple .6s ease-out forwards';
+            var cs = getComputedStyle(btn);
+            if (cs.position === 'static') btn.style.position = 'relative';
+            btn.style.overflow = 'hidden';
+            btn.appendChild(s);
+            setTimeout(function () { s.remove(); }, 640);
+          }, true);
+        `}</Script>
       </body>
     </html>
   )
