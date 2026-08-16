@@ -41,19 +41,26 @@
   line-height: 1.03;
 }
 /* Give the copy column a touch more width + rhythm and larger sub-copy so the
-   whole left side reads generously and reduces the empty feel. */
-.figma-landing .fl-hero__copy,
-.figma-landing .fl-hero__copy--second {
-  width: 720px;
-  gap: 30px;
-}
-.figma-landing .fl-hero__copy > p {
-  font-size: 22px;
-  line-height: 1.5;
-  max-width: 610px;
-}
-.figma-landing .fl-hero__proof {
-  font-size: 16px;
+   whole left side reads generously and reduces the empty feel.
+
+   DESKTOP ONLY: these fixed px widths must be guarded behind min-width, or they
+   force a 720px / 610px column at phone width and the hero overflows (the title,
+   copy and Buy Now button run off the right edge, then get clipped by the global
+   overflow-x:clip). Below 901px the responsive sheet's own hero rules take over. */
+@media (min-width: 901px) {
+  .figma-landing .fl-hero__copy,
+  .figma-landing .fl-hero__copy--second {
+    width: 720px;
+    gap: 30px;
+  }
+  .figma-landing .fl-hero__copy > p {
+    font-size: 22px;
+    line-height: 1.5;
+    max-width: 610px;
+  }
+  .figma-landing .fl-hero__proof {
+    font-size: 16px;
+  }
 }
 .figma-landing .fl-heading h2,
 .figma-landing .fl-about__copy h2 {
