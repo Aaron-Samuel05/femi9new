@@ -76,6 +76,12 @@ export function Footer() {
 
   return (
     <footer className="footer">
+      {/* De-slab: a cream dome (the vertical mirror of .fl-why::after) drapes the
+          light section above softly into the navy so the top edge reads as a
+          curve, not a hard slab boundary. Decorative, clipped by the footer's
+          own overflow, and clear of the content below the top padding. */}
+      <div className="footer-topcurve" aria-hidden="true" />
+
       {/* Background watermark: script wordmark & female silhouette.
           Decorative only. Intrinsic size stated so the browser can reserve the
           box instead of reflowing the footer once the SVG parses, and lazy +

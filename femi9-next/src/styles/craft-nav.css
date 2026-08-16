@@ -1,0 +1,103 @@
+/* craft-nav.css — de-slab polish overrides for the nav.
+   Loaded after Nav.css so these win. Uses tokens from craft.css.
+   Keep the layout; add depth, soft geometry, organic transitions, motion.
+
+   The slab: a full-width FLAT #352D78 band with a hard bottom edge across the
+   top of every page. The fix keeps the exact brand purple but gives it a subtle
+   top-lit wash and a soft, LAYERED navy shadow, so the header reads as a surface
+   that gently FLOATS over the page rather than a pasted-on concrete bar.
+
+   Shadow-tint note: the header is a DARK surface over LIGHT content, so its
+   shadow is tinted with the deep brand navy rgba(27,23,61,…) — the same tone the
+   base .nav.scrolled already used — not the pale light-surface craft tokens
+   (rgba(52,32,78,.07)), which all but vanish against a dark bar over cream. One
+   shadow vocabulary for the whole header, scaled by state. */
+
+/* ── 1) Signature: the bar floats ────────────────────────────────────────────
+   Solid fill → gentle top-lit wash on the SAME purple (a few points of lightness
+   top→bottom, no new brand hue). The hard white bottom line drops to a whisper
+   and a soft, layered navy shadow does the separating. On scroll the lift
+   deepens into a wider, two-layer float — a calm cue that the header now sits
+   above the page instead of butting against it. */
+.nav {
+  background: linear-gradient(180deg, #3a3183 0%, #352d78 58%, #2f2a70 100%);
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 4px 16px -10px rgba(27, 23, 61, 0.35);
+  transition: border-color var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur-lg) var(--cr-ease);
+}
+.nav.scrolled {
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 10px 28px -14px rgba(27, 23, 61, 0.5),
+    0 2px 8px -4px rgba(27, 23, 61, 0.3);
+}
+
+/* ── 2) Links: calm brighten + eased underline ───────────────────────────────
+   A slightly held-back resting opacity gives the row a designed rhythm; hover
+   brings the link to full white as the existing underline sweeps in on the
+   shared easing. White on the dark purple stays well above AA at every state
+   (~8:1 even at rest), and focus restores full opacity so the ring lands on
+   crisp text. No tracking/gap fiddling — the base spacing already reads clean. */
+.nav-links a {
+  opacity: 0.9;
+  transition: opacity var(--cr-dur) var(--cr-ease),
+    color var(--cr-dur) var(--cr-ease);
+}
+.nav-links a:hover,
+.nav-links a:focus-visible {
+  opacity: 1;
+}
+.nav-links a::after {
+  transition: right var(--cr-dur) var(--cr-ease);
+}
+
+/* ── 3) Icon chips: one calm hover vocabulary ────────────────────────────────
+   Account, bag and burger share a single tactile cue — a 1px lift plus the
+   existing background/border brighten — settling back on press. Deliberately NO
+   drop shadow: a shadow cast onto the dark bar would not read, so the lift +
+   brighten carry it honestly. This also gives the burger, which had no hover in
+   the base, the same feel as the cart chip. */
+.cart-btn,
+.burger {
+  transition: background var(--cr-dur) var(--cr-ease),
+    border-color var(--cr-dur) var(--cr-ease),
+    transform var(--cr-dur) var(--cr-ease);
+}
+.cart-btn:hover,
+.burger:hover {
+  transform: translateY(-1px);
+}
+.burger:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+.cart-btn:active,
+.burger:active {
+  transform: translateY(0);
+}
+
+/* ── 4) Mobile drawer: continues the bar, floats when open ────────────────────
+   The drawer opens directly below the bar, so it continues DARK from the bar's
+   bottom tone and deepens further — no bright seam under the header's edge — and
+   reads as one surface, not a second slab. Open, it casts the same soft navy
+   shadow onto the light page below, matching the header's float. */
+.mobile-menu {
+  background: linear-gradient(180deg, #2e2a6e 0%, #29235f 100%);
+}
+.mobile-menu.open {
+  box-shadow: 0 14px 26px -14px rgba(27, 23, 61, 0.42),
+    0 4px 10px -6px rgba(27, 23, 61, 0.28);
+}
+
+/* ── Reduced motion: keep the calm colour changes, drop the movement ────────── */
+@media (prefers-reduced-motion: reduce) {
+  .cart-btn,
+  .burger {
+    transition: background var(--cr-dur) var(--cr-ease),
+      border-color var(--cr-dur) var(--cr-ease);
+  }
+  .cart-btn:hover,
+  .burger:hover {
+    transform: none;
+  }
+}
