@@ -1,6 +1,7 @@
 'use client'
 
 import '../styles/product-detail-extras.css'
+import '../styles/craft-product.css'
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { rupees, CADENCES } from '../data/products'
@@ -516,6 +517,11 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             </div>
 
             <div className="pdp-benefits-banner-wrapper">
+              {/* The wrapper carries a soft brand-tinted wash (craft-product.css)
+                  so the reserved box holds space as a calm surface — not a blank
+                  white slab — until the photo decodes over it. No shimmer: the box
+                  never shifts (the img reserves it), so a quiet static wash is the
+                  restrained choice over a stray looping animation. */}
               {/* 420KB served at full desktop resolution into a 324px column,
                   eagerly, with no intrinsic size to reserve the box. OptImg
                   emits the WebP ladder plus width/height/lazy/decoding. */}
