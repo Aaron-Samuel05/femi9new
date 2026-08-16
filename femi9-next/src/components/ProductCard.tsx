@@ -13,6 +13,7 @@ import type { Variant } from '@/lib/services/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from './PantyArt'
 import { OptImg } from '@/components/OptImg'
+import { useAddPulse } from '@/lib/use-add-pulse'
 
 interface Props {
   // Cards from the catalog grid carry variants; the "related" strip on the PDP
@@ -37,6 +38,7 @@ export const ProductCard = memo(function ProductCard({
   quickAddOnHover = false,
 }: Props) {
   const { add } = useCart()
+  const [pulsing, pulse] = useAddPulse()
   const { id, name, price, img, meta, flow, desc, tag, tagClass, type, variants } = product
 
   // The second "inside the pack" photo is revealed by :hover / :focus-within
@@ -56,6 +58,14 @@ export const ProductCard = memo(function ProductCard({
   const defaultVariant: Variant | undefined = isPanty
     ? (variants ?? []).find((v) => v.kind === 'size')
     : packVariants.find((v) => v.price === price) ?? packVariants[packVariants.length - 1]
+
+  /** Add, then pulse the control that was pressed. Shared by the foot button
+   *  and the hover overlay so both confirm the same way. */
+  const addToBag = () => {
+    if (!defaultVariant) return
+    add(defaultVariant.id)
+    pulse()
+  }
 
   return (
     <article className="card">
@@ -108,8 +118,8 @@ export const ProductCard = memo(function ProductCard({
         {quickAddOnHover && defaultVariant && (
           <button
             type="button"
-            className="card-quick-add"
-            onClick={() => add(defaultVariant.id)}
+            className={`card-quick-add${pulsing ? ' is-added' : ''}`}
+            onClick={addToBag}
             aria-label={`Add ${name} to bag`}
           >
             Add to cart
@@ -130,8 +140,8 @@ export const ProductCard = memo(function ProductCard({
             <span>{meta}</span>
           </span>
           <button
-            className="add"
-            onClick={() => defaultVariant && add(defaultVariant.id)}
+            className={`add${pulsing ? ' is-added' : ''}`}
+            onClick={addToBag}
             disabled={!defaultVariant}
             aria-label={`Add ${name} to bag`}
           >

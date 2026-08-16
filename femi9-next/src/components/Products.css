@@ -58,6 +58,27 @@
   .card:focus-within .card-quick-add{transform:translate(-50%,0)}
 }
 
+/* ── Added-to-bag confirmation ──────────────────────────────────────────────
+   Keyframes live in craft.css; these two buttons opt in. `position:relative`
+   so the ring has something to anchor to, and the ring is drawn on ::after so
+   no extra element is needed in the markup.
+   The class is removed again ~820ms later by useAddPulse, which is also what
+   lets a second click replay it. */
+.add.is-added,
+.card-quick-add.is-added{animation:cr-add-pop .42s var(--ease)}
+.add,.card-quick-add{position:relative}
+.add.is-added::after,
+.card-quick-add.is-added::after{
+  content:'';position:absolute;inset:0;border-radius:inherit;
+  border:2px solid currentColor;
+  animation:cr-add-ring .62s var(--ease) forwards;
+  /* The ring is pure decoration expanding past the button's own edge; without
+     this it would swallow the click that spawned it. */
+  pointer-events:none;
+}
+/* The overlay's ring reads against the photo behind it, not the white pill. */
+.card-quick-add.is-added::after{border-color:var(--navy)}
+
 /* ── Which add control a card shows ─────────────────────────────────────────
    Only cards marked `--quick` (the /products grid) trade their foot button for
    the hover overlay. The home page passes no flag, so it keeps the permanent
@@ -173,4 +194,9 @@
 
 @media(prefers-reduced-motion:reduce){
   .card-media img{transition:none}
+  /* The pulse is confirmation, so it is not simply deleted here: the ring is
+     dropped (it is the part that actually travels) and the button holds a
+     static tint for the same duration, so the press is still answered. */
+  .add.is-added,.card-quick-add.is-added{animation:none}
+  .add.is-added::after,.card-quick-add.is-added::after{animation:none;opacity:.4;transform:none}
 }

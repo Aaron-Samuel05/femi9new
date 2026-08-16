@@ -1075,6 +1075,72 @@
   transition: opacity 800ms ease-in-out, transform 800ms ease-in-out;
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   HERO SLIDE — right to left
+
+   The rules above cross-fade the two scenes in place: the outgoing one fades
+   out where it stands and the incoming one fades up 14px. That reads as a
+   dissolve, not a carousel, and it gives no sense of a deck advancing.
+
+   These rules replace it with a directional slide. They are ANIMATIONS, not
+   transitions, for one reason: a transition only knows "active" and "inactive",
+   so the outgoing slide would have to retrace the incoming slide's path and the
+   two would cross in the middle. Two keyframe sets let the leaving slide exit
+   LEFT while the arriving one enters from the RIGHT — everything travelling the
+   same way, which is what makes it read as one deck moving.
+
+   Everything is scoped to `.fl-hero--slid`, which Home.tsx only adds after the
+   first slide change; without that gate the hidden scene would play its exit on
+   load and flash across the banner. `.fl-hero` already sets overflow:hidden, so
+   the travel cannot widen the page.
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes flHeroEnterRight {
+  from { opacity: 0; transform: translateX(70px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes flHeroExitLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-70px); }
+}
+
+/* Inactive scene — leaves to the left. Listed first so the active rule below,
+   which carries one more class, out-specifies it. */
+.figma-landing .fl-hero--slid .fl-hero__scene .fl-hero__copy,
+.figma-landing .fl-hero--slid .fl-hero__scene .fl-hero__visual {
+  animation: flHeroExitLeft 620ms var(--ease) both;
+}
+
+/* Active scene — arrives from the right. */
+.figma-landing .fl-hero--slid:not(.is-second) .fl-hero__scene--first .fl-hero__copy,
+.figma-landing .fl-hero--slid:not(.is-second) .fl-hero__scene--first .fl-hero__visual,
+.figma-landing .fl-hero--slid.is-second .fl-hero__scene--second .fl-hero__copy,
+.figma-landing .fl-hero--slid.is-second .fl-hero__scene--second .fl-hero__visual {
+  animation: flHeroEnterRight 620ms var(--ease) both;
+}
+
+/* The product photo trails its copy by a beat. Without the offset the whole
+   scene moves as one flat plane; the small delay gives the banner a sense of
+   depth and stops the two halves reading as a single sliding rectangle. */
+.figma-landing .fl-hero--slid .fl-hero__scene .fl-hero__visual {
+  animation-delay: 70ms;
+}
+
+/* The wash behind each scene keeps its own cross-fade. Sliding the background
+   as well would drag the entire banner sideways, and the two slides sit on
+   different colours — the colour change is what should cross-fade. */
+
+@media (prefers-reduced-motion: reduce) {
+  .figma-landing .fl-hero--slid .fl-hero__scene .fl-hero__copy,
+  .figma-landing .fl-hero--slid .fl-hero__scene .fl-hero__visual,
+  .figma-landing .fl-hero--slid:not(.is-second) .fl-hero__scene--first .fl-hero__copy,
+  .figma-landing .fl-hero--slid:not(.is-second) .fl-hero__scene--first .fl-hero__visual,
+  .figma-landing .fl-hero--slid.is-second .fl-hero__scene--second .fl-hero__copy,
+  .figma-landing .fl-hero--slid.is-second .fl-hero__scene--second .fl-hero__visual {
+    animation: none;
+  }
+}
+
 @media (max-width: 1080px) {
   .figma-landing .fl-hero {
     height: 760px;

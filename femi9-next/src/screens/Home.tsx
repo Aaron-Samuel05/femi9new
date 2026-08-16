@@ -90,6 +90,33 @@ function Reveal({
 
 function Hero() {
   const [slide, setSlide] = useState<0 | 1>(0)
+
+  /**
+   * False until the hero has changed slide at least once.
+   *
+   * The slide motion is built from CSS animations rather than transitions,
+   * because a transition cannot express DIRECTION: with only "active" and
+   * "inactive" states to style, the outgoing slide would have to travel back
+   * the way the incoming one arrives, so the pair would meet in the middle
+   * instead of both moving right-to-left. Animations let the two sides carry
+   * different keyframes.
+   *
+   * The cost is that an animation runs the moment its rule first matches — so
+   * on load the hidden slide would play its exit and flash across the banner.
+   * Gating the whole animation layer behind this flag means the first paint
+   * keeps the existing quiet fade-in, and the sliding only starts once there is
+   * genuinely a slide to move away from.
+   */
+  const [hasSlid, setHasSlid] = useState(false)
+
+  /** Every path that changes slide goes through this, so the flag can never be
+   *  missed by one of them (auto-advance, pager dot). */
+  const goToSlide = (next: 0 | 1) => {
+    setSlide((current) => {
+      if (current !== next) setHasSlid(true)
+      return next
+    })
+  }
   // Below 769px the cloud wash and the pad cutout are hidden: the pad sits at
   // z-index 4 under a photo 43% wider than it, and the cloud is painted over by
   // everything above it. Gating the markup — not just the CSS — is what stops a
@@ -99,6 +126,7 @@ function Hero() {
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
     const timer = window.setInterval(() => {
+      setHasSlid(true)
       setSlide((current) => (current === 0 ? 1 : 0))
     }, 6000)
     return () => window.clearInterval(timer)
@@ -108,7 +136,7 @@ function Hero() {
 
   return (
     <section
-      className={`fl-hero${slide === 0 ? ' is-second' : ''}`}
+      className={`fl-hero${slide === 0 ? ' is-second' : ''}${hasSlid ? ' fl-hero--slid' : ''}`}
       aria-labelledby={slide === 0 ? 'fl-hero-girl-heading' : 'fl-hero-product-heading'}
     >
       <div className="fl-hero__background fl-hero__background--first" />
@@ -236,13 +264,13 @@ function Hero() {
           type="button"
           aria-label="Show girl hero slide"
           className={slide === 0 ? 'is-active' : ''}
-          onClick={() => setSlide(0)}
+          onClick={() => goToSlide(0)}
         />
         <button
           type="button"
           aria-label="Show product hero slide"
           className={slide === 1 ? 'is-active' : ''}
-          onClick={() => setSlide(1)}
+          onClick={() => goToSlide(1)}
         />
       </div>
     </section>
@@ -414,6 +442,17 @@ const REVIEWS = [
  * reuse the same portraits in order as generic customer imagery rather than
  * inventing a face for a named person.
  */
+/** Desktop card pitch: 381px card + the 40px flex gap between them. */
+const CARD_PITCH = 421
+
+/**
+ * Seconds of travel per card. The rail used to cover a card every 2.5s, which
+ * is faster than the quote on it can be read — the motion drew the eye and then
+ * removed the thing it had drawn the eye to. This is a calm drift instead, and
+ * hovering stops it outright (see figma-landing.css).
+ */
+const SECONDS_PER_CARD = 4.5
+
 function Testimonials({ featuredReviews }: { featuredReviews: FeaturedReview[] }) {
   const [manualOffset, setManualOffset] = useState<number | null>(null)
   const trackRef = useRef<HTMLDivElement>(null)
@@ -431,7 +470,24 @@ function Testimonials({ featuredReviews }: { featuredReviews: FeaturedReview[] }
   }, [featuredReviews])
 
   const items = [...cards, ...cards]
-  const shift = manualOffset === null ? undefined : `calc(-80px - ${manualOffset * 421}px)`
+  const shift = manualOffset === null ? undefined : `calc(-80px - ${manualOffset * CARD_PITCH}px)`
+
+  /**
+   * How far the marquee travels before it repeats, and how long that takes.
+   *
+   * Both used to be baked into the keyframes as literals (-80px → -1764px over
+   * 10s), which is exactly one set of the FOUR authored fallback reviews. The
+   * rail renders up to six once the database has enough approved reviews, and
+   * at that point the animation still reset after four cards' worth of travel —
+   * so every ten seconds the strip snapped backwards by the leftover. The loop
+   * only looks seamless when the distance is one full set, whatever that is.
+   *
+   * Duration scales with the distance so the speed stays constant no matter how
+   * many cards are in the rail: more reviews should mean a longer loop, not a
+   * faster one.
+   */
+  const loopPx = cards.length * CARD_PITCH
+  const loopSeconds = cards.length * SECONDS_PER_CARD
 
   /**
    * The 421px step is the DESKTOP card pitch (381px card + 40px gap). Below
@@ -459,7 +515,15 @@ function Testimonials({ featuredReviews }: { featuredReviews: FeaturedReview[] }
             <button type="button" aria-label="Next testimonial" onClick={() => step(1)}><img src={`${ASSET}testimonials-imgFrame1.svg`} alt="" width={32} height={32} loading="lazy" decoding="async" /></button>
           </div>
         </div>
-        <div ref={trackRef} className={`fl-testimonials__track${manualOffset !== null ? ' is-manual' : ''}`} style={{ '--testimonial-shift': shift } as CSSProperties}>
+        <div
+          ref={trackRef}
+          className={`fl-testimonials__track${manualOffset !== null ? ' is-manual' : ''}`}
+          style={{
+            '--testimonial-shift': shift,
+            '--testimonial-loop': `${loopPx}px`,
+            '--testimonial-duration': `${loopSeconds}s`,
+          } as CSSProperties}
+        >
           {items.map((item, index) => (
             <article className="fl-review" key={`${item.key}-${index}`}>
               <div className="fl-review__media">

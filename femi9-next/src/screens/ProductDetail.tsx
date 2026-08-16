@@ -4,20 +4,23 @@ import '../styles/product-detail-extras.css'
 import '../styles/craft-product.css'
 import '../styles/pdp-key-benefits.css'
 import '../styles/pdp-reviews.css'
+import '../styles/pdp-motion.css'
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { rupees, CADENCES } from '../data/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
-import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook } from '../components/Icons'
+import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook, Whatsapp } from '../components/Icons'
 import { ICopy, IStar } from '../components/AppIcons'
 import { OptImg } from '@/components/OptImg'
 import { KeyBenefits } from '@/components/KeyBenefits'
 import { ProductReviews } from '@/components/ProductReviews'
+import { VideoTestimonials } from '@/components/VideoTestimonials'
 import type { OptImageBase } from '@/lib/opt-images'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
 import type { ProductExtra } from '@/data/productDetail'
 import { usePublicSettings } from '@/lib/use-public-settings'
+import { useAddPulse } from '@/lib/use-add-pulse'
 import { track } from '@/lib/track'
 
 interface Props {
@@ -57,6 +60,32 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
+/**
+ * The reveal-on-hover add button on a "frequently bought together" card.
+ *
+ * Its own component, declared at module scope, so each card owns an independent
+ * pulse: one `useAddPulse` shared across the mapped strip would flash all four
+ * cards every time any one of them was pressed. Module scope rather than nested
+ * inside ProductDetail so it keeps its identity between renders and React does
+ * not remount (and so reset) every card's state on each parent update.
+ */
+function RelatedQuickAdd({ name, onAdd }: { name: string; onAdd: () => void | Promise<void> }) {
+  const [pulsing, pulse] = useAddPulse()
+  return (
+    <button
+      type="button"
+      className={`related-quick-add${pulsing ? ' is-added' : ''}`}
+      onClick={() => {
+        pulse()
+        void onAdd()
+      }}
+      aria-label={`Add ${name} to bag`}
+    >
+      Add to cart
+    </button>
+  )
+}
+
 function deliveryDate(daysAhead: number): string {
   const d = new Date(Date.now() + daysAhead * 86400000)
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
@@ -84,6 +113,11 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   const [rvBody, setRvBody] = useState('')
   const [rvRating, setRvRating] = useState(5)
   const [rvState, setRvState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+
+  /** Confirmation pulse for the main CTA. Shared by the inline button and the
+   *  sticky mobile bar, because they are the same action — whichever one the
+   *  shopper pressed, the other is either off-screen or the same control. */
+  const [ctaPulsing, ctaPulse] = useAddPulse()
 
   /** The modal serves both jobs; `rvMode` decides which form it shows. */
   const [rvMode, setRvMode] = useState<'review' | 'question'>('review')
@@ -272,6 +306,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     }
 
     void add(variant.id, qty)
+    ctaPulse()
     track('add_to_cart', { slug: product.id, variantId: variant.id, qty })
     openCart()
   }
@@ -467,7 +502,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   <span>{qty}</span>
                   <button onClick={() => setQty((q) => q + 1)} aria-label="Increase">+</button>
                 </div>
-                <button className="add-to-bag-btn" onClick={submit}>
+                <button className={`add-to-bag-btn${ctaPulsing ? ' is-added' : ''}`} onClick={submit}>
                   <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
                 </button>
               </div>
@@ -489,6 +524,15 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                     aria-label="Share on Facebook"
                   >
                     <Facebook />
+                  </a>
+                  <a
+                    href={`https://wa.me/?text=${encodeURIComponent(`${product.name} ${shareUrl}`)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="pdp-share-link"
+                    aria-label="Share on WhatsApp"
+                  >
+                    <Whatsapp />
                   </a>
                   <button
                     type="button"
@@ -549,7 +593,12 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             imageSrc={product.img}
           />
 
-          {/* 3. CUSTOMER REVIEWS — paged carousel, per-card helpful votes and the
+          {/* 3. REAL STORIES — customer video clips, above the written reviews
+              because a face carries further than a paragraph. Renders nothing
+              until clips are configured; see src/data/videoTestimonials.ts. */}
+          <VideoTestimonials productId={product.id} />
+
+          {/* 4. CUSTOMER REVIEWS — paged carousel, per-card helpful votes and the
               rating summary. The histogram that used to be computed here moved
               into the component along with everything else it labels. */}
           <ProductReviews
@@ -572,17 +621,25 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             <div className="related-grid">
               {related.slice(0, 4).map((p) => (
                 <article className="related-card" key={p.id}>
-                  <Link to={`/product/${p.id}`} className="related-img-box">
-                    <span className="related-badge">{p.flow || 'Sanitary Care'}</span>
-                    <img
-                      src={p.img || '/assets/img/pad-detail-1.webp'}
-                      alt={p.name}
-                      width={720}
-                      height={960}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  </Link>
+                  {/* Link and hover CTA are SIBLINGS in this wrapper, never
+                      nested: a <button> inside an <a> is invalid markup and the
+                      browser would have to guess which one a click meant. */}
+                  <div className="related-img-wrap">
+                    <Link to={`/product/${p.id}`} className="related-img-box">
+                      <span className="related-badge">{p.flow || 'Sanitary Care'}</span>
+                      <img
+                        src={p.img || '/assets/img/pad-detail-1.webp'}
+                        alt={p.name}
+                        width={720}
+                        height={960}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </Link>
+                    {defaultVariantOf(p) && (
+                      <RelatedQuickAdd name={p.name} onAdd={() => addRelated(p)} />
+                    )}
+                  </div>
                   <div className="related-card-content">
                     <Link to={`/product/${p.id}`} className="related-title">{p.name}</Link>
                     <p className="related-desc">{p.desc}</p>
@@ -595,17 +652,16 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                       <b className="related-now-price">{rupees(p.price)}</b>
                     </div>
 
-                    {/* Was a <Link> carrying a bag icon and the words "Add to
-                        bag" that only navigated. Same pattern as ProductCard,
-                        including the no-variant guard. */}
-                    <button
-                      type="button"
-                      className="related-add-btn-pill"
-                      onClick={() => addRelated(p)}
-                      disabled={!defaultVariantOf(p)}
-                    >
-                      <Bag /> {defaultVariantOf(p) ? 'Add to bag' : 'Sold out'}
-                    </button>
+                    {/* The add control moved onto the photo as a hover reveal
+                        (see `.related-quick-add` above). Only the sold-out case
+                        still prints a button here, because "Sold out" is
+                        information the card must state outright rather than
+                        hide behind a hover the shopper has no reason to try. */}
+                    {!defaultVariantOf(p) && (
+                      <button type="button" className="related-add-btn-pill" disabled>
+                        <Bag /> Sold out
+                      </button>
+                    )}
                   </div>
                 </article>
               ))}

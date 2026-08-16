@@ -43,3 +43,13 @@ npm-debug.log*
 /test-results/
 /blob-report/
 /playwright/.cache/
+
+# Source testimonial footage (350MB). Only web-sized transcodes are served, and
+# those live in S3 (see src/data/videoTestimonials.ts), not in this repo.
+Testimonial Videos/
+
+# Dev upload scratch. app/api/admin/upload writes here when S3/Cloudinary are
+# unconfigured, and the product-page testimonial clips are dropped here for local
+# runs. In staging/prod the same /uploads/* paths are served from S3 through
+# CloudFront, so none of this belongs in the repo.
+public/uploads/

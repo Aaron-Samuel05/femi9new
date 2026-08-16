@@ -71,6 +71,26 @@
   background: #fff;
 }
 
+/* ── Add-to-bag confirmation ────────────────────────────────────────────────
+   Keyframes only; each area's sheet decides which of ITS buttons wears them, so
+   there is no global `.is-added` rule for an unrelated component to collide
+   with. Two layers, deliberately: the button gives a short squash-and-settle so
+   the press feels answered, and a ring expands out of its edge so the
+   confirmation is still legible when the cart drawer opens over the top and
+   steals attention. Kept under half a second — this fires on the conversion
+   path, and motion the shopper has to wait out is motion working against her. */
+@keyframes cr-add-pop {
+  0% { transform: scale(1); }
+  28% { transform: scale(0.94); }
+  62% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cr-add-ring {
+  0% { opacity: 0.55; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.28); }
+}
+
 /* Skeleton shimmer — removes the "blank white slab while an image loads" moment. */
 .cr-skeleton {
   position: relative;
