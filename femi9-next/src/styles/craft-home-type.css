@@ -41,36 +41,35 @@
   line-height: 1.03;
 }
 /* Give the copy column a touch more width + rhythm and larger sub-copy so the
-   whole left side reads generously and reduces the empty feel. */
-.figma-landing .fl-hero__copy,
-.figma-landing .fl-hero__copy--second {
-  width: 720px;
-  gap: 30px;
-}
-/* The 720px above is a desktop measure and carries no media query, so it also
-   applied on phones — where, clamped by the 610px max-width in
-   figma-landing-responsive.css, it made the hero's copy column 610px wide inside
-   a 390px viewport. That column then sized the hero's stacked grid track to
-   610 + 40px of padding = 650px, everything centred inside THAT box, and the
-   hero's `overflow: clip` sheared off the right-hand third — the lifestyle
-   cutout, the tail of the headline and the proof row.
-   This sheet loads after figma-landing-responsive.css and matches at the same
-   specificity, so the release has to live here to win. Desktop is untouched:
-   the rule only stops applying below 769px. */
-@media (max-width: 768px) {
+   whole left side reads generously and reduces the empty feel.
+
+   DESKTOP ONLY: these fixed px widths must be guarded behind min-width, or they
+   force a 720px / 610px column at phone width and the hero overflows (the title,
+   copy and Buy Now button run off the right edge, then get clipped by the global
+   overflow-x:clip). Below 901px the responsive sheet's own hero rules take over,
+   which leave the copy column at `width:auto`.
+
+   master fixed the same overflow by keeping these rules unguarded and releasing
+   the width back to 100% under `@media (max-width:768px)`. This guard supersedes
+   that: it also stops the 720px width applying between 769–900px, and keeps the
+   desktop 22px/16px type off phones instead of only the width. The companion
+   half of master's fix — `minmax(0,1fr)` on the hero stack track and the
+   `min-width:0` floor release on the scenes, in figma-landing-responsive.css —
+   is unaffected and still in force. */
+@media (min-width: 901px) {
   .figma-landing .fl-hero__copy,
   .figma-landing .fl-hero__copy--second {
-    width: 100%;
-    max-width: 100%;
+    width: 720px;
+    gap: 30px;
   }
-}
-.figma-landing .fl-hero__copy > p {
-  font-size: 22px;
-  line-height: 1.5;
-  max-width: 610px;
-}
-.figma-landing .fl-hero__proof {
-  font-size: 16px;
+  .figma-landing .fl-hero__copy > p {
+    font-size: 22px;
+    line-height: 1.5;
+    max-width: 610px;
+  }
+  .figma-landing .fl-hero__proof {
+    font-size: 16px;
+  }
 }
 .figma-landing .fl-heading h2,
 .figma-landing .fl-about__copy h2 {
@@ -85,6 +84,12 @@
 .figma-landing .fl-partner__copy h2 {
   font-family: 'Newsreader', Georgia, serif !important;
   font-weight: 400 !important;
+}
+/* Cycle-tracker section title ("Know Your Cycle…") pins Instrument Sans via a
+   `font:` shorthand !important at (0,2,1); this (0,3,1) !important, loaded last,
+   flips it to the display serif like every other section heading. */
+.figma-landing .fl-cycle .cyc-intro h2 {
+  font-family: 'Newsreader', Georgia, serif !important;
 }
 
 /* ── Eyebrows → Hanken 800 · .2em · UPPERCASE · gold-deep ──────────────────────
