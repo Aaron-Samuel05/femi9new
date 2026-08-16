@@ -1108,19 +1108,31 @@
      then ate the difference, including the Buy Now button. Stacking the two
      scenes in one grid cell lets the taller one define the height and keeps the
      cross-fade. Desktop (>768px) still uses the absolute layout untouched. */
+  /* `minmax(0, 1fr)`, not the implicit `auto`: an auto track's growth limit is
+     its items' MAX-CONTENT size, and `.fl-hero__copy` carries `max-width:610px`
+     — so the single stack column resolved to 610 + 40px of inner padding = 650px
+     inside a 390px viewport. Everything then centred inside that 650px box and
+     `overflow:clip` sheared off the right-hand third: the lifestyle cutout, the
+     end of the headline, the proof row. Capping the track at the container width
+     is the whole fix — no geometry, type or colour below this line changes. */
   .figma-landing .fl-hero {
     height: auto;
     min-height: 0;
     display: grid;
     grid-template-areas: "stack";
+    grid-template-columns: minmax(0, 1fr);
     overflow: clip;
   }
 
+  /* Grid items default to `min-width:auto`, which floors them at min-content and
+     would re-open the same overflow from below. */
   .figma-landing .fl-hero__scene {
     grid-area: stack;
     position: relative;
     inset: auto;
     min-height: 0;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .figma-landing .fl-hero__background {
@@ -1157,8 +1169,11 @@
     width: 390px;
   }
 
+  /* `minmax(0, 1fr)` for the same reason as the stack track above: a bare `1fr`
+     is `minmax(auto, 1fr)`, whose auto minimum lets a wide child (the product
+     shot, a long unbroken word) push the single column past the viewport. */
   .figma-landing .fl-hero__inner {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto;
     align-content: start;
     gap: 18px;

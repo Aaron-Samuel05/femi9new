@@ -46,7 +46,16 @@
    DESKTOP ONLY: these fixed px widths must be guarded behind min-width, or they
    force a 720px / 610px column at phone width and the hero overflows (the title,
    copy and Buy Now button run off the right edge, then get clipped by the global
-   overflow-x:clip). Below 901px the responsive sheet's own hero rules take over. */
+   overflow-x:clip). Below 901px the responsive sheet's own hero rules take over,
+   which leave the copy column at `width:auto`.
+
+   master fixed the same overflow by keeping these rules unguarded and releasing
+   the width back to 100% under `@media (max-width:768px)`. This guard supersedes
+   that: it also stops the 720px width applying between 769–900px, and keeps the
+   desktop 22px/16px type off phones instead of only the width. The companion
+   half of master's fix — `minmax(0,1fr)` on the hero stack track and the
+   `min-width:0` floor release on the scenes, in figma-landing-responsive.css —
+   is unaffected and still in force. */
 @media (min-width: 901px) {
   .figma-landing .fl-hero__copy,
   .figma-landing .fl-hero__copy--second {
