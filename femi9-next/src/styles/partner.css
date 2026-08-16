@@ -39,9 +39,10 @@
   height: 120%;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(46vw 40vw at 82% 6%, rgba(201, 174, 228, .42), transparent 60%),
-    radial-gradient(42vw 40vw at 10% 84%, rgba(240, 193, 78, .30), transparent 62%);
+  /* Was a lavender (top-right) + gold (bottom-left) radial wash — the gold was the
+     yellow "tail" on this page. Removed for the clean uniform-white hero that
+     matches /blog, /products and the home page. */
+  background: none;
 }
 .pt-hero-inner { position: relative; z-index: 1; max-width: 840px; }
 .pt-hero-inner .eyebrow { margin-bottom: 18px; }
@@ -79,7 +80,7 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: clamp(14px, 2.4vw, 30px);
-  background: var(--butter-soft);
+  background: #ffffff;
   border: 1px solid var(--line-soft);
   border-radius: var(--r-card);
   padding: clamp(24px, 3.4vw, 42px) clamp(20px, 3vw, 40px);

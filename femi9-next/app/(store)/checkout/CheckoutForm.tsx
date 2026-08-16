@@ -341,17 +341,9 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
   }
 
   return (
-    <form
-      onSubmit={onSubmit}
-      noValidate
-      style={{
-        background: 'var(--surface)',
-        border: '1px solid var(--line-soft)',
-        borderRadius: 'var(--r-card)',
-        boxShadow: 'var(--shadow-sm)',
-        padding: 'clamp(20px,3vw,32px)',
-      }}
-    >
+    // Shipping-details card. Depth + soft geometry live in craft-checkout.css
+    // (.co-form) rather than inline, so the polish pass owns the elevation.
+    <form onSubmit={onSubmit} noValidate className="co-form">
       <h2 style={{ fontSize: '1.15rem', marginBottom: '1.25rem' }}>Shipping details</h2>
 
       <div className="co-fields">
@@ -493,7 +485,7 @@ export function CheckoutForm({ prefill }: { prefill?: CheckoutPrefill }) {
           style={{
             marginTop: '1.1rem',
             padding: '.7rem .9rem',
-            borderRadius: 12,
+            borderRadius: 'var(--cr-r-sm)',
             background: 'rgba(216,162,47,.12)',
             border: '1px solid rgba(216,162,47,.4)',
             color: 'var(--navy)',

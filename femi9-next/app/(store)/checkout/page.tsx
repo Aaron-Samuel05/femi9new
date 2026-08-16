@@ -11,6 +11,7 @@ import { CheckoutForm, type CheckoutPrefill } from './CheckoutForm'
 // Route-scoped sheet — keeps the money path off the shared stylesheets whose
 // load order app/layout.tsx pins deliberately.
 import './checkout.css'
+import '@/styles/craft-checkout.css'
 
 // Reads the guest cookie + live cart, so it must render per-request, never cached.
 export const dynamic = 'force-dynamic'

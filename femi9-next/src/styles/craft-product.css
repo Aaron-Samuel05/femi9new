@@ -1,0 +1,261 @@
+/* craft-product.css — de-slab polish overrides for the product detail page.
+   Loaded after app.css + product-detail-extras.css so these win. Uses tokens
+   from craft.css. Layout/structure unchanged — only depth, soft geometry,
+   organic framing and one calm motion vocabulary are added.
+
+   Every rule is scoped under `.pdp-page` (0,2,x) so it reliably beats the base
+   single-class rules (0,1,x) regardless of bundle order, while the base mobile
+   `!important` rules still win — mobile behaviour is preserved.
+
+   Two design invariants keep this from reading AI-generated:
+   • Radius scale is exactly three steps — lg(28) big surfaces · md(20) framed
+     media & cards · sm(14) interactive controls. No xl over-rounding.
+   • Motion is one calm vocabulary — controls lift 2px, cards lift 4px, every
+     hover steps its shadow up exactly one token. Nothing else moves.
+   Borders follow function: legible --line on things you tap/select, a whisper
+   --cr-hairline on large framed surfaces the shadow already separates. */
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIGNATURE — the framed, floating product image
+   The stage was a flat white cover-cropped rectangle, the image edge to edge.
+   Now it is a soft lavender-wash frame the product floats inside: contained +
+   centred with breathing room, lifted by a soft navy-tinted drop-shadow. The
+   frame carries a calm md shadow; the FLOAT is where the boldness is spent.
+   The image gets a soft corner radius so an opaque pack-shot reads as a framed
+   print (rounded, shadowed) rather than a hard-cornered rectangle — and it is a
+   silhouette float for cut-out PNGs. One robust treatment for either source.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .pdp-hero-stage {
+  background: var(--cr-wash-lav);
+  border-radius: var(--cr-r-lg);
+  border: 1px solid var(--cr-hairline);
+  box-shadow: var(--cr-shadow-md);
+  padding: clamp(18px, 3.5vw, 44px);
+  /* The base stage clips to overflow:hidden, which was silently cropping the
+     float — the img drop-shadow tail (~40px) is longer than the padding at mid
+     widths, so the signature lift got scissored off exactly where it should
+     breathe. The wash background still clips to the radius; only the shadow is
+     freed. This is the fix that makes the float actually read at every width. */
+  overflow: visible;
+}
+
+.pdp-page .pdp-hero-stage img {
+  /* Contained so the whole product shows on the wash instead of being cropped
+     to the bezel; padding lives on the stage, so zero here. Soft corners de-slab
+     an opaque photo; harmless on a transparent cut-out. The chained drop-shadows
+     are the float — soft, low-opacity, brand-navy tinted, never a hard drop. */
+  object-fit: contain;
+  padding: 0;
+  border-radius: var(--cr-r-md);
+  filter:
+    drop-shadow(0 16px 24px rgba(52, 32, 78, 0.16))
+    drop-shadow(0 6px 9px rgba(52, 32, 78, 0.1));
+}
+
+/* Secondary desktop gap banner — same soft-frame family, quieter than the hero. */
+.pdp-page .pdp-hero-gap-banner {
+  border-radius: var(--cr-r-lg);
+  border: 1px solid var(--cr-hairline);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PACK + SIZE SELECTORS — a lone active card used to be a heavy dark slab.
+   Legible bordered chips (so they still read as tappable) with a soft
+   lavender-wash active state — the same selection vocabulary the purchase rows
+   use — so a single pack reads "selected", not as a solid block.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .pack-card,
+.pdp-page .size-card {
+  border-radius: var(--cr-r-sm);
+  border: 1px solid var(--line);
+  background: #fff;
+  box-shadow: var(--cr-shadow-xs);
+  transition: transform var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease),
+    border-color var(--cr-dur) var(--cr-ease),
+    background var(--cr-dur) var(--cr-ease),
+    color var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .pack-card:hover,
+.pdp-page .size-card:hover {
+  border-color: var(--lilac);
+  box-shadow: var(--cr-shadow-sm);
+  transform: translateY(-2px);
+}
+
+.pdp-page .pack-card.active,
+.pdp-page .size-card.active {
+  background: var(--cr-wash-lav);
+  border-color: var(--ink);
+  color: var(--ink); /* overrides base's #FFF, which would vanish on the wash */
+  /* A pack chip carries no radio dot, so the wash alone read as barely-selected
+     among three near-white siblings. An inset ink hairline doubles the edge into
+     a confident 2px ring and lets the chip SETTLE (no outer float) — hover lifts,
+     selected settles: two distinct, legible states from one calm vocabulary. */
+  box-shadow: inset 0 0 0 1px var(--ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PURCHASE-OPTION ROWS — were flat full-width bars. A hairline-legible border,
+   a whisper of elevation and a calm hover; the active row gets the wash + a step
+   of shadow so it stops reading as an even, weightless band. No vertical lift —
+   a full-width row is too wide to jump; border + shadow carry the feedback.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .sub-row {
+  border-radius: var(--cr-r-sm);
+  border: 1px solid var(--line);
+  box-shadow: var(--cr-shadow-xs);
+  transition: box-shadow var(--cr-dur) var(--cr-ease),
+    border-color var(--cr-dur) var(--cr-ease),
+    background var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .sub-row:hover {
+  border-color: var(--lilac);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+.pdp-page .sub-row.active {
+  background: var(--cr-wash-lav);
+  border-color: var(--ink);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BUTTONS — soft radii, subtle depth, one calm 2px lift on hover. The gold CTA
+   keeps its base mustard-deep hover background; we only unify motion + shadow.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .add-to-bag-btn {
+  border-radius: var(--cr-r-sm);
+  box-shadow: var(--cr-shadow-sm);
+  transition: background var(--cr-dur) var(--cr-ease),
+    color var(--cr-dur) var(--cr-ease),
+    transform var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .add-to-bag-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cr-shadow-md);
+}
+
+/* Navy pill on the related cards — keep the pill + its base bg-darken hover,
+   unify its motion + elevation with the page's shadow tokens. */
+.pdp-page .related-add-btn-pill {
+  box-shadow: var(--cr-shadow-sm);
+  transition: transform var(--cr-dur) var(--cr-ease),
+    background var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .related-add-btn-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cr-shadow-md);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BIG SECTION CONTAINERS — soften the two flat panels into depthful frames with
+   gentle, DIFFERING brand washes so neighbouring blocks vary instead of stacking
+   as identical slabs. Shadow + hairline carry the separation, not a hard edge.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .pdp-benefits-section {
+  background: var(--cr-wash-cream);
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-lg);
+  box-shadow: var(--cr-shadow-md);
+}
+
+.pdp-page .pdp-reviews-section {
+  background: var(--cr-wash-lav);
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-lg);
+  box-shadow: var(--cr-shadow-md);
+}
+
+/* Benefits banner: a soft framed well. The reserved box carries a cream wash so
+   the image decodes over a calm surface, not a blank white slab — no shimmer,
+   because the img already reserves its box (nothing shifts to mask). */
+.pdp-page .pdp-benefits-banner-wrapper {
+  background: var(--cr-wash-cream);
+  border-radius: var(--cr-r-md);
+  border: 1px solid var(--cr-hairline);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+/* The white rating-summary card sits ON the lavender-wash reviews panel; give it
+   a soft lift so it reads as a card resting on the wash, not a flat inset slab. */
+.pdp-page .pdp-rating-summary-box {
+  border-color: var(--cr-hairline);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   REVIEW + RELATED CARDS — consistent soft radii, layered elevation and one calm
+   4px lift from the shared motion vocabulary (one shadow step up on hover).
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pdp-page .pdp-review-card {
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-md);
+  box-shadow: var(--cr-shadow-sm);
+  transition: transform var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .pdp-review-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--cr-shadow-lg);
+}
+
+.pdp-page .related-card {
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-lg);
+  box-shadow: var(--cr-shadow-sm);
+  transition: transform var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease),
+    border-color var(--cr-dur) var(--cr-ease);
+}
+
+.pdp-page .related-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--lilac);
+  box-shadow: var(--cr-shadow-lg);
+}
+
+/* Product photo well inside each related card — a warm cream wash instead of a
+   flat grey fill, so the product sits on a soft surface. Inner radius (md) nests
+   cleanly inside the card's lg corner and its 8px padding. */
+.pdp-page .related-img-box {
+  background: var(--cr-wash-cream);
+  border-radius: var(--cr-r-md);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Reduced motion — our overrides re-introduce transitions/transforms above, so
+   restate the floor here (and out-specify the base reduced-motion rule).
+   ═══════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .pdp-page .pack-card,
+  .pdp-page .size-card,
+  .pdp-page .sub-row,
+  .pdp-page .add-to-bag-btn,
+  .pdp-page .related-add-btn-pill,
+  .pdp-page .related-card,
+  .pdp-page .pdp-review-card,
+  .pdp-page .pdp-hero-stage img {
+    transition: none;
+  }
+
+  .pdp-page .pack-card:hover,
+  .pdp-page .size-card:hover,
+  .pdp-page .add-to-bag-btn:hover,
+  .pdp-page .related-add-btn-pill:hover,
+  .pdp-page .related-card:hover,
+  .pdp-page .pdp-review-card:hover,
+  /* The base still scales the hero image 1.03 on hover; silence it too so the
+     reduced-motion floor actually covers the one motion a visitor triggers most. */
+  .pdp-page .pdp-hero-stage:hover img {
+    transform: none;
+  }
+}
