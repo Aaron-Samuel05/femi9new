@@ -47,6 +47,23 @@
   width: 720px;
   gap: 30px;
 }
+/* The 720px above is a desktop measure and carries no media query, so it also
+   applied on phones — where, clamped by the 610px max-width in
+   figma-landing-responsive.css, it made the hero's copy column 610px wide inside
+   a 390px viewport. That column then sized the hero's stacked grid track to
+   610 + 40px of padding = 650px, everything centred inside THAT box, and the
+   hero's `overflow: clip` sheared off the right-hand third — the lifestyle
+   cutout, the tail of the headline and the proof row.
+   This sheet loads after figma-landing-responsive.css and matches at the same
+   specificity, so the release has to live here to win. Desktop is untouched:
+   the rule only stops applying below 769px. */
+@media (max-width: 768px) {
+  .figma-landing .fl-hero__copy,
+  .figma-landing .fl-hero__copy--second {
+    width: 100%;
+    max-width: 100%;
+  }
+}
 .figma-landing .fl-hero__copy > p {
   font-size: 22px;
   line-height: 1.5;
