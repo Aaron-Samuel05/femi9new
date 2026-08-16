@@ -1,99 +1,77 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { testimonialsForProduct, type VideoTestimonial } from '../data/videoTestimonials'
 
 /**
- * "Real stories" — a rail of short customer clips on the product page.
+ * "Real Stories" — a rail of short customer clips that plays itself.
  *
- * Playback rules, and why:
- * • Nothing autoplays on load. A page that starts four videos the moment it
- *   opens costs the shopper bandwidth she did not ask to spend, and on a phone
- *   that is her data. `preload="none"` means the bytes are not fetched until a
- *   clip is actually asked for; the poster carries the card until then.
- * • Hover previews are muted and silent by design — an unmuted autoplay is
- *   blocked by every browser anyway, and would be hostile if it were not.
- * • The card is a button, so a tap (or Enter) plays with sound. That is the one
- *   gesture browsers accept as consent for audio, and it is also the only way
- *   this works at all on a phone, which has no hover.
+ * The rail advances every 3 seconds, scrolling the next clip into view and
+ * previewing it muted, so the section shows what it contains without the
+ * shopper having to touch anything. A click plays that clip properly, with
+ * sound, and ends the rotation.
+ *
+ * The rules that keep an auto-playing rail from being hostile:
+ * • It does nothing until the section is actually on screen. Rotating clips for
+ *   a section nobody has scrolled to would download several MB of video — her
+ *   data — to animate pixels out of view.
+ * • Only the current and next clip are allowed to preload. `preload="none"`
+ *   everywhere else means the rail costs one poster per card until it starts.
+ * • Hovering pauses the rotation. The whole point of stopping on a clip is to
+ *   watch it, and having it slide away under the cursor fights the reader.
+ * • A click hands control over for good — after that it never auto-advances
+ *   again, because she has said which one she wants.
+ * • Reduced motion disables the rotation entirely: this is a moving carousel
+ *   that also plays video, which is squarely what that preference is about.
+ * • A hidden tab stops it, so it is not burning battery in the background.
  */
+
+/** How long each clip holds before the rail moves on. */
+const HOLD_MS = 3000
 
 interface Props {
   productId: string
 }
 
-function Clip({ clip }: { clip: VideoTestimonial }) {
-  const ref = useRef<HTMLVideoElement>(null)
-  const [playing, setPlaying] = useState(false)
-
-  /** Silent preview while the pointer rests on the card. */
-  const preview = () => {
-    const v = ref.current
-    if (!v || playing) return
-    v.muted = true
-    // play() rejects if the browser declines (data saver, reduced motion, a
-    // battery-saving mode). Nothing to recover — the poster simply stays.
-    void v.play().catch(() => {})
-  }
-
-  const stopPreview = () => {
-    const v = ref.current
-    if (!v || playing) return
-    v.pause()
-    v.currentTime = 0
-  }
-
-  /** A real click is consent for sound; this is the only path that unmutes. */
-  const toggleWithSound = () => {
-    const v = ref.current
-    if (!v) return
-    if (playing) {
-      v.pause()
-      setPlaying(false)
-      return
-    }
-    v.muted = false
-    v.currentTime = 0
-    void v
-      .play()
-      .then(() => setPlaying(true))
-      .catch(() => {
-        // Autoplay policy refused even with sound. Fall back to a muted play so
-        // the tap still does something visible rather than nothing.
-        v.muted = true
-        void v.play().catch(() => {})
-      })
-  }
-
+function Clip({
+  clip,
+  index,
+  register,
+  soundOn,
+  onTakeOver,
+  preload,
+}: {
+  clip: VideoTestimonial
+  index: number
+  register: (i: number, el: HTMLVideoElement | null) => void
+  soundOn: boolean
+  onTakeOver: (i: number) => void
+  preload: 'none' | 'auto'
+}) {
   return (
     <li className="vt-card">
       <button
         type="button"
-        className={`vt-frame${playing ? ' is-playing' : ''}`}
-        onMouseEnter={preview}
-        onMouseLeave={stopPreview}
-        onClick={toggleWithSound}
-        aria-label={
-          playing ? `Pause ${clip.name}'s story` : `Play ${clip.name}'s story with sound`
-        }
+        className={`vt-frame${soundOn ? ' is-playing' : ''}`}
+        onClick={() => onTakeOver(index)}
+        aria-label={soundOn ? `Pause ${clip.name}'s story` : `Play ${clip.name}'s story with sound`}
       >
         <video
-          ref={ref}
+          ref={(el) => register(index, el)}
           className="vt-video"
           src={clip.src}
           poster={clip.poster}
           playsInline
           loop
           muted
-          preload="none"
-          // Decorative in the a11y tree: the button above is the labelled
-          // control, and the quote below is the text alternative.
+          preload={preload}
+          // Decorative in the a11y tree: the button is the labelled control and
+          // the name below is the text alternative.
           aria-hidden="true"
           tabIndex={-1}
-          onEnded={() => setPlaying(false)}
         />
         <span className="vt-play" aria-hidden="true">
-          {playing ? (
+          {soundOn ? (
             <svg viewBox="0 0 24 24" fill="currentColor">
               <rect x="7" y="5" width="3.6" height="14" rx="1.2" />
               <rect x="13.4" y="5" width="3.6" height="14" rx="1.2" />
@@ -105,8 +83,6 @@ function Clip({ clip }: { clip: VideoTestimonial }) {
           )}
         </span>
       </button>
-      {/* Optional: a card with no pull-quote shows the name alone rather than
-          an invented line attributed to a real person. */}
       {clip.quote && <p className="vt-quote">“{clip.quote}”</p>}
       <p className={`vt-name${clip.quote ? '' : ' vt-name--lead'}`}>{clip.name}</p>
     </li>
@@ -116,25 +92,162 @@ function Clip({ clip }: { clip: VideoTestimonial }) {
 export function VideoTestimonials({ productId }: Props) {
   const clips = testimonialsForProduct(productId)
 
-  // No clips configured for this product: render nothing rather than a heading
-  // over an empty rail. See src/data/videoTestimonials.ts for how to add them.
+  const railRef = useRef<HTMLUListElement>(null)
+  const sectionRef = useRef<HTMLElement>(null)
+  const videos = useRef<(HTMLVideoElement | null)[]>([])
+
+  const [active, setActive] = useState(0)
+  const [inView, setInView] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  /** Index playing with sound, once the visitor has taken over. Null = rotating. */
+  const [soundIdx, setSoundIdx] = useState<number | null>(null)
+
+  const register = useCallback((i: number, el: HTMLVideoElement | null) => {
+    videos.current[i] = el
+  }, [])
+
+  // Only rotate while the section is genuinely on screen. Not unobserved after
+  // the first hit, unlike a reveal animation: scrolling away has to STOP it.
+  useEffect(() => {
+    const node = sectionRef.current
+    if (!node) return
+    const io = new IntersectionObserver(([e]) => setInView(e.isIntersecting), { threshold: 0.35 })
+    io.observe(node)
+    return () => io.disconnect()
+  }, [])
+
+  const reduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  const rotating = inView && !hovered && soundIdx === null && !reduced
+
+  // Advance the rail.
+  useEffect(() => {
+    if (!rotating || clips.length < 2) return
+    const t = window.setInterval(() => setActive((i) => (i + 1) % clips.length), HOLD_MS)
+    return () => window.clearInterval(t)
+  }, [rotating, clips.length])
+
+  // A background tab should not be decoding video. Rewinding `active` is not
+  // needed — coming back simply resumes on whichever clip was current.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) videos.current.forEach((v) => v?.pause())
+    }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
+
+  // Drive playback + scroll position from `active`.
+  useEffect(() => {
+    if (soundIdx !== null) return // the visitor is in charge
+
+    videos.current.forEach((v, i) => {
+      if (!v) return
+      if (i === active && rotating) {
+        v.muted = true
+        v.currentTime = 0
+        // Rejected by data-saver / battery-saver modes and by a browser that
+        // declines autoplay. Nothing to recover: the poster simply stays.
+        void v.play().catch(() => {})
+      } else {
+        v.pause()
+      }
+    })
+
+    // Scroll the RAIL horizontally rather than calling scrollIntoView, which
+    // would also scroll the page vertically and yank the visitor around while
+    // she is reading something else on the way past.
+    const rail = railRef.current
+    const card = rail?.children[active] as HTMLElement | undefined
+    if (rail && card && inView) {
+      const delta = card.getBoundingClientRect().left - rail.getBoundingClientRect().left
+      rail.scrollTo({ left: rail.scrollLeft + delta, behavior: 'smooth' })
+    }
+  }, [active, rotating, soundIdx, inView])
+
+  /** A click is the one gesture browsers accept as consent for audio. */
+  const takeOver = useCallback(
+    (i: number) => {
+      const v = videos.current[i]
+      if (!v) return
+
+      if (soundIdx === i) {
+        v.pause()
+        setSoundIdx(null)
+        return
+      }
+
+      videos.current.forEach((other, j) => {
+        if (j !== i) other?.pause()
+      })
+
+      // Both set SYNCHRONOUSLY, before play() is even called. The click is the
+      // takeover; whether the media element manages to start is a separate
+      // question. Deriving this from the play() promise meant a rejection — or
+      // merely a slow resolve — left `soundIdx` null, so the rail carried on
+      // rotating underneath a visitor who had just chosen a clip.
+      setActive(i)
+      setSoundIdx(i)
+
+      v.muted = false
+      void v.play().catch(() => {
+        // Autoplay policy refused even with sound. Fall back to muted so the
+        // click still does something visible; she keeps control either way.
+        v.muted = true
+        void v.play().catch(() => {})
+      })
+    },
+    [soundIdx],
+  )
+
   if (clips.length === 0) return null
 
   return (
-    <section className="vt-section" aria-labelledby="vt-heading">
+    <section
+      className="vt-section"
+      aria-labelledby="vt-heading"
+      ref={sectionRef}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocusCapture={() => setHovered(true)}
+      onBlurCapture={() => setHovered(false)}
+    >
       <h2 className="vt-heading" id="vt-heading">
         Real Stories
       </h2>
       <p className="vt-sub">Customers on what changed after they switched.</p>
 
-      {/* A scroll-snapping overflow rail, not a JS carousel: it is already
-          swipeable on touch, keyboard-scrollable, and needs no arrows to be
-          usable if the script never runs. */}
-      <ul className="vt-rail">
-        {clips.map((clip) => (
-          <Clip key={clip.id} clip={clip} />
+      <ul className="vt-rail" ref={railRef}>
+        {clips.map((clip, i) => (
+          <Clip
+            key={clip.id}
+            clip={clip}
+            index={i}
+            register={register}
+            soundOn={soundIdx === i}
+            onTakeOver={takeOver}
+            // Current and next only. Everything else stays at `none`, so the
+            // rail costs six posters until it actually starts rotating.
+            preload={inView && (i === active || i === (active + 1) % clips.length) ? 'auto' : 'none'}
+          />
         ))}
       </ul>
+
+      {/* Which clip is showing, and a way to jump straight to one. */}
+      <div className="vt-dots" role="group" aria-label="Choose a story">
+        {clips.map((clip, i) => (
+          <button
+            key={clip.id}
+            type="button"
+            className={`vt-dot${i === active ? ' is-active' : ''}`}
+            aria-label={`Show ${clip.name}'s story`}
+            aria-current={i === active}
+            onClick={() => setActive(i)}
+          />
+        ))}
+      </div>
     </section>
   )
 }

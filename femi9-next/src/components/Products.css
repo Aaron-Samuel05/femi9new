@@ -18,7 +18,14 @@
    sits over it. Not `overflow:hidden` — the CTA is inset well inside the photo,
    and clipping here would fight the media's own rounded top corners. */
 .card-media-wrap{position:relative;display:block}
-.card-media{position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#FFF7DE,#FFEcB8);overflow:hidden;border-radius:16px 16px 0 0;}
+/* `display:block` is load-bearing, not tidiness. This is an <a>, so it is inline
+   by default. It used to be a direct child of `.card` (a flex container), which
+   blockified it for free — but it now sits inside `.card-media-wrap`, a plain
+   block, so nothing blockifies it any more. Left inline, the containing block it
+   offers an absolutely positioned child is the degenerate box of its inline
+   fragments, so `.card-media__image--inside` resolved to width:0 and the whole
+   media area went white on hover with the pack image already faded out. */
+.card-media{position:relative;display:block;aspect-ratio:3/4;background:linear-gradient(160deg,#FFF7DE,#FFEcB8);overflow:hidden;border-radius:16px 16px 0 0;}
 .card-media img{width:100%;height:100%;object-fit:contain;object-position:center;transition:opacity .38s ease,transform .5s var(--ease)}
 .card-media .card-media__image--pack{position:relative;z-index:0;opacity:1}
 .card-media .card-media__image--inside{position:absolute;inset:0;z-index:1;object-fit:cover;opacity:0;transform:scale(1.025)}
@@ -66,7 +73,12 @@
    lets a second click replay it. */
 .add.is-added,
 .card-quick-add.is-added{animation:cr-add-pop .42s var(--ease)}
-.add,.card-quick-add{position:relative}
+/* Only `.add` needs this. `.card-quick-add` is already absolutely positioned
+   above, and absolute is itself a containing block for the ::after ring — listing
+   it here set `position:relative` from a LATER rule of equal specificity, which
+   beat that `position:absolute` and dropped the hover button into normal flow,
+   where it overlapped the card body text. */
+.add{position:relative}
 .add.is-added::after,
 .card-quick-add.is-added::after{
   content:'';position:absolute;inset:0;border-radius:inherit;

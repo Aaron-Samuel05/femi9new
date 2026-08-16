@@ -83,7 +83,7 @@ const BASE = '/uploads/testimonials'
  * rather than clips about one specific pack. Add the field to scope one.
  */
 export const VIDEO_TESTIMONIALS: VideoTestimonial[] = [
-  { id: 'nayan', src: `${BASE}/nayan.mp4`, poster: `${BASE}/nayan.jpg`, name: 'Nayan' },
+  { id: 'nayan', src: `${BASE}/nayan.mp4`, poster: `${BASE}/nayan.jpg`, name: 'Nayanthara' },
   { id: 'sapna', src: `${BASE}/sapna.mp4`, poster: `${BASE}/sapna.jpg`, name: 'Sapna Iyer' },
   { id: 'sharmika', src: `${BASE}/sharmika.mp4`, poster: `${BASE}/sharmika.jpg`, name: 'Dr. Sharmika' },
   { id: 'mukilarasi', src: `${BASE}/mukilarasi.mp4`, poster: `${BASE}/mukilarasi.jpg`, name: 'Mukilarasi' },
