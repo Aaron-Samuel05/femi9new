@@ -2,14 +2,18 @@
 
 import '../styles/product-detail-extras.css'
 import '../styles/craft-product.css'
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from 'react'
+import '../styles/pdp-key-benefits.css'
+import '../styles/pdp-reviews.css'
+import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { rupees, CADENCES } from '../data/products'
 import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
-import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook, Whatsapp } from '../components/Icons'
+import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook } from '../components/Icons'
 import { ICopy, IStar } from '../components/AppIcons'
 import { OptImg } from '@/components/OptImg'
+import { KeyBenefits } from '@/components/KeyBenefits'
+import { ProductReviews } from '@/components/ProductReviews'
 import type { OptImageBase } from '@/lib/opt-images'
 import type { ProductWithVariants, ProductReview } from '@/lib/services/products'
 import type { ProductExtra } from '@/data/productDetail'
@@ -76,9 +80,14 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
 
   const [rvName, setRvName] = useState('')
   const [rvPlace, setRvPlace] = useState('')
+  const [rvTitle, setRvTitle] = useState('')
   const [rvBody, setRvBody] = useState('')
   const [rvRating, setRvRating] = useState(5)
   const [rvState, setRvState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+
+  /** The modal serves both jobs; `rvMode` decides which form it shows. */
+  const [rvMode, setRvMode] = useState<'review' | 'question'>('review')
+  const [qEmail, setQEmail] = useState('')
 
   const isPanty = product.type === 'panty'
   const packs = product.packs
@@ -94,16 +103,24 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   const shortDescription = extra.long || product.desc
 
   /**
-   * The benefits banner. The two size-specific shots are in the image manifest,
-   * so they can go through the WebP ladder; a product whose id matches neither
-   * falls back to its own catalog photo, which is DB-authored and therefore not
-   * in the manifest.
+   * The centrepiece of the Key Benefits figure — a CLEAN pack shot per product.
+   *
+   * Deliberately not `img/330mm` / `img/290mm`: those two are the old
+   * pre-rendered benefit banners, with the very same six claims baked into the
+   * pixels. Putting one at the centre of a section that prints those claims as
+   * live text around it made every benefit appear twice, once unreadable to
+   * assistive tech. These are the plain product photographs instead.
+   *
+   * A product with no mapping falls back to its own catalog photo, which is
+   * DB-authored and therefore has no manifest entry to hang a WebP ladder off.
    */
-  const benefitsBase: OptImageBase | null = product.id.includes('330')
-    ? 'img/330mm'
-    : product.id.includes('290') || !product.img
-    ? 'img/290mm'
-    : null
+  const BENEFIT_SHOTS: Record<string, OptImageBase> = {
+    p330dw: 'img/prod-330-double',
+    p330cw: 'img/prod-330-centre',
+    p290l9: 'img/prod-290-large9',
+    p290l3: 'img/prod-290-large3',
+  }
+  const benefitsBase: OptImageBase | null = BENEFIT_SHOTS[product.id] ?? null
 
   useEffect(() => {
     const isMobile = window.matchMedia('(max-width: 620px)').matches
@@ -122,21 +139,6 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     track('product_view', { slug: product.id, name: product.name })
   }, [product.id, product.name])
 
-  /**
-   * The real rating distribution, computed from the reviews we were handed.
-   * Five literal bars (88/9/3/0/0%) used to sit directly beneath a genuinely
-   * computed average, so a product with three 4-star reviews still claimed 88%
-   * five-star.
-   */
-  const ratingHistogram = useMemo(
-    () =>
-      [5, 4, 3, 2, 1].map((stars) => {
-        const count = reviews.filter((r) => Math.round(r.rating) === stars).length
-        return { stars, count, pct: reviews.length ? Math.round((count / reviews.length) * 100) : 0 }
-      }),
-    [reviews],
-  )
-
   /** Absolute URL for this product, for the share intents. */
   const shareUrl =
     (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL ?? '') +
@@ -154,6 +156,15 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   /** Open the review form. Signed-out visitors are sent to sign in first — the
    *  endpoint requires a session and would otherwise fail after they had typed. */
   const openReviewForm = () => {
+    setRvMode('review')
+    setReviewOpen(true)
+    setRvState('idle')
+  }
+
+  /** Open the same modal on its question form. The answer comes back by email,
+   *  so this collects an address rather than a rating. */
+  const askQuestion = () => {
+    setRvMode('question')
     setReviewOpen(true)
     setRvState('idle')
   }
@@ -185,6 +196,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
           productSlug: product.id,
           name: rvName.trim(),
           place: rvPlace.trim() || undefined,
+          title: rvTitle.trim() || undefined,
           rating: rvRating,
           body: rvBody.trim(),
         }),
@@ -198,6 +210,31 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
       if (!res.ok) throw new Error(`review submit failed: ${res.status}`)
       setRvState('sent')
       track('review_submitted', { slug: product.id, rating: rvRating })
+    } catch {
+      setRvState('error')
+    }
+  }
+
+  /** Send a product question to support. No session required — needing an
+   *  account to ask a question would simply lose the question. */
+  const submitQuestion = async (e: FormEvent) => {
+    e.preventDefault()
+    if (rvState === 'sending') return
+    setRvState('sending')
+    try {
+      const res = await fetch('/api/questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productSlug: product.id,
+          name: rvName.trim(),
+          email: qEmail.trim(),
+          question: rvBody.trim(),
+        }),
+      })
+      if (!res.ok) throw new Error(`question submit failed: ${res.status}`)
+      setRvState('sent')
+      track('question_submitted', { slug: product.id })
     } catch {
       setRvState('error')
     }
@@ -431,7 +468,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   <button onClick={() => setQty((q) => q + 1)} aria-label="Increase">+</button>
                 </div>
                 <button className="add-to-bag-btn" onClick={submit}>
-                  <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} &mdash; {rupees(effPrice * qty)}
+                  <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
                 </button>
               </div>
 
@@ -441,7 +478,8 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 {/* Real share intents carrying THIS product's URL. These used
                     to point at the bare social homepages, so "share" opened
                     facebook.com with nothing attached. Instagram has no web
-                    share intent at all, so it becomes a copy-link button. */}
+                    share intent at all, so it becomes a copy-link button.
+                    WhatsApp is deliberately absent from the product page. */}
                 <div className="pdp-share-links">
                   <a
                     href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
@@ -451,15 +489,6 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                     aria-label="Share on Facebook"
                   >
                     <Facebook />
-                  </a>
-                  <a
-                    href={`https://wa.me/?text=${encodeURIComponent(`${product.name} ${shareUrl}`)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="pdp-share-link"
-                    aria-label="Share on WhatsApp"
-                  >
-                    <Whatsapp />
                   </a>
                   <button
                     type="button"
@@ -507,144 +536,29 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             </div>
           </div>
 
-          {/* 2. BENEFITS STORYTELLING SECTION ("Why Femi9 feels different") */}
-          <section className="pdp-benefits-section">
-            <div className="pdp-sec-head">
-              <h2 className="pdp-sec-title">Why Femi9 feels different</h2>
-              <p className="pdp-sec-subtitle">
-                Thoughtfully engineered for complete peace of mind, daily comfort, and rash-free period care.
-              </p>
-            </div>
+          {/* 2. KEY BENEFITS — six claims wrapped around the product itself.
+              This replaced a single flat "benefits" banner: one 420KB image
+              carrying baked-in text, which no screen reader could read, no
+              translation could touch, and no admin could edit without opening
+              Photoshop. The copy now lives in src/data/productBenefits.ts. */}
+          <KeyBenefits
+            productId={product.id}
+            productName={product.name}
+            features={extra.features}
+            imageBase={benefitsBase}
+            imageSrc={product.img}
+          />
 
-            <div className="pdp-benefits-banner-wrapper">
-              {/* The wrapper carries a soft brand-tinted wash (craft-product.css)
-                  so the reserved box holds space as a calm surface — not a blank
-                  white slab — until the photo decodes over it. No shimmer: the box
-                  never shifts (the img reserves it), so a quiet static wash is the
-                  restrained choice over a stray looping animation. */}
-              {/* 420KB served at full desktop resolution into a 324px column,
-                  eagerly, with no intrinsic size to reserve the box. OptImg
-                  emits the WebP ladder plus width/height/lazy/decoding. */}
-              {benefitsBase ? (
-                <OptImg
-                  base={benefitsBase}
-                  sizes="(max-width: 768px) 100vw, 1120px"
-                  alt={`${product.name} product benefits`}
-                  className="pdp-benefits-full-img"
-                />
-              ) : (
-                <img
-                  src={product.img}
-                  alt={`${product.name} product benefits`}
-                  className="pdp-benefits-full-img"
-                  width={720}
-                  height={960}
-                  loading="lazy"
-                  decoding="async"
-                />
-              )}
-            </div>
-          </section>
-
-          {/* 3. CUSTOMER REVIEWS SECTION (Senior UI/UX Designed) */}
-          <section className="pdp-reviews-section">
-            <div className="pdp-sec-head">
-              <h2 className="pdp-sec-title">Customer Reviews</h2>
-              <p className="pdp-sec-subtitle">
-                Real experiences from women who trust Femi9 for a rash-free, comfortable cycle.
-              </p>
-            </div>
-
-            {/* 3 FEATURED REVIEW CARDS */}
-            <div className="pdp-reviews-grid">
-              {reviews.slice(0, 3).map((rv) => (
-                <article className="pdp-review-card" key={rv.id}>
-                  <div className="pdp-review-card-head">
-                    <div className="pdp-review-stars">
-                      <Stars rating={rv.rating} />
-                    </div>
-                    {/* The real posting month. Every card used to read 'Jun 2026'
-                        because the DTO carried no date field at all. */}
-                    <span className="pdp-review-date">{rv.date}</span>
-                  </div>
-
-                  <div className="pdp-review-user-row">
-                    <div className="pdp-review-avatar">{rv.name.charAt(0)}</div>
-                    <div className="pdp-review-user-info">
-                      <b>{rv.name}</b>
-                      <span>
-                        {rv.place ?? 'Femi9 customer'}
-                        {/* Only shown when this reviewer really has a paid order
-                            for this product; it used to be unconditional. */}
-                        {rv.verified && (
-                          <>
-                            {' '}
-                            &middot; <span className="verified-text">Verified Buyer</span>
-                          </>
-                        )}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="pdp-review-body">{rv.body}</p>
-                </article>
-              ))}
-            </div>
-
-            {/* Empty state — a product with no reviews yet should invite one,
-                not show the fabricated 88/9/3/0/0 distribution that used to be
-                hardcoded here regardless of what the database held. */}
-            {reviews.length === 0 ? (
-              <div className="pdp-reviews-empty">
-                <p>No reviews yet for this product.</p>
-                <button type="button" className="btn btn-primary" onClick={openReviewForm}>
-                  Be the first to review it
-                </button>
-              </div>
-            ) : (
-              <div className="pdp-rating-summary-box">
-                <div className="pdp-rating-score-col">
-                  <div className="pdp-rating-big">{averageRating.toFixed(2)}</div>
-                  <div className="pdp-rating-summary-meta">
-                    <Stars rating={averageRating} />
-                    <span>
-                      Based on {reviewTotal} {reviewTotal === 1 ? 'review' : 'reviews'}
-                    </span>
-                  </div>
-                  {/* The entry point to the review form. The modal and the
-                      endpoint behind it both worked, but setReviewOpen(true) was
-                      never called anywhere in this file — it was dead code. */}
-                  <button type="button" className="btn btn-primary pdp-write-review" onClick={openReviewForm}>
-                    Write a review
-                  </button>
-                </div>
-
-                <div className="pdp-rating-bars-col">
-                  {ratingHistogram.map((row) => (
-                    <div className="pdp-rating-bar-row" key={row.stars}>
-                      <span className="pdp-rating-label">
-                        {row.stars} <IStar aria-hidden="true" />
-                      </span>
-                      <div className="pdp-bar-track">
-                        <div className="pdp-bar-fill" style={{ width: row.pct + '%' }} />
-                      </div>
-                      <span className="pdp-bar-count">{row.pct}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Second entry point, below the cards, for a reader who scrolled the
-                reviews rather than the summary. */}
-            {reviews.length > 0 && (
-              <div className="pdp-reviews-cta">
-                <button type="button" className="btn btn-ghost" onClick={openReviewForm}>
-                  Write a review
-                </button>
-              </div>
-            )}
-          </section>
+          {/* 3. CUSTOMER REVIEWS — paged carousel, per-card helpful votes and the
+              rating summary. The histogram that used to be computed here moved
+              into the component along with everything else it labels. */}
+          <ProductReviews
+            reviews={reviews}
+            averageRating={averageRating}
+            reviewTotal={reviewTotal}
+            onWriteReview={openReviewForm}
+            onAskQuestion={askQuestion}
+          />
 
           {/* 5. RECOMMENDED PRODUCTS (Frequently Bought Together — Reference Layout) */}
           <section className="pdp-related-section">
@@ -708,24 +622,42 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
           desktop never sees it. */}
       <div className="pdp-mobile-bar">
         <button className="btn btn-primary" onClick={submit}>
-          <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} &mdash; {rupees(effPrice * qty)}
+          <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
         </button>
       </div>
 
-      {/* Review Modal */}
+      {/* Review / question modal. One dialog, two forms — they share the name
+          field, the sending state and the whole shell, and splitting them would
+          duplicate all of that to vary three inputs. */}
       {reviewOpen && (
-        <div className="pdp-modal" role="dialog" aria-modal="true" aria-label="Write a review">
-          <button className="pdp-modal-backdrop" onClick={() => setReviewOpen(false)} aria-label="Close review form" />
+        <div
+          className="pdp-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-label={rvMode === 'review' ? 'Write a review' : 'Ask a question'}
+        >
+          <button className="pdp-modal-backdrop" onClick={() => setReviewOpen(false)} aria-label="Close form" />
           <div className="pdp-modal-card">
             <button className="pdp-modal-close" onClick={() => setReviewOpen(false)} aria-label="Close"><Close /></button>
             {rvState === 'sent' ? (
               <div className="review">
-                <b style={{ color: 'var(--ink)' }}>Thanks - your review is awaiting approval.</b>
-                <p style={{ marginTop: 8, color: 'var(--text-soft)' }}>
-                  We read every review before it goes live. It will appear here once approved.
-                </p>
+                {rvMode === 'review' ? (
+                  <>
+                    <b style={{ color: 'var(--ink)' }}>Thanks - your review is awaiting approval.</b>
+                    <p style={{ marginTop: 8, color: 'var(--text-soft)' }}>
+                      We read every review before it goes live. It will appear here once approved.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <b style={{ color: 'var(--ink)' }}>Thanks - your question is on its way.</b>
+                    <p style={{ marginTop: 8, color: 'var(--text-soft)' }}>
+                      Our care team will reply to you by email, usually within one working day.
+                    </p>
+                  </>
+                )}
               </div>
-            ) : (
+            ) : rvMode === 'review' ? (
               <form className="review-form" onSubmit={submitReview}>
                 <div>
                   <div className="pdp-label" style={{ marginBottom: 8 }}>Write a review</div>
@@ -762,6 +694,17 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                   autoComplete="address-level2"
                   style={rvInput}
                 />
+                {/* The headline the review card prints above the body. Optional:
+                    a shopper who only wants to write two sentences should not be
+                    stopped by a field asking her to title them. */}
+                <input
+                  value={rvTitle}
+                  onChange={(e) => setRvTitle(e.target.value)}
+                  placeholder="Give your review a title (optional)"
+                  aria-label="Review title (optional)"
+                  maxLength={120}
+                  style={rvInput}
+                />
                 <textarea
                   value={rvBody}
                   onChange={(e) => setRvBody(e.target.value)}
@@ -774,6 +717,47 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 {rvState === 'error' && <p style={{ color: 'var(--mustard-deep)', fontSize: '.88rem', margin: 0 }}>Something went wrong. Please try again.</p>}
                 <button type="submit" className="add-to-bag-btn" disabled={rvState === 'sending'}>
                   {rvState === 'sending' ? 'Submitting...' : 'Submit review'}
+                </button>
+              </form>
+            ) : (
+              <form className="review-form" onSubmit={submitQuestion}>
+                <div>
+                  <div className="pdp-label" style={{ marginBottom: 8 }}>Ask a question</div>
+                  <h2 className="pdp-title" style={{ fontSize: 24 }}>About {product.name}</h2>
+                </div>
+                <input
+                  value={rvName}
+                  onChange={(e) => setRvName(e.target.value)}
+                  placeholder="Your name"
+                  aria-label="Your name"
+                  autoComplete="name"
+                  required
+                  style={rvInput}
+                />
+                {/* Required here, unlike on a review: the answer comes back by
+                    email, so without it the question has nowhere to go. */}
+                <input
+                  type="email"
+                  value={qEmail}
+                  onChange={(e) => setQEmail(e.target.value)}
+                  placeholder="Your email"
+                  aria-label="Your email"
+                  autoComplete="email"
+                  required
+                  style={rvInput}
+                />
+                <textarea
+                  value={rvBody}
+                  onChange={(e) => setRvBody(e.target.value)}
+                  placeholder="What would you like to know?"
+                  aria-label="What would you like to know?"
+                  required
+                  rows={4}
+                  style={{ ...rvInput, resize: 'vertical' }}
+                />
+                {rvState === 'error' && <p style={{ color: 'var(--mustard-deep)', fontSize: '.88rem', margin: 0 }}>Something went wrong. Please try again.</p>}
+                <button type="submit" className="add-to-bag-btn" disabled={rvState === 'sending'}>
+                  {rvState === 'sending' ? 'Sending...' : 'Send question'}
                 </button>
               </form>
             )}

@@ -14,12 +14,72 @@
   transition:transform .35s var(--ease), box-shadow .35s var(--ease);
 }
 .card:hover{transform:translateY(-6px);box-shadow:0 12px 28px rgba(61,44,92,0.1)}
+/* Positioning context shared by the media link and the reveal-on-hover CTA that
+   sits over it. Not `overflow:hidden` — the CTA is inset well inside the photo,
+   and clipping here would fight the media's own rounded top corners. */
+.card-media-wrap{position:relative;display:block}
 .card-media{position:relative;aspect-ratio:3/4;background:linear-gradient(160deg,#FFF7DE,#FFEcB8);overflow:hidden;border-radius:16px 16px 0 0;}
 .card-media img{width:100%;height:100%;object-fit:contain;object-position:center;transition:opacity .38s ease,transform .5s var(--ease)}
 .card-media .card-media__image--pack{position:relative;z-index:0;opacity:1}
 .card-media .card-media__image--inside{position:absolute;inset:0;z-index:1;object-fit:cover;opacity:0;transform:scale(1.025)}
 .card:hover .card-media__image--pack,.card:focus-within .card-media__image--pack{opacity:0;transform:scale(.985)}
 .card:hover .card-media__image--inside,.card:focus-within .card-media__image--inside{opacity:1;transform:scale(1)}
+/* ── Reveal-on-hover "Add to cart" ──────────────────────────────────────────
+   Rests just above the photo's lower edge and rises into place with the second
+   image. Hidden with opacity + translate rather than display:none so it can
+   transition at all, and `visibility` rather than pointer-events alone so it is
+   skipped by sequential focus until the card is actually focused — otherwise
+   every card in the grid would take an invisible extra tab stop.
+   z-index 3 clears the .tag (2) and both media images (0/1). */
+.card-quick-add{
+  position:absolute;left:50%;bottom:18px;z-index:3;
+  transform:translate(-50%,10px);
+  min-width:190px;max-width:calc(100% - 32px);min-height:46px;
+  padding:12px 26px;border:none;border-radius:12px;
+  background:#fff;color:var(--navy);
+  font:inherit;font-size:.92rem;font-weight:500;letter-spacing:.06em;
+  cursor:pointer;
+  box-shadow:0 6px 18px rgba(52,32,78,.16);
+  opacity:0;visibility:hidden;
+  transition:opacity .28s var(--ease),transform .28s var(--ease),
+    visibility .28s var(--ease),background-color .2s ease-out;
+}
+.card:hover .card-quick-add,
+.card:focus-within .card-quick-add{opacity:1;visibility:visible;transform:translate(-50%,0)}
+.card-quick-add:hover{background:#FBF6EF}
+.card-quick-add:active{transform:translate(-50%,0) scale(.98)}
+
+/* The card lifts 6px on hover and the CTA fades in underneath it. Without this
+   the button inherits no motion of its own on a pointer that never leaves the
+   card, so it would pop rather than arrive. */
+@media(prefers-reduced-motion:reduce){
+  .card-quick-add{transition:opacity .01s linear,visibility .01s linear;transform:translate(-50%,0)}
+  .card:hover .card-quick-add,
+  .card:focus-within .card-quick-add{transform:translate(-50%,0)}
+}
+
+/* ── Which add control a card shows ─────────────────────────────────────────
+   Only cards marked `--quick` (the /products grid) trade their foot button for
+   the hover overlay. The home page passes no flag, so it keeps the permanent
+   Buy Now it has always had and never renders an overlay at all.
+
+   The swap is done here rather than in JS on purpose — see ProductCard.tsx.
+   A `matchMedia` check only resolves after mount, which would paint Buy Now and
+   then yank it, jumping the height of every card in the grid. */
+@media(hover:hover) and (pointer:fine){
+  .card-foot--quick .add{display:none}
+  /* Nothing left beside the price, so stop distributing space and let the foot
+     collapse to the price block's own height. */
+  .card-foot--quick{justify-content:flex-start;padding-top:12px}
+}
+
+/* Touch keeps Buy Now and never gets the overlay: :hover never fires here, and
+   a hidden button over the photo would otherwise be a target a tap could find
+   while remaining invisible. Mirrors how the hover photo is handled above. */
+@media(hover:none){
+  .card-quick-add{display:none}
+}
+
 .tag{position:absolute;top:12px;left:12px;z-index:2;background:var(--forest-2);color:#fff;
   font-size:.7rem;font-weight:600;letter-spacing:.04em;padding:5px 11px;border-radius:8px}
 .tag.pink{background:var(--lilac);color:#3a2350}

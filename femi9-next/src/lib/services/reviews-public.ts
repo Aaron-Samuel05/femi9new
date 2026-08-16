@@ -14,6 +14,8 @@ export interface ReviewInput {
   name: string
   place?: string
   rating: number
+  /** Optional one-line headline shown above the body on the product card. */
+  title?: string
   body: string
 }
 
@@ -60,6 +62,7 @@ export async function submitReview(productSlug: string, input: ReviewInput, user
         name: input.name,
         place: input.place,
         rating: input.rating,
+        title: input.title,
         body: input.body,
         status: 'pending',
       },
@@ -71,6 +74,67 @@ export async function submitReview(productSlug: string, input: ReviewInput, user
       })
     }
   })
+}
+
+/**
+ * Thrown when a voter has already voted on this review. Typed so the route can
+ * answer 409 rather than silently letting a refresh inflate the tally.
+ */
+export class AlreadyVotedError extends Error {
+  constructor() {
+    super('Already voted on this review')
+    this.name = 'AlreadyVotedError'
+  }
+}
+
+/** Thrown when the review id does not resolve to an approved review. */
+export class ReviewNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Review not found: ${id}`)
+    this.name = 'ReviewNotFoundError'
+  }
+}
+
+/**
+ * Record one helpful / not-helpful vote and return the new tallies.
+ *
+ * The ReviewVote insert and the counter bump share a transaction, so the
+ * denormalised totals on Review can never drift from the rows that justify
+ * them. The unique constraint on (reviewId, voterKey) is what actually enforces
+ * "vote once" — we let the insert fail rather than checking first, because a
+ * check-then-insert races with itself under concurrent taps.
+ *
+ * Only `approved` reviews are votable: a pending row is not visible on the
+ * storefront, so a vote for one could only have come from a forged id.
+ */
+export async function voteOnReview(
+  reviewId: string,
+  voterKey: string,
+  helpful: boolean,
+): Promise<{ helpfulUp: number; helpfulDown: number }> {
+  const review = await prisma.review.findFirst({
+    where: { id: reviewId, status: 'approved' },
+    select: { id: true },
+  })
+  if (!review) throw new ReviewNotFoundError(reviewId)
+
+  try {
+    return await prisma.$transaction(async (tx) => {
+      await tx.reviewVote.create({ data: { reviewId, voterKey, helpful } })
+      const updated = await tx.review.update({
+        where: { id: reviewId },
+        data: helpful ? { helpfulUp: { increment: 1 } } : { helpfulDown: { increment: 1 } },
+        select: { helpfulUp: true, helpfulDown: true },
+      })
+      return updated
+    })
+  } catch (err) {
+    // P2002 = unique constraint violation, i.e. this voterKey already voted.
+    if (typeof err === 'object' && err !== null && (err as { code?: string }).code === 'P2002') {
+      throw new AlreadyVotedError()
+    }
+    throw err
+  }
 }
 
 /** A moderated review, shaped for the landing testimonial carousel. */

@@ -20,7 +20,7 @@ import { ProductCard } from '@/components/ProductCard'
 export const metadata: Metadata = {
   title: 'Shop All Sanitary Pads | Femi9 Organic Period Care',
   description:
-    'Every Femi9 pad in one place — light, regular and heavy flow, plus reusable period underwear. Cotton-soft, breathable and rash-free.',
+    'Every Femi9 pad in one place - light, regular and heavy flow, plus reusable period underwear. Cotton-soft, breathable and rash-free.',
 }
 
 // Reads the live catalog, so it renders per request (the DB is not reachable
@@ -37,7 +37,7 @@ export default async function ProductsPage() {
         Every Femi9 pad, in one place.
       </h1>
       <p style={{ color: 'var(--muted)', maxWidth: '52ch', lineHeight: 1.55, marginBottom: 'clamp(28px,4vw,44px)' }}>
-        Light, regular or heavy — choose the size and protection that matches your flow.
+        Light, regular or heavy - choose the size and protection that matches your flow.
       </p>
 
       {products.length === 0 ? (
@@ -52,7 +52,7 @@ export default async function ProductsPage() {
       ) : (
         <div className="grid-products">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} showInsideOnHover />
+            <ProductCard key={product.id} product={product} showInsideOnHover quickAddOnHover />
           ))}
         </div>
       )}

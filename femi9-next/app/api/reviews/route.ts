@@ -17,6 +17,8 @@ const bodySchema = z.object({
   body: z.string().min(1).max(2000),
   // Optional "City, State" style origin shown alongside approved reviews.
   place: z.string().max(80).optional(),
+  // Optional one-line headline ("Loved this combo") shown above the body.
+  title: z.string().max(120).optional(),
 })
 
 export async function POST(req: Request) {
@@ -28,10 +30,10 @@ export async function POST(req: Request) {
     const parsed = bodySchema.safeParse(json)
     if (!parsed.success) return badRequest('Invalid review', parsed.error.flatten())
 
-    const { productSlug, name, rating, body, place } = parsed.data
+    const { productSlug, name, rating, body, place, title } = parsed.data
     try {
       const session = await getSession()
-      await submitReview(productSlug, { name, rating, body, place }, session?.sub)
+      await submitReview(productSlug, { name, rating, body, place, title }, session?.sub)
     } catch (err) {
       // A stale/invalid slug is a client problem, not a server fault.
       if (err instanceof ProductNotFoundError) return notFound('Product not found')

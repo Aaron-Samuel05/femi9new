@@ -568,11 +568,41 @@ model Review {
   name      String
   place     String?
   rating    Int
+  // Optional one-line headline ("Loved this combo"). Nullable because every row
+  // written before this column existed has none, and the card falls back to the
+  // rating's own wording rather than printing an empty heading.
+  title     String?
   body      String
   status    ModerationStatus @default(approved)
+  // Denormalised helpful/unhelpful tallies. Counters rather than a join on
+  // ReviewVote because the product page reads them for every card on every
+  // render and never needs to know WHO voted — only ReviewVote does, and only
+  // to stop one visitor voting twice.
+  helpfulUp   Int @default(0)
+  helpfulDown Int @default(0)
   createdAt DateTime         @default(now())
 
+  votes ReviewVote[]
+
   @@index([productId])
+}
+
+/**
+ * One vote per visitor per review. `voterKey` is a signed-in user id when we
+ * have one and an IP-derived hash otherwise, so the unique constraint is what
+ * enforces "vote once" — a client-side guard alone is a localStorage clear away
+ * from being meaningless.
+ */
+model ReviewVote {
+  id        String   @id @default(cuid())
+  reviewId  String
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  voterKey  String
+  helpful   Boolean
+  createdAt DateTime @default(now())
+
+  @@unique([reviewId, voterKey])
+  @@index([reviewId])
 }
 
 // ─────────────────────────── Cycle & content ──────────────────────────

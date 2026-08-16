@@ -1,0 +1,568 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   pdp-reviews.css — the "Customer Reviews" carousel and rating summary.
+
+   Structure: a paged row of equal-height cards flanked by two round arrows,
+   a pill that expands the set, then a three-part summary strip (score ·
+   histogram · actions).
+
+   The one rule that makes the row work: cards are equal height and their
+   footers sit on a shared baseline, achieved with a flex spacer inside each
+   card rather than a fixed min-height. Reviews are 12-600 characters, so any
+   fixed height is either too tall for the short ones or clips the long ones —
+   and clipping is what the "Full Review" expander exists to undo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.rv-section {
+  margin: clamp(48px, 7vw, 88px) 0;
+  padding: clamp(32px, 5vw, 60px) clamp(18px, 3.5vw, 48px);
+  background: var(--cr-wash-lav);
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-lg);
+  box-shadow: var(--cr-shadow-md);
+}
+
+.rv-heading {
+  font-family: 'Newsreader', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.9rem, 4vw, 2.85rem);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  text-align: center;
+  color: var(--navy);
+  margin: 0 0 clamp(24px, 3.5vw, 44px);
+}
+
+/* ── Carousel ───────────────────────────────────────────────────────────────
+   The arrows sit OUTSIDE the grid as flex siblings, not absolutely positioned
+   over the cards: overlapping a chevron onto the first card's text is the
+   pattern that makes a review row feel cramped, and the section already has
+   generous side padding to spend. */
+.rv-carousel {
+  display: flex;
+  align-items: center;
+  gap: clamp(8px, 1.6vw, 18px);
+}
+
+/* --rv-cols is set inline from the number of cards actually on this page, so a
+   product with two reviews gets two full-width columns rather than two thirds
+   of a three-column track. The 3 here is only the pre-hydration fallback. */
+.rv-grid {
+  flex: 1;
+  min-width: 0; /* lets the grid shrink inside the flex row instead of overflowing */
+  display: grid;
+  grid-template-columns: repeat(var(--rv-cols, 3), minmax(0, 1fr));
+  gap: clamp(14px, 1.8vw, 22px);
+  align-items: stretch;
+}
+
+/* Expanded view: the same cards, wrapped, with no arrows. auto-FIT (not
+   auto-fill) so empty tracks collapse — with auto-fill a four-review set on a
+   wide screen would stretch across five slots and leave a hole. */
+.rv-grid--all {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.rv-arrow {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--navy);
+  cursor: pointer;
+  box-shadow: var(--cr-shadow-xs);
+  transition: background var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease),
+    border-color var(--cr-dur) var(--cr-ease);
+}
+
+.rv-arrow:hover {
+  background: #fff;
+  border-color: var(--lilac);
+  box-shadow: var(--cr-shadow-sm);
+}
+
+.rv-arrow svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* IChevron points right by default; the previous arrow is the same glyph turned
+   around, so both controls stay optically identical in weight and size. */
+.rv-arrow--prev svg {
+  transform: rotate(180deg);
+}
+
+/* ── Card ───────────────────────────────────────────────────────────────── */
+.rv-card {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(16px, 1.8vw, 22px);
+  background: #fff;
+  border: 1px solid var(--cr-hairline);
+  border-radius: var(--cr-r-md);
+  box-shadow: var(--cr-shadow-sm);
+  transition: transform var(--cr-dur) var(--cr-ease), box-shadow var(--cr-dur) var(--cr-ease);
+}
+
+.rv-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--cr-shadow-lg);
+}
+
+.rv-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.rv-stars {
+  display: inline-flex;
+  gap: 2px;
+  color: var(--yellow-deep);
+  line-height: 0;
+}
+
+.rv-star {
+  width: 15px;
+  height: 15px;
+  opacity: 0.22;
+}
+
+.rv-star--on {
+  opacity: 1;
+}
+
+.rv-stars--lg .rv-star {
+  width: 20px;
+  height: 20px;
+}
+
+.rv-stars--sm .rv-star {
+  width: 13px;
+  height: 13px;
+}
+
+.rv-date {
+  font-size: 0.78rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.rv-author {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 10px;
+}
+
+.rv-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--sage-tint);
+  color: var(--forest-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.rv-author-name {
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.rv-title {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--navy);
+  margin: 0 0 7px;
+}
+
+/* Four lines, then the "Full Review" control takes over. -webkit-line-clamp is
+   the only cross-browser way to clamp to a LINE count (not a pixel height) with
+   an ellipsis; every current engine, Firefox included, supports the -webkit-
+   prefixed form, and the fallback if one ever did not is simply an unclamped
+   card — content stays reachable either way. */
+.rv-body {
+  font-size: 0.9rem;
+  line-height: 1.62;
+  color: var(--muted);
+  margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  overflow: hidden;
+}
+
+.rv-body--open {
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+  overflow: visible;
+}
+
+/* Absorbs the height difference between a two-line review and a twelve-line one
+   so every card's footer lands on the same baseline. */
+.rv-spacer {
+  flex: 1;
+  min-height: 14px;
+}
+
+.rv-card-foot {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rv-source {
+  align-self: flex-start;
+  font-size: 0.72rem;
+  color: var(--muted);
+  padding: 4px 9px;
+  border: 1px solid var(--line-soft);
+  border-radius: 7px;
+  line-height: 1.35;
+}
+
+.rv-foot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rv-more {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--forest-2);
+  font: inherit;
+  font-size: 0.84rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rv-votes {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rv-vote {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* 32px box on a 0.78rem label: this is a secondary control sitting inside a
+     card, and the touch-target floor is met by the padding below at coarse
+     pointers rather than by inflating it on desktop. */
+  padding: 6px 8px;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: color var(--cr-dur) var(--cr-ease), background var(--cr-dur) var(--cr-ease);
+}
+
+.rv-vote:hover:not(:disabled) {
+  background: var(--lilac-tint);
+  color: var(--forest-2);
+}
+
+/* The vote this visitor cast. Disabled AND coloured: greying both buttons out
+   would leave no trace of which way they voted. */
+.rv-vote--cast {
+  color: var(--forest-2);
+  border-color: var(--line);
+  background: var(--lilac-tint);
+}
+
+/* The button they did not choose, once a vote is in. Dimmed but still legible —
+   the count on it is real information. */
+.rv-vote:disabled {
+  cursor: default;
+}
+.rv-vote:disabled:not(.rv-vote--cast) {
+  opacity: 0.5;
+}
+
+.rv-vote svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Expand control ─────────────────────────────────────────────────────── */
+.rv-more-row {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(20px, 3vw, 32px);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────────────────
+   Three weights, matching the reference's hierarchy: a dark pill for the set
+   expander, a solid brand button for the primary action, an outline for the
+   secondary. All share one radius and one hover step. */
+.rv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 12px 26px;
+  border-radius: var(--cr-r-sm);
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background var(--cr-dur) var(--cr-ease),
+    color var(--cr-dur) var(--cr-ease),
+    transform var(--cr-dur) var(--cr-ease),
+    box-shadow var(--cr-dur) var(--cr-ease);
+}
+
+.rv-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--cr-shadow-md);
+}
+
+.rv-btn:active {
+  transform: translateY(0);
+}
+
+.rv-btn--pill {
+  border-radius: 999px;
+  background: var(--navy);
+  color: #fff;
+  box-shadow: var(--cr-shadow-sm);
+}
+
+.rv-btn--pill:hover {
+  background: var(--forest-2);
+}
+
+.rv-btn--solid {
+  background: var(--forest-2);
+  color: #fff;
+  box-shadow: var(--cr-shadow-sm);
+}
+
+.rv-btn--solid:hover {
+  background: var(--forest);
+}
+
+.rv-btn--outline {
+  background: #fff;
+  color: var(--navy);
+  border-color: var(--line);
+}
+
+.rv-btn--outline:hover {
+  border-color: var(--lilac);
+}
+
+/* ── Summary strip ──────────────────────────────────────────────────────────
+   Score · histogram · actions, divided by hairlines rather than boxed as three
+   cards — the reviews panel is already a card, and nesting three more inside it
+   is where this pattern usually turns to visual noise. */
+.rv-summary {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(240px, 1.4fr) minmax(200px, 1fr);
+  gap: clamp(20px, 3vw, 40px);
+  align-items: center;
+  margin-top: clamp(28px, 4vw, 48px);
+  padding-top: clamp(24px, 3.5vw, 40px);
+  border-top: 1px solid var(--cr-hairline);
+}
+
+.rv-summary-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.rv-score-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+
+.rv-score-count {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.rv-summary-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  /* Hairlines on both sides tie the histogram to the two blocks it sits
+     between; they are dropped with the grid at the stacked breakpoint. */
+  padding-inline: clamp(16px, 2.5vw, 32px);
+  border-inline: 1px solid var(--cr-hairline);
+}
+
+.rv-bar-row {
+  display: grid;
+  grid-template-columns: auto 1fr 2ch;
+  align-items: center;
+  gap: 10px;
+}
+
+.rv-bar-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(52, 32, 78, 0.09);
+  overflow: hidden;
+}
+
+.rv-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--forest-2);
+}
+
+.rv-bar-count {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rv-summary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rv-summary-actions .rv-btn {
+  width: 100%;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.rv-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(24px, 4vw, 40px) 0;
+  text-align: center;
+  color: var(--muted);
+}
+
+.rv-empty p {
+  margin: 0;
+}
+
+.rv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ── Tablet ─────────────────────────────────────────────────────────────────
+   The summary's three columns fall below their minmax floors around 900px, at
+   which point the histogram's own bars are shorter than their star labels. */
+@media (max-width: 900px) {
+  .rv-summary {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .rv-summary-bars {
+    padding-inline: 0;
+    border-inline: none;
+    /* Vertical hairlines become horizontal ones when the strip stacks, so the
+       three blocks stay separated in the direction they now run. */
+    padding-block: 20px;
+    border-block: 1px solid var(--cr-hairline);
+    max-width: 420px;
+    margin-inline: auto;
+    width: 100%;
+  }
+
+  .rv-summary-actions {
+    flex-direction: row;
+    justify-content: center;
+    max-width: 420px;
+    margin-inline: auto;
+    width: 100%;
+  }
+}
+
+/* ── Phone ──────────────────────────────────────────────────────────────────
+   One card per page (the component switches pageSize to 1 at this width), so
+   the arrows move BELOW the card. Flanking a full-width card with two 42px
+   controls leaves ~250px for the review itself. */
+@media (max-width: 760px) {
+  .rv-section {
+    padding: 28px 16px 32px;
+    border-radius: var(--cr-r-md);
+  }
+
+  .rv-carousel {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .rv-grid {
+    order: -1;
+    flex: 1 0 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .rv-arrow {
+    width: 46px;
+    height: 46px;
+  }
+
+  .rv-summary-actions {
+    flex-direction: column;
+  }
+}
+
+@media (pointer: coarse) {
+  /* Meets the 44px touch floor without changing the desktop card's rhythm. */
+  .rv-vote {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rv-card,
+  .rv-btn,
+  .rv-arrow,
+  .rv-vote {
+    transition: none;
+  }
+
+  .rv-card:hover,
+  .rv-btn:hover {
+    transform: none;
+  }
+}

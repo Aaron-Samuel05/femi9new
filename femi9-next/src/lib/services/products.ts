@@ -38,8 +38,13 @@ export interface ProductReview {
   name: string
   place: string | null
   rating: number
+  /** Optional one-line headline. Null on every row written before it existed. */
+  title: string | null
   body: string
-  /** "Jun 2026" — preformatted. Every card used to print a hardcoded 'Jun 2026'
+  /** Helpful / not-helpful tallies shown under each card. */
+  helpfulUp: number
+  helpfulDown: number
+  /** "14/10/2025" — preformatted. Every card used to print a hardcoded 'Jun 2026'
    *  because the DTO carried no date at all. */
   date: string
   /** True only when this reviewer actually bought this product. The badge used
@@ -161,8 +166,14 @@ export async function getProduct(slug: string): Promise<FullProduct | null> {
     name: r.name,
     place: r.place,
     rating: r.rating,
+    title: r.title,
     body: r.body,
-    date: r.createdAt.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' }),
+    helpfulUp: r.helpfulUp,
+    helpfulDown: r.helpfulDown,
+    // Day-precision, dd/mm/yyyy. The card sits beside a helpfulness control, and
+    // "was this recent?" is the question a reader asks before trusting a vote
+    // count — a month/year stamp cannot answer it.
+    date: r.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     verified: Boolean(r.userId && buyerIds.has(r.userId)),
   }))
 

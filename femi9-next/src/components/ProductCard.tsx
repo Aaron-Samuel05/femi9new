@@ -19,13 +19,23 @@ interface Props {
   // reuses static products that have none — hence the optional field + guard.
   product: Product & { variants?: Variant[] }
   showInsideOnHover?: boolean
+  /**
+   * Catalog grid only: hide the permanent foot button and reveal "Add to cart"
+   * over the photo on hover instead. Off by default so the home page keeps the
+   * always-visible Buy Now it has always had.
+   */
+  quickAddOnHover?: boolean
 }
 
 /** Rendered if the product photo 404s, so the card shows a pack instead of the
  *  browser's broken-image glyph. There is at least one dead `img` path live. */
 const IMAGE_FALLBACK = '/assets/opt/img/sample-640.webp'
 
-export const ProductCard = memo(function ProductCard({ product, showInsideOnHover = false }: Props) {
+export const ProductCard = memo(function ProductCard({
+  product,
+  showInsideOnHover = false,
+  quickAddOnHover = false,
+}: Props) {
   const { add } = useCart()
   const { id, name, price, img, meta, flow, desc, tag, tagClass, type, variants } = product
 
@@ -49,41 +59,72 @@ export const ProductCard = memo(function ProductCard({ product, showInsideOnHove
 
   return (
     <article className="card">
-      <Link to={`/product/${id}`} className="card-media" aria-label={name}>
-        {tag && <span className={`tag${tagClass ? ` ${tagClass}` : ''}`}>{tag}</span>}
-        {type === 'panty' ? (
-          <PantyArt />
-        ) : (
-          <>
-            <img
-              className={showInside ? 'card-media__image card-media__image--pack' : undefined}
-              src={img}
-              alt={`Femi9 ${name} pack`}
-              width={720}
-              height={960}
-              loading="lazy"
-              decoding="async"
-              onError={(e) => {
-                if (e.currentTarget.src.endsWith(IMAGE_FALLBACK)) return
-                e.currentTarget.src = IMAGE_FALLBACK
-              }}
-            />
-            {showInside && (
-              <OptImg
-                className="card-media__image card-media__image--inside"
-                base="figma-home/products-imgFrame206-hover"
-                sizes="(max-width: 1180px) 46vw, 300px"
-                alt=""
+      {/* The media link and the hover CTA are SIBLINGS inside this wrapper, not
+          nested. A <button> inside an <a> is invalid HTML, and the browser would
+          have to guess which of the two a click meant — so the wrapper owns the
+          positioning context and the link keeps the whole photo to itself. */}
+      <div className="card-media-wrap">
+        <Link to={`/product/${id}`} className="card-media" aria-label={name}>
+          {tag && <span className={`tag${tagClass ? ` ${tagClass}` : ''}`}>{tag}</span>}
+          {type === 'panty' ? (
+            <PantyArt />
+          ) : (
+            <>
+              <img
+                className={showInside ? 'card-media__image card-media__image--pack' : undefined}
+                src={img}
+                alt={`Femi9 ${name} pack`}
+                width={720}
+                height={960}
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  if (e.currentTarget.src.endsWith(IMAGE_FALLBACK)) return
+                  e.currentTarget.src = IMAGE_FALLBACK
+                }}
               />
-            )}
-          </>
+              {showInside && (
+                <OptImg
+                  className="card-media__image card-media__image--inside"
+                  base="figma-home/products-imgFrame206-hover"
+                  sizes="(max-width: 1180px) 46vw, 300px"
+                  alt=""
+                />
+              )}
+            </>
+          )}
+        </Link>
+
+        {/* Reveal-on-hover add to cart — catalog grid only.
+            Which of this and the foot button is visible is decided entirely in
+            CSS by `@media (hover: hover)`, NOT by the `canHover` state above.
+            That matters: `canHover` is false until the mount effect runs, so
+            gating here would paint the foot button, then swap it for this one a
+            frame later — a visible flash and a card-height jump on every card in
+            the grid. The media query is right from the first paint.
+            It stays in the DOM rather than display:none when hidden so
+            :focus-within can reveal it for keyboard users; on touch the media
+            query does display:none it, so it is not a phantom tap target. */}
+        {quickAddOnHover && defaultVariant && (
+          <button
+            type="button"
+            className="card-quick-add"
+            onClick={() => add(defaultVariant.id)}
+            aria-label={`Add ${name} to bag`}
+          >
+            Add to cart
+          </button>
         )}
-      </Link>
+      </div>
       <div className="card-body">
         <span className="card-flow">{flow}</span>
         <Link to={`/product/${id}`} style={{ color: 'inherit' }}><h3>{name}</h3></Link>
         <p className="card-desc">{desc}</p>
-        <div className="card-foot">
+        {/* `--quick` tells the stylesheet this card has a hover overlay, so the
+            Buy Now below is hidden on hover-capable pointers and kept on touch —
+            where :hover never fires and dropping it would leave the grid with no
+            way to add to the bag at all. */}
+        <div className={`card-foot${quickAddOnHover ? ' card-foot--quick' : ''}`}>
           <span className="price">
             <b>{rupees(price)}</b>
             <span>{meta}</span>

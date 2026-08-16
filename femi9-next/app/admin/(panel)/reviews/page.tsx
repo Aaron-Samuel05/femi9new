@@ -124,7 +124,7 @@ export default function ReviewsPage() {
         )
       } catch (err) {
         setToast(
-          `Couldn't update ${row.name}'s review — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't update ${row.name}'s review - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -147,7 +147,7 @@ export default function ReviewsPage() {
         setRows((rs) => rs.filter((r) => r.id !== row.id))
       } catch (err) {
         setToast(
-          `Couldn't delete ${row.name}'s review — ${err instanceof Error ? err.message : 'try again'}`,
+          `Couldn't delete ${row.name}'s review - ${err instanceof Error ? err.message : 'try again'}`,
         )
       } finally {
         setPendingFor(row.id, false)
@@ -164,7 +164,7 @@ export default function ReviewsPage() {
             Reviews
           </h2>
           <p className="adm-help" style={{ margin: '2px 0 0' }}>
-            Moderate customer reviews — approve, hide, or delete.
+            Moderate customer reviews - approve, hide, or delete.
           </p>
         </div>
         {/* Status filter chips (client buttons — the list refetches per filter). */}
@@ -242,6 +242,12 @@ export default function ReviewsPage() {
                       <Stars rating={r.rating} />
                     </td>
                     <td data-label="Review" style={{ maxWidth: 380, color: 'var(--muted)' }} title={r.body}>
+                      {/* The headline publishes above the body on the product
+                          page, so it is shown here too — approving a review
+                          means approving its title. */}
+                      {r.title && (
+                        <b style={{ display: 'block', color: 'var(--ink)', marginBottom: 2 }}>{r.title}</b>
+                      )}
                       {excerpt(r.body)}
                     </td>
                     <td data-label="Status">

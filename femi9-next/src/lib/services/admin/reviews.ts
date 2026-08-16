@@ -21,6 +21,9 @@ export type ReviewRow = {
   name: string
   place: string | null
   rating: number
+  /** Optional headline. Shown here because a moderator approves everything that
+   *  will publish, and the title publishes above the body. */
+  title: string | null
   body: string
   status: ModerationStatus
   createdAt: string // ISO 8601 — Dates aren't JSON-serialisable to the client.
@@ -39,6 +42,7 @@ function toRow(r: ReviewWithProduct): ReviewRow {
     name: r.name,
     place: r.place,
     rating: r.rating,
+    title: r.title,
     body: r.body,
     status: r.status,
     createdAt: r.createdAt.toISOString(),
