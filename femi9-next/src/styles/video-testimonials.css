@@ -60,11 +60,12 @@
   max-width: 100vw;
   margin: 0 0 0 calc(50% - 50vw);
 
-  /* The side padding is what lets the FIRST and LAST clip reach the middle of
-     the rail. Without it the rail runs out of scroll before they get there and
-     the centre-focus breaks at both ends. Measured in vw to match the 100vw
-     width above — a percentage here would resolve against the CONTAINER, not
-     the bled-out rail, and land every clip off-centre. */
+  /* The side padding is what lets the ONLY card on a single-clip rail reach the
+     middle. Measured in vw to match the 100vw width above — a percentage here
+     would resolve against the CONTAINER, not the bled-out rail, and land the
+     clip off-centre.
+
+     A rail with more than one clip does NOT use this: see `.vt-rail--roll`. */
   padding: 8px calc(50vw - var(--vt-w) / 2) 10px;
   display: flex;
   align-items: center;
@@ -79,6 +80,23 @@
 
 .vt-rail::-webkit-scrollbar {
   display: none;
+}
+
+/* The endless roll — every rail with more than one clip.
+
+   The half-screen lead-in above is replaced by a plain gutter, because on a
+   roll the space either side of the playing clip is filled with CARDS: the
+   track lays the clip list down several times over, so there are SIDE_CARDS
+   wrap-around copies before the first story and after the last one (see
+   VideoTestimonials.tsx). Padding that space instead meant a swipe to either
+   end of the track ran into half a screen of white — the rail looked like it
+   had stopped, which is the one thing an endless roll must never look like.
+
+   The shoulders are sized so the playing clip can still reach dead centre with
+   this gutter: five cards is over 2000px of lead at every width the card sizes
+   above can resolve to, comfortably past the widest half-screen. */
+.vt-rail--roll {
+  padding-inline: clamp(10px, 1.4vw, 20px);
 }
 
 /* On a phone the viewport-relative widths above collapse to their 180px floor,
@@ -115,6 +133,15 @@
 .vt-card.is-active .vt-frame {
   height: var(--vt-h-active);
   box-shadow: var(--cr-shadow-lg);
+}
+
+/* The frame the endless roll folds in — see VideoTestimonials.tsx. The rail
+   teleports onto an identical stretch of track, so the card arriving at the
+   centre has to be full height IMMEDIATELY: animating it up from neighbour size
+   is the one difference that would betray the seam. One frame only; the class
+   comes off with the next move. */
+.vt-rail.is-folding .vt-frame {
+  transition: none;
 }
 
 .vt-video {
@@ -240,12 +267,14 @@
 /* No caption sits under a card — see the note in VideoTestimonials.tsx. The
    `.vt-quote` / `.vt-name` rules that used to live here went with the markup. */
 
-/* ── Footer controls: arrows + progress dots ───────────────────────────────── */
+/* ── Footer controls: the two arrows ───────────────────────────────────────────
+   There are no dots any more — the rail is an endless roll, so a row of them
+   would be counting out a set that never ends. See VideoTestimonials.tsx. */
 .vt-controls {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 18px;
   margin-top: 18px;
 }
 
@@ -273,45 +302,8 @@
   height: 16px;
 }
 
-/* Dots double as a jump control, so they are real buttons rather than
-   decoration — a visitor who wants a particular story should not have to sit
-   through the ones before it. */
-.vt-dots {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-}
-
-.vt-dot {
-  width: 8px;
-  height: 8px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: rgba(52, 32, 78, 0.2);
-  cursor: pointer;
-  transition: width var(--cr-dur) var(--cr-ease), background var(--cr-dur) var(--cr-ease);
-}
-
-.vt-dot.is-active {
-  width: 26px;
-  background: var(--forest-2);
-}
-
-/* 8px is far below the touch minimum, so the tap target is grown with padding
-   and pulled back out with a matching negative margin: the hit area expands
-   into the gap while the dot itself stays the size it looks. */
-@media (pointer: coarse) {
-  .vt-dot {
-    padding: 14px 8px;
-    margin: -14px -8px;
-    background-clip: content-box;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .vt-frame,
-  .vt-dot,
   .vt-arrow,
   .vt-card:not(.is-active) .vt-video {
     transition: none;
