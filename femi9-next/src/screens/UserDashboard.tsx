@@ -1186,9 +1186,9 @@ export function UserDashboard(props: UserDashboardProps) {
                       </span>
                     </div>
                   </div>
-                  {/* The comp points this at the Thara page; the referral
-                      programme that actually mints a code lives at /affiliate. */}
-                  <Link className="f9d-refer" to="/affiliate">
+                  {/* Thara is the referral programme a customer is sent to.
+                      /affiliate is a different surface and is not this link. */}
+                  <Link className="f9d-refer" to="/thara">
                     Refer a friend
                     <IChevron width={15} height={15} />
                   </Link>
