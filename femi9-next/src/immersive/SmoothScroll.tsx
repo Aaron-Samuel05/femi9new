@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import { usePathname } from 'next/navigation'
 import Lenis from 'lenis'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
@@ -21,7 +22,7 @@ export const useLenis = () => useContext(LenisContext)
  * app, driven from GSAP's ticker so Lenis and ScrollTrigger share a single rAF
  * loop instead of fighting over two.
  *
- * It no-ops in two cases, and both matter:
+ * It no-ops in three cases, and all three matter:
  *
  *  - `prefers-reduced-motion: reduce` — the site falls back to native scrolling
  *    for anyone who asks for it. This used to be a module-scope `const`
@@ -35,9 +36,27 @@ export const useLenis = () => useContext(LenisContext)
  *    callback for the life of every page, on exactly the devices with the least
  *    frame budget. (`touchMultiplier` was only ever consulted in the synced
  *    path, so it was inert config that read as if touch were being tuned.)
+ *
+ *  - the ADMIN CONSOLE, which it broke outright. Lenis smooths the ROOT
+ *    scroller: on a wheel event it walks from the target up to <html>, and
+ *    unless something on the way carries `data-lenis-prevent` it calls
+ *    preventDefault() and drives window.scrollTo itself. /admin pins
+ *    `html, body { overflow: hidden }` and scrolls inside `.adm-main`, so the
+ *    window has nowhere to go — every wheel tick over the console was
+ *    swallowed and thrown away, and the panel simply would not scroll. (The
+ *    scrollbar and the keyboard still worked, which is what made it look like
+ *    a CSS fault rather than a hijacked event.) Tagging each admin scroller
+ *    with `data-lenis-prevent` would also fix it, but there are several of
+ *    them — the panel, the sidebar nav, the mobile drawer, every wide table —
+ *    and one new scroller added later would silently break again. The console
+ *    is a data surface that gains nothing from inertial scrolling, so it does
+ *    not run it at all.
  */
 export function SmoothScroll({ children }: { children: ReactNode }) {
   const [lenis, setLenis] = useState<Lenis | null>(null)
+  const pathname = usePathname()
+  /** `/admin` and everything under it, including `/admin/login`. */
+  const allowed = !pathname?.startsWith('/admin')
 
   useEffect(() => {
     const mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)')
@@ -61,7 +80,7 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
     }
 
     const sync = () => {
-      const wanted = !mqReduce.matches && !mqCoarse.matches
+      const wanted = allowed && !mqReduce.matches && !mqCoarse.matches
       if (!wanted) {
         teardown()
         return
@@ -101,7 +120,9 @@ export function SmoothScroll({ children }: { children: ReactNode }) {
       mqCoarse.removeEventListener('change', sync)
       teardown()
     }
-  }, [])
+    // `allowed` re-runs this on the storefront ↔ console boundary, so entering
+    // /admin destroys the instance and leaving it builds a fresh one.
+  }, [allowed])
 
   return <LenisContext.Provider value={lenis}>{children}</LenisContext.Provider>
 }
