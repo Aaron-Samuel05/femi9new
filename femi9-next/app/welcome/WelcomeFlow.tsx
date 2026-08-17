@@ -734,7 +734,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
                 stopped.
               </p>
               <div className="auth-foot__end">
-                <Link href="/#products" className="m-linkbtn">
+                <Link href="/products" className="m-linkbtn">
                   Keep shopping
                   <IChevron aria-hidden="true" />
                 </Link>

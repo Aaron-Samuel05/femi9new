@@ -454,7 +454,7 @@ export function CycleTracker() {
                   <p>
                     Your Femi9 pack can arrive <b>~3 days before</b>, so you never get caught out.
                   </p>
-                  <Link to="/#products" className="btn btn-primary cyc-tiein-btn">
+                  <Link to="/products" className="btn btn-primary cyc-tiein-btn">
                     Subscribe &amp; save
                   </Link>
                 </div>

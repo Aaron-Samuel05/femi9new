@@ -154,7 +154,7 @@ export function MemberLayout({ identity, active, title, lead, eyebrow, actions, 
                 <span className="m-identity__tier">{identity.tier}</span>
               </span>
               <span className="m-identity__actions">
-                <Link to="/#products" className="m-linkbtn">
+                <Link to="/products" className="m-linkbtn">
                   Shop
                   <IChevron aria-hidden="true" />
                 </Link>

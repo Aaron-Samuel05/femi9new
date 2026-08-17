@@ -432,7 +432,7 @@ export function UserDashboard(props: UserDashboardProps) {
               <OptImg className="m-empty__photo" base="img/prod-330-double" sizes="132px" alt="" />
               <h3 className="m-h3">No orders yet</h3>
               <p>When you order, it will appear here so you can reorder in a tap.</p>
-              <Link className="btn btn-ghost" to="/#products">
+              <Link className="btn btn-ghost" to="/products">
                 Browse products
               </Link>
             </div>
@@ -472,7 +472,7 @@ export function UserDashboard(props: UserDashboardProps) {
               </span>
               <h3 className="m-h3">No subscription running</h3>
               <p>Subscribe and your pack arrives before your period does.</p>
-              <Link className="btn btn-ghost" to="/#products">
+              <Link className="btn btn-ghost" to="/products">
                 See the packs
               </Link>
             </div>
@@ -710,7 +710,7 @@ export function UserDashboard(props: UserDashboardProps) {
               <ILeaf aria-hidden="true" /> Reorder now
             </Link>
           ) : (
-            <Link className="btn btn-primary" to="/#products">
+            <Link className="btn btn-primary" to="/products">
               <ILeaf aria-hidden="true" /> Shop the range
             </Link>
           )}

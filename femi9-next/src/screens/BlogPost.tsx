@@ -132,7 +132,7 @@ export function BlogPost({ post, related }: Props) {
       </article>
 
       <div className="wrap article-cta">
-        <Link to="/#products" className="btn btn-primary">Shop Femi9 pads</Link>
+        <Link to="/products" className="btn btn-primary">Shop Femi9 pads</Link>
       </div>
 
       <section className="wrap article-related">

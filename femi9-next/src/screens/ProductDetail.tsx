@@ -336,7 +336,7 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
         <div className="wrap">
           {/* BREADCRUMB */}
           <div className="crumbs">
-            <Link to="/">Home</Link> / <Link to="/#products">Sanitary Care</Link> / {product.name}
+            <Link to="/">Home</Link> / <Link to="/products">Sanitary Care</Link> / {product.name}
           </div>
 
           {/* 3. TWO-COLUMN PRODUCT LAYOUT */}

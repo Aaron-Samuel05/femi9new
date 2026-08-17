@@ -455,7 +455,11 @@ function Partner() {
             <span><strong>5,000+</strong><small>Women Entrepreneurs</small></span><span><strong>12</strong><small>Districts Across Tamil Nadu</small></span>
             <span><strong>Rs.8,000+</strong><small>Average Monthly Earning</small></span><span><strong>100%</strong><small>Flexible Hours</small></span>
           </div>
-          <div className="fl-partner__actions"><Link className="fl-btn fl-btn--gold" to="/partner">Become A Partner</Link><Link className="fl-btn fl-btn--outline" to="/partner">How It Works</Link></div>
+          {/* Two buttons, two labels, two destinations. Both used to land on
+              /partner's top — so "How It Works" and "Become A Partner" were the
+              same click, and the second one made the first look broken. The
+              partner page carries #how and #apply for exactly this. */}
+          <div className="fl-partner__actions"><Link className="fl-btn fl-btn--gold" to="/partner#apply">Become A Partner</Link><Link className="fl-btn fl-btn--outline" to="/partner#how">How It Works</Link></div>
         </div>
         <div className="fl-partner__image">
           <OptImg

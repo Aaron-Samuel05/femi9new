@@ -183,7 +183,7 @@ export function Footer() {
                 </Link>
               ))
             ) : (
-              <Link to="/#products">Browse all products</Link>
+              <Link to="/products">Browse all products</Link>
             )}
           </div>
 

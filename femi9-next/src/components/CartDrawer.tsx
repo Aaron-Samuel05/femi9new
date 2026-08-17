@@ -152,7 +152,7 @@ export function CartDrawer() {
                 className="btn btn-primary"
                 onClick={() => {
                   closeCart()
-                  window.location.assign('/#products')
+                  window.location.assign('/products')
                 }}
               >
                 Shop pads
