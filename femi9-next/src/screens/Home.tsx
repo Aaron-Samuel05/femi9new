@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -12,11 +11,11 @@ import { Link } from '@/lib/router-compat'
 import { CycleTracker } from '@/components/CycleTracker'
 import type { ProductWithVariants } from '@/lib/services/products'
 import type { BlogPostDTO } from '@/lib/services/blog'
-import type { FeaturedReview } from '@/lib/services/reviews-public'
 import { Footer } from '@/components/Footer'
 import { Nav } from '@/components/Nav'
 import { OptImg } from '@/components/OptImg'
 import { ProductCard } from '@/components/ProductCard'
+import { VideoTestimonials } from '@/components/VideoTestimonials'
 import { useMediaGate } from '@/components/useMediaGate'
 
 const ASSET = '/assets/figma-home/'
@@ -24,9 +23,6 @@ const ASSET = '/assets/figma-home/'
 interface Props {
   products: ProductWithVariants[]
   posts: BlogPostDTO[]
-  /** Approved reviews from the database. Falls back to the authored set below
-   *  only when there are too few to fill the rail. */
-  featuredReviews: FeaturedReview[]
 }
 
 function Flower({ light = false }: { light?: boolean }) {
@@ -417,123 +413,31 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
   )
 }
 
-/** Portraits used by the rail. Reused in order for database reviews — these
- *  are stock customer imagery, never claimed to be the named reviewer. */
-const REVIEW_PORTRAITS = [
-  'figma-home/testimonials-imgFrame28',
-  'figma-home/testimonials-imgFrame29',
-  'figma-home/testimonials-imgFrame30',
-  'figma-home/testimonials-imgFrame32',
-] as const
-
-const REVIEWS = [
-  { image: 'figma-home/testimonials-imgFrame28', name: 'K', quote: 'Forget I’m Wearing One. And Zero Rash.' },
-  { image: 'figma-home/testimonials-imgFrame29', name: 'Fatima S.', quote: 'Switched The Whole Family. Zero Leaks Overnight.' },
-  { image: 'figma-home/testimonials-imgFrame30', name: 'Priya N.', quote: 'The First Pad That Didn’t Irritate My Skin At All.' },
-  { image: 'figma-home/testimonials-imgFrame32', name: 'Make The Switch This Month', quote: 'Overnight 425 Is A Game-Changer.' },
-] as const
-
 /**
- * Testimonial rail.
+ * Testimonial section.
  *
- * Prefers real approved reviews and only falls back to the authored set when
- * there are fewer than three — the same pattern the Journal teaser already uses
- * for posts. The authored entries carry a portrait; DB reviews do not, so they
- * reuse the same portraits in order as generic customer imagery rather than
- * inventing a face for a named person.
+ * This was a marquee of stock portraits, each with a decorative play glyph
+ * pasted over it and an approved-review quote underneath — a play button that
+ * could not be played. It is real customer video now: the same centre-focused
+ * rail the product page uses, where the clip in the middle runs to its end and
+ * then hands over to the next one.
+ *
+ * The written reviews it used to pull from the database are not carried over.
+ * The clips are six named people speaking for themselves, and captioning one of
+ * their faces with a different customer's words would be attributing a quote to
+ * the wrong person. The review list still lives on the product page, which is
+ * where a shopper is deciding and where it does the most work.
  */
-/** Desktop card pitch: 381px card + the 40px flex gap between them. */
-const CARD_PITCH = 421
-
-/**
- * Seconds of travel per card. The rail used to cover a card every 2.5s, which
- * is faster than the quote on it can be read — the motion drew the eye and then
- * removed the thing it had drawn the eye to. This is a calm drift instead, and
- * hovering stops it outright (see figma-landing.css).
- */
-const SECONDS_PER_CARD = 4.5
-
-function Testimonials({ featuredReviews }: { featuredReviews: FeaturedReview[] }) {
-  const [manualOffset, setManualOffset] = useState<number | null>(null)
-  const trackRef = useRef<HTMLDivElement>(null)
-
-  const cards = useMemo(() => {
-    if (featuredReviews.length < 3) {
-      return REVIEWS.map((r) => ({ key: r.name, image: r.image, name: r.name, quote: r.quote }))
-    }
-    return featuredReviews.slice(0, 6).map((r, i) => ({
-      key: r.id,
-      image: REVIEW_PORTRAITS[i % REVIEW_PORTRAITS.length],
-      name: r.place ? `${r.name} · ${r.place}` : r.name,
-      quote: r.quote,
-    }))
-  }, [featuredReviews])
-
-  const items = [...cards, ...cards]
-  const shift = manualOffset === null ? undefined : `calc(-80px - ${manualOffset * CARD_PITCH}px)`
-
-  /**
-   * How far the marquee travels before it repeats, and how long that takes.
-   *
-   * Both used to be baked into the keyframes as literals (-80px → -1764px over
-   * 10s), which is exactly one set of the FOUR authored fallback reviews. The
-   * rail renders up to six once the database has enough approved reviews, and
-   * at that point the animation still reset after four cards' worth of travel —
-   * so every ten seconds the strip snapped backwards by the leftover. The loop
-   * only looks seamless when the distance is one full set, whatever that is.
-   *
-   * Duration scales with the distance so the speed stays constant no matter how
-   * many cards are in the rail: more reviews should mean a longer loop, not a
-   * faster one.
-   */
-  const loopPx = cards.length * CARD_PITCH
-  const loopSeconds = cards.length * SECONDS_PER_CARD
-
-  /**
-   * The 421px step is the DESKTOP card pitch (381px card + 40px gap). Below
-   * 900px the rail is a real `overflow-x:auto` scroller with ~326px cards, so
-   * translating it 421px dragged the visible card half off-screen and fought
-   * the native scroll position. There, scroll it instead of transforming it.
-   */
-  const step = (dir: -1 | 1) => {
-    const track = trackRef.current
-    if (track && window.matchMedia('(max-width: 900px)').matches) {
-      const card = track.firstElementChild as HTMLElement | null
-      track.scrollBy({ left: dir * ((card?.offsetWidth ?? 300) + 16), behavior: 'smooth' })
-      return
-    }
-    setManualOffset((value) => ((value ?? 0) + dir + cards.length) % cards.length)
-  }
-
+function Testimonials() {
   return (
-    <Reveal className="fl-testimonials" id="testimonials">
+    <Reveal className="fl-testimonials fl-testimonials--video" id="testimonials">
       <div className="fl-shell">
         <div className="fl-heading">
           <div><p className="fl-kicker fl-kicker--gold">Testimonial <Flower /></p><h2>Real Period Stories. Real Everyday Confidence.</h2></div>
-          <div className="fl-testimonials__controls">
-            <button type="button" aria-label="Previous testimonial" onClick={() => step(-1)}><img src={`${ASSET}testimonials-imgFrame.svg`} alt="" width={32} height={32} loading="lazy" decoding="async" /></button>
-            <button type="button" aria-label="Next testimonial" onClick={() => step(1)}><img src={`${ASSET}testimonials-imgFrame1.svg`} alt="" width={32} height={32} loading="lazy" decoding="async" /></button>
-          </div>
         </div>
-        <div
-          ref={trackRef}
-          className={`fl-testimonials__track${manualOffset !== null ? ' is-manual' : ''}`}
-          style={{
-            '--testimonial-shift': shift,
-            '--testimonial-loop': `${loopPx}px`,
-            '--testimonial-duration': `${loopSeconds}s`,
-          } as CSSProperties}
-        >
-          {items.map((item, index) => (
-            <article className="fl-review" key={`${item.key}-${index}`}>
-              <div className="fl-review__media">
-                <OptImg base={item.image} sizes="(max-width: 620px) 86vw, (max-width: 900px) 330px, 381px" alt="Femi9 customer" />
-                <img className="fl-review__play" src={`${ASSET}testimonials-imgGroup.svg`} alt="" width={52} height={52} loading="lazy" decoding="async" />
-              </div>
-              <div className="fl-review__body"><img src={`${ASSET}testimonials-imgFrame31.svg`} alt="Five stars" width={90} height={18} loading="lazy" decoding="async" /><h3>{item.name}</h3><p>“{item.quote}”</p></div>
-            </article>
-          ))}
-        </div>
+        {/* The section supplies its own Figma-typed heading, so the rail is
+            asked not to draw one of its own. */}
+        <VideoTestimonials heading={null} subhead={null} />
       </div>
     </Reveal>
   )
@@ -565,7 +469,7 @@ function Partner() {
   )
 }
 
-export function Home({ products, posts, featuredReviews }: Props) {
+export function Home({ products, posts }: Props) {
   return (
     <main className="figma-landing" id="top">
       <Nav />
@@ -592,7 +496,7 @@ export function Home({ products, posts, featuredReviews }: Props) {
       </section>
       <Journal posts={posts} />
       <div className="fl-cycle"><CycleTracker /></div>
-      <Testimonials featuredReviews={featuredReviews} />
+      <Testimonials />
       <Partner />
       <Footer />
     </main>

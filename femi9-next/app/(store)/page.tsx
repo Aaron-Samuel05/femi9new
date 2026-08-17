@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { Home } from '@/screens/Home'
 import { listProducts, type ProductWithVariants } from '@/lib/services/products'
 import { listPosts, type BlogPostDTO } from '@/lib/services/blog'
-import { listFeaturedReviews } from '@/lib/services/reviews-public'
 
 export const metadata: Metadata = {
   title: 'Femi9 Sanitary Pads | Rash-Free, Cotton-Soft Period Care India',
@@ -22,13 +21,9 @@ export default async function HomePage() {
   // temporarily unreachable (for example, in a fresh local checkout). The
   // Figma-authored teaser cards have their own visual fallbacks, while valid
   // database connections still provide live product and journal links.
-  // Testimonials come from the moderated Review table now; the authored set in
-  // Home.tsx is only the fallback for a catalog with fewer than three approved
-  // reviews. A failure here must not take the landing page down.
-  const [products, posts, featuredReviews] = await Promise.all([
-    listProducts(),
-    listPosts(),
-    listFeaturedReviews(6).catch(() => []),
-  ])
-  return <Home products={products} posts={posts} featuredReviews={featuredReviews} />
+  // Testimonials are no longer fetched here: the landing rail plays the customer
+  // video clips (see VideoTestimonials), and the moderated Review table is read
+  // by the product page, where the written reviews are shown.
+  const [products, posts] = await Promise.all([listProducts(), listPosts()])
+  return <Home products={products} posts={posts} />
 }

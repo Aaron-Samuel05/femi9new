@@ -1,20 +1,21 @@
 /**
- * Video testimonials shown on the product page.
+ * Video testimonials shown on the product page and in the landing rail.
  *
  * ── How to add one ──────────────────────────────────────────────────────────
  * 1. Put the video in `public/assets/testimonials/` (MP4, H.264, muted-safe).
- *    Keep it short — these autoplay on hover, so 10-25s is the useful range.
+ *    Keep it short — the rail plays each clip END TO END before moving to the
+ *    next, so 10-40s is the useful range. A three-minute clip parks the rail.
  * 2. Put a poster frame beside it (JPG/WebP). The poster is what a visitor
- *    actually sees until they hover, and it is REQUIRED: without one the card
- *    is a black rectangle, and the browser has to start downloading the video
- *    just to paint a first frame.
+ *    sees on every card that is not the one playing, and it is REQUIRED:
+ *    without one the card is a black rectangle, and the browser has to start
+ *    downloading the video just to paint a first frame.
  * 3. Add an entry below.
  *
  * ── Why a hand-written list ─────────────────────────────────────────────────
  * The files cannot be enumerated at runtime (there is no directory listing in a
- * static bundle), and each clip needs a name and a pull-quote that no filename
- * carries. Keeping it explicit also means an unfinished upload never appears on
- * the storefront by accident.
+ * static bundle), and each clip needs a speaker name that no filename carries.
+ * Keeping it explicit also means an unfinished upload never appears on the
+ * storefront by accident.
  *
  * `products` scopes a clip to particular product slugs. Leave it out and the
  * clip shows on every product page — right for general brand testimonials,
@@ -31,18 +32,15 @@ export interface VideoTestimonial {
   src: string
   /** Poster frame path. Required — see above. */
   poster: string
-  /** Who is speaking. Shown under the clip. */
-  name: string
   /**
-   * One line pulled from what this person actually says on camera.
+   * Who is speaking.
    *
-   * OPTIONAL, and left unset below on purpose. These are real, named people, so
-   * a pull-quote has to be a real thing they said — writing a plausible-sounding
-   * one and attributing it to them would be putting words in their mouth. Fill
-   * these in from the clips (or leave them out); the card shows the name alone
-   * until then.
+   * Not drawn on the card — the rail is uncaptioned. It is the accessible name
+   * for the clip: every control on the card is labelled with it ("Play Sapna
+   * Iyer's story"), so it is what a screen reader announces and what a visitor
+   * navigating by keyboard hears. Keep it a real person's name.
    */
-  quote?: string
+  name: string
   /** Restrict to these product slugs. Omit to show on every product. */
   products?: string[]
 }

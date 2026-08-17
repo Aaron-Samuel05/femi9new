@@ -234,19 +234,9 @@ body:has(.grid-products) main.wrap.section {
   background: #ffffff;
 }
 
-/* Review cards were flat purple slabs on the cream. Same card radius token, one
-   layered shadow to lift them off the butter, and a DEPTH-ONLY hover deepen
-   (md → lg). No translate: these auto-scroll in a transformed track, and a
-   per-card translate there fights the carousel — the media zoom from
-   figma-landing.css still runs underneath. */
-.fl-testimonials .fl-review {
-  border-radius: var(--cr-r-md);
-  box-shadow: var(--cr-shadow-md);
-  transition: box-shadow var(--cr-dur) var(--cr-ease);
-}
-.fl-testimonials .fl-review:hover {
-  box-shadow: var(--cr-shadow-lg);
-}
+/* The `.fl-review` card polish that used to sit here went with the cards: the
+   testimonial band is the video rail now, and its elevation comes from
+   video-testimonials.css so the product page and the landing page stay in step. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PARTNER — soften the white slab and frame the monolithic image block
@@ -266,4 +256,26 @@ body:has(.grid-products) main.wrap.section {
   border-radius: var(--cr-r-lg);
   background: var(--cr-wash-lav);
   box-shadow: var(--cr-shadow-md);
+}
+
+/* The heading ran UNDER the image panel on desktop. Both halves of this section
+   are absolutely positioned inside the shell: the copy at left:80px (685px wide)
+   and the image at left:793px — so the copy column has 713px of clear space. The
+   Figma export gave the h2 its own `width:757px`, measured to fit
+   "Turn Better Periods Into Your Livelihood" on one line in Newsreader at 44px
+   (the text lands at 836px). The image is the later sibling and its wash is
+   opaque, so it painted over the tail of the word instead of the text simply
+   overlapping.
+   Capping every child at the column width keeps the copy inside its own lane —
+   the heading now wraps to two lines, `balance` splitting it evenly rather than
+   dropping a lone "Livelihood". Scoped to the two-column layout: below 901px the
+   halves stack and figma-landing-responsive.css already releases these widths. */
+@media (min-width: 901px) {
+  .fl-partner .fl-partner__copy > * {
+    max-width: 100%;
+  }
+  .fl-partner .fl-partner__copy h2 {
+    width: 100%;
+    text-wrap: balance;
+  }
 }
