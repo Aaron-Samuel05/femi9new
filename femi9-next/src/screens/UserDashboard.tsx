@@ -1411,8 +1411,24 @@ export function UserDashboard(props: UserDashboardProps) {
               </button>
             </div>
           </div>
+          {/* The comp leaves this slot empty, labelled "Product / pack lifestyle
+              photo". It first shipped with `hero-lifestyle`, which is 1178x1470
+              — PORTRAIT, against a panel that is about 588x389. `cover` then
+              threw away 47% of the photo's height, cutting the model's head off
+              at the top and slicing the pack in half at the bottom.
+
+              This pack shot is 1346x1169, so the same panel trims about 12% off
+              the top and bottom — and that part of the frame is empty cream.
+              It is also the photo /account's band already uses in this role, so
+              the two member surfaces show the same product. */}
           <div className="f9d-essentials__art" aria-hidden="true">
-            <OptImg base="figma-home/hero-lifestyle" sizes="(max-width: 900px) 100vw, 40vw" alt="" />
+            <OptImg
+              base="figma-home/products-imgFrame206"
+              /* The panel is .85 of a 1.15/.85 split inside the wrap, so it is
+                 ~42% of the container and never exceeds ~590px. */
+              sizes="(max-width: 900px) 100vw, min(42vw, 590px)"
+              alt=""
+            />
           </div>
         </section>
 
