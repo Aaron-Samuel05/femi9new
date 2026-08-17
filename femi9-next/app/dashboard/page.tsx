@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth'
 import { getAccountData, getProfileStatus } from '@/lib/services/account'
 import { getCycleData } from '@/lib/services/cycle'
+import { listRewardOptions } from '@/lib/services/rewards'
 import { UserDashboard } from '@/screens/UserDashboard'
 
 /**
@@ -28,7 +29,11 @@ export default async function DashboardPage() {
   if (!status) redirect('/login')
   if (!status.complete) redirect('/welcome?next=/dashboard')
 
-  const [account, cycle] = await Promise.all([getAccountData(s.sub), getCycleData(s.sub)])
+  const [account, cycle, rewardOptions] = await Promise.all([
+    getAccountData(s.sub),
+    getCycleData(s.sub),
+    listRewardOptions(),
+  ])
   // The token can be valid while the row is gone (a deleted account with a live
   // cookie). Bounce rather than render a page with no identity.
   if (!account) redirect('/login')
@@ -38,9 +43,15 @@ export default async function DashboardPage() {
       {...cycle}
       user={account.user}
       pointsBalance={account.pointsBalance}
-      // Three is enough for an at-a-glance panel; /account owns the full history.
-      orders={account.orders.slice(0, 3)}
+      // The comp's Overview tab IS the order history — it is no longer a
+      // three-row teaser pointing at /account, so it gets every order.
+      orders={account.orders}
       subscriptions={account.subscriptions}
+      addresses={account.addresses}
+      coupons={account.coupons}
+      earnRates={account.earnRates}
+      activity={account.activity}
+      rewardOptions={rewardOptions}
     />
   )
 }

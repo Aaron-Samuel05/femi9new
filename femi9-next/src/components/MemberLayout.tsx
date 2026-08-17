@@ -48,6 +48,17 @@ export interface MemberLayoutProps {
   eyebrow?: string
   /** Right-aligned header slot — typically ONE .btn.btn-primary. */
   actions?: ReactNode
+  /**
+   * `'bare'` drops the `.m-head` title block and the `.m-bar` (sub-nav +
+   * identity), keeping only the storefront chrome and the content well.
+   *
+   * /dashboard renders its own membership hero and its own three-way segmented
+   * control, both of which carry the identity, the greeting and the section
+   * switch. Painting `.m-head` above them would put the same name, the same
+   * greeting and the same three destinations on the screen twice. `title`,
+   * `lead`, `eyebrow` and `actions` are then unused — the screen owns them.
+   */
+  variant?: 'default' | 'bare'
   children: ReactNode
 }
 
@@ -69,7 +80,18 @@ const NAV: { key: MemberNavKey; label: string; to: string; Icon: typeof IHome }[
  * Sign out. Exported separately so the storefront <Nav/> mobile menu can mount
  * the same control. No confirm() — signing out is trivially reversible.
  */
-export function MemberSignOutButton({ className }: { className?: string }) {
+export function MemberSignOutButton({
+  className,
+  /**
+   * `'plain'` drops the default `.btn.btn-ghost` skin so a caller can dress the
+   * control in its own system. /dashboard's hero sits on deep purple, where the
+   * ghost button's dark border and dark label are invisible.
+   */
+  variant = 'default',
+}: {
+  className?: string
+  variant?: 'default' | 'plain'
+}) {
   const router = useRouter()
   const [busy, setBusy] = useState(false)
 
@@ -92,7 +114,9 @@ export function MemberSignOutButton({ className }: { className?: string }) {
   return (
     <button
       type="button"
-      className={`btn btn-ghost${className ? ` ${className}` : ''}`}
+      className={
+        variant === 'plain' ? (className ?? '') : `btn btn-ghost${className ? ` ${className}` : ''}`
+      }
       onClick={signOut}
       disabled={busy}
     >
@@ -101,7 +125,29 @@ export function MemberSignOutButton({ className }: { className?: string }) {
   )
 }
 
-export function MemberLayout({ identity, active, title, lead, eyebrow, actions, children }: MemberLayoutProps) {
+export function MemberLayout({
+  identity,
+  active,
+  title,
+  lead,
+  eyebrow,
+  actions,
+  variant = 'default',
+  children,
+}: MemberLayoutProps) {
+  if (variant === 'bare') {
+    return (
+      <>
+        <div className="liquid-bg liquid-bg--fallback" aria-hidden="true" />
+        <Nav />
+        <div className="m-area">
+          <div className="wrap m-page">{children}</div>
+        </div>
+        <Footer />
+      </>
+    )
+  }
+
   return (
     <>
       {/* Same static lavender field the storefront layout paints. Fixed at

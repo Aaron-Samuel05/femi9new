@@ -1,39 +1,53 @@
 'use client'
 
 /**
- * /dashboard — the member's cycle home.
+ * /dashboard — the member's home, built to the `Femi9 Dashboard` comp.
  *
- * This screen used to render `<Shell variant="user">`, which was the ADMIN
- * console's chrome: a left sidebar, an "Admin dashboard" link, a "Guest — Not
- * signed in" flash, and two permanently disabled topbar buttons. It now renders
- * `<MemberLayout>` and builds entirely from the `.m-*` kit in member.css plus
- * its own `.dash-*` layout — no `panel`, no `col-*`, no `dtable`, no `badge`.
+ * The comp is a single membership screen: a purple hero carrying the greeting
+ * and the identity chip, a three-way segmented control (Overview / Cycle /
+ * Rewards), a metrics row with the Bloom-points ring, a sub-tabbed records card
+ * (Orders / Subscriptions / Addresses / Profile), a rewards board and the
+ * "Femi9 essentials" band. Its layout and copy live in `src/styles/f9dash.css`
+ * and in the markup below, verbatim.
  *
- * Everything here is driven by the user's real rows. There is no fabricated
- * product, no invented cycle history, and no copy that claims a save happened
- * unless the request actually returned 2xx.
+ * EVERY number and string on it is the customer's own row. The comp ships
+ * sample content — "0 of 500", "FM-00001", "Rs.274", a hard-coded Erode address
+ * — and none of it survives here: the ring reads the points ledger, the ring's
+ * target is the cheapest reward still out of reach, the order rows are the real
+ * orders with a working "Buy again", the addresses are the real address book
+ * and the earn rates are the live Settings values. Where the customer has no
+ * rows the comp's own empty state is drawn rather than a fabricated one.
+ *
+ * The Cycle tab keeps the full tracker this screen already had — consent gate,
+ * calendar, logging, editable history, trend and insights — restyled by the
+ * `.f9dash .m-*` block at the foot of f9dash.css. Nothing was dropped to make
+ * the comp fit.
+ *
+ * Chrome: `<MemberLayout variant="bare">`, so the storefront nav and footer
+ * still wrap the page but the shared `.m-head` / `.m-bar` do not — the hero and
+ * the segmented control carry the greeting, the identity and the section switch
+ * themselves, and painting both would print the same name twice.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Link } from '@/lib/router-compat'
-import { MemberLayout } from '@/components/MemberLayout'
+import { MemberLayout, MemberSignOutButton } from '@/components/MemberLayout'
 import { Chip } from '@/components/Chip'
 import { OptImg } from '@/components/OptImg'
-import { useMediaGate } from '@/components/useMediaGate'
 import { useCart } from '@/store/cart'
+import { fmtRs } from '../charts/util'
 import {
   IAlert,
   IBox,
   ICheck,
   IChevron,
   ICycle,
-  IGift,
+  IHome,
   IInfo,
-  ILeaf,
   IPencil,
-  IPin,
   ISparkles,
+  IStar,
   ITrash,
   ITrend,
 } from '@/components/AppIcons'
@@ -50,17 +64,70 @@ import {
   phaseForDayKey,
   type CyclePhase,
 } from '@/lib/cycle-math'
-import type { AccountOrder, AccountSubscription, AccountUser } from '@/lib/services/account'
+import type {
+  AccountAddress,
+  AccountCoupon,
+  AccountOrder,
+  AccountSubscription,
+  AccountUser,
+  ActivityItem,
+  EarnRates,
+} from '@/lib/services/account'
+import type { RewardOptionView } from '@/lib/services/rewards'
 import type { CycleData, PeriodEntry, SymptomEntry } from '@/lib/services/cycle'
 
 export interface UserDashboardProps extends CycleData {
   /** The SAME identity /account renders. Not a bare `userName` string. */
   user: AccountUser
   pointsBalance: number
-  /** The three most recent orders — /account owns the full history. */
+  /** ALL orders, newest first — the comp's Orders sub-tab is the full history. */
   orders: AccountOrder[]
   subscriptions: AccountSubscription[]
+  addresses: AccountAddress[]
+  coupons: AccountCoupon[]
+  earnRates: EarnRates
+  activity: ActivityItem[]
+  rewardOptions: RewardOptionView[]
 }
+
+/* ── The comp's own vocabulary ─────────────────────────────────────────────── */
+
+type SectionKey = 'overview' | 'cycle' | 'rewards'
+type RecordKey = 'orders' | 'subscriptions' | 'addresses' | 'profile'
+
+const SECTIONS: { key: SectionKey; label: string; Icon: typeof IHome }[] = [
+  { key: 'overview', label: 'Overview', Icon: IHome },
+  { key: 'cycle', label: 'Cycle', Icon: ICycle },
+  { key: 'rewards', label: 'Rewards', Icon: ISparkles },
+]
+
+const RECORDS: { key: RecordKey; label: string }[] = [
+  { key: 'orders', label: 'Orders' },
+  { key: 'subscriptions', label: 'Subscriptions' },
+  { key: 'addresses', label: 'Addresses' },
+  { key: 'profile', label: 'Profile' },
+]
+
+/** Statuses that are not money the customer kept spending, so "Lifetime spend"
+ *  must not count them. A refunded order on that tile is a small lie. */
+const NON_SPEND: AccountOrder['statusKey'][] = ['cancelled', 'refunded']
+
+/** Order status → the comp's four pill tones. */
+const ORDER_PILL: Record<AccountOrder['statusKey'], string> = {
+  pending: '',
+  processing: '',
+  paid: ' f9d-pill--active',
+  shipped: ' f9d-pill--active',
+  delivered: ' f9d-pill--success',
+  cancelled: ' f9d-pill--danger',
+  refunded: ' f9d-pill--danger',
+}
+
+/** "Rs.100 off your next order." — the sentence under a redeem card. */
+const rewardDesc = (r: RewardOptionView) =>
+  r.couponType === 'pct' ? `${r.couponValue}% off your next order.` : `Rs.${r.couponValue} off your next order.`
+
+const n = (v: number) => v.toLocaleString('en-IN')
 
 /* ── Vocabulary ─────────────────────────────────────────────────────────────
  * A real symptom set, not the six-label stub this screen used to ship. Flow is
@@ -198,15 +265,19 @@ export function UserDashboard(props: UserDashboardProps) {
     insights,
     symptomLog,
     periods,
-    lastOrderedProduct,
     unreadableRows,
     pointsBalance,
     orders,
     subscriptions,
+    addresses,
+    coupons,
+    earnRates,
+    activity,
+    rewardOptions,
   } = props
 
   const router = useRouter()
-  const { notify } = useCart()
+  const { notify, add, openCart } = useCart()
 
   /**
    * The browser's own calendar day. The server resolves `today` in the store's
@@ -226,23 +297,157 @@ export function UserDashboard(props: UserDashboardProps) {
   const [consentRefused, setConsentRefused] = useState(false)
   const gateOpen = !consent || consentRefused
 
-  /** The two decorative Figma exports on this screen are painted only above
-   *  their breakpoints (dashboard.css `.dash-onboard__art`, member.css
-   *  `.m-band__art`). They are gated out of the JSX rather than hidden in CSS,
-   *  because `display: none` still downloads — and why-imgImage22.png is 2.5 MB
-   *  that no mobile target ever shows. */
-  const showOnboardArt = useMediaGate('(min-width: 781px)')
-  const showBandArt = useMediaGate('(min-width: 621px)')
-
   const onConsentRefusal = useCallback(() => {
     setConsentRefused(true)
     router.refresh()
   }, [router])
 
-  const activeSubscriptions = subscriptions.filter((s) => s.status !== 'cancelled')
+  /* ── The comp's two tab strips ──────────────────────────────────────────── */
+
+  const [sec, setSec] = useState<SectionKey>('overview')
+  const [rec, setRec] = useState<RecordKey>('orders')
+  const secRefs = useRef<Partial<Record<SectionKey, HTMLButtonElement | null>>>({})
+  const recRefs = useRef<Partial<Record<RecordKey, HTMLButtonElement | null>>>({})
+  const trackerRef = useRef<HTMLDivElement>(null)
+
+  /** `/dashboard#cycle` and `#rewards` open on that section. The member sub-nav
+   *  and the footer both link here by hash, and without this they would land on
+   *  Overview with the section they asked for hidden behind a tab. Read once on
+   *  mount — reading location during render would break hydration. */
+  useEffect(() => {
+    const hash = window.location.hash.slice(1)
+    if (hash === 'cycle' || hash === 'rewards') setSec(hash)
+  }, [])
+
+  function onSecKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const i = SECTIONS.findIndex((t) => t.key === sec)
+    let next = i
+    if (e.key === 'ArrowRight') next = (i + 1) % SECTIONS.length
+    else if (e.key === 'ArrowLeft') next = (i - 1 + SECTIONS.length) % SECTIONS.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = SECTIONS.length - 1
+    else return
+    e.preventDefault()
+    const key = SECTIONS[next].key
+    setSec(key)
+    secRefs.current[key]?.focus()
+  }
+
+  function onRecKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
+    const i = RECORDS.findIndex((t) => t.key === rec)
+    let next = i
+    if (e.key === 'ArrowRight') next = (i + 1) % RECORDS.length
+    else if (e.key === 'ArrowLeft') next = (i - 1 + RECORDS.length) % RECORDS.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = RECORDS.length - 1
+    else return
+    e.preventDefault()
+    const key = RECORDS[next].key
+    setRec(key)
+    recRefs.current[key]?.focus()
+  }
+
+  /* ── Real figures behind the comp's sample numbers ──────────────────────── */
+
+  /** The hero italicises the first name only. `displayName` is the full string
+   *  and is the literal 'Your account' for a nameless row, which must never be
+   *  greeted — so this is null then and the greeting stays "Welcome back". */
+  const firstName = user.name?.trim().split(/\s+/)[0] ?? null
+
+  const lifetimeSpend = useMemo(
+    () => orders.filter((o) => !NON_SPEND.includes(o.statusKey)).reduce((sum, o) => sum + o.total, 0),
+    [orders],
+  )
+  const activeSubscriptions = useMemo(
+    () => subscriptions.filter((s) => s.status !== 'cancelled'),
+    [subscriptions],
+  )
+
+  /** The cheapest reward still out of reach — the comp's "500 points to Rs.100
+   *  off" and the ring's denominator both read from it. Null once every reward
+   *  is affordable (or the catalogue is empty), which the copy then states
+   *  rather than inventing a target. */
+  const ladder = useMemo(
+    () => [...rewardOptions].sort((a, b) => a.costPoints - b.costPoints),
+    [rewardOptions],
+  )
+  const nextReward = useMemo(
+    () => ladder.find((r) => r.costPoints > pointsBalance) ?? null,
+    [ladder, pointsBalance],
+  )
+  const pointsToGo = nextReward ? nextReward.costPoints - pointsBalance : 0
+  const pointsRatio = nextReward ? Math.min(1, Math.max(0, pointsBalance / nextReward.costPoints)) : 1
+
+  const recordCounts: Record<RecordKey, number | null> = {
+    orders: orders.length,
+    subscriptions: activeSubscriptions.length,
+    addresses: addresses.length,
+    profile: null,
+  }
+
+  /* ── Actions the comp's buttons actually perform ────────────────────────── */
+
+  const [reordering, setReordering] = useState<string | null>(null)
+  async function buyAgain(order: AccountOrder) {
+    const lines = order.items.filter((i) => i.variantId)
+    if (lines.length === 0 || reordering) return
+    setReordering(order.id)
+    try {
+      // Sequential: the cart API returns the whole cart each time, so parallel
+      // writes would race each other's snapshot.
+      for (const line of lines) await add(line.variantId, line.qty)
+      openCart()
+    } finally {
+      setReordering(null)
+    }
+  }
+
+  const [redeeming, setRedeeming] = useState<string | null>(null)
+  async function redeem(r: RewardOptionView) {
+    if (pointsBalance < r.costPoints || redeeming) return
+    setRedeeming(r.id)
+    try {
+      const res = await fetch('/api/rewards/redeem', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rewardOptionId: r.id }),
+      })
+      const data = (await res.json().catch(() => null)) as { couponCode?: string; error?: string } | null
+      if (!res.ok) {
+        notify(data?.error ?? 'Could not redeem that reward right now. Please try again.')
+        return
+      }
+      // The code is persisted against the account, so "Your reward codes" below
+      // is the permanent copy — this toast is a convenience, not the delivery.
+      notify(data?.couponCode ? `Redeemed. Your code is ${data.couponCode}` : 'Reward redeemed')
+      router.refresh()
+    } catch {
+      notify('We could not reach Femi9. Check your connection and try again.')
+    } finally {
+      setRedeeming(null)
+    }
+  }
+
+  /** The comp's "Track your cycle" moves to the Cycle section and scrolls to the
+   *  live tracker under its intro card. */
+  const goTrack = useCallback(() => {
+    setSec('cycle')
+    // Next frame: the panel does not exist in the DOM until the state lands.
+    requestAnimationFrame(() => trackerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }, [])
+
+  /* ── Ring geometry (the comp's own numbers) ─────────────────────────────── */
+
+  const POINTS_R = 52
+  const POINTS_C = 2 * Math.PI * POINTS_R
+  const DIAL_R = 82
+  const DIAL_C = 2 * Math.PI * DIAL_R
+  const dialRatio =
+    gateOpen || needsData ? 0.3 : Math.min(1, Math.max(0, prediction.cycleDay / prediction.avgCycle))
 
   return (
     <MemberLayout
+      variant="bare"
       identity={{
         displayName: user.displayName,
         initials: user.initials,
@@ -251,499 +456,880 @@ export function UserDashboard(props: UserDashboardProps) {
       }}
       active="cycle"
       title={user.greeting}
-      lead={
-        needsData
-          ? 'Track your cycle privately, and your dashboard will start predicting your next period, fertile window and PMS days.'
-          : 'Your cycle, your orders and your Bloom points - all from what you have actually logged.'
-      }
-      actions={
-        <Link to="/account" className="btn btn-ghost">
-          Account &amp; orders
-        </Link>
-      }
     >
-      {/* A row we cannot decrypt is skipped, never fatal. Say so plainly rather
-          than silently under-reporting a user's history. */}
-      {unreadableRows > 0 && (
-        <p className="m-note m-note--warning" role="status">
-          <IAlert aria-hidden="true" />
-          <span>
-            We could not read {unreadableRows} entr{unreadableRows === 1 ? 'y' : 'ies'} from your history, so
-            {unreadableRows === 1 ? ' it is' : ' they are'} left out of the numbers below. Everything else is
-            intact - you can re-log {unreadableRows === 1 ? 'that day' : 'those days'} at any time.
+      <div className="f9dash">
+        {/* ── Membership hero ──────────────────────────────────────────── */}
+        <section className="f9d-hero" aria-labelledby="f9d-hero-h">
+          <span className="f9d-disp f9d-hero__ghost" aria-hidden="true">
+            Femi9
           </span>
-        </p>
-      )}
-
-      {gateOpen ? (
-        <ConsentGate onGranted={() => { setConsentRefused(false); router.refresh() }} notify={notify} />
-      ) : (
-        <GuestImport clientToday={clientToday} notify={notify} onConsentRefused={onConsentRefusal} />
-      )}
-
-      {/* ── Prediction hero, or the first-run invitation ────────────────── */}
-      {needsData || gateOpen ? (
-        <section className="m-card m-card--roomy dash-onboard" aria-labelledby="dash-onboard-h">
-          <div className="dash-onboard__copy">
-            <span className="eyebrow">Cycle tracking</span>
-            <h2 className="m-h2" id="dash-onboard-h">
-              {gateOpen ? 'Turn on tracking to see your predictions' : 'Log your first period'}
-            </h2>
-            <p className="m-body">
-              {gateOpen
-                ? 'Once tracking is on, tell us when your last period started and this page fills in with your next date, your fertile window and your PMS days.'
-                : 'Tell us when your last period started and we will predict your next one, map your fertile and PMS windows, and keep your calendar in sync - all from your own data, never an average.'}
-            </p>
-            <ul className="dash-onboard__list">
-              <li>
-                <ICheck aria-hidden="true" /> Your next period date, refined with every cycle you log
-              </li>
-              <li>
-                <ICheck aria-hidden="true" /> Fertile window, ovulation and PMS days on one calendar
-              </li>
-              <li>
-                <ICheck aria-hidden="true" /> Symptoms and flow, so you can see your own patterns
-              </li>
-            </ul>
-          </div>
-          {showOnboardArt && (
-            <OptImg
-              className="dash-onboard__art"
-              base="figma-home/why-imgImage22"
-              /* width: min(260px, 34vw) — 34vw only bites below 765px, and the
-                 gate above starts at 781px, so this is always exactly 260. */
-              sizes="260px"
-              alt=""
-            />
-          )}
-        </section>
-      ) : (
-        <section className="m-card m-card--roomy dash-hero" aria-labelledby="dash-hero-h">
-          <div className="dash-hero__copy">
-            <span className="eyebrow">Your prediction</span>
-            <h2 className="m-h2" id="dash-hero-h">
-              {prediction.daysUntilNext === 0
-                ? 'Your period is expected today'
-                : `Period in ${prediction.daysUntilNext} day${prediction.daysUntilNext === 1 ? '' : 's'}`}
-            </h2>
-            <p className="m-body">
-              Expected around {prediction.nextStartLabel}. You are on day {prediction.cycleDay} of a{' '}
-              {prediction.avgCycle}-day cycle, with {prediction.confidence}% confidence from your logged history.
-            </p>
-            <div className="dash-hero__chips">
-              <span className="m-chip m-chip--gold">
-                <ICycle aria-hidden="true" /> Next: {prediction.nextStartLabel}
-              </span>
-              <span className="m-chip">Ovulation {fmtDayMonth(prediction.ovulation)}</span>
-              <span className="m-chip m-chip--quiet">
-                Fertile {fmtDayMonth(prediction.fertileStart)} – {fmtDayMonth(prediction.fertileEnd)}
-              </span>
+          <span className="f9d-hero__glow" aria-hidden="true" />
+          <div className="f9d-hero__inner">
+            <div className="f9d-hero__copy">
+              <span className="f9d-ey f9d-ey--gold">Your membership</span>
+              <h1 className="f9d-disp f9d-hero__title" id="f9d-hero-h">
+                Welcome back{firstName && <>, <em>{firstName}</em></>}
+              </h1>
+              <p className="f9d-hero__lead">
+                Your orders, Bloom points, refills and delivery details - all in one place.
+              </p>
+              <div className="f9d-hero__id">
+                <span className="f9d-disp f9d-hero__avatar" aria-hidden="true">
+                  {user.image ? (
+                    <img src={user.image} alt="" width={44} height={44} decoding="async" />
+                  ) : (
+                    user.initials
+                  )}
+                </span>
+                <span className="f9d-hero__idtext">
+                  <span className="f9d-hero__name">{user.displayName}</span>
+                  <span className="f9d-hero__tier">
+                    {user.tier} · since {user.since}
+                  </span>
+                </span>
+              </div>
+            </div>
+            <div className="f9d-hero__actions">
+              <button
+                type="button"
+                className="f9d-btn f9d-btn--light"
+                onClick={() => {
+                  setSec('overview')
+                  setRec('profile')
+                }}
+              >
+                <IPencil width={15} height={15} />
+                Edit profile
+              </button>
+              <MemberSignOutButton variant="plain" className="f9d-btn f9d-btn--light" />
             </div>
           </div>
-          <CycleRing
-            cycleDay={prediction.cycleDay}
-            avgCycle={prediction.avgCycle}
-            confidence={prediction.confidence}
+        </section>
+
+        {/* ── Overview / Cycle / Rewards ───────────────────────────────── */}
+        <div className="f9d-seg" role="tablist" aria-label="Dashboard sections" onKeyDown={onSecKeyDown}>
+          <span
+            className="f9d-seg__thumb"
+            aria-hidden="true"
+            style={{ transform: `translateX(${SECTIONS.findIndex((t) => t.key === sec) * 100}%)` }}
           />
-        </section>
-      )}
-
-      {/* ── At a glance: points, plan, last order ───────────────────────── */}
-      <section aria-labelledby="dash-glance-h" className="m-section">
-        <h2 className="m-h2" id="dash-glance-h">
-          At a glance
-        </h2>
-        <div className="m-figures">
-          <div className="m-figure">
-            <div className="m-figure__top">
-              <span className="m-figure__label">Bloom points</span>
-              <span className="m-figure__icon">
-                <ISparkles aria-hidden="true" />
-              </span>
-            </div>
-            <span className="m-figure__value">{pointsBalance.toLocaleString('en-IN')}</span>
-            <span className="m-figure__note">
-              <Link className="m-linkbtn" to="/account#rewards">
-                Spend them <IChevron aria-hidden="true" />
-              </Link>
-            </span>
-          </div>
-
-          <div className="m-figure">
-            <div className="m-figure__top">
-              <span className="m-figure__label">Subscription</span>
-              <span className="m-figure__icon">
-                <IBox aria-hidden="true" />
-              </span>
-            </div>
-            <span className="m-figure__value">{activeSubscriptions.length}</span>
-            <span className="m-figure__note">
-              {activeSubscriptions.length === 0
-                ? 'No plan running yet'
-                : `Next delivery ${activeSubscriptions[0].nextDelivery}`}
-            </span>
-          </div>
-
-          <div className="m-figure">
-            <div className="m-figure__top">
-              <span className="m-figure__label">Cycles logged</span>
-              <span className="m-figure__icon">
-                <ITrend aria-hidden="true" />
-              </span>
-            </div>
-            <span className="m-figure__value">{cycleLengthTrend.measured}</span>
-            <span className="m-figure__note">
-              {cycleLengthTrend.measured < 2
-                ? 'Log two periods to measure a cycle'
-                : `Average ${prediction.avgCycle} days`}
-            </span>
-          </div>
-
-          <div className="m-figure">
-            <div className="m-figure__top">
-              <span className="m-figure__label">Recent orders</span>
-              <span className="m-figure__icon">
-                <IPin aria-hidden="true" />
-              </span>
-            </div>
-            <span className="m-figure__value">{orders.length}</span>
-            <span className="m-figure__note">
-              <Link className="m-linkbtn" to="/account">
-                View all orders <IChevron aria-hidden="true" />
-              </Link>
-            </span>
-          </div>
+          {SECTIONS.map(({ key, label, Icon }) => (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              id={`f9d-sec-${key}`}
+              className="f9d-seg__btn"
+              aria-selected={sec === key}
+              aria-controls={`f9d-panel-${key}`}
+              tabIndex={sec === key ? 0 : -1}
+              onClick={() => setSec(key)}
+              ref={(el) => {
+                secRefs.current[key] = el
+              }}
+            >
+              <Icon width={17} height={17} />
+              {label}
+            </button>
+          ))}
         </div>
-      </section>
 
-      {/* ── Recent orders + plan ────────────────────────────────────────── */}
-      <div className="m-grid">
-        <section className="m-card m-span-8" aria-labelledby="dash-orders-h">
-          <div className="m-card__head">
-            <div>
-              <h2 className="m-h3" id="dash-orders-h">
-                Recent orders
-              </h2>
-              <p>Your three most recent. The full history lives on your account.</p>
+        {/* ══ OVERVIEW ═════════════════════════════════════════════════ */}
+        {sec === 'overview' && (
+          <div id="f9d-panel-overview" role="tabpanel" aria-labelledby="f9d-sec-overview" tabIndex={0}>
+            <div className="f9d-metrics">
+              {/* Bloom points — the ring reads the ledger, its denominator is the
+                  cheapest reward still out of reach. */}
+              <div className="f9d-card f9d-points">
+                <div className="f9d-ring">
+                  <svg width="118" height="118" viewBox="0 0 118 118" aria-hidden="true">
+                    <circle cx="59" cy="59" r={POINTS_R} fill="none" stroke="rgba(52,32,78,.12)" strokeWidth="11" />
+                    <circle
+                      cx="59"
+                      cy="59"
+                      r={POINTS_R}
+                      fill="none"
+                      stroke="#F0C14E"
+                      strokeWidth="11"
+                      strokeLinecap="round"
+                      strokeDasharray={POINTS_C.toFixed(1)}
+                      strokeDashoffset={(POINTS_C * (1 - pointsRatio)).toFixed(1)}
+                      transform="rotate(-90 59 59)"
+                    />
+                  </svg>
+                  <span className="f9d-ring__label">
+                    <span className="f9d-disp f9d-num f9d-ring__value">{n(pointsBalance)}</span>
+                    {nextReward && <span className="f9d-ring__of">of {n(nextReward.costPoints)}</span>}
+                  </span>
+                </div>
+                <div>
+                  <span className="f9d-ey">Bloom points</span>
+                  <div className="f9d-disp f9d-points__title">
+                    {nextReward ? (
+                      <>
+                        {n(pointsToGo)} points to <em>{nextReward.title}</em>
+                      </>
+                    ) : ladder.length > 0 ? (
+                      <>
+                        Every reward is <em>within reach</em>
+                      </>
+                    ) : (
+                      <>
+                        Points on <em>every order</em>
+                      </>
+                    )}
+                  </div>
+                  <p className="f9d-points__note">Earn on every order and redeem for real discounts.</p>
+                </div>
+              </div>
+
+              <div className="f9d-card f9d-metric">
+                <div className="f9d-metric__top">
+                  <span className="f9d-ey">Orders placed</span>
+                  <span className="f9d-metric__icon" aria-hidden="true">
+                    <IBox width={18} height={18} />
+                  </span>
+                </div>
+                <span className="f9d-disp f9d-num f9d-metric__value">{n(orders.length)}</span>
+                <p className="f9d-metric__note">
+                  {orders.length > 0 ? `Most recent ${orders[0].date}` : 'Your first order is waiting'}
+                </p>
+              </div>
+
+              <div className="f9d-card f9d-metric">
+                <div className="f9d-metric__top">
+                  <span className="f9d-ey">Lifetime spend</span>
+                  <span className="f9d-metric__icon f9d-metric__icon--gold" aria-hidden="true">
+                    ₹
+                  </span>
+                </div>
+                <span className="f9d-disp f9d-num f9d-metric__value">{fmtRs(lifetimeSpend)}</span>
+                <p className="f9d-metric__note">Member since {user.since}</p>
+              </div>
+            </div>
+
+            {/* ── Records ─────────────────────────────────────────────── */}
+            <section className="f9d-card f9d-records" style={{ marginTop: 16 }} aria-label="Your records">
+              <div className="f9d-subrow" role="tablist" aria-label="Account records" onKeyDown={onRecKeyDown}>
+                {RECORDS.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    id={`f9d-rec-${key}`}
+                    className="f9d-subtab"
+                    aria-selected={rec === key}
+                    aria-controls={`f9d-recpanel-${key}`}
+                    tabIndex={rec === key ? 0 : -1}
+                    onClick={() => setRec(key)}
+                    ref={(el) => {
+                      recRefs.current[key] = el
+                    }}
+                  >
+                    {label}
+                    {recordCounts[key] !== null && (
+                      <span
+                        className={`f9d-num f9d-subtab__count${recordCounts[key] === 0 ? ' f9d-subtab__count--zero' : ''}`}
+                      >
+                        {recordCounts[key]}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                className="f9d-panel"
+                role="tabpanel"
+                id={`f9d-recpanel-${rec}`}
+                aria-labelledby={`f9d-rec-${rec}`}
+                tabIndex={0}
+              >
+                {rec === 'orders' &&
+                  (orders.length === 0 ? (
+                    <div className="f9d-empty">
+                      <span className="f9d-empty__art" aria-hidden="true">
+                        <IBox width={28} height={28} />
+                      </span>
+                      <div className="f9d-disp f9d-empty__title">No orders yet</div>
+                      <p>Every Femi9 order lands here with its items, its total and where it has reached.</p>
+                      <Link className="f9d-btn f9d-btn--ghost" to="/products">
+                        Shop the range
+                      </Link>
+                    </div>
+                  ) : (
+                    orders.map((o) => (
+                      <div className="f9d-tile f9d-order" key={o.id}>
+                        <span className="f9d-order__art" aria-hidden="true">
+                          <IBox width={24} height={24} />
+                        </span>
+                        <div className="f9d-order__body">
+                          <Link className="f9d-disp f9d-order__no" to={o.href} style={{ display: 'block' }}>
+                            {o.id}
+                          </Link>
+                          <div className="f9d-num f9d-order__meta">
+                            {o.date}
+                            {o.items.length > 0 && ` · ${o.items.map((i) => `${i.name} ×${i.qty}`).join(', ')}`}
+                          </div>
+                          {o.items.some((i) => i.variantId) && (
+                            <button
+                              type="button"
+                              className="f9d-order__again"
+                              onClick={() => void buyAgain(o)}
+                              disabled={reordering !== null}
+                            >
+                              {reordering === o.id ? 'Adding…' : 'Buy again →'}
+                            </button>
+                          )}
+                        </div>
+                        <div className="f9d-order__end">
+                          <div className="f9d-disp f9d-num f9d-order__total">{fmtRs(o.total)}</div>
+                          <span className={`f9d-pill${ORDER_PILL[o.statusKey]}`}>{o.status}</span>
+                        </div>
+                      </div>
+                    ))
+                  ))}
+
+                {rec === 'subscriptions' &&
+                  (activeSubscriptions.length === 0 ? (
+                    <div className="f9d-empty">
+                      <span className="f9d-empty__art" aria-hidden="true">
+                        <ICycle width={28} height={28} />
+                      </span>
+                      <div className="f9d-disp f9d-empty__title">No refills yet</div>
+                      <p>Set up a refill plan you can pause, skip or cancel whenever your month changes shape.</p>
+                      <Link className="f9d-btn f9d-btn--ghost" to="/products">
+                        Start a refill plan
+                      </Link>
+                    </div>
+                  ) : (
+                    activeSubscriptions.map((s) => (
+                      <div className="f9d-tile f9d-sub" key={s.id}>
+                        <span className="f9d-order__art" aria-hidden="true">
+                          <ICycle width={24} height={24} />
+                        </span>
+                        <div className="f9d-order__body">
+                          <div className="f9d-disp f9d-order__no">{s.product}</div>
+                          <div className="f9d-num f9d-order__meta">
+                            {s.frequency} · {s.qty} pack{s.qty === 1 ? '' : 's'} · next {s.nextDelivery}
+                          </div>
+                          <Link className="f9d-order__again" to="/account" style={{ display: 'inline-block' }}>
+                            Manage plan →
+                          </Link>
+                        </div>
+                        <div className="f9d-order__end">
+                          {s.saved > 0 && (
+                            <div className="f9d-disp f9d-num f9d-order__total">{fmtRs(s.saved)}</div>
+                          )}
+                          <span className={`f9d-pill${s.status === 'active' ? ' f9d-pill--active' : ''}`}>
+                            {s.status === 'paused' ? 'Paused' : 'Active'}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ))}
+
+                {rec === 'addresses' && (
+                  <div className="f9d-addrs">
+                    {addresses.map((a) => (
+                      <div className="f9d-addr" key={a.id}>
+                        <div className="f9d-addr__top">
+                          <span className="f9d-addr__tag">{a.primary ? 'Default' : a.label}</span>
+                          <Link className="f9d-addr__edit" to="/account">
+                            Edit
+                          </Link>
+                        </div>
+                        <div className="f9d-disp f9d-addr__name">{a.name}</div>
+                        <p className="f9d-num f9d-addr__lines">
+                          {a.line}
+                          <br />
+                          {a.city}
+                          {a.phone && (
+                            <>
+                              <br />
+                              {a.phone}
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    ))}
+                    {/* Address CRUD lives on /account, which owns the edit sheet
+                        and the primary-address rules. This is the comp's tile,
+                        pointed at the surface that can actually do the write. */}
+                    <Link className="f9d-tile f9d-addr-add" to="/account">
+                      <span className="f9d-addr-add__plus" aria-hidden="true">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      </span>
+                      Add a new address
+                    </Link>
+                  </div>
+                )}
+
+                {rec === 'profile' && (
+                  <div className="f9d-facts">
+                    <div className="f9d-fact">
+                      <div className="f9d-fact__label">Full name</div>
+                      <div className="f9d-disp f9d-fact__value">{user.name ?? 'Not added yet'}</div>
+                    </div>
+                    <div className="f9d-fact">
+                      <div className="f9d-fact__label">Email</div>
+                      <div className="f9d-fact__value">{user.email ?? 'Not added yet'}</div>
+                    </div>
+                    <div className="f9d-fact">
+                      <div className="f9d-fact__label">Mobile</div>
+                      <div className="f9d-num f9d-fact__value">{user.phoneDisplay ?? 'Not added yet'}</div>
+                    </div>
+                    <div className="f9d-fact">
+                      <div className="f9d-fact__label">Member tier</div>
+                      <div className="f9d-disp f9d-fact__value">{user.tier}</div>
+                    </div>
+                    <div className="f9d-facts__foot">
+                      <Link className="f9d-btn f9d-btn--ghost" to="/account">
+                        Edit profile details
+                      </Link>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* ══ CYCLE ════════════════════════════════════════════════════ */}
+        {sec === 'cycle' && (
+          <div id="f9d-panel-cycle" role="tabpanel" aria-labelledby="f9d-sec-cycle" tabIndex={0}>
+            <div className="f9d-card f9d-cycle">
+              <div className="f9d-cycle__copy">
+                <span className="f9d-ey">Your cycle</span>
+                <h2 className="f9d-disp f9d-cycle__title">
+                  Know your cycle. <em>Plan</em> ahead.
+                </h2>
+                <p className="f9d-cycle__lead">
+                  Log your last period date and we&apos;ll show your next predicted date, fertile window and a gentle
+                  refill reminder - private to you.
+                </p>
+                <div className="f9d-cycle__actions">
+                  <button type="button" className="f9d-btn f9d-btn--ghost" onClick={goTrack}>
+                    Track your cycle
+                  </button>
+                </div>
+              </div>
+              <div className="f9d-cycle__dial">
+                <svg width="190" height="190" viewBox="0 0 190 190" aria-hidden="true">
+                  <circle cx="95" cy="95" r={DIAL_R} fill="#FDFCFA" stroke="rgba(52,32,78,.1)" strokeWidth="3" />
+                  <circle
+                    cx="95"
+                    cy="95"
+                    r={DIAL_R}
+                    fill="none"
+                    stroke="#C9AEE4"
+                    strokeWidth="10"
+                    strokeLinecap="round"
+                    strokeDasharray={DIAL_C.toFixed(0)}
+                    strokeDashoffset={(DIAL_C * (1 - dialRatio)).toFixed(0)}
+                    transform="rotate(-90 95 95)"
+                  />
+                </svg>
+                <div className="f9d-cycle__dialtext">
+                  <span className="f9d-cycle__dialcap">Next period</span>
+                  <span className="f9d-disp f9d-cycle__dialmain">
+                    {gateOpen || needsData ? 'Add date' : prediction.nextStartLabel}
+                  </span>
+                  <span className="f9d-cycle__dialsub">
+                    {gateOpen || needsData
+                      ? 'to predict'
+                      : prediction.daysUntilNext === 0
+                        ? 'expected today'
+                        : `in ${prediction.daysUntilNext} day${prediction.daysUntilNext === 1 ? '' : 's'}`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* The live tracker, unchanged in behaviour and restyled by the
+                `.f9dash .m-*` block in f9dash.css. */}
+            <div className="f9d-tracker" ref={trackerRef} style={{ marginTop: 18 }}>
+              {/* A row we cannot decrypt is skipped, never fatal. Say so plainly
+                  rather than silently under-reporting a user's history. */}
+              {unreadableRows > 0 && (
+                <p className="m-note m-note--warning" role="status">
+                  <IAlert aria-hidden="true" />
+                  <span>
+                    We could not read {unreadableRows} entr{unreadableRows === 1 ? 'y' : 'ies'} from your history, so
+                    {unreadableRows === 1 ? ' it is' : ' they are'} left out of the numbers below. Everything else is
+                    intact - you can re-log {unreadableRows === 1 ? 'that day' : 'those days'} at any time.
+                  </span>
+                </p>
+              )}
+
+              {gateOpen ? (
+                <ConsentGate onGranted={() => { setConsentRefused(false); router.refresh() }} notify={notify} />
+              ) : (
+                <GuestImport clientToday={clientToday} notify={notify} onConsentRefused={onConsentRefusal} />
+              )}
+
+              {/* Prediction hero, or the first-run invitation. */}
+              {needsData || gateOpen ? (
+                <section className="m-card m-card--roomy dash-onboard" aria-labelledby="dash-onboard-h">
+                  <div className="dash-onboard__copy">
+                    <span className="eyebrow">Cycle tracking</span>
+                    <h2 className="m-h2" id="dash-onboard-h">
+                      {gateOpen ? 'Turn on tracking to see your predictions' : 'Log your first period'}
+                    </h2>
+                    <p className="m-body">
+                      {gateOpen
+                        ? 'Once tracking is on, tell us when your last period started and this page fills in with your next date, your fertile window and your PMS days.'
+                        : 'Tell us when your last period started and we will predict your next one, map your fertile and PMS windows, and keep your calendar in sync - all from your own data, never an average.'}
+                    </p>
+                    <ul className="dash-onboard__list">
+                      <li>
+                        <ICheck aria-hidden="true" /> Your next period date, refined with every cycle you log
+                      </li>
+                      <li>
+                        <ICheck aria-hidden="true" /> Fertile window, ovulation and PMS days on one calendar
+                      </li>
+                      <li>
+                        <ICheck aria-hidden="true" /> Symptoms and flow, so you can see your own patterns
+                      </li>
+                    </ul>
+                  </div>
+                </section>
+              ) : (
+                <section className="m-card m-card--roomy dash-hero" aria-labelledby="dash-hero-h">
+                  <div className="dash-hero__copy">
+                    <span className="eyebrow">Your prediction</span>
+                    <h2 className="m-h2" id="dash-hero-h">
+                      {prediction.daysUntilNext === 0
+                        ? 'Your period is expected today'
+                        : `Period in ${prediction.daysUntilNext} day${prediction.daysUntilNext === 1 ? '' : 's'}`}
+                    </h2>
+                    <p className="m-body">
+                      Expected around {prediction.nextStartLabel}. You are on day {prediction.cycleDay} of a{' '}
+                      {prediction.avgCycle}-day cycle, with {prediction.confidence}% confidence from your logged history.
+                    </p>
+                    <div className="dash-hero__chips">
+                      <span className="m-chip m-chip--gold">
+                        <ICycle aria-hidden="true" /> Next: {prediction.nextStartLabel}
+                      </span>
+                      <span className="m-chip">Ovulation {fmtDayMonth(prediction.ovulation)}</span>
+                      <span className="m-chip m-chip--quiet">
+                        Fertile {fmtDayMonth(prediction.fertileStart)} – {fmtDayMonth(prediction.fertileEnd)}
+                      </span>
+                    </div>
+                  </div>
+                  <CycleRing
+                    cycleDay={prediction.cycleDay}
+                    avgCycle={prediction.avgCycle}
+                    confidence={prediction.confidence}
+                  />
+                </section>
+              )}
+
+              {/* Calendar + upcoming. */}
+              {!gateOpen && !needsData && (
+                <div className="m-grid" id="cycle">
+                  <section className="m-card m-span-8" aria-labelledby="dash-cal-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-cal-h">
+                          Cycle calendar
+                        </h2>
+                        <p>Days you logged, and the windows we predict from them.</p>
+                      </div>
+                    </div>
+                    <PhaseCalendar
+                      today={today}
+                      prediction={prediction}
+                      periods={periods}
+                      symptoms={symptomLog}
+                      timezone={timezone}
+                    />
+                  </section>
+
+                  <section className="m-card m-span-4" aria-labelledby="dash-upcoming-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-upcoming-h">
+                          What is coming
+                        </h2>
+                        <p>Predicted, {prediction.confidence}% confidence.</p>
+                      </div>
+                    </div>
+                    <ul className="dash-upcoming">
+                      {upcomingEvents.map((e) => (
+                        <li key={e.label} className="dash-upcoming__item" data-phase={e.phase}>
+                          <span className="dash-upcoming__marker" aria-hidden="true" />
+                          <span className="dash-upcoming__body">
+                            <span className="m-row__title">{e.label}</span>
+                            <span className="m-row__meta">
+                              {e.range}
+                              {e.days > 0
+                                ? ` · in ${e.days} day${e.days === 1 ? '' : 's'}`
+                                : e.days === 0
+                                  ? ' · today'
+                                  : ''}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                </div>
+              )}
+
+              {/* Logging. */}
+              {!gateOpen && (
+                <div className="m-grid">
+                  <section className="m-card m-span-6" aria-labelledby="dash-logp-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-logp-h">
+                          {needsData ? 'Log your first period' : 'Log a period'}
+                        </h2>
+                        <p>Re-logging the same day corrects it instead of adding a duplicate.</p>
+                      </div>
+                    </div>
+                    <PeriodForm
+                      maxDate={clientToday}
+                      defaultLength={prediction.avgPeriod}
+                      clientToday={clientToday}
+                      onSaved={() => router.refresh()}
+                      onConsentRefused={onConsentRefusal}
+                      notify={notify}
+                    />
+                  </section>
+
+                  <section className="m-card m-span-6" aria-labelledby="dash-logs-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-logs-h">
+                          Log how you feel
+                        </h2>
+                        <p>Pick any day, any number of symptoms, and your flow.</p>
+                      </div>
+                    </div>
+                    <SymptomForm
+                      maxDate={clientToday}
+                      clientToday={clientToday}
+                      onSaved={() => router.refresh()}
+                      onConsentRefused={onConsentRefusal}
+                      notify={notify}
+                    />
+                  </section>
+                </div>
+              )}
+
+              {/* Logged history. */}
+              {!gateOpen && (
+                <div className="m-grid">
+                  <section className="m-card m-span-6" aria-labelledby="dash-hist-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-hist-h">
+                          Your logged periods
+                        </h2>
+                        <p>Newest first. One wrong date skews every prediction, so fix it here.</p>
+                      </div>
+                    </div>
+                    <PeriodHistory
+                      periods={periods}
+                      maxDate={clientToday}
+                      clientToday={clientToday}
+                      onChanged={() => router.refresh()}
+                      onConsentRefused={onConsentRefusal}
+                      notify={notify}
+                    />
+                  </section>
+
+                  <section className="m-card m-span-6" aria-labelledby="dash-symp-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-symp-h">
+                          Symptoms you logged
+                        </h2>
+                        <p>Grouped by whether they fall in the cycle you are in now.</p>
+                      </div>
+                    </div>
+                    <SymptomHistory entries={symptomLog} onChanged={() => router.refresh()} notify={notify} />
+                  </section>
+                </div>
+              )}
+
+              {/* Trend + insights. */}
+              {!gateOpen && !needsData && (
+                <div className="m-grid">
+                  <section className="m-card m-span-6" aria-labelledby="dash-trend-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-trend-h">
+                          Cycle length trend
+                        </h2>
+                        <p>
+                          {cycleLengthTrend.measured < 2
+                            ? 'Measured from the gaps between your logged periods.'
+                            : `Your last ${cycleLengthTrend.values.length} measured cycle${cycleLengthTrend.values.length === 1 ? '' : 's'}, in days.`}
+                        </p>
+                      </div>
+                    </div>
+                    {cycleLengthTrend.measured < 2 ? (
+                      <div className="m-empty">
+                        <span className="m-empty__art">
+                          <ITrend aria-hidden="true" />
+                        </span>
+                        <h3 className="m-h3">Log two periods to see your trend</h3>
+                        <p>
+                          A cycle length is the gap between two starts, so we need two before there is anything honest
+                          to chart.
+                        </p>
+                      </div>
+                    ) : (
+                      <TrendBars labels={cycleLengthTrend.labels} values={cycleLengthTrend.values} />
+                    )}
+                  </section>
+
+                  <section className="m-card m-span-6" aria-labelledby="dash-insight-h">
+                    <div className="m-card__head">
+                      <div>
+                        <h2 className="m-h3" id="dash-insight-h">
+                          This cycle
+                        </h2>
+                        <p>Read from your own logs.</p>
+                      </div>
+                    </div>
+                    <ul className="dash-insights">
+                      {insights.map((it) => {
+                        const Icon = toneIcon[it.tone]
+                        return (
+                          <li key={it.title} className="dash-insight" data-tone={it.tone}>
+                            <span className="dash-insight__icon">
+                              <Icon aria-hidden="true" />
+                            </span>
+                            <span>
+                              <b className="m-row__title">{it.title}</b>
+                              <span className="m-row__meta">{it.body}</span>
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </section>
+                </div>
+              )}
+
+              {/* Privacy. */}
+              {!gateOpen && <CyclePrivacy notify={notify} onWithdrawn={() => router.refresh()} />}
             </div>
           </div>
-          {orders.length === 0 ? (
-            <div className="m-empty">
-              <OptImg className="m-empty__photo" base="img/prod-330-double" sizes="132px" alt="" />
-              <h3 className="m-h3">No orders yet</h3>
-              <p>When you order, it will appear here so you can reorder in a tap.</p>
-              <Link className="btn btn-ghost" to="/products">
-                Browse products
-              </Link>
-            </div>
-          ) : (
-            <div className="m-list" style={{ '--m-cols': 'minmax(0,1fr) auto' } as React.CSSProperties}>
-              {orders.map((o) => (
-                <Link key={o.id} to={o.href} className="m-row">
-                  <span className="m-row__main">
-                    <span className="m-row__title">{o.id}</span>
-                    <span className="m-row__meta">
-                      {o.date} · {o.items.map((it) => `${it.name} ×${it.qty}`).join(', ')}
-                    </span>
-                  </span>
-                  <span className="m-row__end">
-                    <span className={`m-status m-status--${statusToneOf(o.statusKey)}`}>{o.status}</span>
-                    <span className="m-row__amount">₹{o.total.toLocaleString('en-IN')}</span>
-                  </span>
-                </Link>
-              ))}
-            </div>
-          )}
-        </section>
+        )}
 
-        <section className="m-card m-span-4" aria-labelledby="dash-plan-h">
-          <div className="m-card__head">
-            <div>
-              <h2 className="m-h3" id="dash-plan-h">
-                Your plan
+        {/* ══ REWARDS ══════════════════════════════════════════════════ */}
+        {sec === 'rewards' && (
+          <div id="f9d-panel-rewards" role="tabpanel" aria-labelledby="f9d-sec-rewards" tabIndex={0}>
+            <section className="f9d-card f9d-rewards" aria-labelledby="f9d-rewards-h">
+              <span className="f9d-ey">Femi9 Rewards</span>
+              <h2 className="f9d-disp f9d-rewards__title" id="f9d-rewards-h">
+                Earn Bloom points, turn them into <em>real discounts</em>.
               </h2>
-              <p>Subscriptions at a glance.</p>
+              <div className="f9d-earn-two">
+                <div className="f9d-balance">
+                  <span className="f9d-balance__cap">Your balance</span>
+                  <span className="f9d-disp f9d-num f9d-balance__value">{n(pointsBalance)}</span>
+                  <div className="f9d-balance__unit">Bloom points</div>
+                  <div className="f9d-bar">
+                    <span
+                      className="f9d-bar__fill"
+                      style={{ '--f9-pct': `${Math.round(pointsRatio * 100)}%` } as React.CSSProperties}
+                    />
+                  </div>
+                  <p className="f9d-balance__note">
+                    {nextReward ? (
+                      <>
+                        {n(pointsToGo)} points to <b>{rewardDesc(nextReward).replace(/\.$/, '')}</b>
+                      </>
+                    ) : ladder.length > 0 ? (
+                      <>Every reward below is <b>within reach</b></>
+                    ) : (
+                      <>Points land on every paid order</>
+                    )}
+                  </p>
+                </div>
+
+                <div>
+                  <span className="f9d-cap">Ways to earn</span>
+                  <div className="f9d-earn-list">
+                    <div className="f9d-earn-row">
+                      <span className="f9d-earn-row__icon" aria-hidden="true">
+                        ₹
+                      </span>
+                      <span className="f9d-earn-row__label">Every Rs.1 you spend</span>
+                      <span className="f9d-disp f9d-num f9d-earn-row__pts">+{n(earnRates.pointsPerRupee)}</span>
+                    </div>
+                    <div className="f9d-earn-row">
+                      <span className="f9d-earn-row__icon" aria-hidden="true">
+                        <IStar width={19} height={19} />
+                      </span>
+                      <span className="f9d-earn-row__label">Write a product review</span>
+                      <span className="f9d-disp f9d-num f9d-earn-row__pts">+{n(earnRates.reviewPoints)}</span>
+                    </div>
+                    <div className="f9d-earn-row">
+                      <span className="f9d-earn-row__icon" aria-hidden="true">
+                        <IBox width={19} height={19} />
+                      </span>
+                      <span className="f9d-earn-row__label">
+                        First order bonus
+                        {earnRates.firstOrderBonusEarned && ' · earned'}
+                      </span>
+                      <span className="f9d-disp f9d-num f9d-earn-row__pts">
+                        +{n(earnRates.firstOrderBonusPoints)}
+                      </span>
+                    </div>
+                  </div>
+                  {/* The comp points this at the Thara page; the referral
+                      programme that actually mints a code lives at /affiliate. */}
+                  <Link className="f9d-refer" to="/affiliate">
+                    Refer a friend
+                    <IChevron width={15} height={15} />
+                  </Link>
+                </div>
+              </div>
+            </section>
+
+            {ladder.length > 0 && (
+              <>
+                <div style={{ marginTop: 20 }}>
+                  <span className="f9d-cap">Redeem your points</span>
+                </div>
+                <div className="f9d-redeem">
+                  {ladder.map((r) => {
+                    const ratio = Math.min(1, Math.max(0, pointsBalance / r.costPoints))
+                    const affordable = pointsBalance >= r.costPoints
+                    return (
+                      <div className="f9d-tile f9d-card f9d-reward" key={r.id}>
+                        <div className="f9d-reward__top">
+                          <h3 className="f9d-disp f9d-reward__name">{r.title}</h3>
+                          <span className="f9d-num f9d-reward__cost">{n(r.costPoints)} pts</span>
+                        </div>
+                        <p className="f9d-reward__desc">{rewardDesc(r)}</p>
+                        <div className="f9d-bar f9d-bar--thin">
+                          <span
+                            className="f9d-bar__fill"
+                            style={{ '--f9-pct': `${Math.round(ratio * 100)}%` } as React.CSSProperties}
+                          />
+                        </div>
+                        {affordable ? (
+                          <button
+                            type="button"
+                            className="f9d-btn f9d-btn--gold f9d-reward__btn"
+                            onClick={() => void redeem(r)}
+                            disabled={redeeming !== null}
+                          >
+                            {redeeming === r.id ? 'Redeeming…' : 'Redeem now'}
+                          </button>
+                        ) : (
+                          <p className="f9d-num f9d-reward__togo">
+                            {n(r.costPoints - pointsBalance)} points to go
+                          </p>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            <div className="f9d-two">
+              <section className="f9d-card f9d-note" aria-labelledby="f9d-codes-h">
+                <span className="f9d-cap" id="f9d-codes-h">
+                  Your reward codes
+                </span>
+                {coupons.length === 0 ? (
+                  <p>Redeemed codes are saved here, so you never have to remember one.</p>
+                ) : (
+                  <div className="f9d-codes">
+                    {coupons.map((c) => (
+                      <div className="f9d-code" key={c.id}>
+                        <span>
+                          <span className="f9d-num f9d-code__value">{c.code}</span>
+                          <span className="f9d-code__meta" style={{ display: 'block' }}>
+                            {c.label}
+                            {c.expires && ` · expires ${c.expires}`}
+                          </span>
+                        </span>
+                        <span className={`f9d-pill${c.used ? '' : ' f9d-pill--active'}`} style={{ marginTop: 0 }}>
+                          {c.used ? 'Used' : 'Ready'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <section className="f9d-card f9d-note" aria-labelledby="f9d-activity-h">
+                <span className="f9d-cap" id="f9d-activity-h">
+                  Recent activity
+                </span>
+                {activity.length === 0 ? (
+                  <p>Points you earn and spend will be listed here.</p>
+                ) : (
+                  <div className="f9d-ledger">
+                    {activity.map((a, i) => (
+                      <div className="f9d-ledger__row" key={`${a.label}-${a.date}-${i}`}>
+                        <span>
+                          <span className="f9d-ledger__label" style={{ display: 'block' }}>
+                            {a.label}
+                          </span>
+                          <span className="f9d-num f9d-ledger__date">{a.date}</span>
+                        </span>
+                        <span
+                          className={`f9d-disp f9d-num f9d-ledger__pts${a.pts.startsWith('-') ? ' f9d-ledger__pts--out' : ''}`}
+                          style={{ marginLeft: 'auto' }}
+                        >
+                          {a.pts}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
             </div>
           </div>
-          {activeSubscriptions.length === 0 ? (
-            <div className="m-empty">
-              <span className="m-empty__art">
-                <IBox aria-hidden="true" />
-              </span>
-              <h3 className="m-h3">No subscription running</h3>
-              <p>Subscribe and your pack arrives before your period does.</p>
-              <Link className="btn btn-ghost" to="/products">
-                See the packs
+        )}
+
+        {/* ── Femi9 essentials ─────────────────────────────────────────── */}
+        <section className="f9d-essentials" aria-labelledby="f9d-ess-h">
+          <div className="f9d-essentials__copy">
+            <span className="f9d-essentials__glow" aria-hidden="true" />
+            <span className="f9d-ey f9d-ey--gold" style={{ position: 'relative' }}>
+              Femi9 essentials ✦
+            </span>
+            <h2 className="f9d-disp f9d-essentials__title" id="f9d-ess-h">
+              Stocked up for your <em>next cycle?</em>
+            </h2>
+            <p className="f9d-essentials__lead">
+              Organic cotton, a breathable top sheet, and a refill plan you can pause, skip or cancel whenever your
+              month changes shape.
+            </p>
+            <div className="f9d-essentials__actions">
+              <Link className="f9d-btn f9d-btn--gold" to="/products">
+                Shop the range
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
               </Link>
+              <button type="button" className="f9d-btn f9d-btn--light" onClick={goTrack}>
+                Track your cycle
+              </button>
             </div>
-          ) : (
-            <ul className="dash-plan">
-              {activeSubscriptions.map((s) => (
-                <li key={s.id} className="dash-plan__item">
-                  <span className="m-row__title">{s.product}</span>
-                  <span className="m-row__meta">
-                    {s.frequency} · {s.qty} pack{s.qty === 1 ? '' : 's'} · next {s.nextDelivery}
-                  </span>
-                  <span className={`m-status m-status--${s.status === 'paused' ? 'warning' : 'active'}`}>
-                    {s.status === 'paused' ? 'Paused' : 'Active'}
-                  </span>
-                </li>
-              ))}
-              {/* The only <li> in the member area without a display of its own —
-                  which, now that the UA's 40px list indent is reset, would paint
-                  a bare disc marker outside the card. */}
-              <li className="dash-plan__more">
-                <Link className="m-linkbtn" to="/account">
-                  Manage subscriptions <IChevron aria-hidden="true" />
-                </Link>
-              </li>
-            </ul>
-          )}
+          </div>
+          <div className="f9d-essentials__art" aria-hidden="true">
+            <OptImg base="figma-home/hero-lifestyle" sizes="(max-width: 900px) 100vw, 40vw" alt="" />
+          </div>
         </section>
       </div>
-
-      {/* ── Calendar + upcoming ─────────────────────────────────────────── */}
-      {!gateOpen && !needsData && (
-        <div className="m-grid" id="cycle">
-          <section className="m-card m-span-8" aria-labelledby="dash-cal-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-cal-h">
-                  Cycle calendar
-                </h2>
-                <p>Days you logged, and the windows we predict from them.</p>
-              </div>
-            </div>
-            <PhaseCalendar
-              today={today}
-              prediction={prediction}
-              periods={periods}
-              symptoms={symptomLog}
-              timezone={timezone}
-            />
-          </section>
-
-          <section className="m-card m-span-4" aria-labelledby="dash-upcoming-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-upcoming-h">
-                  What is coming
-                </h2>
-                <p>Predicted, {prediction.confidence}% confidence.</p>
-              </div>
-            </div>
-            <ul className="dash-upcoming">
-              {upcomingEvents.map((e) => (
-                <li key={e.label} className="dash-upcoming__item" data-phase={e.phase}>
-                  <span className="dash-upcoming__marker" aria-hidden="true" />
-                  <span className="dash-upcoming__body">
-                    <span className="m-row__title">{e.label}</span>
-                    <span className="m-row__meta">
-                      {e.range}
-                      {e.days > 0 ? ` · in ${e.days} day${e.days === 1 ? '' : 's'}` : e.days === 0 ? ' · today' : ''}
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-      )}
-
-      {/* ── Logging ─────────────────────────────────────────────────────── */}
-      {!gateOpen && (
-        <div className="m-grid">
-          <section className="m-card m-span-6" aria-labelledby="dash-logp-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-logp-h">
-                  {needsData ? 'Log your first period' : 'Log a period'}
-                </h2>
-                <p>Re-logging the same day corrects it instead of adding a duplicate.</p>
-              </div>
-            </div>
-            <PeriodForm
-              maxDate={clientToday}
-              defaultLength={prediction.avgPeriod}
-              clientToday={clientToday}
-              onSaved={() => router.refresh()}
-              onConsentRefused={onConsentRefusal}
-              notify={notify}
-            />
-          </section>
-
-          <section className="m-card m-span-6" aria-labelledby="dash-logs-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-logs-h">
-                  Log how you feel
-                </h2>
-                <p>Pick any day, any number of symptoms, and your flow.</p>
-              </div>
-            </div>
-            <SymptomForm
-              maxDate={clientToday}
-              clientToday={clientToday}
-              onSaved={() => router.refresh()}
-              onConsentRefused={onConsentRefusal}
-              notify={notify}
-            />
-          </section>
-        </div>
-      )}
-
-      {/* ── Logged history ──────────────────────────────────────────────── */}
-      {!gateOpen && (
-        <div className="m-grid">
-          <section className="m-card m-span-6" aria-labelledby="dash-hist-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-hist-h">
-                  Your logged periods
-                </h2>
-                <p>Newest first. One wrong date skews every prediction, so fix it here.</p>
-              </div>
-            </div>
-            <PeriodHistory
-              periods={periods}
-              maxDate={clientToday}
-              clientToday={clientToday}
-              onChanged={() => router.refresh()}
-              onConsentRefused={onConsentRefusal}
-              notify={notify}
-            />
-          </section>
-
-          <section className="m-card m-span-6" aria-labelledby="dash-symp-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-symp-h">
-                  Symptoms you logged
-                </h2>
-                <p>Grouped by whether they fall in the cycle you are in now.</p>
-              </div>
-            </div>
-            <SymptomHistory entries={symptomLog} onChanged={() => router.refresh()} notify={notify} />
-          </section>
-        </div>
-      )}
-
-      {/* ── Trend + insights ────────────────────────────────────────────── */}
-      {!gateOpen && !needsData && (
-        <div className="m-grid">
-          <section className="m-card m-span-6" aria-labelledby="dash-trend-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-trend-h">
-                  Cycle length trend
-                </h2>
-                <p>
-                  {cycleLengthTrend.measured < 2
-                    ? 'Measured from the gaps between your logged periods.'
-                    : `Your last ${cycleLengthTrend.values.length} measured cycle${cycleLengthTrend.values.length === 1 ? '' : 's'}, in days.`}
-                </p>
-              </div>
-            </div>
-            {cycleLengthTrend.measured < 2 ? (
-              <div className="m-empty">
-                <span className="m-empty__art">
-                  <ITrend aria-hidden="true" />
-                </span>
-                <h3 className="m-h3">Log two periods to see your trend</h3>
-                <p>
-                  A cycle length is the gap between two starts, so we need two before there is anything honest to
-                  chart.
-                </p>
-              </div>
-            ) : (
-              <TrendBars labels={cycleLengthTrend.labels} values={cycleLengthTrend.values} />
-            )}
-          </section>
-
-          <section className="m-card m-span-6" aria-labelledby="dash-insight-h">
-            <div className="m-card__head">
-              <div>
-                <h2 className="m-h3" id="dash-insight-h">
-                  This cycle
-                </h2>
-                <p>Read from your own logs.</p>
-              </div>
-            </div>
-            <ul className="dash-insights">
-              {insights.map((it) => {
-                const Icon = toneIcon[it.tone]
-                return (
-                  <li key={it.title} className="dash-insight" data-tone={it.tone}>
-                    <span className="dash-insight__icon">
-                      <Icon aria-hidden="true" />
-                    </span>
-                    <span>
-                      <b className="m-row__title">{it.title}</b>
-                      <span className="m-row__meta">{it.body}</span>
-                    </span>
-                  </li>
-                )
-              })}
-            </ul>
-          </section>
-        </div>
-      )}
-
-      {/* ── Reorder band, from a real purchase or a real first-purchase CTA ── */}
-      <section className="m-band">
-        <span className="eyebrow">{lastOrderedProduct ? 'Stay covered' : 'Find your fit'}</span>
-        <h2 className="m-h2">
-          {lastOrderedProduct
-            ? `Reorder your ${lastOrderedProduct.name}`
-            : 'Find the pad that fits your flow'}
-        </h2>
-        <p>
-          {lastOrderedProduct
-            ? needsData
-              ? 'Order again so a fresh pack is waiting whenever your next period arrives.'
-              : `Your next period is expected around ${prediction.nextStartLabel}. Reordering now means a fresh pack is already in the house.`
-            : 'Organic cotton, breathable, and sized for the way you actually bleed. Start with a single pack and see.'}
-        </p>
-        <div className="m-band__actions">
-          {lastOrderedProduct && lastOrderedProduct.slug ? (
-            <Link className="btn btn-primary" to={`/product/${lastOrderedProduct.slug}`}>
-              <ILeaf aria-hidden="true" /> Reorder now
-            </Link>
-          ) : (
-            <Link className="btn btn-primary" to="/products">
-              <ILeaf aria-hidden="true" /> Shop the range
-            </Link>
-          )}
-          <Link className="btn btn-on-forest" to="/account">
-            <IGift aria-hidden="true" /> Rewards &amp; orders
-          </Link>
-        </div>
-        {showBandArt && (
-          <OptImg className="m-band__art" base="figma-home/footer-imgImage9" sizes="300px" alt="" />
-        )}
-      </section>
-
-      {/* ── Privacy ─────────────────────────────────────────────────────── */}
-      {!gateOpen && <CyclePrivacy notify={notify} onWithdrawn={() => router.refresh()} />}
     </MemberLayout>
   )
-}
-
-/** Order status → the four member status tones. `pending` is the most common
- *  status of all and used to render as bare text in an invisible pill. */
-function statusToneOf(key: AccountOrder['statusKey']): 'active' | 'success' | 'warning' | 'danger' {
-  switch (key) {
-    case 'delivered':
-      return 'success'
-    case 'paid':
-    case 'shipped':
-      return 'active'
-    case 'cancelled':
-    case 'refunded':
-      return 'danger'
-    default:
-      return 'warning'
-  }
 }
 
 /* ══════════════════════════════════════════════════════════════════════════
