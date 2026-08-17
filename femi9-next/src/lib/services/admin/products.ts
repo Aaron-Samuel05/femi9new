@@ -33,6 +33,19 @@ const VariantInput = z.object({
   active: z.boolean().default(true),
 })
 
+/** A Key Benefits entry. The PDP reads the first six and mirrors them three per
+ *  side, so order is meaningful — position follows array index. */
+const FeatureInput = z.object({
+  title: z.string().trim().min(1, 'Feature title is required'),
+  body: z.string().trim().default(''),
+})
+
+/** One row of the PDP specs table. */
+const SpecInput = z.object({
+  key: z.string().trim().min(1, 'Spec name is required'),
+  value: z.string().trim().default(''),
+})
+
 export const ProductInputSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   // Blank slug => auto-derived from the name and made unique in the service.
@@ -49,6 +62,21 @@ export const ProductInputSchema = z.object({
   status: z.enum(['active', 'draft', 'archived']).default('draft'),
   images: z.array(z.string().trim().min(1)).default([]),
   variants: z.array(VariantInput).default([]),
+  /**
+   * Key Benefits and the specs table. Both were previously READ into the editor
+   * (see getAdminProduct) with no way to write them back, so the PDP's benefit
+   * panel and spec table could only ever be populated by a seed fixture — a
+   * product created through the console got neither.
+   *
+   * `.optional()` with NO default, unlike images/variants above, and the
+   * distinction carries meaning in updateProduct:
+   *   absent  → leave the existing rows alone
+   *   []      → clear them
+   * A default of [] here would make every PATCH from a client that doesn't send
+   * these fields silently wipe whatever was already published.
+   */
+  features: z.array(FeatureInput).optional(),
+  specs: z.array(SpecInput).optional(),
 })
 
 export type ProductInput = z.infer<typeof ProductInputSchema>
@@ -165,6 +193,12 @@ export async function createProduct(input: ProductInput) {
       status: input.status,
       images: { create: input.images.map((url, i) => ({ url, position: i })) },
       variants: { create: input.variants.map(cleanVariant) },
+      features: {
+        create: (input.features ?? []).map((f, i) => ({ title: f.title, body: f.body, position: i })),
+      },
+      specs: {
+        create: (input.specs ?? []).map((s, i) => ({ key: s.key, value: s.value, position: i })),
+      },
     },
     select: { id: true },
   })
@@ -212,6 +246,38 @@ export async function updateProduct(id: string, input: ProductInput) {
       await tx.productImage.createMany({
         data: input.images.map((url, i) => ({ productId: id, url, position: i })),
       })
+    }
+
+    // Features and specs: same wipe-and-rewrite as images, and for the same
+    // reason (an ordered list, no stable client-side ids). Guarded on `!== undefined`
+    // so a payload that omits them leaves published content untouched — see the
+    // note on the schema fields.
+    if (input.features !== undefined) {
+      await tx.productFeature.deleteMany({ where: { productId: id } })
+      if (input.features.length) {
+        await tx.productFeature.createMany({
+          data: input.features.map((f, i) => ({
+            productId: id,
+            title: f.title,
+            body: f.body,
+            position: i,
+          })),
+        })
+      }
+    }
+
+    if (input.specs !== undefined) {
+      await tx.productSpec.deleteMany({ where: { productId: id } })
+      if (input.specs.length) {
+        await tx.productSpec.createMany({
+          data: input.specs.map((s, i) => ({
+            productId: id,
+            key: s.key,
+            value: s.value,
+            position: i,
+          })),
+        })
+      }
     }
 
     if (toDelete.length) {
