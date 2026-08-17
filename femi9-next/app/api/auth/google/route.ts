@@ -29,7 +29,13 @@ export async function GET(req: NextRequest) {
   const hit = await rateLimit('google:start:' + clientIp(req), 20, 60_000)
   if (!hit.ok) return tooManyRequests(hit.retryAfterSec)
 
-  const origin = new URL(req.url).origin
+  // Prefer the configured site URL over the request origin: behind the ALB the
+  // standalone server binds HOSTNAME=0.0.0.0, so req.url's origin is
+  // `http://0.0.0.0:3000`. callbackUrl() already prefers the env var internally,
+  // so the OAuth redirect_uri was always correct — but the google-config error
+  // redirect below built on this raw origin and would have sent the shopper to
+  // an unroutable host instead of the login page.
+  const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || new URL(req.url).origin
   if (!googleConfigured() && !mockProvidersAllowed()) {
     return NextResponse.redirect(new URL('/login?error=google-config', origin), 307)
   }

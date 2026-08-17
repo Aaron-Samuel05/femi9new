@@ -28,7 +28,11 @@ export const dynamic = 'force-dynamic'
 const REF_COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ code: string }> }) {
-  const home = new URL('/', req.url)
+  // Same base fix as /r/[code]: req.url is `http://0.0.0.0:3000/...` behind the
+  // ALB because the standalone server binds HOSTNAME=0.0.0.0, so every creator
+  // link redirected to an unroutable address. The cookie was set correctly the
+  // whole time — the visitor just never landed on the shop to spend it.
+  const home = new URL('/', process.env.NEXT_PUBLIC_SITE_URL?.trim() || req.url)
   const { code: raw } = await ctx.params
   const code = (raw ?? '').trim().toUpperCase()
 

@@ -24,7 +24,14 @@ export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ code: string }> },
 ) {
-  const home = new URL('/', req.url)
+  // Redirect base comes from NEXT_PUBLIC_SITE_URL, not req.url. The standalone
+  // server binds HOSTNAME=0.0.0.0 (Dockerfile), so behind the ALB req.url is
+  // `http://0.0.0.0:3000/...` — every referral click 307'd the visitor to
+  // http://0.0.0.0:3000/, an address that resolves nowhere outside the
+  // container. That is the whole point of the link, so it failed silently for
+  // anyone who clicked one. Falls back to req.url for local dev, where the env
+  // var is unset and the request host is already correct.
+  const home = new URL('/', process.env.NEXT_PUBLIC_SITE_URL?.trim() || req.url)
 
   if (!isTharaEnabled()) {
     return new NextResponse('Not Found', { status: 404 })
