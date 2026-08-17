@@ -33,8 +33,9 @@ import { safeNextPath } from '@/lib/safe-next'
 type Method = 'phone' | 'email'
 type PhoneStep = 'enter' | 'code'
 
-/** Where an unqualified sign-in lands. */
-const DEFAULT_NEXT = '/account'
+/** Where an unqualified sign-in lands. /dashboard, not /account: the dashboard
+ *  is the member's front door and carries everything /account does. */
+const DEFAULT_NEXT = '/dashboard'
 /** Gate on the resend control, comfortably inside the server's 5-per-minute cap. */
 const RESEND_COOLDOWN_S = 30
 

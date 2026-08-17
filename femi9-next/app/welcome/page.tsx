@@ -37,12 +37,12 @@ export default async function WelcomePage(props: {
   const session = await getSession()
   // Middleware already bounced an anonymous visitor; this re-check runs in the
   // Node runtime and covers a cookie that expired between the two.
-  if (!session) redirect('/login?next=%2Faccount')
+  if (!session) redirect('/login?next=%2Fdashboard')
 
   const status = await getProfileStatus(session.sub)
   if (!status) redirect('/login')
   // A completed customer can never see this screen again.
-  if (status.complete) redirect(next ?? '/account')
+  if (status.complete) redirect(next ?? '/dashboard')
 
   return <WelcomeFlow initialMissing={status.missing} next={next} />
 }

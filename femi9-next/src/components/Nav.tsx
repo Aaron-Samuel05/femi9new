@@ -113,8 +113,16 @@ export function Nav() {
     }
   }
 
-  // Signed-in shoppers go to their account; everyone else to sign-in.
-  const accountHref = user ? '/account' : '/login'
+  // Signed-in shoppers go to their DASHBOARD; everyone else to sign-in.
+  //
+  // This used to point at /account, which is now the same screen twice over:
+  // /dashboard carries the orders, subscriptions, addresses, profile and
+  // rewards that /account carries, plus the cycle tracker. Sending the profile
+  // control to /account meant the member landed on the duplicate. /account is
+  // still there and still owns the write sheets — the edit-address and
+  // edit-profile flows the dashboard links out to — it is just no longer the
+  // front door.
+  const accountHref = user ? '/dashboard' : '/login'
 
   // /thara is a full working dashboard that NOTHING in the product linked to —
   // a customer could only reach it by typing the URL. Shown only when the
@@ -164,7 +172,7 @@ export function Nav() {
           ))}
         </nav>
         <div className="nav-right">
-          <Link to={accountHref} className="cart-btn" aria-label={user ? 'My account' : 'Sign in'}>
+          <Link to={accountHref} className="cart-btn" aria-label={user ? 'My dashboard' : 'Sign in'}>
             <IUser />
           </Link>
           <button
@@ -199,7 +207,7 @@ export function Nav() {
           </Link>
         ))}
         <Link to={accountHref} onClick={() => setMenuOpen(false)}>
-          {user ? (user.firstName ? `Hi, ${user.firstName}` : 'My account') : 'Sign in'}
+          {user ? (user.firstName ? `Hi, ${user.firstName}` : 'My dashboard') : 'Sign in'}
         </Link>
         {user && (
           <button type="button" className="nav-signout" onClick={signOut} disabled={signingOut}>

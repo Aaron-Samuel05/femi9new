@@ -74,7 +74,7 @@ function str(value: unknown): string | null {
 export interface WelcomeFlowProps {
   /** Ordered [name, email, phone] — whatever the User row is still missing. */
   initialMissing: ProfileField[]
-  /** Already validated by the server page; null means "land on /account". */
+  /** Already validated by the server page; null means "land on /dashboard". */
   next: string | null
 }
 
@@ -184,7 +184,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
   const finish = useCallback(() => {
     setLeaving(true)
     forgetPhone()
-    router.replace(next ?? '/account')
+    router.replace(next ?? '/dashboard')
     router.refresh()
   }, [forgetPhone, next, router])
 
