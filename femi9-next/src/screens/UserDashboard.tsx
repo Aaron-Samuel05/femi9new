@@ -64,6 +64,7 @@ import {
   phaseForDayKey,
   type CyclePhase,
 } from '@/lib/cycle-math'
+import { AddressSheet, ProfileSheet, readFailure } from '@/components/member/sheets'
 import type {
   AccountAddress,
   AccountCoupon,
@@ -72,6 +73,7 @@ import type {
   AccountUser,
   ActivityItem,
   EarnRates,
+  SubStatus,
 } from '@/lib/services/account'
 import type { RewardOptionView } from '@/lib/services/rewards'
 import type { CycleData, PeriodEntry, SymptomEntry } from '@/lib/services/cycle'
@@ -121,6 +123,34 @@ const ORDER_PILL: Record<AccountOrder['statusKey'], string> = {
   delivered: ' f9d-pill--success',
   cancelled: ' f9d-pill--danger',
   refunded: ' f9d-pill--danger',
+}
+
+/** The four moves the subscriptions endpoint accepts, and what each reports. */
+type SubAction = 'pause' | 'resume' | 'skip' | 'cancel'
+
+const SUB_DONE: Record<SubAction, string> = {
+  pause: 'Subscription paused',
+  resume: 'Subscription resumed',
+  skip: 'Next delivery skipped',
+  cancel: 'Subscription cancelled',
+}
+
+/** The three fields a PATCH can move, held optimistically until the refresh. */
+interface SubPatch {
+  status: SubStatus
+  nextDelivery: string
+  saved: number
+}
+
+const SUB_LABEL: Record<SubStatus, string> = {
+  active: 'Active',
+  paused: 'Paused',
+  cancelled: 'Cancelled',
+}
+const SUB_PILL: Record<SubStatus, string> = {
+  active: ' f9d-pill--active',
+  paused: '',
+  cancelled: ' f9d-pill--danger',
 }
 
 /** "Rs.100 off your next order." — the sentence under a redeem card. */
@@ -401,6 +431,48 @@ export function UserDashboard(props: UserDashboardProps) {
       setReordering(null)
     }
   }
+
+  /* ── The three write surfaces, on this screen rather than on /account ──── */
+
+  const [profileSheet, setProfileSheet] = useState<{ focus?: 'name' | 'email' | 'phone' } | null>(null)
+  const [addressSheet, setAddressSheet] = useState<{ address: AccountAddress | null } | null>(null)
+
+  /**
+   * Optimistic subscription state, held ONLY between a PATCH response and the
+   * server re-render it triggers. A new `subscriptions` array means the page
+   * re-rendered against fresh DB rows, so the local copy is dropped and server
+   * truth wins.
+   */
+  const [subPatches, setSubPatches] = useState<Record<string, SubPatch>>({})
+  useEffect(() => {
+    setSubPatches({})
+  }, [subscriptions])
+
+  /**
+   * One fire-and-refresh helper for the address controls. A failure becomes a
+   * toast carrying the server's own message — never an alert(), never a silent
+   * revert.
+   */
+  const mutate = useCallback(
+    async (url: string, init: RequestInit): Promise<boolean> => {
+      try {
+        const res = await fetch(url, {
+          ...init,
+          headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
+        })
+        if (!res.ok) {
+          notify((await readFailure(res)).message)
+          return false
+        }
+        router.refresh()
+        return true
+      } catch {
+        notify('We could not reach the server. Check your connection and try again.')
+        return false
+      }
+    },
+    [notify, router],
+  )
 
   const [redeeming, setRedeeming] = useState<string | null>(null)
   async function redeem(r: RewardOptionView) {
@@ -691,7 +763,7 @@ export function UserDashboard(props: UserDashboardProps) {
                   ))}
 
                 {rec === 'subscriptions' &&
-                  (activeSubscriptions.length === 0 ? (
+                  (subscriptions.length === 0 ? (
                     <div className="f9d-empty">
                       <span className="f9d-empty__art" aria-hidden="true">
                         <ICycle width={28} height={28} />
@@ -703,92 +775,101 @@ export function UserDashboard(props: UserDashboardProps) {
                       </Link>
                     </div>
                   ) : (
-                    activeSubscriptions.map((s) => (
-                      <div className="f9d-tile f9d-sub" key={s.id}>
-                        <span className="f9d-order__art" aria-hidden="true">
-                          <ICycle width={24} height={24} />
-                        </span>
-                        <div className="f9d-order__body">
-                          <div className="f9d-disp f9d-order__no">{s.product}</div>
-                          <div className="f9d-num f9d-order__meta">
-                            {s.frequency} · {s.qty} pack{s.qty === 1 ? '' : 's'} · next {s.nextDelivery}
-                          </div>
-                          <Link className="f9d-order__again" to="/account" style={{ display: 'inline-block' }}>
-                            Manage plan →
-                          </Link>
-                        </div>
-                        <div className="f9d-order__end">
-                          {s.saved > 0 && (
-                            <div className="f9d-disp f9d-num f9d-order__total">{fmtRs(s.saved)}</div>
-                          )}
-                          <span className={`f9d-pill${s.status === 'active' ? ' f9d-pill--active' : ''}`}>
-                            {s.status === 'paused' ? 'Paused' : 'Active'}
-                          </span>
-                        </div>
-                      </div>
+                    // Every plan, not only the running ones: a cancelled plan
+                    // that vanished behind the empty state would read as though
+                    // the cancellation had lost the record.
+                    subscriptions.map((s) => (
+                      <SubscriptionRow
+                        key={s.id}
+                        sub={{ ...s, ...(subPatches[s.id] ?? {}) }}
+                        notify={notify}
+                        onApplied={(patch) => {
+                          setSubPatches((prev) => ({ ...prev, [s.id]: patch }))
+                          router.refresh()
+                        }}
+                      />
                     ))
                   ))}
 
                 {rec === 'addresses' && (
                   <div className="f9d-addrs">
                     {addresses.map((a) => (
-                      <div className="f9d-addr" key={a.id}>
-                        <div className="f9d-addr__top">
-                          <span className="f9d-addr__tag">{a.primary ? 'Default' : a.label}</span>
-                          <Link className="f9d-addr__edit" to="/account">
-                            Edit
-                          </Link>
-                        </div>
-                        <div className="f9d-disp f9d-addr__name">{a.name}</div>
-                        <p className="f9d-num f9d-addr__lines">
-                          {a.line}
-                          <br />
-                          {a.city}
-                          {a.phone && (
-                            <>
-                              <br />
-                              {a.phone}
-                            </>
-                          )}
-                        </p>
-                      </div>
+                      <AddressCard
+                        key={a.id}
+                        address={a}
+                        mutate={mutate}
+                        onEdit={() => setAddressSheet({ address: a })}
+                      />
                     ))}
-                    {/* Address CRUD lives on /account, which owns the edit sheet
-                        and the primary-address rules. This is the comp's tile,
-                        pointed at the surface that can actually do the write. */}
-                    <Link className="f9d-tile f9d-addr-add" to="/account">
+                    <button
+                      type="button"
+                      className="f9d-tile f9d-addr-add"
+                      onClick={() => setAddressSheet({ address: null })}
+                    >
                       <span className="f9d-addr-add__plus" aria-hidden="true">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
                           <path d="M12 5v14M5 12h14" />
                         </svg>
                       </span>
                       Add a new address
-                    </Link>
+                    </button>
                   </div>
                 )}
 
                 {rec === 'profile' && (
                   <div className="f9d-facts">
+                    {/* Each field opens the sheet focused on itself, so "my
+                        email is wrong" is one tap rather than a hunt. */}
+                    <button
+                      type="button"
+                      className="f9d-fact f9d-fact--edit"
+                      onClick={() => setProfileSheet({ focus: 'name' })}
+                    >
+                      <span className="f9d-fact__label">Full name</span>
+                      <span className="f9d-disp f9d-fact__value">{user.name ?? 'Add your name'}</span>
+                      <span className="f9d-fact__pencil" aria-hidden="true">
+                        <IPencil width={15} height={15} />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="f9d-fact f9d-fact--edit"
+                      onClick={() => setProfileSheet({ focus: 'email' })}
+                    >
+                      <span className="f9d-fact__label">Email</span>
+                      <span className="f9d-fact__value">{user.email ?? 'Add your email'}</span>
+                      {user.email && !user.emailVerified && (
+                        <span className="f9d-fact__flag">Unverified</span>
+                      )}
+                      <span className="f9d-fact__pencil" aria-hidden="true">
+                        <IPencil width={15} height={15} />
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="f9d-fact f9d-fact--edit"
+                      onClick={() => setProfileSheet({ focus: 'phone' })}
+                    >
+                      <span className="f9d-fact__label">Mobile</span>
+                      <span className="f9d-num f9d-fact__value">
+                        {user.phoneDisplay ?? 'Add your mobile'}
+                      </span>
+                      <span className="f9d-fact__pencil" aria-hidden="true">
+                        <IPencil width={15} height={15} />
+                      </span>
+                    </button>
                     <div className="f9d-fact">
-                      <div className="f9d-fact__label">Full name</div>
-                      <div className="f9d-disp f9d-fact__value">{user.name ?? 'Not added yet'}</div>
-                    </div>
-                    <div className="f9d-fact">
-                      <div className="f9d-fact__label">Email</div>
-                      <div className="f9d-fact__value">{user.email ?? 'Not added yet'}</div>
-                    </div>
-                    <div className="f9d-fact">
-                      <div className="f9d-fact__label">Mobile</div>
-                      <div className="f9d-num f9d-fact__value">{user.phoneDisplay ?? 'Not added yet'}</div>
-                    </div>
-                    <div className="f9d-fact">
-                      <div className="f9d-fact__label">Member tier</div>
-                      <div className="f9d-disp f9d-fact__value">{user.tier}</div>
+                      <span className="f9d-fact__label">Member tier</span>
+                      <span className="f9d-disp f9d-fact__value">{user.tier}</span>
                     </div>
                     <div className="f9d-facts__foot">
-                      <Link className="f9d-btn f9d-btn--ghost" to="/account">
+                      <button
+                        type="button"
+                        className="f9d-btn f9d-btn--ghost"
+                        onClick={() => setProfileSheet({})}
+                      >
                         Edit profile details
-                      </Link>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -865,7 +946,14 @@ export function UserDashboard(props: UserDashboardProps) {
               )}
 
               {gateOpen ? (
-                <ConsentGate onGranted={() => { setConsentRefused(false); router.refresh() }} notify={notify} />
+                <ConsentGate
+                  onGranted={() => {
+                    setConsentRefused(false)
+                    router.refresh()
+                  }}
+                  onDecline={() => setSec('overview')}
+                  notify={notify}
+                />
               ) : (
                 <GuestImport clientToday={clientToday} notify={notify} onConsentRefused={onConsentRefusal} />
               )}
@@ -1327,8 +1415,238 @@ export function UserDashboard(props: UserDashboardProps) {
             <OptImg base="figma-home/hero-lifestyle" sizes="(max-width: 900px) 100vw, 40vw" alt="" />
           </div>
         </section>
+
+        {/* The same two sheets /account renders — one implementation, imported
+            from @/components/member/sheets, so the OTP challenge on a phone
+            change and the address validation cannot drift between the screens. */}
+        {profileSheet && (
+          <ProfileSheet
+            user={user}
+            focus={profileSheet.focus}
+            notify={notify}
+            onClose={() => setProfileSheet(null)}
+          />
+        )}
+        {addressSheet && (
+          <AddressSheet
+            address={addressSheet.address}
+            defaultName={user.name ?? ''}
+            defaultPhone={user.phone ?? ''}
+            notify={notify}
+            onClose={() => setAddressSheet(null)}
+          />
+        )}
       </div>
     </MemberLayout>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ADDRESS CARD — edit, delete, promote to default, all from this screen
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function AddressCard({
+  address,
+  mutate,
+  onEdit,
+}: {
+  address: AccountAddress
+  mutate: (url: string, init: RequestInit) => Promise<boolean>
+  onEdit: () => void
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [busy, setBusy] = useState(false)
+
+  async function remove() {
+    setBusy(true)
+    // Always allowed: an address attached to an order is ARCHIVED rather than
+    // dropped, so the order's own record survives the delete.
+    await mutate(`/api/account/addresses/${address.id}`, { method: 'DELETE' })
+    setBusy(false)
+    setConfirming(false)
+  }
+
+  return (
+    <div className="f9d-addr">
+      <div className="f9d-addr__top">
+        <span className="f9d-addr__tag">{address.primary ? 'Default' : address.label}</span>
+        <span className="f9d-addr__acts">
+          <button type="button" className="f9d-addr__edit" onClick={onEdit} disabled={busy}>
+            Edit
+          </button>
+          <button
+            type="button"
+            className="f9d-addr__edit f9d-addr__edit--danger"
+            onClick={() => setConfirming(true)}
+            disabled={busy}
+            aria-label={`Delete the ${address.label} address`}
+          >
+            Delete
+          </button>
+        </span>
+      </div>
+      <div className="f9d-disp f9d-addr__name">{address.name}</div>
+      <p className="f9d-num f9d-addr__lines">
+        {address.line}
+        <br />
+        {address.city}
+        {address.phone && (
+          <>
+            <br />
+            {address.phone}
+          </>
+        )}
+      </p>
+
+      {confirming ? (
+        <div className="f9d-addr__confirm" role="group" aria-label="Confirm deletion">
+          <span>Delete this address?</span>
+          <span>
+            <button type="button" className="f9d-addr__edit f9d-addr__edit--danger" onClick={() => void remove()} disabled={busy}>
+              {busy ? 'Deleting…' : 'Yes, delete'}
+            </button>
+            <button type="button" className="f9d-addr__edit" onClick={() => setConfirming(false)} disabled={busy}>
+              Keep it
+            </button>
+          </span>
+        </div>
+      ) : (
+        // Unchecking a default would leave the book with none, so the control
+        // only exists on the addresses that are NOT the default — you promote a
+        // different one instead.
+        !address.primary && (
+          <button
+            type="button"
+            className="f9d-addr__default"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true)
+              await mutate(`/api/account/addresses/${address.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ isPrimary: true }),
+              })
+              setBusy(false)
+            }}
+          >
+            Make this my default
+          </button>
+        )
+      )}
+    </div>
+  )
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   SUBSCRIPTION ROW — pause, skip, resume and cancel, all from this screen
+   ══════════════════════════════════════════════════════════════════════════ */
+
+function SubscriptionRow({
+  sub,
+  notify,
+  onApplied,
+}: {
+  sub: AccountSubscription
+  notify: (msg: string) => void
+  onApplied: (patch: SubPatch) => void
+}) {
+  const [busy, setBusy] = useState<SubAction | null>(null)
+  const [confirming, setConfirming] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  async function run(action: SubAction) {
+    if (busy) return
+    setBusy(action)
+    setError(null)
+    try {
+      const res = await fetch(`/api/subscriptions/${sub.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (!res.ok) {
+        setError((await readFailure(res)).message)
+        return
+      }
+      const data = (await res.json().catch(() => null)) as { subscription?: SubPatch } | null
+      if (data?.subscription) onApplied(data.subscription)
+      setConfirming(false)
+      notify(SUB_DONE[action])
+    } catch {
+      setError('We could not reach the server. Check your connection and try again.')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const cancelled = sub.status === 'cancelled'
+
+  return (
+    <div className="f9d-sub">
+      <span className="f9d-order__art" aria-hidden="true">
+        <ICycle width={24} height={24} />
+      </span>
+      <div className="f9d-order__body">
+        <div className="f9d-disp f9d-order__no">{sub.product}</div>
+        <div className="f9d-num f9d-order__meta">
+          {sub.frequency} · {sub.qty} pack{sub.qty === 1 ? '' : 's'}
+          {!cancelled && ` · next ${sub.nextDelivery}`}
+        </div>
+
+        {error && (
+          <p className="f9d-sub__error" role="alert">
+            <IAlert width={15} height={15} aria-hidden="true" />
+            <span>{error}</span>
+          </p>
+        )}
+
+        {cancelled ? (
+          <Link className="f9d-order__again" to="/products" style={{ display: 'inline-block' }}>
+            Subscribe again →
+          </Link>
+        ) : confirming ? (
+          <span className="f9d-sub__acts" role="group" aria-label="Confirm cancellation">
+            <span className="f9d-sub__ask">Cancel this plan?</span>
+            <button type="button" className="f9d-order__again" onClick={() => void run('cancel')} disabled={busy !== null}>
+              {busy === 'cancel' ? 'Cancelling…' : 'Yes, cancel'}
+            </button>
+            <button type="button" className="f9d-order__again" onClick={() => setConfirming(false)} disabled={busy !== null}>
+              Keep it
+            </button>
+          </span>
+        ) : (
+          <span className="f9d-sub__acts">
+            {sub.status === 'active' ? (
+              <>
+                <button type="button" className="f9d-order__again" onClick={() => void run('pause')} disabled={busy !== null}>
+                  {busy === 'pause' ? 'Pausing…' : 'Pause'}
+                </button>
+                <button type="button" className="f9d-order__again" onClick={() => void run('skip')} disabled={busy !== null}>
+                  {busy === 'skip' ? 'Skipping…' : 'Skip next'}
+                </button>
+              </>
+            ) : (
+              <button type="button" className="f9d-order__again" onClick={() => void run('resume')} disabled={busy !== null}>
+                {busy === 'resume' ? 'Resuming…' : 'Resume'}
+              </button>
+            )}
+            <button
+              type="button"
+              className="f9d-order__again f9d-order__again--danger"
+              onClick={() => setConfirming(true)}
+              disabled={busy !== null}
+            >
+              Cancel plan
+            </button>
+          </span>
+        )}
+      </div>
+      <div className="f9d-order__end">
+        {sub.saved > 0 && !cancelled && (
+          <div className="f9d-disp f9d-num f9d-order__total">{fmtRs(sub.saved)}</div>
+        )}
+        <span className={`f9d-pill${SUB_PILL[sub.status]}`}>{SUB_LABEL[sub.status]}</span>
+      </div>
+    </div>
   )
 }
 
@@ -1336,7 +1654,16 @@ export function UserDashboard(props: UserDashboardProps) {
    CONSENT — asked for, not assumed
    ══════════════════════════════════════════════════════════════════════════ */
 
-function ConsentGate({ onGranted, notify }: { onGranted: () => void; notify: (m: string) => void }) {
+function ConsentGate({
+  onGranted,
+  onDecline,
+  notify,
+}: {
+  onGranted: () => void
+  /** Leave the Cycle tab. Nothing is written and nothing is navigated. */
+  onDecline: () => void
+  notify: (m: string) => void
+}) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -1398,9 +1725,12 @@ function ConsentGate({ onGranted, notify }: { onGranted: () => void; notify: (m:
         <button type="button" className="btn btn-dark" onClick={grant} disabled={busy}>
           {busy ? 'Turning on…' : 'Turn on cycle tracking'}
         </button>
-        <Link className="btn btn-ghost" to="/account">
+        {/* "Not now" leaves the Cycle tab rather than the page. It used to link
+            to /account, which was a whole navigation away from the screen she
+            is already on. */}
+        <button type="button" className="btn btn-ghost" onClick={onDecline}>
           Not now
-        </Link>
+        </button>
       </div>
     </section>
   )

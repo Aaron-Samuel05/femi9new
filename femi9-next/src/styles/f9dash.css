@@ -492,7 +492,8 @@
 }
 .f9d-empty .f9d-btn { margin-top: 18px; padding: 12px 24px; font-size: 14px; }
 
-/* Subscription rows reuse the order shell but carry their own meta line. */
+/* Subscription rows reuse the order shell but carry their own meta line and
+   their own controls — pause / skip / resume / cancel act from here. */
 .f9d-sub {
   display: flex;
   align-items: center;
@@ -504,6 +505,25 @@
   padding: 18px 20px;
 }
 .f9d-sub + .f9d-sub { margin-top: 12px; }
+.f9d-sub__acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  margin-top: 8px;
+}
+.f9d-sub__ask { font-size: 13.5px; color: var(--f9-ink); }
+.f9d-sub__error {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #8a2f2f;
+}
+.f9d-sub__error svg { flex: none; margin-top: 1px; }
+.f9d-order__again--danger { color: #8a2f2f; }
+.f9d-order__again:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }
 
 /* Addresses. */
 .f9d-addrs { display: flex; flex-wrap: wrap; gap: 16px; }
@@ -531,8 +551,49 @@
   padding: 4px 10px;
   border-radius: 999px;
 }
-.f9d-addr__edit { font-size: 13px; font-weight: 700; color: var(--f9-purple); text-decoration: none; }
+.f9d-addr__acts { display: inline-flex; gap: 12px; align-items: center; }
+.f9d-addr__edit {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--f9-purple);
+  text-decoration: none;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
 .f9d-addr__edit:hover { text-decoration: underline; }
+.f9d-addr__edit:disabled { opacity: .5; cursor: not-allowed; text-decoration: none; }
+.f9d-addr__edit--danger { color: #8a2f2f; }
+
+.f9d-addr__default {
+  margin-top: 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--f9-purple);
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.f9d-addr__default:hover { text-decoration: underline; }
+.f9d-addr__default:disabled { opacity: .5; cursor: not-allowed; }
+
+.f9d-addr__confirm {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--f9-line);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13.5px;
+  color: var(--f9-ink);
+}
+.f9d-addr__confirm > span:last-child { display: inline-flex; gap: 14px; }
 .f9d-addr__name { font-size: 18px; color: var(--f9-deep); margin-top: 14px; }
 .f9d-addr__lines {
   font-size: 14px;
@@ -569,23 +630,60 @@
   justify-content: center;
 }
 
-/* Profile facts. */
+/* Profile facts. Three of the four are BUTTONS that open the edit sheet
+   focused on that field, so correcting an email is one tap. */
 .f9d-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .f9d-fact {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
   background: var(--f9-cream);
   border: 1px solid var(--f9-line);
   border-radius: 16px;
   padding: 18px 20px;
+  font-family: inherit;
 }
+.f9d-fact--edit {
+  cursor: pointer;
+  padding-right: 46px; /* clear of the pencil */
+  transition: border-color .2s, background .2s;
+}
+.f9d-fact--edit:hover {
+  border-color: rgba(86, 49, 132, .38);
+  background: #fff;
+}
+.f9d-fact__pencil {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--f9-purple);
+  opacity: .55;
+  display: flex;
+}
+.f9d-fact--edit:hover .f9d-fact__pencil { opacity: 1; }
 .f9d-fact__label {
+  display: block;
   font-size: 11px;
   font-weight: 800;
   letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--f9-muted);
 }
-.f9d-fact__value { font-size: 16px; color: var(--f9-deep); margin-top: 8px; }
+.f9d-fact__value { display: block; font-size: 16px; color: var(--f9-deep); margin-top: 8px; }
 .f9d-fact__value.f9d-disp { font-size: 18px; margin-top: 6px; }
+/* An unverified email is a fact about the account, so it is stated rather than
+   left for the customer to discover at the next order mail. */
+.f9d-fact__flag {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--f9-gold-ink);
+  background: var(--f9-gold-soft);
+  padding: 3px 9px;
+  border-radius: 999px;
+}
 .f9d-facts__foot { grid-column: 1 / -1; }
 .f9d-facts__foot .f9d-btn { padding: 12px 24px; font-size: 14px; }
 
