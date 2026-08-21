@@ -352,7 +352,7 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
           </div>
           {/* Was `to="/#products"` while sitting INSIDE #products — a visible
               no-op that also implied a catalog route which did not exist. */}
-          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/products">View All <span>→</span></Link>
+          <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/shop">View All <span>→</span></Link>
         </div>
         <div className="grid-products" style={{ marginTop: 44 }}>
           {cards.map((product) => (

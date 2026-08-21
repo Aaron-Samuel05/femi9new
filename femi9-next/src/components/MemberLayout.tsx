@@ -200,7 +200,7 @@ export function MemberLayout({
                 <span className="m-identity__tier">{identity.tier}</span>
               </span>
               <span className="m-identity__actions">
-                <Link to="/products" className="m-linkbtn">
+                <Link to="/shop" className="m-linkbtn">
                   Shop
                   <IChevron aria-hidden="true" />
                 </Link>

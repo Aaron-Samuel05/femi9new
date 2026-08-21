@@ -327,7 +327,7 @@ export function Account({
             <span className="m-empty__art" aria-hidden="true"><ITrend /></span>
             <h3 className="m-h3">Nothing to chart yet</h3>
             <p>Your spending will chart here after your first order.</p>
-            <Link className="btn btn-ghost" to="/products">Browse products</Link>
+            <Link className="btn btn-ghost" to="/shop">Browse the shop</Link>
           </div>
         )}
       </section>
@@ -352,7 +352,7 @@ export function Account({
           whenever your month changes shape.
         </p>
         <div className="m-band__actions">
-          <Link className="btn btn-primary" to="/products">Shop the range</Link>
+          <Link className="btn btn-primary" to="/shop">Shop the range</Link>
           <Link className="btn btn-on-forest" to="/dashboard">Track your cycle</Link>
         </div>
         {/* Gated, not CSS-hidden: the source is 1.7 MB at 1346px for a ~300px
@@ -410,7 +410,7 @@ function OrdersPanel({ orders }: { orders: AccountOrder[] }) {
         <OptImg className="m-empty__photo" base="img/prod-330-double" sizes="132px" alt="" />
         <h3 className="m-h3">No orders yet</h3>
         <p>Every Femi9 order lands here with its items, its total and where it has reached.</p>
-        <Link className="btn btn-ghost" to="/products">Shop the range</Link>
+        <Link className="btn btn-ghost" to="/shop">Shop the range</Link>
       </div>
     )
   }
@@ -494,7 +494,7 @@ function SubscriptionsPanel({
         <span className="m-empty__art" aria-hidden="true"><IGift /></span>
         <h3 className="m-h3">No refill plan yet</h3>
         <p>Subscribe from any product page to have your pads arrive before you need them, and save on every repeat delivery.</p>
-        <Link className="btn btn-ghost" to="/products">Browse products</Link>
+        <Link className="btn btn-ghost" to="/shop">Browse the shop</Link>
       </div>
     )
   }
@@ -599,7 +599,7 @@ function SubscriptionCard({
       {cancelled ? (
         <div className="m-card__foot">
           <p className="m-cap">This plan is cancelled. You can start a new one from any product page.</p>
-          <Link className="m-linkbtn" to="/products">
+          <Link className="m-linkbtn" to="/shop">
             <span>Subscribe again</span>
             <IChevron aria-hidden="true" />
           </Link>

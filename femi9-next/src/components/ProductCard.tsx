@@ -2,7 +2,7 @@
 
 // Explicitly a client component: it calls useCart() for the one-tap add. It used
 // to inherit the boundary from Home.tsx, its only importer, which meant the
-// first server component to render a product grid (/products) would have tried
+// first server component to render a product grid (/shop) would have tried
 // to run a hook on the server.
 
 import { memo, useEffect, useState } from 'react'

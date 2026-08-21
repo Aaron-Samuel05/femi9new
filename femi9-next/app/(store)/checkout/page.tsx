@@ -89,7 +89,7 @@ export default async function CheckoutPage() {
         <p style={{ color: 'var(--muted)', marginBottom: '1.6rem' }}>
           Add something you love, then come back to check out.
         </p>
-        <Link href="/products" className="btn btn-primary">
+        <Link href="/shop" className="btn btn-primary">
           Shop pads
         </Link>
       </main>

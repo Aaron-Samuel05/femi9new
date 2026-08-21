@@ -83,7 +83,7 @@ function report(route: string, phone: string, offenders: Offender[]): string {
 const PUBLIC_ROUTES = [
   '/',
   '/about',
-  '/products',
+  '/shop',
   '/blog',
   '/affiliate',
   '/partner',

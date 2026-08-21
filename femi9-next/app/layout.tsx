@@ -46,6 +46,9 @@ import '@/styles/craft-type.css'
 import '@/styles/craft-home-type.css'
 import '@/styles/craft-buttons.css'
 import '@/styles/craft-cart.css'
+// /shop's filter + sort rail. After the craft layer: its `.shop-layout
+// .grid-products` override has to outrank the column counts in Products.css.
+import '@/components/ShopCatalog.css'
 // /dashboard's own comp sheet. Last of all: it repaints `.m-card` and the
 // heading roles INSIDE `.f9dash`, and those rules must outrank both member.css
 // and the craft layer above at equal specificity.

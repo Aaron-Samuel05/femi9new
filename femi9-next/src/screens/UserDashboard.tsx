@@ -725,7 +725,7 @@ export function UserDashboard(props: UserDashboardProps) {
                       </span>
                       <div className="f9d-disp f9d-empty__title">No orders yet</div>
                       <p>Every Femi9 order lands here with its items, its total and where it has reached.</p>
-                      <Link className="f9d-btn f9d-btn--ghost" to="/products">
+                      <Link className="f9d-btn f9d-btn--ghost" to="/shop">
                         Shop the range
                       </Link>
                     </div>
@@ -770,7 +770,7 @@ export function UserDashboard(props: UserDashboardProps) {
                       </span>
                       <div className="f9d-disp f9d-empty__title">No refills yet</div>
                       <p>Set up a refill plan you can pause, skip or cancel whenever your month changes shape.</p>
-                      <Link className="f9d-btn f9d-btn--ghost" to="/products">
+                      <Link className="f9d-btn f9d-btn--ghost" to="/shop">
                         Start a refill plan
                       </Link>
                     </div>
@@ -1400,7 +1400,7 @@ export function UserDashboard(props: UserDashboardProps) {
               month changes shape.
             </p>
             <div className="f9d-essentials__actions">
-              <Link className="f9d-btn f9d-btn--gold" to="/products">
+              <Link className="f9d-btn f9d-btn--gold" to="/shop">
                 Shop the range
                 <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M5 12h14M13 6l6 6-6 6" />
@@ -1616,7 +1616,7 @@ function SubscriptionRow({
         )}
 
         {cancelled ? (
-          <Link className="f9d-order__again" to="/products" style={{ display: 'inline-block' }}>
+          <Link className="f9d-order__again" to="/shop" style={{ display: 'inline-block' }}>
             Subscribe again →
           </Link>
         ) : confirming ? (

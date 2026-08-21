@@ -92,7 +92,7 @@
 .card-quick-add.is-added::after{border-color:var(--navy)}
 
 /* ── Which add control a card shows ─────────────────────────────────────────
-   Only cards marked `--quick` (the /products grid) trade their foot button for
+   Only cards marked `--quick` (the /shop grid) trade their foot button for
    the hover overlay. The home page passes no flag, so it keeps the permanent
    Buy Now it has always had and never renders an overlay at all.
 

@@ -128,7 +128,7 @@ function report(kind: string, route: string, offenders: Offender[]): string {
 const ROUTES = [
   '/',
   '/about',
-  '/products',
+  '/shop',
   '/blog',
   '/affiliate',
   '/partner',

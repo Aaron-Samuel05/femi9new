@@ -9,7 +9,7 @@ import { IUser } from './AppIcons'
 import { OptImg } from './OptImg'
 
 const LINKS = [
-  { to: '/products', label: 'Products' },
+  { to: '/shop', label: 'Shop' },
   { to: '/#why', label: 'Why Femi9' },
   { to: '/about', label: 'About Us' },
   { to: '/blog', label: 'Journal' },

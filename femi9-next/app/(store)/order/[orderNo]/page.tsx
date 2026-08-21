@@ -203,7 +203,7 @@ export default async function OrderConfirmationPage(
       </div>
 
       <div style={{ textAlign: 'center', marginTop: '1.6rem' }}>
-        <Link href="/products" className="btn btn-ghost">
+        <Link href="/shop" className="btn btn-ghost">
           Continue shopping
         </Link>
       </div>

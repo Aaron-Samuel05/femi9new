@@ -46,7 +46,7 @@
 }
 
 /* (3) Product cards — the elevation signature, and the one place a hover
-   translate lives. Scoped to .fl-products so the shared .card on the /products
+   translate lives. Scoped to .fl-products so the shared .card on the /shop
    page (another area) is untouched. Card radius unified to var(--cr-r-md), the
    media top corners follow, one layered navy-tinted shadow at rest, a single
    calm lift on hover. The base .card already carries a -6px/flat-shadow hover;
@@ -159,7 +159,7 @@
    every store route) painted TWO radial glows over a cream base — a lavender one
    top-right and, more visibly, a GOLD one bottom-left (rgba(240,193,78,.20)).
    That gold glow was the yellow "tail" the user saw creeping into /blog,
-   /products and /partner. Repaint the whole field a clean white so every page
+   /shop and /partner. Repaint the whole field a clean white so every page
    reads uniform, clear and classy. Loaded after immersive.css → wins on equal
    specificity; !important guards against the login/member fallbacks re-tinting. */
 .liquid-bg,
@@ -176,7 +176,7 @@
 }
 
 /* Decorative brand ribbon / polygon / shape SVGs bled warm gold + lavender blobs
-   into the corners of the hero, products, journal and partner bands — the other
+   into the corners of the hero, shop, journal and partner bands — the other
    half of the "tail". They are purely decorative (aria-hidden). Hide them for the
    clean uniform-white look; the layout is untouched (all absolutely positioned). */
 .fl-hero__shape,
@@ -187,7 +187,7 @@
   display: none !important;
 }
 
-/* /products page (identified by its .grid-products grid): trim the dead space
+/* /shop page (identified by its .grid-products grid): trim the dead space
    before the footer now that the ground is white. */
 body:has(.grid-products) main.wrap.section {
   padding-bottom: clamp(20px, 3vw, 44px);

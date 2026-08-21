@@ -175,7 +175,7 @@ export function Footer() {
               be hardcoded here, so archiving or renaming any of them turned a
               footer link on every page of the site into a 404 with no warning. */}
           <div className="footer-col">
-            <h4>Shop Our Products</h4>
+            <h4>Shop</h4>
             {shop.length > 0 ? (
               shop.map((p) => (
                 <Link key={p.slug} to={`/product/${p.slug}`}>
@@ -183,7 +183,7 @@ export function Footer() {
                 </Link>
               ))
             ) : (
-              <Link to="/products">Browse all products</Link>
+              <Link to="/shop">Browse the shop</Link>
             )}
           </div>
 
