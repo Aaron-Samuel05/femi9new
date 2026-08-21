@@ -176,6 +176,20 @@ export async function attributeReferralIfPresent(
 export const THARA_QUALIFYING_MIN_PAISE = 300_000 // ₹3,000
 
 /**
+ * Every status that means "this order was paid for and not reversed".
+ *
+ * Order.status is a SINGLE linear pipeline — pending → paid → processing →
+ * shipped → delivered — with no separate paid flag and no paidAt column. So
+ * fulfilling an order OVERWRITES 'paid'. Matching on 'paid' alone therefore
+ * loses every order that has since shipped, which silently broke the unlock:
+ * a member who bought ₹3,000+ and had it delivered became invisible to the
+ * backfill and to the progress meter, and could never be promoted.
+ *
+ * 'cancelled' and 'refunded' stay out — those are reversals, not fulfilment.
+ */
+export const PAID_ORDER_STATUSES = ['paid', 'processing', 'shipped', 'delivered'] as const
+
+/**
  * Called INSIDE the markOrderPaid transaction, so any failure rolls the whole
  * order-paid commit back. Two independent side-effects:
  *  1) If the buyer has a purchase_pending membership and this order is >= ₹3,000,
@@ -236,7 +250,7 @@ export async function activateFromPastOrders(
   const qualifying = await tx.order.findFirst({
     where: {
       userId,
-      status: 'paid',
+      status: { in: [...PAID_ORDER_STATUSES] },
       subtotal: { gte: THARA_QUALIFYING_MIN_PAISE },
       tharaQualifyingFor: { is: null },
     },
@@ -289,11 +303,11 @@ export interface TharaUnlockProgress {
 export async function getUnlockProgress(userId: string): Promise<TharaUnlockProgress> {
   const [best, paidOrderCount] = await Promise.all([
     prisma.order.findFirst({
-      where: { userId, status: 'paid' },
+      where: { userId, status: { in: [...PAID_ORDER_STATUSES] } },
       orderBy: { subtotal: 'desc' },
       select: { subtotal: true, orderNo: true },
     }),
-    prisma.order.count({ where: { userId, status: 'paid' } }),
+    prisma.order.count({ where: { userId, status: { in: [...PAID_ORDER_STATUSES] } } }),
   ])
   const bestOrderPaise = best?.subtotal ?? 0
   return {
