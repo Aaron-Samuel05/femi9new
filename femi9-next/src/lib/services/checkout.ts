@@ -2,6 +2,7 @@ import 'server-only'
 import { cookies } from 'next/headers'
 import { prisma } from '@/lib/db'
 import { logger } from '@/lib/logger'
+import { PAID_ORDER_STATUSES } from '@/lib/order-status'
 import { IdentityConflictError, attachIdentity } from '@/lib/services/auth'
 import { sendOrderStatusEmail } from '@/lib/services/order-mail'
 import { getSettings } from '@/lib/services/settings'
@@ -658,9 +659,17 @@ export async function markOrderPaid({
     if (order.userId) {
       const basePoints = Math.round(order.total * pointsPerRupee)
       // First paid order = the user has no OTHER paid order (this one is being
-      // flipped to paid right now, so exclude it from the count).
+      // flipped to paid right now, so exclude it from the count). The count has
+      // to span the whole paid-onward range, not just 'paid': status is a single
+      // linear pipeline, so a previous order that has since shipped no longer
+      // reads as 'paid' and used to vanish from this check — handing the
+      // one-time welcome bonus to repeat customers again on every order.
       const priorPaidCount = await tx.order.count({
-        where: { userId: order.userId, status: 'paid', id: { not: order.id } },
+        where: {
+          userId: order.userId,
+          status: { in: PAID_ORDER_STATUSES },
+          id: { not: order.id },
+        },
       })
       const isFirstPaidOrder = priorPaidCount === 0
       const pointsDelta = basePoints + (isFirstPaidOrder ? firstOrderBonusPoints : 0)
