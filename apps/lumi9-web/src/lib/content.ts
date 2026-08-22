@@ -1,0 +1,416 @@
+/**
+ * Marketing copy from the design handoff. Kept out of the page components so the
+ * layout code stays readable and copy edits are a one-file change.
+ */
+
+import type { IconName } from "@/components/ui/Icon";
+
+export const BRAND = {
+  tagline: "Happy day, every day — for every baby, in every home.",
+  email: "care@lumi9.in",
+  phone: "+91 90429 16499",
+  addressLines: ["Thindal, Erode,", "Tamil Nadu 638012"],
+  fullAddress: "222/1 Pavizham Nagar, Thindal, Erode, TN 638012",
+  whatsapp: "@lumi9official · 9am–9pm",
+  legalLine: "Chemical-free · Dermatologist tested · Made in India",
+  copyright: "© 2026 Lumi9. All rights reserved.",
+};
+
+export const HERO_STATS = [
+  { value: "5-layer", label: "protection system" },
+  { value: "12 hrs", label: "of dryness" },
+  { value: "0", label: "harsh chemicals" },
+];
+
+export const MARQUEE_ITEMS = [
+  "Chemical-free",
+  "12-hour dryness",
+  "Aloe vera top sheet",
+  "Biodegradable backsheet",
+  "Dermatologist tested",
+  "Wetness indicator",
+];
+
+export const USPS: { icon: IconName; title: string; body: string }[] = [
+  {
+    icon: "leaf",
+    title: "Chemical-free by design",
+    body: "No lotions, fragrances, or harsh irritants — just clean materials next to delicate skin.",
+  },
+  {
+    icon: "drop",
+    title: "12-hour dry nights",
+    body: "SAP absorbent core locks moisture instantly so baby sleeps through, dry and calm.",
+  },
+  {
+    icon: "wind",
+    title: "Breathable & biodegradable",
+    body: "Airflow pores prevent heat buildup; the backsheet breaks down kindly afterward.",
+  },
+  {
+    icon: "heart",
+    title: "Buttery-soft everywhere",
+    body: "Pure cotton contact layer and a stretchy waistband that never leaves red marks.",
+  },
+  {
+    icon: "shield",
+    title: "360° leak protection",
+    body: "Double side walls and flex-fit leg cuffs move with active babies, all angles covered.",
+  },
+  {
+    icon: "tag",
+    title: "Honest, everyday pricing",
+    body: "Premium protection at a price built for real Indian families. No compromise, either end.",
+  },
+];
+
+export type Layer = { title: string; desc: string; benefits: string[] };
+
+export const LAYERS: Layer[] = [
+  {
+    title: "Top Sheet",
+    desc: "An ultra-soft cotton top sheet infused with Aloe Vera that gently touches your baby's skin.",
+    benefits: ["Rash prevention", "Extremely soft texture", "Chemical-free protection"],
+  },
+  {
+    title: "ADL Layer",
+    desc: "The Acquisition Distribution Layer spreads liquid evenly throughout the diaper core.",
+    benefits: ["Prevents pooling in one area", "Reduces heaviness & bulk", "Enhances smooth comfort"],
+  },
+  {
+    title: "Absorbent Core",
+    desc: "Powered by SAP, the absorbent core instantly locks moisture away from the skin.",
+    benefits: ["Up to 12 hours dryness", "Fast moisture absorption", "Deep liquid locking"],
+  },
+  {
+    title: "Breathable Backsheet",
+    desc: "A biodegradable breathable layer with airflow pores that lets skin breathe.",
+    benefits: ["Allows air circulation", "Prevents heat buildup", "Minimizes rash formation"],
+  },
+  {
+    title: "Ultra-Soft Cotton Sheet",
+    desc: "The layer closest to baby's skin uses pure natural cotton for softness and safety.",
+    benefits: ["Gentle skin contact", "Safer than synthetics", "Buttery-soft comfort"],
+  },
+];
+
+/** Card fills for the 5-layer stack, lightest (top sheet) to deepest. */
+export const LAYER_COLORS = ["#fbf6d8", "#f0ead0", "#e4dcbf", "#d3caa4", "#c2b98d"];
+
+export const VALUES = [
+  { n: "01", title: "Comfort", body: "Every layer designed for ultra-soft baby comfort." },
+  { n: "02", title: "Protection", body: "Advanced leakage control for day and night." },
+  { n: "03", title: "Safety", body: "Free from harmful chemicals and harsh irritants." },
+  { n: "04", title: "Innovation", body: "Smart layer tech for superior absorption and airflow." },
+  { n: "05", title: "Accessibility", body: "Premium quality at a genuinely affordable cost." },
+];
+
+export const TESTIMONIALS = [
+  {
+    quote: "“Finally a diaper that survives my son’s 11-hour sleeps with zero leaks. The cotton feel is unreal.”",
+    name: "Ananya R.",
+    role: "mum of one",
+    initial: "A",
+  },
+  {
+    quote: "“Switched the whole family over. No rashes since, and my budget didn’t even flinch.”",
+    name: "Priya & Karan",
+    role: "parents of twins",
+    initial: "P",
+  },
+  {
+    quote: "“The wetness indicator alone is worth it. I stopped guessing at 3am.”",
+    name: "Meera S.",
+    role: "new mum",
+    initial: "M",
+  },
+];
+
+export const PDP_REVIEWS = [
+  {
+    quote: "“Zero leaks through my son’s 11-hour sleeps, and the cotton feel is unreal.”",
+    name: "Ananya R.",
+    role: "mum of one",
+    initial: "A",
+  },
+  {
+    quote: "“Switched the whole family over. No rashes since, and my budget didn’t flinch.”",
+    name: "Priya & Karan",
+    role: "parents of twins",
+    initial: "P",
+  },
+  {
+    quote: "“The wetness indicator alone is worth it. I stopped guessing at 3am.”",
+    name: "Meera S.",
+    role: "new mum",
+    initial: "M",
+  },
+];
+
+export const PDP_ACCORDION = [
+  {
+    q: "Description",
+    a: "Cloud Soft pants combine an aloe-infused cotton top sheet, an ADL distribution layer, and a SAP absorbent core for up to 12 hours of dryness. A breathable, biodegradable backsheet keeps air moving and heat out.",
+  },
+  {
+    q: "Materials & safety",
+    a: "Free from lotions, fragrances, chlorine bleaching and harsh irritants. Dermatologist tested and clinically proven safe for sensitive newborn skin. A wetness indicator changes colour when it is time for a change.",
+  },
+  {
+    q: "Shipping & returns",
+    a: "Free delivery on orders over ₹999, dispatched within 24 hours across India. Unopened packs can be returned within 30 days, no questions asked.",
+  },
+];
+
+export const ABOUT_STATS = [
+  { value: "40k+", label: "Families served" },
+  { value: "0", label: "Harsh chemicals" },
+  { value: "12h", label: "Dryness, tested" },
+  { value: "4.9★", label: "Average rating" },
+];
+
+export const ABOUT_VALUES = [
+  { n: "01", title: "Comfort", body: "Every layer designed for ultra-soft baby comfort." },
+  { n: "02", title: "Protection", body: "Advanced leak control for day and night." },
+  { n: "03", title: "Safety", body: "Free from harmful chemicals and harsh irritants." },
+  { n: "04", title: "Innovation", body: "Smart layer tech for absorption and airflow." },
+  { n: "05", title: "Accessibility", body: "Premium quality at a genuinely affordable cost." },
+];
+
+export const SUBSCRIPTION_STEPS = [
+  { n: "1", title: "Build your box", body: "Pick a size, pack and how often it should arrive." },
+  { n: "2", title: "We ship on repeat", body: "Your box lands on schedule with 20% off, every time." },
+  { n: "3", title: "Grows with baby", body: "Auto size-up bumps the size when your little one is ready." },
+];
+
+export const SUBSCRIPTION_BENEFITS: { icon: IconName; title: string; body: string }[] = [
+  { icon: "save", title: "Save 20%", body: "Every delivery, automatically — no code needed." },
+  { icon: "grow", title: "Auto size-up", body: "We move up a size when your baby is ready." },
+  { icon: "pause", title: "Full control", body: "Skip, pause or cancel in a tap, anytime." },
+  { icon: "truck", title: "Free delivery", body: "Always free, delivered to your door on schedule." },
+];
+
+export const SUBSCRIPTION_FREQUENCIES = ["2 weeks", "4 weeks", "6 weeks"] as const;
+
+export const FIT_TIPS = [
+  {
+    n: "01",
+    title: "Check the waistband",
+    body: "It should sit just below the belly button with two fingers of room — no red marks.",
+  },
+  {
+    n: "02",
+    title: "Watch the leg cuffs",
+    body: "Cuffs should be out, not tucked in. Gaps at the thighs are the #1 cause of leaks.",
+  },
+  {
+    n: "03",
+    title: "Size up when…",
+    body: "You see marks, frequent leaks, or the tabs reach the edge. Babies often size up around 6–8kg.",
+  },
+];
+
+export const FAQ_TOPICS = ["All", "Sizing", "Subscription", "Shipping", "Safety"] as const;
+export type FaqTopic = (typeof FAQ_TOPICS)[number];
+
+export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] = [
+  {
+    topic: "Sizing",
+    q: "How do I choose the right size?",
+    a: "Go by your baby’s weight, not age. NB fits up to 5kg, S 4–8kg, M 7–12kg, L 9–14kg and XL 12–17kg. If you see red marks the size is too small; gaps or sagging mean size up. Our size finder on the home page matches you in one tap.",
+  },
+  {
+    topic: "Sizing",
+    q: "My baby is between two sizes — what should I do?",
+    a: "Choose the larger size for daytime movement and the snugger one for overnight leak protection. Most parents keep both on hand during a transition week.",
+  },
+  {
+    topic: "Subscription",
+    q: "How does the subscription work?",
+    a: "Pick a size and pack, choose a delivery frequency, and we ship automatically while you save 20%. Auto size-up moves your baby to the next size when the time comes. Skip, pause or cancel anytime from your account.",
+  },
+  {
+    topic: "Subscription",
+    q: "Can I change my box before it ships?",
+    a: "Yes — edit size, pack or delivery date up to 48 hours before dispatch from the Subscription tab in your account.",
+  },
+  {
+    topic: "Shipping",
+    q: "How fast is delivery and what does it cost?",
+    a: "Standard delivery is free on orders over ₹999 and arrives in 3–5 business days across India. Express (1–2 days) is ₹79. Orders placed before 2pm ship the same day.",
+  },
+  {
+    topic: "Shipping",
+    q: "What is your returns policy?",
+    a: "Unopened packs can be returned within 30 days for a full refund, no questions asked. If a pack arrives damaged, message our care team and we’ll replace it right away.",
+  },
+  {
+    topic: "Safety",
+    q: "Are Lumi9 diapers really chemical-free?",
+    a: "They’re free from added lotions, fragrances, chlorine bleaching and common irritants. Every batch is dermatologist tested and clinically proven safe for sensitive newborn skin.",
+  },
+  {
+    topic: "Safety",
+    q: "Is the diaper biodegradable?",
+    a: "The breathable backsheet is biodegradable and the packaging is recyclable. We’re steadily increasing the share of plant-based materials in every layer.",
+  },
+];
+
+export const JOURNAL_CATEGORIES = ["All", "Skin care", "Sleep", "New parents", "Sustainability"] as const;
+export type JournalCategory = (typeof JOURNAL_CATEGORIES)[number];
+
+export const FEATURED_POST = {
+  kicker: "FEATURED · SKIN CARE",
+  title: "The 3am rash: what actually causes it, and how to stop it",
+  excerpt:
+    'Most diaper rash is about moisture and friction, not "bad skin." Here\'s a dermatologist-backed routine that keeps things calm overnight.',
+  meta: "8 min read · Feb 2026",
+  image: "/assets/features/soothing-comfort.png",
+  imageAlt: "Soothing comfort",
+};
+
+export const POSTS: {
+  category: Exclude<JournalCategory, "All">;
+  title: string;
+  excerpt: string;
+  meta: string;
+  image: string;
+}[] = [
+  {
+    category: "Sleep",
+    title: "Building a bedtime routine that actually sticks",
+    excerpt: "Small, repeatable cues matter more than the perfect schedule. Here is where to start.",
+    meta: "6 min read · Feb 2026",
+    image: "/assets/features/softness.png",
+  },
+  {
+    category: "Skin care",
+    title: 'Why breathable beats "extra absorbent" for newborns',
+    excerpt: "Airflow keeps skin calm. We break down what the backsheet is really doing.",
+    meta: "5 min read · Jan 2026",
+    image: "/assets/features/wetness-lock.png",
+  },
+  {
+    category: "New parents",
+    title: "The honest first-week checklist nobody hands you",
+    excerpt: "Forget the 40-item registry. These are the things that carry you through week one.",
+    meta: "7 min read · Jan 2026",
+    image: "/assets/features/happiness-wrapped.png",
+  },
+  {
+    category: "Skin care",
+    title: 'Cotton-soft, decoded: what "gentle" should mean',
+    excerpt: "Not all soft is safe. A quick guide to reading a diaper like a label.",
+    meta: "4 min read · Dec 2025",
+    image: "/assets/features/soft-as-cotton.png",
+  },
+  {
+    category: "New parents",
+    title: "Sizing up without the guesswork",
+    excerpt: "Red marks, gaps, and blowouts each tell you something. Here is the fit cheat-sheet.",
+    meta: "5 min read · Dec 2025",
+    image: "/assets/features/perfect-fit.png",
+  },
+  {
+    category: "Sustainability",
+    title: 'What "biodegradable backsheet" really means',
+    excerpt: "A plain-language look at how our materials break down, and what they don’t.",
+    meta: "6 min read · Nov 2025",
+    image: "/assets/features/gentle-steps.png",
+  },
+];
+
+export const LEGAL_SECTIONS = [
+  {
+    id: "collect",
+    title: "What we collect",
+    body: "We collect the details you provide when you create an account, place an order, or subscribe — your name, contact details, delivery address, and order history. We also collect basic device and usage data to keep the site secure and improve it.",
+  },
+  {
+    id: "use",
+    title: "How we use it",
+    body: "Your information is used to process and deliver orders, manage subscriptions, respond to support requests, and — only if you opt in — send occasional product updates. We never sell your personal data to third parties.",
+  },
+  {
+    id: "cookies",
+    title: "Cookies",
+    body: "We use essential cookies to run the cart and checkout, plus optional analytics cookies to understand what is working. You can control non-essential cookies from your browser settings at any time.",
+  },
+  {
+    id: "rights",
+    title: "Your rights",
+    body: "You can access, correct, export, or delete your personal data at any time from your account or by contacting us. We retain order records only as long as required for tax and warranty purposes.",
+  },
+  {
+    id: "terms",
+    title: "Terms of sale",
+    body: "Prices are listed in INR and include applicable taxes. Orders are subject to availability. Unopened packs may be returned within 30 days. Subscriptions can be skipped, paused, or cancelled anytime before the next dispatch.",
+  },
+];
+
+export const LEGAL_UPDATED = "Last updated 17 February 2026";
+
+export const ACCOUNT_ORDERS = [
+  {
+    size: "M",
+    title: "Cloud Soft — Medium · 54 pcs",
+    id: "#LM-20416",
+    date: "12 Feb 2026",
+    status: "Delivered",
+    total: "₹949",
+  },
+  {
+    size: "M",
+    title: "Cloud Soft — Medium · 54 pcs",
+    id: "#LM-19822",
+    date: "15 Jan 2026",
+    status: "Delivered",
+    total: "₹949",
+  },
+  {
+    size: "S",
+    title: "Cloud Soft — Small · 24 pcs",
+    id: "#LM-19003",
+    date: "18 Dec 2025",
+    status: "Delivered",
+    total: "₹399",
+  },
+  {
+    size: "NB",
+    title: "Cloud Soft — Newborn · 24 pcs",
+    id: "#LM-18110",
+    date: "20 Nov 2025",
+    status: "Delivered",
+    total: "₹349",
+  },
+];
+
+export const ACCOUNT_STATS = [
+  { value: "12", label: "Orders placed" },
+  { value: "₹2,940", label: "Saved with subscription" },
+  { value: "3", label: "Sizes grown through" },
+];
+
+export const ACCOUNT_ADDRESSES = [
+  {
+    label: "Home",
+    isDefault: true,
+    lines: "Ananya Rao · 222/1, Pavizham Nagar, Thindal, Erode, Tamil Nadu 638012 · +91 90429 16499",
+  },
+  {
+    label: "Mom’s place",
+    isDefault: false,
+    lines: "Lakshmi Rao · 14, Gandhi Street, RS Puram, Coimbatore, Tamil Nadu 641002 · +91 98765 43210",
+  },
+];
+
+export const FEATURE_IMAGES = {
+  softness: { src: "/assets/features/softness.png", alt: "Softness that runs alongside every adventure" },
+  gentleSteps: { src: "/assets/features/gentle-steps.png", alt: "Gentle steps" },
+  wetnessLock: { src: "/assets/features/wetness-lock.png", alt: "Wetness lock technology" },
+  happinessWrapped: { src: "/assets/features/happiness-wrapped.png", alt: "Happiness wrapped in every big step" },
+  softAsCotton: { src: "/assets/features/soft-as-cotton.png", alt: "Soft as cotton, gentle as love" },
+  soothingComfort: { src: "/assets/features/soothing-comfort.png", alt: "Soothing comfort" },
+  builtForBigStep: { src: "/assets/features/built-for-big-step.png", alt: "Built for the big step" },
+  perfectFit: { src: "/assets/features/perfect-fit.png", alt: "Lumi9 size chart" },
+};

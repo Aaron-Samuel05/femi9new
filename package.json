@@ -1,0 +1,30 @@
+{
+  "name": "femi9-platform",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Femi9 + Lumi9 platform. Two storefronts, one shared backend.",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:femi9": "npm run dev --workspace femi9-web",
+    "dev:lumi9": "npm run dev --workspace lumi9-web",
+    "build": "turbo run build",
+    "build:femi9": "npm run build --workspace femi9-web",
+    "build:lumi9": "npm run build --workspace lumi9-web",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "npm run db:generate --workspace femi9-web",
+    "db:migrate": "npm run db:migrate --workspace femi9-web",
+    "db:studio": "npm run db:studio --workspace femi9-web"
+  },
+  "devDependencies": {
+    "turbo": "^2"
+  }
+}

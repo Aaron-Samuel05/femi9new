@@ -2,8 +2,13 @@
 # CI — Femi9 (Next.js 15 + Prisma 6 + Postgres)
 #
 # This file MUST live at the repository root: GitHub only runs workflows from
-# `<repo>/.github/workflows`. An earlier copy sat in `femi9-next/.github/` and
-# therefore never executed once — nothing gated pushes to `master`.
+# `<repo>/.github/workflows`. An earlier copy sat in the app's own `.github/`
+# and therefore never executed once — nothing gated pushes to `master`.
+# (That inert copy still exists at apps/femi9-web/.github/workflows/deploy.yml.)
+#
+# This is a monorepo: the app lives at `apps/femi9-web` and the lockfile is the
+# single hoisted one at the repo root. The `verify` job below gates Femi9; the
+# `lumi9` job gates the other storefront.
 #
 # ALWAYS-ON gates, in order, all against a throwaway Postgres service container:
 #   1. npm ci                       reproducible install from package-lock.json
@@ -40,11 +45,19 @@ on:
   push:
     branches: [master, main]
     paths:
-      - "femi9-next/**"
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
       - ".github/workflows/ci.yml"
   pull_request:
     paths:
-      - "femi9-next/**"
+      - "apps/**"
+      - "packages/**"
+      - "package.json"
+      - "package-lock.json"
+      - "turbo.json"
       - ".github/workflows/ci.yml"
   workflow_dispatch:
     inputs:
@@ -63,11 +76,12 @@ permissions:
 defaults:
   run:
     # Every step runs inside the app, which is not the repository root.
-    working-directory: femi9-next
+    # The dependency install is the one exception — see that step.
+    working-directory: apps/femi9-web
 
 jobs:
   verify:
-    name: Typecheck · Test · Build (E2E opt-in)
+    name: Femi9 — Typecheck · Test · Build (E2E opt-in)
     runs-on: ubuntu-latest
 
     services:
@@ -133,10 +147,15 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          # The lockfile is not at the repo root, so the cache needs the path.
-          cache-dependency-path: femi9-next/package-lock.json
+          # One hoisted lockfile at the workspace root covers every app.
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
+        # npm workspaces keep the single lockfile at the repo root, so `npm ci`
+        # has to run THERE, not in the app directory every other step uses. It
+        # installs every workspace, which is what we want in CI: the lumi9 job
+        # below reuses this same cached tree.
+        working-directory: .
         run: npm ci
 
       - name: Generate Prisma Client
@@ -237,11 +256,55 @@ jobs:
           # test-results carries the screenshots and traces; playwright-report
           # is the browsable HTML around them.
           path: |
-            femi9-next/playwright-report
-            femi9-next/test-results
+            apps/femi9-web/playwright-report
+            apps/femi9-web/test-results
           retention-days: 7
           if-no-files-found: warn
 
       - name: Server log (on failure)
         if: failure() && env.RUN_E2E == 'true'
         run: cat "$RUNNER_TEMP/app.log" || true
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Lumi9 — the second storefront.
+  #
+  # Deliberately much thinner than the Femi9 job: Lumi9 has no database, no
+  # Prisma and no test suite yet (Phase 4 wires it to the shared backend), so
+  # there is nothing to gate beyond "it lints, it typechecks, it builds".
+  # `next build` runs TypeScript itself, so the build IS the typecheck.
+  #
+  # It runs as a separate job, not a step, so a Lumi9 break is legible on its
+  # own and does not mask a Femi9 failure.
+  # ───────────────────────────────────────────────────────────────────────────
+  lumi9:
+    name: Lumi9 — Lint · Build
+    runs-on: ubuntu-latest
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    defaults:
+      run:
+        working-directory: apps/lumi9-web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        # Same as the Femi9 job: one lockfile, at the workspace root.
+        working-directory: .
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (production)
+        run: npm run build

@@ -1,0 +1,149 @@
+# CLAUDE.md — Femi9 web (`apps/femi9-web`)
+
+Instructions for Claude Code working in this app. Read this before every task.
+Platform-level context lives in the repo-root `CLAUDE.md`.
+
+## 0. Scope rule (non-negotiable)
+
+**Work only inside `apps/femi9-web/`.** Two neighbours you must not wander into:
+
+- `apps/lumi9-web/` — the other brand. Touch it only when a task explicitly
+  names the two-brand integration.
+- The **repo root** holds dead prototypes — `femi9-app/`, `femi9-react/`,
+  `femi9-scrool/`, `femi9-lavender/`, and the loose `index.html` / `app.js` /
+  `styles.css`. Never read them for patterns and never edit them.
+
+The PDFs at the repo root (`Femi9-Backend-PRD.pdf`,
+`Femi9-Flows-and-Architecture.pdf`, `Femi9-Thara-Model-Explained.pdf`) are the
+only root files worth consulting, and only when a task needs product intent.
+
+## 1. What this is
+
+Femi9 — Indian D2C period-care brand (pads + period panties). Next.js App
+Router: storefront, customer account, and the ops console in one deploy, backed
+by Postgres. One of two apps in the `femi9-platform` workspace.
+
+| | |
+| --- | --- |
+| Framework | Next.js 15.5 (App Router) · React 19 · TypeScript strict |
+| Data | PostgreSQL via Prisma 6 (`prisma/schema.prisma`, ~60 models) |
+| Styling | Hand-written CSS in `src/styles/*.css` + colocated `*.css`. **No Tailwind.** |
+| Auth | Stateless HS256 JWTs in httpOnly cookies (`jose`) |
+| Payments | Razorpay (order + webhook + reconcile cron) |
+| Email / SMS | Resend · MSG91 OTP |
+| Tests | Vitest (`npm test`) · Playwright (`npm run test:ui`) |
+| Errors | Sentry (client/server/edge configs at app root) |
+
+## 2. Layout
+
+```
+app/
+  (store)/            storefront: home, shop, product/[id], checkout, blog, thara, …
+  account/ dashboard/ welcome/    signed-in customer surface
+  admin/login         env-credential sign-in
+  admin/(panel)/      ops console — 15 sections, _nav.tsx / _shell.tsx / _charts.tsx
+  api/                88 route handlers (33 under api/admin)
+  a/[code] r/[code]   affiliate + Thara referral short links
+src/
+  lib/                auth.ts · admin-auth.ts · db.ts · api.ts · rate-limit.ts ·
+                      razorpay.ts · otp.ts · cycle-crypto.ts · geo/ · thara/
+  lib/services/       ALL business logic. admin/ subfolder for ops-only logic.
+  components/ screens/ store/ styles/ charts/ immersive/ data/
+prisma/               schema.prisma · migrations/ · seed.ts · seed-zones.ts
+middleware.ts         edge guard for /admin, /api/admin, /account, /dashboard, /welcome
+docs/                 GEOIP.md · TWO-BRAND-ARCHITECTURE.md · phases/ · thara/
+```
+
+## 3. Rules that matter here
+
+**Business logic lives in `src/lib/services/*`.** Route handlers parse + authorize
++ delegate. Pages and server components import services directly — they do not
+fetch their own API. If you are writing a Prisma query inside `app/`, stop and put
+it in a service.
+
+**Two cookies, two audiences, never crossed.**
+`femi9_session` (aud `femi9-customer`, 30d) and `femi9_admin` (aud `femi9-admin`,
+7d). `middleware.ts` re-implements verification inline with Web Crypto because it
+runs on the edge; `src/lib/auth.ts` and `src/lib/admin-auth.ts` are the Node-side
+counterparts. **Change one and you must change the other** — they are the same
+check written twice on purpose.
+
+**Guard twice.** Middleware is the first gate, not the only one. Every
+`/api/admin/*` handler still calls `requireAdmin()`; every customer handler still
+calls `requireUser()`. Never rely on the matcher alone.
+
+**Validate with Zod at the boundary.** Every handler parses its body with a
+schema and returns `badRequest(msg, err.flatten())` via the helpers in
+`src/lib/api.ts` (`ok` / `badRequest` / `unauthorized` / `handle`). Use them —
+don't hand-roll `NextResponse.json`.
+
+**Rate-limit anything credential- or cost-bearing.** `rateLimit(key, n, windowMs)`
+from `src/lib/rate-limit.ts`, per-IP plus a global cap. See
+`app/api/admin/login/route.ts` for the shape.
+
+**Money is integer rupees.** No floats, no paise. Order totals snapshot
+`productName` / `variantLabel` / `unitPrice` at purchase — never re-derive a past
+order's price from the current catalog.
+
+**Prices are resolved server-side, per zone.** `PriceZone` + `ZoneProductPrice` /
+`ZoneVariantPrice` override `basePrice`; an exact zone price beats the zone's
+`discountPct`. Never price a cart on the client.
+
+**Cycle data is encrypted at rest.** `PeriodLog` / `SymptomLog` payloads go
+through `src/lib/cycle-crypto.ts` with `CYCLE_DATA_ENCRYPTION_KEY`. Never log,
+export, or return them raw, and never widen who can read them.
+
+**Thara is feature-flagged.** Every Thara route 404s unless the flag env is
+exactly `"true"`. Keep new Thara work behind it.
+
+**Soft deletes are real.** `Address.archivedAt` — every account read filters
+`archivedAt IS NULL`, because orders reference addresses forever.
+
+**CSS, not Tailwind.** Match the file you're editing. Shared tokens are in
+`src/styles/base.css` / `app.css`; the `craft-*.css` family is the current design
+system; `admin.css` and `f9dash.css` own the console.
+
+**⚠️ `npm test` truncates every table.** It is safe only against a throwaway
+database. Never run it with a `.env` that points at staging or production —
+point `TEST_DATABASE_URL` at a scratch DB first.
+
+## 4. Commands
+
+Run from the repo root (preferred) or inside this directory:
+
+```bash
+npm run dev:femi9              # from root — this app on :3000
+npm run build:femi9            # from root
+npm install                    # ALWAYS at the root; one hoisted lockfile
+
+# from inside apps/femi9-web:
+npm run build
+npm run typecheck              # tsc --noEmit
+npm test                       # vitest — SEE THE WARNING ABOVE
+npm run test:ui                # playwright
+npm run db:generate            # prisma generate
+npm run db:migrate             # prisma migrate dev
+npm run db:seed
+npm run db:studio
+```
+
+There is **no app-level `package-lock.json`** — npm workspaces keep a single
+hoisted lockfile at the repo root. `npm ci` only works there.
+
+Env lives in `.env` (gitignored); `.env.example` is the contract — **add every
+new var there** with a comment.
+
+**Docker builds from the repo root, not here:**
+```bash
+docker build -f apps/femi9-web/Dockerfile -t femi9-web .
+```
+
+## 5. Task log
+
+Append one entry per task. Newest last.
+
+| Date | Task | Touched | Notes |
+| --- | --- | --- | --- |
+| 2026-08-22 | Two-brand (Femi9 + Lumi9) platform architecture — brainstorm + plan | `CLAUDE.md` (new) · `docs/TWO-BRAND-ARCHITECTURE.md` (new) | Plan only, no code. Agreed: separate domains, **fully separate customer bases**, admin-only brand selection, two Razorpay accounts. |
+| 2026-08-22 | Architecture revision after review | `docs/TWO-BRAND-ARCHITECTURE.md` | Admin brand pick is a **segmented toggle on the login form**, not a typed `femi9/` prefix (brand is untrusted client input — `AdminBrandRole` still decides). "Same backend" settled as **shared `packages/core`, not an extracted API service**. DB settled as **one Postgres, three schemas** (`femi9` · `lumi9` · `platform`). |
+| 2026-08-23 | **Phase 0 — monorepo** | repo-wide | `femi9-next` → `apps/femi9-web`, `lumi9-web-main` → `apps/lumi9-web`. npm workspaces + Turborepo, one hoisted lockfile. Both apps build. Docker context moved to repo root; runtime layout kept flat and identical. CI/deploy paths updated, Lumi9 CI job added. Next upgrade deferred to Phase 0b. |

@@ -1,0 +1,358 @@
+@import "tailwindcss";
+
+/* Touch-vs-mouse, independent of width — a 1024px iPad still needs 44px targets
+   while a 900px desktop window keeps the design's compact chrome. */
+@custom-variant coarse (@media (pointer: coarse));
+
+/* ---------------------------------------------------------------------------
+   Lumi9 design tokens (from design_handoff_lumi9/README.md)
+   --------------------------------------------------------------------------- */
+@theme {
+  --color-moss: #8a9c52;
+  --color-moss-deep: #6e7e3e;
+  --color-moss-soft: #a7b578;
+  --color-moss-tint: #e9edd9;
+  --color-midnight: #272c05;
+  --color-gold: #d6b400;
+  --color-butter: #fff0a3;
+  --color-canvas: #ffffff;
+  --color-paper: #f7f5ea;
+  --color-muted: #5c6340;
+  /* neutral photo backdrop used behind product/pack imagery */
+  --color-shell: #f4f1e4;
+
+  --font-display: var(--font-abeezee), ui-sans-serif, sans-serif;
+  --font-ui: var(--font-hanken), ui-sans-serif, sans-serif;
+
+  /* Fluid scale — every gap/pad/radius below interpolates with the viewport so
+     the 1440px design compresses smoothly instead of snapping at breakpoints. */
+  --spacing-gutter: clamp(18px, 3.4vw, 48px); /* page horizontal padding */
+  --spacing-section: clamp(64px, 8.4vw, 120px); /* section vertical rhythm */
+  --spacing-section-lg: clamp(72px, 9vw, 130px);
+  --spacing-section-sm: clamp(48px, 6vw, 90px);
+  --spacing-block: clamp(28px, 4.4vw, 64px); /* gap between column halves */
+  --spacing-card: clamp(20px, 2.6vw, 34px); /* card inner padding */
+  --spacing-card-lg: clamp(24px, 3.4vw, 48px);
+
+  --radius-pill: 100px;
+  --radius-chip: clamp(12px, 1.4vw, 14px);
+  --radius-card: clamp(16px, 2vw, 24px);
+  --radius-panel: clamp(20px, 2.6vw, 32px);
+  --radius-media: clamp(18px, 2.4vw, 28px);
+  --radius-footer: clamp(28px, 5vw, 56px);
+
+  /* Fluid type for the recurring roles. Display headings keep their own inline
+     clamps because each section scales differently in the design. */
+  --text-eyebrow: clamp(12px, 0.9vw, 13px);
+  --text-lead: clamp(16px, 1.35vw, 19px);
+  --text-body: clamp(15px, 1.15vw, 18px);
+  --text-numeral: clamp(60px, 13vw, 88px);
+  --text-quote: clamp(17px, 1.5vw, 20px);
+
+  --shadow-soft: 0 6px 16px -12px rgb(39 44 5 / 0.35);
+  --shadow-lift: 0 30px 60px -34px rgb(39 44 5 / 0.4);
+  --shadow-card: 0 30px 60px -30px rgb(39 44 5 / 0.35);
+  --shadow-float: 0 24px 50px -22px rgb(39 44 5 / 0.4);
+  --shadow-hero: 0 40px 80px -46px rgb(39 44 5 / 0.4);
+  --shadow-deep: 0 50px 90px -50px rgb(39 44 5 / 0.5);
+  --shadow-layer: 0 22px 46px -14px rgb(39 44 5 / 0.6);
+
+  --ease-reveal: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  --animate-marquee: marquee 26s linear infinite;
+  --animate-floaty: floaty 7s ease-in-out infinite;
+  --animate-ring: ring-spin 0.8s linear infinite;
+
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes floaty {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-14px);
+    }
+  }
+  @keyframes ring-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html {
+    /* stop iOS from inflating text in landscape */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-midnight);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    /* long words (emails, order ids) wrap instead of forcing a sideways scroll */
+    overflow-wrap: break-word;
+  }
+
+  /* Media never outgrows its column, whatever the device ratio */
+  img,
+  svg,
+  video,
+  canvas,
+  table {
+    max-width: 100%;
+  }
+
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-midnight);
+  }
+
+  /* Design canvas is 1440px wide; large display headings track tighter. */
+  h1,
+  h2 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--color-muted);
+    opacity: 0.75;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-moss-deep);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+@layer components {
+  /* Eyebrow label — 13px / 700 / .18em, moss-deep (tracking eases off on phones
+     so the label still fits one line at 320px) */
+  .eyebrow {
+    font-family: var(--font-ui);
+    font-weight: 700;
+    font-size: var(--text-eyebrow);
+    letter-spacing: clamp(0.12em, 0.5vw, 0.18em);
+    text-transform: uppercase;
+    color: var(--color-moss-deep);
+    text-wrap: balance;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--radius-pill);
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: clamp(15px, 1.15vw, 16px);
+    line-height: 1.15;
+    /* 44px minimum hit area on touch, 52px at the design width */
+    min-height: clamp(44px, 3.6vw, 52px);
+    padding: clamp(12px, 1.1vw, 16px) clamp(20px, 2.2vw, 30px);
+    max-width: 100%;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease;
+    text-align: center;
+    text-wrap: balance;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-dark {
+    background: var(--color-midnight);
+    color: var(--color-butter);
+  }
+  .btn-dark:hover {
+    color: var(--color-butter);
+    background: #171a03;
+  }
+
+  .btn-cream {
+    background: var(--color-butter);
+    color: var(--color-midnight);
+    font-weight: 700;
+  }
+  .btn-cream:hover {
+    color: var(--color-midnight);
+    background: #ffe97f;
+  }
+
+  .btn-ghost {
+    background: var(--color-canvas);
+    color: var(--color-midnight);
+    border-color: var(--color-moss-tint);
+  }
+  .btn-ghost:hover {
+    color: var(--color-midnight);
+    border-color: var(--color-moss-soft);
+  }
+
+  .btn-sm {
+    min-height: clamp(40px, 3vw, 44px);
+    padding: clamp(10px, 0.9vw, 11px) clamp(16px, 1.6vw, 22px);
+    font-size: clamp(13px, 1vw, 14px);
+  }
+
+  /* Card surface */
+  .panel {
+    background: var(--color-canvas);
+    border: 1px solid var(--color-moss-tint);
+    border-radius: var(--radius-card);
+  }
+
+  /* Text input / textarea / select */
+  .field {
+    width: 100%;
+    min-width: 0;
+    padding: clamp(13px, 1.1vw, 15px) clamp(15px, 1.3vw, 18px);
+    border: 1.5px solid var(--color-moss-tint);
+    border-radius: var(--radius-chip);
+    /* never below 16px: iOS Safari zooms the page on focus otherwise */
+    font-size: max(16px, 0.95rem);
+    background: var(--color-canvas);
+    color: var(--color-midnight);
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .field:focus {
+    border-color: var(--color-moss-deep);
+    outline: none;
+  }
+
+  /* Selectable chip — size / pack / weight / topic filters */
+  .chip {
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-weight: 600;
+    font-size: clamp(13px, 1vw, 14px);
+    line-height: 1.1;
+    min-height: clamp(40px, 3vw, 44px);
+    padding: clamp(10px, 0.9vw, 12px) clamp(14px, 1.5vw, 20px);
+    border-radius: var(--radius-pill);
+    border: 1.5px solid var(--color-moss-tint);
+    background: transparent;
+    color: var(--color-midnight);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .chip:hover {
+    border-color: var(--color-moss-soft);
+  }
+  .chip[aria-pressed="true"],
+  .chip[data-active="true"] {
+    background: var(--color-midnight);
+    border-color: var(--color-midnight);
+    color: var(--color-butter);
+  }
+
+  /* Repeating moss blob pattern used on footer panels + login brand panel.
+     The tile shrinks with the viewport so a phone-width panel still shows the
+     full motif instead of two giant ellipses. */
+  .blob-pattern {
+    position: relative;
+    isolation: isolate;
+  }
+  .blob-pattern::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.5;
+    background-size: clamp(150px, 30vw, 230px) clamp(150px, 30vw, 230px);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='230' height='230'%3E%3Cg fill='%238A9C52' fill-opacity='0.55'%3E%3Cellipse cx='46' cy='58' rx='40' ry='30'/%3E%3Cellipse cx='170' cy='150' rx='48' ry='36'/%3E%3Cellipse cx='120' cy='30' rx='20' ry='15'/%3E%3Cellipse cx='30' cy='170' rx='22' ry='17'/%3E%3Cellipse cx='200' cy='40' rx='16' ry='12'/%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  /* Scroll reveal: opacity 0 / translateY(28px) -> .7s ease-reveal */
+  .reveal {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.7s var(--ease-reveal),
+      transform 0.7s var(--ease-reveal);
+  }
+  .reveal[data-shown="true"] {
+    opacity: 1;
+    transform: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Page gutter that also clears a notch/rounded corner in landscape */
+@utility px-safe {
+  padding-inline: max(var(--spacing-gutter), env(safe-area-inset-left), env(safe-area-inset-right));
+}
+
+/* Horizontally scrollable row (filter chips, tabs, thumbnails) that still lines
+   up with the page gutter and doesn't clip focus rings vertically. */
+@utility scroll-row {
+  display: flex;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  & > * {
+    flex: none;
+  }
+}

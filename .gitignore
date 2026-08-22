@@ -1,0 +1,18 @@
+# Workspace-level ignores. Each app keeps its own .gitignore for app-specific
+# artifacts; this file covers what the monorepo root and tooling produce.
+
+node_modules/
+.turbo/
+
+# Next.js build output, wherever it lands in the workspace
+.next/
+out/
+
+# Local env files never belong in git — .env.example is the contract.
+.env
+.env.local
+.env.*.local
+
+# Logs and OS cruft
+*.log
+.DS_Store

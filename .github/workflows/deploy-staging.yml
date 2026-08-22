@@ -5,7 +5,9 @@ on:
   push:
     branches: [master, staging]
     paths:
-      - "femi9-next/**"
+      - "apps/femi9-web/**"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/deploy-staging.yml"
 
 permissions:
@@ -50,7 +52,8 @@ jobs:
             --build-arg NEXT_PUBLIC_SITE_URL="$SITE_URL" \
             --build-arg NEXT_PUBLIC_RAZORPAY_KEY_ID="$RAZORPAY_KEY_ID" \
             --build-arg NEXT_PUBLIC_SENTRY_DSN="$SENTRY_DSN" \
-            -t "$IMAGE" femi9-next
+            -f apps/femi9-web/Dockerfile \
+            -t "$IMAGE" .
           docker push "$IMAGE"
           echo "uri=$IMAGE" >> "$GITHUB_OUTPUT"
 
