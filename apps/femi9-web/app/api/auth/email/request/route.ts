@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { ok, badRequest, handle, serviceUnavailable } from '@/lib/api'
-import { requestMagicLink, InvalidEmailError, normalizeEmail } from '@/lib/services/auth'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { ok, badRequest, handle, serviceUnavailable } from '@femi9/core/api'
+import { requestMagicLink, InvalidEmailError, normalizeEmail } from '@femi9/core/services/auth'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 import { safeNextPath } from '@/lib/safe-next'
 
 export const runtime = 'nodejs'

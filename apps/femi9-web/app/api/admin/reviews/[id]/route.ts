@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { deleteReview, setReviewStatus } from '@/lib/services/admin/reviews'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { deleteReview, setReviewStatus } from '@femi9/core/services/admin/reviews'
 
 /**
  * /api/admin/reviews/[id] — single-review moderation endpoint.

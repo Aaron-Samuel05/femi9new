@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getProduct, listProducts } from '@/lib/services/products'
+import { getProduct, listProducts } from '@femi9/core/services/products'
 import { ProductDetail } from '@/screens/ProductDetail'
 
 // Per-page SEO: reuse the same loader the page uses, mapping the resolved

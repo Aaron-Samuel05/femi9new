@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { badRequest, created, handle, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { createAddress } from '@/lib/services/account'
+import { badRequest, created, handle, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { createAddress } from '@femi9/core/services/account'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

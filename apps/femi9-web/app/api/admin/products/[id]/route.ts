@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   ProductInputSchema,
   archiveProduct,
   getAdminProduct,
   updateProduct,
-} from '@/lib/services/admin/products'
+} from '@femi9/core/services/admin/products'
 
 /**
  * /api/admin/products/[id] — single-product endpoint.

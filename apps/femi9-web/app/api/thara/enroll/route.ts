@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { handle, ok, unauthorized, notFound, badRequest } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { enrollUser, TharaDeactivatedError } from '@/lib/services/thara'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, ok, unauthorized, notFound, badRequest } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { enrollUser, TharaDeactivatedError } from '@femi9/core/services/thara'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 import { THARA_TERMS_VERSION } from '@/lib/thara/terms'
 
 export const runtime = 'nodejs'

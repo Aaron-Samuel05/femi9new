@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { resetDb, seedSettings, makeProduct, cartWith, prisma } from '../helpers/db'
-import * as razorpay from '@/lib/razorpay'
+import * as razorpay from '@femi9/core/razorpay'
 
 /**
  * placeOrder reads a referral cookie via next/headers `cookies()`, which throws
@@ -13,7 +13,7 @@ vi.mock('next/headers', () => ({
   cookies: () => ({ get: () => undefined }),
 }))
 
-import { placeOrder, OutOfStockError, type CheckoutCustomer } from '@/lib/services/checkout'
+import { placeOrder, OutOfStockError, type CheckoutCustomer } from '@femi9/core/services/checkout'
 
 function customer(phone: string): CheckoutCustomer {
   return {

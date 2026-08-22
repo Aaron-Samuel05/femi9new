@@ -15,7 +15,11 @@ packages/
   db/           @femi9/db — the shared Prisma schema and `dbFor(brand)`.
                 One schema, one client per brand. Seeds are NOT here: seed data
                 is brand-specific and lives with each app.
-  core/         (Phase 1b — services, auth, payments)
+  core/         @femi9/core — the shared backend. 64 modules: the whole
+                service layer, auth, Razorpay, pricing, geo, OTP, Thara.
+                Import by SUBPATH, never from a barrel:
+                  import { requireAdmin } from '@femi9/core/admin-auth'
+                  import { getOrders } from '@femi9/core/services/admin/orders'
 ```
 
 Everything else at this root is **dead**: `femi9-app/`, `femi9-react/`,

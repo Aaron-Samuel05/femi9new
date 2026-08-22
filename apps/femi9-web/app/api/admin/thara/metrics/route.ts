@@ -1,7 +1,7 @@
-import { handle, ok, forbidden, notFound } from '@/lib/api'
-import { getAdminSession } from '@/lib/admin-auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
-import { prisma } from '@/lib/db'
+import { handle, ok, forbidden, notFound } from '@femi9/core/api'
+import { getAdminSession } from '@femi9/core/admin-auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
+import { prisma } from '@femi9/core/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

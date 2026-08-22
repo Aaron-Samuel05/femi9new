@@ -2,7 +2,7 @@
 import '../styles/periods-wall.css'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from '@/lib/router-compat'
-import type { WallPostDTO } from '@/lib/services/wall'
+import type { WallPostDTO } from '@femi9/core/services/wall'
 
 /* ============================================================
    PERIODS WALL — a warm, judgment-free community wall where

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
-import { getAdminSession } from '@/lib/admin-auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { getAdminSession } from '@femi9/core/admin-auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 import '@/styles/admin.css'
 import { AdminShell } from './_shell'
 

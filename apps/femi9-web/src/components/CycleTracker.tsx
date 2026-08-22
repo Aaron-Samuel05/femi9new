@@ -16,7 +16,7 @@ import {
   phaseForDayKey,
   predictFromLastStart,
   type CyclePhase,
-} from '@/lib/cycle-math'
+} from '@femi9/core/cycle-math'
 
 /* ------------------------------------------------------------------ *
  * Femi9 · Cycle tracker (homepage section #10)

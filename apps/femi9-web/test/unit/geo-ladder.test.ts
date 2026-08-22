@@ -32,7 +32,7 @@ vi.mock('@/lib/geo/circles', () => ({
   lookupCircle: (...args: unknown[]) => lookupCircle(...args),
 }))
 
-const { detectGeoReading, detectGeoSignal } = await import('@/lib/geo/detect')
+const { detectGeoReading, detectGeoSignal } = await import('@femi9/core/geo/detect')
 
 /** A Jio-shaped viewer: mobile ASN, CGNAT'd IPv4, placed in the wrong state. */
 const JIO = { number: 55836, organization: 'Reliance Jio Infocomm Limited' }

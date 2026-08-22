@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { listPostsAdmin } from '@/lib/services/admin/blog-admin'
+import { listPostsAdmin } from '@femi9/core/services/admin/blog-admin'
 
 /**
  * Blog index — the content CMS table. Server component: reads the service

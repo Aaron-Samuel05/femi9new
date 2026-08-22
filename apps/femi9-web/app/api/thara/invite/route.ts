@@ -1,16 +1,16 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { handle, ok, unauthorized, notFound, badRequest } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, ok, unauthorized, notFound, badRequest } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 import {
   sendTharaInvite,
   TharaInviteBadEmailError,
   TharaInviteNotEligibleError,
   TharaInviteSelfError,
   TharaInviteSuppressedError,
-} from '@/lib/services/thara'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+} from '@femi9/core/services/thara'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, created, handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   CouponCodeTakenError,
   CouponInputSchema,
   createCoupon,
   listCoupons,
-} from '@/lib/services/admin/coupons'
+} from '@femi9/core/services/admin/coupons'
 
 /**
  * /api/admin/coupons — collection endpoint.

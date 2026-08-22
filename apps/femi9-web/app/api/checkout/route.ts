@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, serviceUnavailable } from '@/lib/api'
-import { getSession } from '@/lib/auth'
+import { badRequest, created, handle, serviceUnavailable } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
 import { getGuestToken } from '@/lib/session'
-import { clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit'
-import { orderToken } from '@/lib/order-token'
-import { EmptyCartError, InvalidCouponError, OutOfStockError, placeOrder } from '@/lib/services/checkout'
-import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { clientIp, rateLimit, tooManyRequests } from '@femi9/core/rate-limit'
+import { orderToken } from '@femi9/core/order-token'
+import { EmptyCartError, InvalidCouponError, OutOfStockError, placeOrder } from '@femi9/core/services/checkout'
+import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 
 /**
  * POST /api/checkout — turn the guest's cart into a pending order.

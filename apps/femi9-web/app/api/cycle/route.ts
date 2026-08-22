@@ -1,6 +1,6 @@
-import { badRequest, handle, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { getCycleData, setCycleConsent } from '@/lib/services/cycle'
+import { badRequest, handle, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { getCycleData, setCycleConsent } from '@femi9/core/services/cycle'
 import { z } from 'zod'
 
 /**

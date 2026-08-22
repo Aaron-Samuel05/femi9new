@@ -1,7 +1,7 @@
-import { handle, ok, notFound, forbidden } from '@/lib/api'
-import { getAdminSession } from '@/lib/admin-auth'
-import { unsuspendMembership, TharaNotFoundError } from '@/lib/services/thara'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, ok, notFound, forbidden } from '@femi9/core/api'
+import { getAdminSession } from '@femi9/core/admin-auth'
+import { unsuspendMembership, TharaNotFoundError } from '@femi9/core/services/thara'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

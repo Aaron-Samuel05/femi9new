@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
-import { badRequest, handle, ok, unauthorized } from '@/lib/api'
-import { prisma } from '@/lib/db'
-import { ADMIN_COOKIE, createSession } from '@/lib/admin-auth'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+import { badRequest, handle, ok, unauthorized } from '@femi9/core/api'
+import { prisma } from '@femi9/core/db'
+import { ADMIN_COOKIE, createSession } from '@femi9/core/admin-auth'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 
 /** Constant-time string equality. Hashing first yields fixed-length (32-byte)
  *  buffers so timingSafeEqual never sees a length mismatch and the comparison

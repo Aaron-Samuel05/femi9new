@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client'
-import { encryptCyclePayload } from '../src/lib/cycle-crypto'
+import { encryptCyclePayload } from '@femi9/core/cycle-crypto'
 
 const prisma = new PrismaClient()
 

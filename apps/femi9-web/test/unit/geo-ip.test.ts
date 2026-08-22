@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseIp, v6Groups, v6PrefixKeys, v4PrefixKey, prefixKeyFor, V6_PREFIX_BITS } from '@/lib/geo/ip'
+import { parseIp, v6Groups, v6PrefixKeys, v4PrefixKey, prefixKeyFor, V6_PREFIX_BITS } from '@femi9/core/geo/ip'
 
 /**
  * Address parsing is the foundation every geo tier stands on: get the family

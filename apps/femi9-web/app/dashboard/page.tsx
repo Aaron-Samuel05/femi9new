@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
-import { getAccountData, getProfileStatus } from '@/lib/services/account'
-import { getCycleData } from '@/lib/services/cycle'
-import { listRewardOptions } from '@/lib/services/rewards'
+import { getSession } from '@femi9/core/auth'
+import { getAccountData, getProfileStatus } from '@femi9/core/services/account'
+import { getCycleData } from '@femi9/core/services/cycle'
+import { listRewardOptions } from '@femi9/core/services/rewards'
 import { UserDashboard } from '@/screens/UserDashboard'
 
 /**

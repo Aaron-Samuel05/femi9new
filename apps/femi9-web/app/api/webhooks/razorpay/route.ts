@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { badRequest, ok, handle, serviceUnavailable } from '@/lib/api'
-import { webhookConfigured, verifyWebhookSignature } from '@/lib/razorpay'
-import { markOrderPaid, orderNoForRazorpayOrderId } from '@/lib/services/checkout'
+import { badRequest, ok, handle, serviceUnavailable } from '@femi9/core/api'
+import { webhookConfigured, verifyWebhookSignature } from '@femi9/core/razorpay'
+import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/checkout'
 
 /**
  * POST /api/webhooks/razorpay — the ASYNCHRONOUS capture path.

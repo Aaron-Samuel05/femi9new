@@ -6,7 +6,7 @@ import {
   getUnlockProgress,
   syncTharaActivation,
   THARA_QUALIFYING_MIN_PAISE,
-} from '@/lib/services/thara'
+} from '@femi9/core/services/thara'
 
 /**
  * Activation used to live ONLY on the payment path (markOrderPaid), which meant

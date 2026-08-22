@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, prisma } from '../helpers/db'
-import { enrollUser, attributeReferralIfPresent } from '@/lib/services/thara'
-import { signTharaRefCookie } from '@/lib/thara/cookies'
+import { enrollUser, attributeReferralIfPresent } from '@femi9/core/services/thara'
+import { signTharaRefCookie } from '@femi9/core/thara/cookies'
 
 async function makeUser(overrides: { email?: string; phone?: string } = {}) {
   return prisma.user.create({

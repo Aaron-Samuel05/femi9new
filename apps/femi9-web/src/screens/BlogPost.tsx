@@ -5,7 +5,7 @@ import { CATEGORY_META, type BlogCategory } from '../data/blog'
 import { ArticleCard } from '../components/BlogCards'
 import { BlogCover, optImageBase } from '../components/BlogCover'
 import { OptImg } from '@/components/OptImg'
-import type { BlogPostDTO } from '@/lib/services/blog'
+import type { BlogPostDTO } from '@femi9/core/services/blog'
 
 interface Props {
   // Article + related reads are resolved on the server by slug and passed in.

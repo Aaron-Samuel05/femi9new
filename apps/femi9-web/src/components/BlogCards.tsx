@@ -2,7 +2,7 @@
 
 import { Link } from '@/lib/router-compat'
 import { BlogCover } from './BlogCover'
-import type { BlogPostDTO } from '@/lib/services/blog'
+import type { BlogPostDTO } from '@femi9/core/services/blog'
 
 /* `CatChip` used to live here, emitting the .bcat / .bcat--dark pill. Nothing
    ever mounted it — BlogPost.tsx imported it and never rendered it — so it and

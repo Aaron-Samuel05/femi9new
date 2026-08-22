@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { orderToken, verifyOrderToken } from '@/lib/order-token'
+import { orderToken, verifyOrderToken } from '@femi9/core/order-token'
 
 /**
  * Thorough coverage of the order-confirmation capability token (the sanity test

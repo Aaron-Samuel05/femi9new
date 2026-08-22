@@ -30,7 +30,7 @@ const nextConfig = {
   // The three.js / R3F stack ships ESM that Next needs to transpile.
   // @femi9/db is a workspace package published as TypeScript source, so it
   // needs transpiling too — there is no build step in front of it.
-  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', '@femi9/db'],
+  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', '@femi9/db', '@femi9/core'],
 
   async headers() {
     return [

@@ -1,12 +1,12 @@
 import { z } from 'zod'
-import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
+import { badRequest, created, handle, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
 import {
   createSubscription,
   listForUser,
   CadenceNotFoundError,
   VariantNotFoundError,
-} from '@/lib/services/subscriptions'
+} from '@femi9/core/services/subscriptions'
 
 /**
  * Subscriptions collection endpoint for the signed-in customer.

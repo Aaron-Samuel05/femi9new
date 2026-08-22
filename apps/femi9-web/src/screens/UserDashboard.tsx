@@ -63,7 +63,7 @@ import {
   localDayKey,
   phaseForDayKey,
   type CyclePhase,
-} from '@/lib/cycle-math'
+} from '@femi9/core/cycle-math'
 import { AddressSheet, ProfileSheet, readFailure } from '@/components/member/sheets'
 import type {
   AccountAddress,
@@ -74,9 +74,9 @@ import type {
   ActivityItem,
   EarnRates,
   SubStatus,
-} from '@/lib/services/account'
-import type { RewardOptionView } from '@/lib/services/rewards'
-import type { CycleData, PeriodEntry, SymptomEntry } from '@/lib/services/cycle'
+} from '@femi9/core/services/account'
+import type { RewardOptionView } from '@femi9/core/services/rewards'
+import type { CycleData, PeriodEntry, SymptomEntry } from '@femi9/core/services/cycle'
 
 export interface UserDashboardProps extends CycleData {
   /** The SAME identity /account renders. Not a bare `userName` string. */

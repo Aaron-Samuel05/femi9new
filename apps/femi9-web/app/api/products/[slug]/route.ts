@@ -1,5 +1,5 @@
-import { ok, notFound, handle } from '@/lib/api'
-import { getProduct } from '@/lib/services/products'
+import { ok, notFound, handle } from '@femi9/core/api'
+import { getProduct } from '@femi9/core/services/products'
 
 export async function GET(_req: Request, props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;

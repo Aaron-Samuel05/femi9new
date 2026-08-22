@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { handle, ok, badRequest } from '@/lib/api'
-import { suppressEmail } from '@/lib/services/thara'
-import { verifyResendWebhook } from '@/lib/resend-webhook'
-import { mockProvidersAllowed } from '@/lib/runtime-mode'
+import { handle, ok, badRequest } from '@femi9/core/api'
+import { suppressEmail } from '@femi9/core/services/thara'
+import { verifyResendWebhook } from '@femi9/core/resend-webhook'
+import { mockProvidersAllowed } from '@femi9/core/runtime-mode'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

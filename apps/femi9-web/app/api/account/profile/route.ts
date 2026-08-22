@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { badRequest, conflict, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { updateProfile } from '@/lib/services/account'
-import { IdentityConflictError } from '@/lib/services/auth'
+import { badRequest, conflict, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { updateProfile } from '@femi9/core/services/account'
+import { IdentityConflictError } from '@femi9/core/services/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

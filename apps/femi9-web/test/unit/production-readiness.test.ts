@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { productionReadinessIssues, productionReadinessReport } from '@/lib/production-readiness'
+import { productionReadinessIssues, productionReadinessReport } from '@femi9/core/production-readiness'
 
 const KEYS = [
   'NODE_ENV',

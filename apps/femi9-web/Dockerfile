@@ -43,6 +43,7 @@ COPY package.json package-lock.json ./
 COPY apps/femi9-web/package.json apps/femi9-web/
 COPY apps/lumi9-web/package.json apps/lumi9-web/
 COPY packages/db/package.json packages/db/
+COPY packages/core/package.json packages/core/
 
 # `npm ci` = clean, reproducible install straight from package-lock.json.
 # devDependencies are needed here because `next build` and `prisma generate`

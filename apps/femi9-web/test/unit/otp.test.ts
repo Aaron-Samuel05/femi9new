@@ -7,7 +7,7 @@ import {
   emailConfigured,
   sendMagicLink,
   sendSms,
-} from '@/lib/otp'
+} from '@femi9/core/otp'
 
 /**
  * The provider env vars are not part of the vitest env block; snapshot + clear

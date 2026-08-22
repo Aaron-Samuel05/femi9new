@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { likePost } from '@/lib/services/wall'
+import { handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { likePost } from '@femi9/core/services/wall'
 
 /**
  * /api/wall/[id]/like — POST increments a post's like count.

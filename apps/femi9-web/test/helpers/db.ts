@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/db'
+import { prisma } from '@femi9/core/db'
 
 /**
  * Test DB helpers. `resetDb()` truncates every table (FK-safe via CASCADE) so

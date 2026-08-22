@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { remove, setStatus } from '@/lib/services/admin/wall'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { remove, setStatus } from '@femi9/core/services/admin/wall'
 
 /**
  * /api/admin/wall/[id] — single-post moderation endpoint.

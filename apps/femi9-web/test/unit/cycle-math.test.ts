@@ -15,7 +15,7 @@ import {
   localDayKey,
   phaseForDayKey,
   predictFromLastStart,
-} from '@/lib/cycle-math'
+} from '@femi9/core/cycle-math'
 
 /**
  * These cover the arithmetic that used to be duplicated three times and had

@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, ok } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { createPost, listApprovedPosts } from '@/lib/services/wall'
+import { badRequest, created, handle, ok } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { createPost, listApprovedPosts } from '@femi9/core/services/wall'
 
 /**
  * /api/wall — the public community wall.

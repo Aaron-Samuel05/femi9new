@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { adjustStock, setStock } from '@/lib/services/admin/inventory'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { adjustStock, setStock } from '@femi9/core/services/admin/inventory'
 
 /**
  * PATCH /api/admin/inventory/[variantId] — update one variant's stock.

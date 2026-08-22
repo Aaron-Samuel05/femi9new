@@ -1,13 +1,13 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { ok, badRequest, notFound, conflict, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+import { ok, badRequest, notFound, conflict, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 import {
   voteOnReview,
   AlreadyVotedError,
   ReviewNotFoundError,
-} from '@/lib/services/reviews-public'
-import { getSession } from '@/lib/auth'
+} from '@femi9/core/services/reviews-public'
+import { getSession } from '@femi9/core/auth'
 
 /**
  * POST /api/reviews/:id/vote — "was this review helpful?" from the product page.

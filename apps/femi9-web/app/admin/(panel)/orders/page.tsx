@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { OrderStatus } from '@prisma/client'
-import { listOrders, ORDER_STATUSES } from '@/lib/services/admin/orders'
+import { listOrders, ORDER_STATUSES } from '@femi9/core/services/admin/orders'
 
 /**
  * Orders list — async server component. Reads filters straight from

@@ -1,11 +1,11 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { getSession } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { getSession } from '@femi9/core/auth'
+import { prisma } from '@femi9/core/db'
 import {
   attachIdentity,
   IdentityConflictError,
   verifyAttachEmailToken,
-} from '@/lib/services/auth'
+} from '@femi9/core/services/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

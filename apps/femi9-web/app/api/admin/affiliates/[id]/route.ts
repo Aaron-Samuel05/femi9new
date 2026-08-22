@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { z } from 'zod'
-import { badRequest, created, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { approve, createPayout, suspend } from '@/lib/services/admin/affiliates'
+import { badRequest, created, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { approve, createPayout, suspend } from '@femi9/core/services/admin/affiliates'
 
 /**
  * PATCH /api/admin/affiliates/[id] — one endpoint, three review actions keyed by

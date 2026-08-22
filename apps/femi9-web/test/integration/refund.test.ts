@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { prisma, resetDb, seedSettings, makeProduct, cartWith } from '../helpers/db'
-import { placeOrder, markOrderPaid, type CheckoutCustomer } from '@/lib/services/checkout'
-import { refundOrder, NotRefundableError } from '@/lib/services/admin/orders'
+import { placeOrder, markOrderPaid, type CheckoutCustomer } from '@femi9/core/services/checkout'
+import { refundOrder, NotRefundableError } from '@femi9/core/services/admin/orders'
 
 /**
  * Refund integration tests.

@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { ok, badRequest, unauthorized, handle } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { redeem, InsufficientPointsError, RewardOptionNotFoundError } from '@/lib/services/rewards'
+import { ok, badRequest, unauthorized, handle } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { redeem, InsufficientPointsError, RewardOptionNotFoundError } from '@femi9/core/services/rewards'
 
 // Node runtime: the redeem path mints a coupon code with node:crypto. Dynamic
 // because it both reads the session cookie and writes to the DB per request.

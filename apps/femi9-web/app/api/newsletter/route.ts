@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, ok } from '@/lib/api'
-import { prisma } from '@/lib/db'
-import { clientIp, rateLimit, tooManyRequests } from '@/lib/rate-limit'
+import { badRequest, created, handle, ok } from '@femi9/core/api'
+import { prisma } from '@femi9/core/db'
+import { clientIp, rateLimit, tooManyRequests } from '@femi9/core/rate-limit'
 
 /**
  * POST /api/newsletter — persist a journal / footer signup.

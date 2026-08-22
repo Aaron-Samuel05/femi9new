@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from 'react'
 import { CATEGORY_META, type BlogCategory } from '../data/blog'
-import type { BlogPostDTO } from '@/lib/services/blog'
+import type { BlogPostDTO } from '@femi9/core/services/blog'
 import { OptImg } from '@/components/OptImg'
 import { OPT_IMAGES, type OptImageBase } from '@/lib/opt-images'
 

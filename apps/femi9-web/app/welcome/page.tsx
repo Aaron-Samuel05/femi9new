@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
-import { getProfileStatus } from '@/lib/services/account'
+import { getSession } from '@femi9/core/auth'
+import { getProfileStatus } from '@femi9/core/services/account'
 import { safeNextPath } from '@/lib/safe-next'
 import { WelcomeFlow } from './WelcomeFlow'
 

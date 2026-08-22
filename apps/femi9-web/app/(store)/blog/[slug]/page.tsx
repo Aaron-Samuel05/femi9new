@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getPost, relatedPosts } from '@/lib/services/blog'
+import { getPost, relatedPosts } from '@femi9/core/services/blog'
 import { BlogPost } from '@/screens/BlogPost'
 
 // Per-page SEO: reuse the same loader the page uses, mapping the resolved post

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Home } from '@/screens/Home'
-import { listProducts, type ProductWithVariants } from '@/lib/services/products'
-import { listPosts, type BlogPostDTO } from '@/lib/services/blog'
+import { listProducts, type ProductWithVariants } from '@femi9/core/services/products'
+import { listPosts, type BlogPostDTO } from '@femi9/core/services/blog'
 
 export const metadata: Metadata = {
   title: 'Femi9 Sanitary Pads | Rash-Free, Cotton-Soft Period Care India',

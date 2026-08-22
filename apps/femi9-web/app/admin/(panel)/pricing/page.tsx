@@ -1,4 +1,4 @@
-import { listPricingCatalog, listZones } from '@/lib/services/admin/pricing'
+import { listPricingCatalog, listZones } from '@femi9/core/services/admin/pricing'
 import PricingZonesScreen, { type CatalogProduct, type ZoneRow } from './_editor'
 
 /**

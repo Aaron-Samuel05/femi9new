@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getAdminProduct } from '@/lib/services/admin/products'
+import { getAdminProduct } from '@femi9/core/services/admin/products'
 import ProductForm, { type ProductFormValues } from '../_form'
 
 /**

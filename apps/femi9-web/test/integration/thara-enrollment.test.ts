@@ -5,7 +5,7 @@ import {
   optOutUser,
   getMembership,
   TharaDeactivatedError,
-} from '@/lib/services/thara'
+} from '@femi9/core/services/thara'
 
 async function makeUser(email = `u-${Math.random().toString(36).slice(2, 8)}@test.local`) {
   return prisma.user.create({ data: { email, role: 'customer' } })

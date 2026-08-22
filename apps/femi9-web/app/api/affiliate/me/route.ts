@@ -1,6 +1,6 @@
-import { handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { getForUser } from '@/lib/services/affiliate'
+import { handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { getForUser } from '@femi9/core/services/affiliate'
 
 export const dynamic = 'force-dynamic'
 

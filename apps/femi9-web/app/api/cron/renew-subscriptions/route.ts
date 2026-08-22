@@ -1,6 +1,6 @@
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { generateDueOrders } from '@/lib/services/subscriptions'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { generateDueOrders } from '@femi9/core/services/subscriptions'
 
 /**
  * POST /api/cron/renew-subscriptions — generate renewal orders for every due

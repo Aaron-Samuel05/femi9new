@@ -3,9 +3,9 @@ import { createHash } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { badRequest, handle, ok, serviceUnavailable, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { badRequest, handle, ok, serviceUnavailable, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 
 /**
  * POST /api/admin/upload — accept a single image (multipart/form-data, field

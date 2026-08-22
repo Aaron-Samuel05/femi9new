@@ -1,9 +1,9 @@
 import type { NextRequest } from 'next/server'
-import { handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { getCustomer } from '@/lib/services/admin/customers'
-import { adjustCustomerPoints, changeCustomerRole } from '@/lib/services/admin/customers'
-import { badRequest } from '@/lib/api'
+import { handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { getCustomer } from '@femi9/core/services/admin/customers'
+import { adjustCustomerPoints, changeCustomerRole } from '@femi9/core/services/admin/customers'
+import { badRequest } from '@femi9/core/api'
 import { z } from 'zod'
 
 /** GET /api/admin/customers/[id] — full customer profile. Next 14.2: params is sync. */

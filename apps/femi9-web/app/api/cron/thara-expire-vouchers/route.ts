@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { handle, ok, unauthorized, notFound } from '@/lib/api'
-import { getAdminSession } from '@/lib/admin-auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
-import { expireStaleVouchers } from '@/lib/services/thara'
+import { handle, ok, unauthorized, notFound } from '@femi9/core/api'
+import { getAdminSession } from '@femi9/core/admin-auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
+import { expireStaleVouchers } from '@femi9/core/services/thara'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

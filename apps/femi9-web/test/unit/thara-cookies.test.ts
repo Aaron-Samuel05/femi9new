@@ -4,7 +4,7 @@ import {
   verifyTharaRefCookie,
   THARA_REF_COOKIE,
   THARA_REF_COOKIE_MAX_AGE,
-} from '@/lib/thara/cookies'
+} from '@femi9/core/thara/cookies'
 
 describe('thara ref cookie', () => {
   it('signs and verifies a round-trip', async () => {

@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
-import { getSession } from '@/lib/auth'
-import { getAccountData } from '@/lib/services/account'
-import { listRewardOptions } from '@/lib/services/rewards'
+import { getSession } from '@femi9/core/auth'
+import { getAccountData } from '@femi9/core/services/account'
+import { listRewardOptions } from '@femi9/core/services/rewards'
 import { Account } from '@/screens/Account'
 
 // Reads the session cookie + per-user DB rows, so it must render per request.

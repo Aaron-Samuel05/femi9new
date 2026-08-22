@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 
 describe('isTharaEnabled', () => {
   const original = process.env.THARA_ENABLED

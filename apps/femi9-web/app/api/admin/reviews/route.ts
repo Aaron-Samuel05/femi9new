@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import type { ModerationStatus } from '@prisma/client'
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { listReviews } from '@/lib/services/admin/reviews'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { listReviews } from '@femi9/core/services/admin/reviews'
 
 /**
  * /api/admin/reviews — collection endpoint for the moderation queue.

@@ -6,12 +6,12 @@ vi.mock('next/headers', () => ({
 }))
 
 import { resetDb, prisma, makeProduct, seedSettings, cartWith } from '../helpers/db'
-import { placeOrder, type CheckoutCustomer } from '@/lib/services/checkout'
+import { placeOrder, type CheckoutCustomer } from '@femi9/core/services/checkout'
 import {
   enrollUser,
   computeTharaDiscount,
   TharaDiscountSlabs,
-} from '@/lib/services/thara'
+} from '@femi9/core/services/thara'
 
 function customer(phone: string, overrides: Partial<CheckoutCustomer> = {}): CheckoutCustomer {
   return {

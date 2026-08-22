@@ -5,7 +5,7 @@ import {
   createOrder,
   verifyPaymentSignature,
   verifyWebhookSignature,
-} from '@/lib/razorpay'
+} from '@femi9/core/razorpay'
 
 /**
  * The Razorpay gateway env vars are NOT part of the vitest env block, so each

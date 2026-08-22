@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   getOrder,
   updateOrderStatus,
   refundOrder,
   NotRefundableError,
   ORDER_STATUSES,
-} from '@/lib/services/admin/orders'
+} from '@femi9/core/services/admin/orders'
 
 /**
  * Single-order endpoints for the Ops console.

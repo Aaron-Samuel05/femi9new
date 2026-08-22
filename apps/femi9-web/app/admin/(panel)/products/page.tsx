@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { listAdminProducts } from '@/lib/services/admin/products'
+import { listAdminProducts } from '@femi9/core/services/admin/products'
 
 /**
  * Products index — the admin catalogue table. Server component: reads the

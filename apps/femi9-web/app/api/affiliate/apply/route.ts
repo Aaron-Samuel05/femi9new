@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { apply } from '@/lib/services/affiliate'
+import { badRequest, created, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { apply } from '@femi9/core/services/affiliate'
 
 /**
  * POST /api/affiliate/apply — a creator submits the program application.

@@ -1,13 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   BlogPostInputSchema,
   deletePost,
   getPostAdmin,
   updatePost,
-} from '@/lib/services/admin/blog-admin'
+} from '@femi9/core/services/admin/blog-admin'
 
 /**
  * /api/admin/blog/[id] — single-post endpoint.

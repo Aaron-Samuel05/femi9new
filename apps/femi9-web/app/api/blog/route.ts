@@ -1,5 +1,5 @@
-import { ok, handle } from '@/lib/api'
-import { listPosts, listCategories } from '@/lib/services/blog'
+import { ok, handle } from '@femi9/core/api'
+import { listPosts, listCategories } from '@femi9/core/services/blog'
 
 export const dynamic = 'force-dynamic'
 

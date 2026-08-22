@@ -46,9 +46,10 @@ app/
   api/                88 route handlers (33 under api/admin)
   a/[code] r/[code]   affiliate + Thara referral short links
 src/
-  lib/                auth.ts · admin-auth.ts · db.ts · api.ts · rate-limit.ts ·
-                      razorpay.ts · otp.ts · cycle-crypto.ts · geo/ · thara/
-  lib/services/       ALL business logic. admin/ subfolder for ops-only logic.
+  lib/                CLIENT-side only now — 9 files: router-compat, track,
+                      use-add-pulse, use-public-settings, sticky-nav,
+                      opt-images, safe-next, session, thara/terms.
+                      Everything server-side moved to @femi9/core.
   components/ screens/ store/ styles/ charts/ immersive/ data/
 prisma/               seed.ts · seed-zones.ts · seed-demo.ts  (brand-specific
                       seed DATA only — schema + migrations are in packages/db)
@@ -70,16 +71,32 @@ The `db:*` scripts pass `--schema ../../packages/db/prisma/schema.prisma`; they
 still run from THIS directory because that is where `.env` is, and the Prisma
 CLI reads env from its working directory.
 
-**Business logic lives in `src/lib/services/*`.** Route handlers parse + authorize
-+ delegate. Pages and server components import services directly — they do not
-fetch their own API. If you are writing a Prisma query inside `app/`, stop and put
-it in a service.
+**Business logic lives in `@femi9/core`, not in this app.** Route handlers parse
++ authorize + delegate. Pages and server components import services directly —
+they do not fetch their own API. If you are writing a Prisma query inside `app/`,
+stop and put it in a service in `packages/core`.
+
+Import by subpath — there is no barrel, on purpose (one would drag Razorpay,
+Prisma and the mail client into any consumer wanting a single helper):
+
+```ts
+import { ok, badRequest, handle } from '@femi9/core/api'
+import { requireAdmin }           from '@femi9/core/admin-auth'
+import { getOrders }              from '@femi9/core/services/admin/orders'
+```
+
+**`@femi9/core/db` is scaffolding, not design.** It exports a Femi9-PINNED
+client so the service layer could move without changing signatures. Phase 1c
+threads `brand` through those signatures and deletes it. Anything new — and
+anything the admin console will run — must take `brand` and call `dbFor(brand)`.
+A second brand importing that `prisma` would read Femi9's database believing it
+was its own.
 
 **Two cookies, two audiences, never crossed.**
 `femi9_session` (aud `femi9-customer`, 30d) and `femi9_admin` (aud `femi9-admin`,
 7d). `middleware.ts` re-implements verification inline with Web Crypto because it
-runs on the edge; `src/lib/auth.ts` and `src/lib/admin-auth.ts` are the Node-side
-counterparts. **Change one and you must change the other** — they are the same
+runs on the edge; `@femi9/core/auth` and `@femi9/core/admin-auth` are the
+Node-side counterparts. **Change one and you must change the other** — they are the same
 check written twice on purpose.
 
 **This app uses `middleware.ts`, not `proxy.ts`, on purpose.** Next 16 renamed
@@ -100,11 +117,11 @@ calls `requireUser()`. Never rely on the matcher alone.
 
 **Validate with Zod at the boundary.** Every handler parses its body with a
 schema and returns `badRequest(msg, err.flatten())` via the helpers in
-`src/lib/api.ts` (`ok` / `badRequest` / `unauthorized` / `handle`). Use them —
+`@femi9/core/api` (`ok` / `badRequest` / `unauthorized` / `handle`). Use them —
 don't hand-roll `NextResponse.json`.
 
 **Rate-limit anything credential- or cost-bearing.** `rateLimit(key, n, windowMs)`
-from `src/lib/rate-limit.ts`, per-IP plus a global cap. See
+from `@femi9/core/rate-limit`, per-IP plus a global cap. See
 `app/api/admin/login/route.ts` for the shape.
 
 **Money is integer rupees.** No floats, no paise. Order totals snapshot
@@ -116,7 +133,7 @@ order's price from the current catalog.
 `discountPct`. Never price a cart on the client.
 
 **Cycle data is encrypted at rest.** `PeriodLog` / `SymptomLog` payloads go
-through `src/lib/cycle-crypto.ts` with `CYCLE_DATA_ENCRYPTION_KEY`. Never log,
+through `@femi9/core/cycle-crypto` with `CYCLE_DATA_ENCRYPTION_KEY`. Never log,
 export, or return them raw, and never widen who can read them.
 
 **Thara is feature-flagged.** Every Thara route 404s unless the flag env is
@@ -175,3 +192,4 @@ Append one entry per task. Newest last.
 | 2026-08-23 | **Phase 0 — monorepo** | repo-wide | `femi9-next` → `apps/femi9-web`, `lumi9-web-main` → `apps/lumi9-web`. npm workspaces + Turborepo, one hoisted lockfile. Both apps build. Docker context moved to repo root; runtime layout kept flat and identical. CI/deploy paths updated, Lumi9 CI job added. Next upgrade deferred to Phase 0b. |
 | 2026-08-23 | **Phase 0b — Next 16** | `package.json` · root `package.json` | Next 15.5.23 → **16.3.1** (exact, matching lumi9 — `next` now hoists to one copy). Builds on **Turbopack**; Sentry 10.70 is Turbopack-compatible, so no webpack conflict. `next lint` removed upstream → dead `lint` script dropped. Added `packageManager` to the root manifest (turbo could not resolve the workspace without it). **`middleware.ts` kept, not migrated to `proxy`** — open decision, see architecture doc. Zero `next/image` usage, so every image breaking change was moot. |
 | 2026-08-23 | **Phase 1a — `packages/db`** | `packages/db/*` (new) · `src/lib/db.ts` · `Dockerfile` · `ci.yml` · `next.config.mjs` | Schema + 13 migrations → `@femi9/db`; seeds stayed (brand-specific). `dbFor(brand)` builds one client per brand from one schema — isolation in the connection string. `src/lib/db.ts` became a lazy Proxy shim so all ~80 call sites kept working and the credential-free Docker build still passes. Verified: proxy forwards delegates, `dbFor` memoises, `isBrand` rejects case/traversal/undefined, and **lumi9 refuses to fall back to femi9's `DATABASE_URL`**. |
+| 2026-08-23 | **Phase 1b — `packages/core`** | 64 modules → `packages/core` · 211 files repointed | Server half of `src/lib` moved to `@femi9/core`; 9 client-side files stayed. Signatures UNCHANGED (move first, thread `brand` second) — services still use the pinned `core/db`. Catalog view-model types moved to `core/types/catalog`, re-exported from `src/data/*` so component imports were untouched. Subpath exports, no barrel. Verified: both packages typecheck, femi9 builds, no `@/` alias left in core, no unresolved `@femi9/*` require in the standalone bundle. |

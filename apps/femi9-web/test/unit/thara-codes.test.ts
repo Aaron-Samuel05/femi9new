@@ -4,7 +4,7 @@ import {
   normalizeReferralCode,
   LETTER_ALPHABET,
   DIGIT_ALPHABET,
-} from '@/lib/thara/codes'
+} from '@femi9/core/thara/codes'
 
 describe('generateReferralCode', () => {
   it('emits an 8-char code: 4 letters + 4 digits', () => {

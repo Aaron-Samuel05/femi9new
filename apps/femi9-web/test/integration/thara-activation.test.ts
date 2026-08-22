@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, prisma, makeProduct, seedSettings } from '../helpers/db'
-import { enrollUser, activateAndLockIfEligible } from '@/lib/services/thara'
+import { enrollUser, activateAndLockIfEligible } from '@femi9/core/services/thara'
 
 async function makeUser(email = `u-${Math.random().toString(36).slice(2, 8)}@t.local`) {
   return prisma.user.create({ data: { email, role: 'customer' } })

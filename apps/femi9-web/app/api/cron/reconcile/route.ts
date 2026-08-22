@@ -1,6 +1,6 @@
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { reconcilePendingOrders } from '@/lib/services/checkout'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { reconcilePendingOrders } from '@femi9/core/services/checkout'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

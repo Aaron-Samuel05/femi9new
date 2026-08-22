@@ -21,8 +21,8 @@ import { Link } from '@/lib/router-compat'
 import { useCart } from '@/store/cart'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { IAlert, ICheck, IChevron, ICopy, IGift, IRupee, IStar } from './AppIcons'
-import type { RewardOptionView } from '@/lib/services/rewards'
-import type { AccountCoupon, ActivityItem, EarnRates } from '@/lib/services/account'
+import type { RewardOptionView } from '@femi9/core/services/rewards'
+import type { AccountCoupon, ActivityItem, EarnRates } from '@femi9/core/services/account'
 
 export interface RewardsProps {
   /** Server truth. The display is derived from this — never seeded into state. */

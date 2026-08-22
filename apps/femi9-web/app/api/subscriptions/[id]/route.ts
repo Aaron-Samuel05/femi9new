@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { pause, resume, skipNext, cancel } from '@/lib/services/subscriptions'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { pause, resume, skipNext, cancel } from '@femi9/core/services/subscriptions'
 
 /**
  * Manage a single subscription.

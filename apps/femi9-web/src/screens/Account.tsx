@@ -51,8 +51,8 @@ import type {
   EarnRates,
   SpendTrend,
   SubStatus,
-} from '@/lib/services/account'
-import type { RewardOptionView } from '@/lib/services/rewards'
+} from '@femi9/core/services/account'
+import type { RewardOptionView } from '@femi9/core/services/rewards'
 
 export interface AccountProps {
   user: AccountUser

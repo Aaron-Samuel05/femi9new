@@ -40,7 +40,8 @@
     "server-only": "^0.0.1",
     "three": "^0.185.1",
     "zod": "^4.4.3",
-    "@femi9/db": "*"
+    "@femi9/db": "*",
+    "@femi9/core": "*"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

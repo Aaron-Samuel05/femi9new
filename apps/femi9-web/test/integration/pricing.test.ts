@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, prisma } from '../helpers/db'
-import { resolveZone, applyZonePrice } from '@/lib/services/pricing'
-import { createZone, updateZone, deleteZone, CannotDeleteDefaultError } from '@/lib/services/admin/pricing'
+import { resolveZone, applyZonePrice } from '@femi9/core/services/pricing'
+import { createZone, updateZone, deleteZone, CannotDeleteDefaultError } from '@femi9/core/services/admin/pricing'
 
 /**
  * Regional pricing: the read-side resolver picks a zone from a location signal

@@ -1,5 +1,5 @@
-import { ok, handle } from '@/lib/api'
-import { getPublicSettings } from '@/lib/services/settings'
+import { ok, handle } from '@femi9/core/api'
+import { getPublicSettings } from '@femi9/core/services/settings'
 
 /**
  * GET /api/settings — the storefront's public config.

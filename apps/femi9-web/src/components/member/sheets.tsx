@@ -35,8 +35,8 @@ import { Link } from '@/lib/router-compat'
 import { Chip } from '@/components/Chip'
 import { Close } from '@/components/Icons'
 import { IAlert } from '@/components/AppIcons'
-import { INDIA_STATES } from '@/lib/geo/india-states'
-import type { AccountAddress, AccountUser } from '@/lib/services/account'
+import { INDIA_STATES } from '@femi9/core/geo/india-states'
+import type { AccountAddress, AccountUser } from '@femi9/core/services/account'
 
 /** "+91 98842 30571" / "9884230571" → the 10 national digits a form needs. */
 export function digitsOf(value: string | null | undefined): string {

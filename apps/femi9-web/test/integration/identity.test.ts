@@ -4,7 +4,7 @@ import {
   attachIdentity,
   IdentityConflictError,
   assertIdentityFree,
-} from '@/lib/services/auth'
+} from '@femi9/core/services/auth'
 import {
   missingProfileFields,
   isProfileComplete,
@@ -12,7 +12,7 @@ import {
   toAccountUser,
   deleteAddress,
   updateProfile,
-} from '@/lib/services/account'
+} from '@femi9/core/services/account'
 
 /**
  * attachIdentity is the ONLY writer of User.email / User.phone outside

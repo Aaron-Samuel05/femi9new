@@ -1,15 +1,15 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, ok, handle, serviceUnavailable } from '@/lib/api'
-import { isConfigured, verifyPaymentSignature } from '@/lib/razorpay'
-import { mockProvidersAllowed } from '@/lib/runtime-mode'
+import { badRequest, ok, handle, serviceUnavailable } from '@femi9/core/api'
+import { isConfigured, verifyPaymentSignature } from '@femi9/core/razorpay'
+import { mockProvidersAllowed } from '@femi9/core/runtime-mode'
 import {
   markOrderPaid,
   orderNoForRazorpayOrderId,
   OrderNotFoundError,
   PaymentIntentMissingError,
   PaymentAmountMismatchError,
-} from '@/lib/services/checkout'
+} from '@femi9/core/services/checkout'
 
 /**
  * POST /api/payments/verify — the SYNCHRONOUS return path from Razorpay Checkout.

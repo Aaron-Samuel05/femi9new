@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { listAffiliates, listPayouts } from '@/lib/services/admin/affiliates'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { listAffiliates, listPayouts } from '@femi9/core/services/admin/affiliates'
 
 export const dynamic = 'force-dynamic'
 

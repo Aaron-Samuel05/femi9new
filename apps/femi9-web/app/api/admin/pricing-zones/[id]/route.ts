@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   CannotDeleteDefaultError,
   CannotUnsetDefaultError,
@@ -10,7 +10,7 @@ import {
   ZonePatchSchema,
   deleteZone,
   updateZone,
-} from '@/lib/services/admin/pricing'
+} from '@femi9/core/services/admin/pricing'
 
 /**
  * /api/admin/pricing-zones/[id] — single-zone endpoint.

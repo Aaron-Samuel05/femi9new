@@ -1,14 +1,14 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
-import { badRequest, created, handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
+import { badRequest, created, handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
 import {
   UnknownPriceTargetError,
   ZoneInputSchema,
   ZoneNameTakenError,
   createZone,
   listZones,
-} from '@/lib/services/admin/pricing'
+} from '@femi9/core/services/admin/pricing'
 
 /**
  * /api/admin/pricing-zones — collection endpoint.

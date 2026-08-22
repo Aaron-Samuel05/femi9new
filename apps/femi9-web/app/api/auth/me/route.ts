@@ -1,7 +1,7 @@
-import { handle, ok } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { toAccountUser } from '@/lib/services/account'
+import { handle, ok } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { prisma } from '@femi9/core/db'
+import { toAccountUser } from '@femi9/core/services/account'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

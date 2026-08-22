@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { listProducts } from '@/lib/services/products'
+import { listProducts } from '@femi9/core/services/products'
 import { ShopCatalog } from '@/components/ShopCatalog'
 
 /**

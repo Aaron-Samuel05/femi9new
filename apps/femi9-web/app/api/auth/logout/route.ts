@@ -1,5 +1,5 @@
-import { handle, ok } from '@/lib/api'
-import { SESSION_COOKIE } from '@/lib/auth'
+import { handle, ok } from '@femi9/core/api'
+import { SESSION_COOKIE } from '@femi9/core/auth'
 
 export const dynamic = 'force-dynamic'
 

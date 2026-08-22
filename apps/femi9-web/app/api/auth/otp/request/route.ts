@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { ok, badRequest, handle, serviceUnavailable } from '@/lib/api'
-import { requestOtp, InvalidPhoneError, normalizePhone } from '@/lib/services/auth'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { ok, badRequest, handle, serviceUnavailable } from '@femi9/core/api'
+import { requestOtp, InvalidPhoneError, normalizePhone } from '@femi9/core/services/auth'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 
 // node:crypto (via the OTP seam) needs the Node runtime; cookies/DB make it dynamic.
 export const runtime = 'nodejs'

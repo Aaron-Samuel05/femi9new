@@ -8,7 +8,7 @@ import {
   OrderNotPayableError,
   pendingPaymentIntent,
   type CheckoutCustomer,
-} from '@/lib/services/checkout'
+} from '@femi9/core/services/checkout'
 
 /**
  * Payment capture integration tests.

@@ -7,16 +7,16 @@ import {
   OAUTH_STATE_COOKIE,
   OAUTH_NEXT_COOKIE,
   type GoogleProfile,
-} from '@/lib/google-oauth'
+} from '@femi9/core/google-oauth'
 import { safeNextPath } from '@/lib/safe-next'
-import { signInWithGoogle } from '@/lib/services/auth'
-import { missingProfileFields } from '@/lib/services/account'
-import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@/lib/auth'
-import { mockProvidersAllowed } from '@/lib/runtime-mode'
-import { THARA_REF_COOKIE } from '@/lib/thara/cookies'
-import { clientIp } from '@/lib/rate-limit'
+import { signInWithGoogle } from '@femi9/core/services/auth'
+import { missingProfileFields } from '@femi9/core/services/account'
+import { createSession, SESSION_COOKIE, SESSION_MAX_AGE } from '@femi9/core/auth'
+import { mockProvidersAllowed } from '@femi9/core/runtime-mode'
+import { THARA_REF_COOKIE } from '@femi9/core/thara/cookies'
+import { clientIp } from '@femi9/core/rate-limit'
 import { GUEST_COOKIE } from '@/lib/session'
-import { mergeGuestCartIntoUser } from '@/lib/services/cart'
+import { mergeGuestCartIntoUser } from '@femi9/core/services/cart'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

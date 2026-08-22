@@ -1,11 +1,11 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getOrderByNo } from '@/lib/services/checkout'
-import { verifyOrderToken } from '@/lib/order-token'
-import { getSession } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { getOrderByNo } from '@femi9/core/services/checkout'
+import { verifyOrderToken } from '@femi9/core/order-token'
+import { getSession } from '@femi9/core/auth'
+import { prisma } from '@femi9/core/db'
 import { rupees } from '@/data/products'
-import { getSettings } from '@/lib/services/settings'
+import { getSettings } from '@femi9/core/services/settings'
 import { RetryPaymentButton } from './RetryPaymentButton'
 
 // Confirmation reflects live order state, so render per-request.

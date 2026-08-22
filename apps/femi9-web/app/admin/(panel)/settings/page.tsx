@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` settings service at runtime.
-import type { Settings } from '@/lib/services/settings'
+import type { Settings } from '@femi9/core/services/settings'
 
 /**
  * Settings editor — the "customizable backend". A client component because the

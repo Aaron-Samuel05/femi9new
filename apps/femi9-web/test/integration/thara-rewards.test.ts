@@ -10,8 +10,8 @@ import {
   claimVoucher,
   expireStaleVouchers,
   TharaVoucherNotClaimableError,
-} from '@/lib/services/thara'
-import { ManualIssuer } from '@/lib/thara/voucher-issuer'
+} from '@femi9/core/services/thara'
+import { ManualIssuer } from '@femi9/core/thara/voucher-issuer'
 
 async function activeMember(email: string) {
   const u = await prisma.user.create({ data: { email, role: 'customer' } })

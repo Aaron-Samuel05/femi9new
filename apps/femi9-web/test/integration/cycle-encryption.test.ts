@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { prisma, resetDb } from '../helpers/db'
-import { CycleConsentRequiredError, getCycleData, logPeriod, logSymptom } from '@/lib/services/cycle'
+import { CycleConsentRequiredError, getCycleData, logPeriod, logSymptom } from '@femi9/core/services/cycle'
 
 describe('cycle data encryption', () => {
   beforeEach(resetDb)

@@ -1,8 +1,8 @@
 import { z } from 'zod'
-import { ok, badRequest, notFound, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { submitReview, ProductNotFoundError } from '@/lib/services/reviews-public'
-import { getSession } from '@/lib/auth'
+import { ok, badRequest, notFound, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { submitReview, ProductNotFoundError } from '@femi9/core/services/reviews-public'
+import { getSession } from '@femi9/core/auth'
 
 /**
  * POST /api/reviews — public review submission from the product page.

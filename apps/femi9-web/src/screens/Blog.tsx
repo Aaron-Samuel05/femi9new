@@ -1,7 +1,7 @@
 'use client'
 import { useMemo, useState } from 'react'
 import { ArticleCard, MosaicTile } from '../components/BlogCards'
-import type { BlogPostDTO, BlogCategoryDTO } from '@/lib/services/blog'
+import type { BlogPostDTO, BlogCategoryDTO } from '@femi9/core/services/blog'
 
 interface Props {
   // Posts + category chips are now fetched by the server page from Postgres.

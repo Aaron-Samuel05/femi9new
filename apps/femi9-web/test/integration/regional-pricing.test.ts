@@ -23,10 +23,10 @@ vi.mock('next/headers', () => ({
   cookies: () => ({ get: () => undefined }),
 }))
 
-import { placeOrder, type CheckoutCustomer } from '@/lib/services/checkout'
-import { getCart } from '@/lib/services/cart'
-import { resolveZone } from '@/lib/services/pricing'
-import { updateZone, CannotUnsetDefaultError } from '@/lib/services/admin/pricing'
+import { placeOrder, type CheckoutCustomer } from '@femi9/core/services/checkout'
+import { getCart } from '@femi9/core/services/cart'
+import { resolveZone } from '@femi9/core/services/pricing'
+import { updateZone, CannotUnsetDefaultError } from '@femi9/core/services/admin/pricing'
 
 /** Default (0% off) + a Tamil Nadu zone at 10% off, as the admin would set up. */
 async function seedZones() {

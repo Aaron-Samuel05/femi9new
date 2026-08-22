@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, ok } from '@/lib/api'
+import { badRequest, handle, ok } from '@femi9/core/api'
 import { GUEST_COOKIE, getGuestToken, newGuestToken } from '@/lib/session'
-import { EMPTY_CART, UnknownVariantError, addItem, getCart } from '@/lib/services/cart'
+import { EMPTY_CART, UnknownVariantError, addItem, getCart } from '@femi9/core/services/cart'
 
 export const dynamic = 'force-dynamic'
 

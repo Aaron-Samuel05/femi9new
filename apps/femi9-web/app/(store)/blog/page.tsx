@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { Blog } from '@/screens/Blog'
-import { listPosts, listCategories } from '@/lib/services/blog'
+import { listPosts, listCategories } from '@femi9/core/services/blog'
 
 export const metadata: Metadata = {
   title: 'Journal · Femi9',

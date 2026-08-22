@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { ok, badRequest, notFound, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { submitQuestion, ProductNotFoundError } from '@/lib/services/questions-public'
+import { ok, badRequest, notFound, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { submitQuestion, ProductNotFoundError } from '@femi9/core/services/questions-public'
 
 /**
  * POST /api/questions — "Ask a question" from the product page.

@@ -1,12 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { normalizeReferralCode } from '@/lib/thara/codes'
+import { normalizeReferralCode } from '@femi9/core/thara/codes'
 import {
   THARA_REF_COOKIE,
   THARA_REF_COOKIE_MAX_AGE,
   signTharaRefCookie,
-} from '@/lib/thara/cookies'
-import { isTharaEnabled } from '@/lib/thara/feature'
-import { prisma } from '@/lib/db'
+} from '@femi9/core/thara/cookies'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
+import { prisma } from '@femi9/core/db'
 
 /**
  * GET /r/[code] — referral link entry point.

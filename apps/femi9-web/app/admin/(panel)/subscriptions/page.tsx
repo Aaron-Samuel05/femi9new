@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { SubscriptionStatus } from '@prisma/client'
-import { listSubscriptions, SUBSCRIPTION_STATUSES } from '@/lib/services/admin/subscriptions'
+import { listSubscriptions, SUBSCRIPTION_STATUSES } from '@femi9/core/services/admin/subscriptions'
 
 /**
  * Subscriptions list — async server component. Reads the status filter straight

@@ -7,7 +7,7 @@ import { MemberSignOutButton } from '@/components/MemberLayout'
 import { IAlert, IBell, IBox, ICheck, IChevron, IInfo, IUser } from '@/components/AppIcons'
 import { OptImg } from '@/components/OptImg'
 import { useMediaGate } from '@/components/useMediaGate'
-import type { ProfileField } from '@/lib/services/account'
+import type { ProfileField } from '@femi9/core/services/account'
 
 /**
  * The onboarding form behind /welcome.

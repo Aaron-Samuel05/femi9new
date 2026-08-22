@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { PartnerStatus } from '@prisma/client'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` partners service at runtime.
-import type { PartnerRow } from '@/lib/services/admin/partners'
+import type { PartnerRow } from '@femi9/core/services/admin/partners'
 
 /**
  * Partners — the reseller lead CRM.

@@ -2,11 +2,11 @@ import { describe, it, expect } from 'vitest'
 import {
   createSession as createAdminSession,
   verifySession as verifyAdminSession,
-} from '@/lib/admin-auth'
+} from '@femi9/core/admin-auth'
 import {
   createSession as createCustomerSession,
   verifySession as verifyCustomerSession,
-} from '@/lib/auth'
+} from '@femi9/core/auth'
 
 /**
  * CRITICAL security invariant: admin and customer sessions live in separate

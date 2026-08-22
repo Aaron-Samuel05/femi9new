@@ -1,7 +1,7 @@
-import { handle, ok, unauthorized, notFound, badRequest } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
-import { claimVoucher, TharaVoucherNotClaimableError } from '@/lib/services/thara'
+import { handle, ok, unauthorized, notFound, badRequest } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
+import { claimVoucher, TharaVoucherNotClaimableError } from '@femi9/core/services/thara'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

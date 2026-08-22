@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import type { OrderStatus } from '@prisma/client'
-import { getCustomer } from '@/lib/services/admin/customers'
+import { getCustomer } from '@femi9/core/services/admin/customers'
 import { IPin } from '@/components/AppIcons'
 import { AdjustPoints } from './_adjust-points'
 

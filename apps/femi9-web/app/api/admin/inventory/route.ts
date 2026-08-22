@@ -1,6 +1,6 @@
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { listInventory } from '@/lib/services/admin/inventory'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { listInventory } from '@femi9/core/services/admin/inventory'
 
 export const dynamic = 'force-dynamic'
 

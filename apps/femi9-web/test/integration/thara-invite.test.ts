@@ -8,8 +8,8 @@ import {
   TharaInviteNotEligibleError,
   TharaInviteSelfError,
   TharaInviteSuppressedError,
-} from '@/lib/services/thara'
-import { renderInviteEmail } from '@/lib/thara/invite'
+} from '@femi9/core/services/thara'
+import { renderInviteEmail } from '@femi9/core/thara/invite'
 
 async function activeMember(overrides: { email?: string; name?: string } = {}) {
   const u = await prisma.user.create({

@@ -5,7 +5,7 @@ import type { ModerationStatus } from '@prisma/client'
 import { IStar } from '@/components/AppIcons'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` reviews service at runtime.
-import type { ReviewRow } from '@/lib/services/admin/reviews'
+import type { ReviewRow } from '@femi9/core/services/admin/reviews'
 
 /**
  * Reviews — the moderation queue.

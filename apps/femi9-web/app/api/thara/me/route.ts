@@ -1,8 +1,8 @@
-import { handle, ok, unauthorized, notFound } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { getMembership, syncTharaActivation } from '@/lib/services/thara'
-import { isTharaEnabled } from '@/lib/thara/feature'
-import { prisma } from '@/lib/db'
+import { handle, ok, unauthorized, notFound } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { getMembership, syncTharaActivation } from '@femi9/core/services/thara'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
+import { prisma } from '@femi9/core/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

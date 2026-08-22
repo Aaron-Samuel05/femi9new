@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { addNote, updateStatus } from '@/lib/services/admin/partners'
+import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { addNote, updateStatus } from '@femi9/core/services/admin/partners'
 
 /**
  * /api/admin/partners/[id] — single-lead endpoint.

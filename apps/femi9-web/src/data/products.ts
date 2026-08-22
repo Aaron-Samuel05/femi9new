@@ -1,27 +1,8 @@
-export type ProductType = 'pad' | 'panty'
-
-export interface PackOption {
-  count: number
-  price: number
-}
-
-export interface Product {
-  id: string
-  name: string
-  price: number
-  img: string
-  meta: string
-  flow: string
-  desc: string
-  tag?: string
-  tagClass?: 'pink'
-  /** 'pad' (default) sells by pack count; 'panty' sells by body size. */
-  type?: ProductType
-  /** Pads: available pack sizes (3 / 6 / 9 pcs). Default price matches the last pack. */
-  packs?: PackOption[]
-  /** Panties: available body sizes. */
-  sizes?: string[]
-}
+// The catalog view-model types moved to @femi9/core (services/products.ts maps
+// database rows onto them, and a package cannot import from an app). They are
+// re-exported here so existing `from '@/data/products'` imports keep working.
+export type { Product, ProductType, PackOption } from '@femi9/core/types/catalog'
+import type { Product } from '@femi9/core/types/catalog'
 
 export const PRODUCTS: Product[] = [
   {

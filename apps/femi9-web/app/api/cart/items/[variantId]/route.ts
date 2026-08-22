@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, ok } from '@/lib/api'
+import { badRequest, handle, ok } from '@femi9/core/api'
 import { getGuestToken } from '@/lib/session'
-import { EMPTY_CART, removeItem, setQty } from '@/lib/services/cart'
+import { EMPTY_CART, removeItem, setQty } from '@femi9/core/services/cart'
 
 type Ctx = { params: Promise<{ variantId: string }> }
 

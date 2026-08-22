@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, makeProduct, prisma } from './helpers/db'
-import { orderToken, verifyOrderToken } from '@/lib/order-token'
+import { orderToken, verifyOrderToken } from '@femi9/core/order-token'
 
 describe('harness sanity', () => {
   beforeEach(async () => { await resetDb() })

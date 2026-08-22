@@ -22,7 +22,7 @@
  */
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import type { ProductWithVariants } from '@/lib/services/products'
+import type { ProductWithVariants } from '@femi9/core/services/products'
 import { rupees } from '../data/products'
 import { ProductCard } from './ProductCard'
 

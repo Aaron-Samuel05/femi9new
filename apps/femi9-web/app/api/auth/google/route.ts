@@ -6,9 +6,9 @@ import {
   callbackUrl,
   OAUTH_STATE_COOKIE,
   OAUTH_NEXT_COOKIE,
-} from '@/lib/google-oauth'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { mockProvidersAllowed } from '@/lib/runtime-mode'
+} from '@femi9/core/google-oauth'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { mockProvidersAllowed } from '@femi9/core/runtime-mode'
 import { safeNextPath } from '@/lib/safe-next'
 
 export const runtime = 'nodejs'

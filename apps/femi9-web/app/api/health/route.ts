@@ -1,6 +1,6 @@
-import { ok, handle } from '@/lib/api'
-import { prisma } from '@/lib/db'
-import { productionReadinessReport } from '@/lib/production-readiness'
+import { ok, handle } from '@femi9/core/api'
+import { prisma } from '@femi9/core/db'
+import { productionReadinessReport } from '@femi9/core/production-readiness'
 
 // A health probe must reflect live state, so opt out of static/route caching.
 export const dynamic = 'force-dynamic'

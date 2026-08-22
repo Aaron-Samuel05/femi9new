@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPostAdmin, listCategoriesAdmin } from '@/lib/services/admin/blog-admin'
+import { getPostAdmin, listCategoriesAdmin } from '@femi9/core/services/admin/blog-admin'
 import PostForm, { type BlogFormValues } from '../_form'
 
 /**

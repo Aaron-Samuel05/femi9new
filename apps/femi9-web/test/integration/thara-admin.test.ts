@@ -6,7 +6,7 @@ import {
   unsuspendMembership,
   listMemberships,
   TharaNotFoundError,
-} from '@/lib/services/thara'
+} from '@femi9/core/services/thara'
 
 async function makeMember(email = `u-${Math.random().toString(36).slice(2, 8)}@t.local`) {
   const u = await prisma.user.create({ data: { email, role: 'customer' } })

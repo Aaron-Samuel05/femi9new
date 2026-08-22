@@ -6,7 +6,7 @@ import { describe, it, expect, vi } from 'vitest'
  */
 vi.mock('next/headers', () => ({ headers: () => ({ get: () => null }) }))
 
-import { toIndiaState } from '@/lib/geo/detect'
+import { toIndiaState } from '@femi9/core/geo/detect'
 
 /**
  * The region-code map is the one piece of regional pricing that cannot be
@@ -40,7 +40,7 @@ describe('CloudFront region → state mapping', () => {
   })
 
   it('maps every code it returns onto a name the admin editor can attach', async () => {
-    const { INDIA_STATES } = await import('@/lib/geo/india-states')
+    const { INDIA_STATES } = await import('@femi9/core/geo/india-states')
     const canonical = new Set<string>(INDIA_STATES)
     for (const code of ['AN', 'DL', 'JK', 'LA', 'UT', 'WB', 'MH', 'UP']) {
       const state = toIndiaState(code)

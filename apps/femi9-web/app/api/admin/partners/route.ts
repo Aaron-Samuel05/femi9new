@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import type { PartnerStatus } from '@prisma/client'
-import { handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { listApplications } from '@/lib/services/admin/partners'
+import { handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { listApplications } from '@femi9/core/services/admin/partners'
 
 /**
  * /api/admin/partners — collection endpoint for the partner-lead CRM.

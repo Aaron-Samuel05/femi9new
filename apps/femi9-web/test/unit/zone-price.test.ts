@@ -4,7 +4,7 @@ import {
   applyZonePrice,
   zoneCustomPrice,
   type ResolvedZone,
-} from '@/lib/services/pricing'
+} from '@femi9/core/services/pricing'
 
 /**
  * The rule that decides every price a shopper sees: a zone's CUSTOM price for an

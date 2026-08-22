@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { languageHint, contradictsState } from '@/lib/geo/language'
+import { languageHint, contradictsState } from '@femi9/core/geo/language'
 
 /**
  * The language veto only ever REMOVES a guess, never adds one, so the test that

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` inventory service at runtime.
-import type { InventoryRow } from '@/lib/services/admin/inventory'
+import type { InventoryRow } from '@femi9/core/services/admin/inventory'
 
 /**
  * Inventory — stock management per variant.

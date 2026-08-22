@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import type { OrderStatus } from '@prisma/client'
-import { getOverview } from '@/lib/services/admin/analytics'
+import { getOverview } from '@femi9/core/services/admin/analytics'
 import { RevenueArea, CityBars, StatusDonut } from './_charts'
 
 /**

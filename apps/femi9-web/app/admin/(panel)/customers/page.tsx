@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { listCustomers } from '@/lib/services/admin/customers'
+import { listCustomers } from '@femi9/core/services/admin/customers'
 
 /**
  * Customers list — async server component reading the service directly. Search

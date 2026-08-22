@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { ok, badRequest, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { logEvent } from '@/lib/services/events'
+import { ok, badRequest, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { logEvent } from '@femi9/core/services/events'
 
 export const dynamic = 'force-dynamic'
 

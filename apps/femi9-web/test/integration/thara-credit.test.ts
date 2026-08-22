@@ -5,15 +5,15 @@ vi.mock('next/headers', () => ({
 }))
 
 import { resetDb, prisma, makeProduct, seedSettings, cartWith } from '../helpers/db'
-import { placeOrder, markOrderPaid, type CheckoutCustomer } from '@/lib/services/checkout'
-import { refundOrder } from '@/lib/services/admin/orders'
+import { placeOrder, markOrderPaid, type CheckoutCustomer } from '@femi9/core/services/checkout'
+import { refundOrder } from '@femi9/core/services/admin/orders'
 import {
   enrollUser,
   accrueTharaCommission,
   applyTharaCredit,
   getTharaCreditBalance,
   reverseTharaCreditForRefund,
-} from '@/lib/services/thara'
+} from '@femi9/core/services/thara'
 
 function customer(phone: string, overrides: Partial<CheckoutCustomer> = {}): CheckoutCustomer {
   return {

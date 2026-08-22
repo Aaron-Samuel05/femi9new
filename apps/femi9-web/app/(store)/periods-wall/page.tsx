@@ -1,5 +1,5 @@
 import { PeriodsWall } from '@/screens/PeriodsWall'
-import { listApprovedPosts } from '@/lib/services/wall'
+import { listApprovedPosts } from '@femi9/core/services/wall'
 
 // Server component: approved wall posts are fetched from Postgres and handed to
 // the (client) PeriodsWall screen as props. Force-dynamic so a freshly approved

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { INDIA_STATES } from '@/lib/geo/india-states'
+import { INDIA_STATES } from '@femi9/core/geo/india-states'
 
 /**
  * Pricing Zones — interactive screen (table + create/edit form).

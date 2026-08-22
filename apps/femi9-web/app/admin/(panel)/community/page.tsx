@@ -5,7 +5,7 @@ import type { ModerationStatus } from '@prisma/client'
 import { IStar } from '@/components/AppIcons'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` wall service at runtime.
-import type { WallRow } from '@/lib/services/admin/wall'
+import type { WallRow } from '@femi9/core/services/admin/wall'
 
 /**
  * Community — the wall moderation queue.

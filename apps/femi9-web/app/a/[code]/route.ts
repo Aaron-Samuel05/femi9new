@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { REF_COOKIE, logClick } from '@/lib/services/affiliate'
+import { REF_COOKIE, logClick } from '@femi9/core/services/affiliate'
 
 /**
  * GET /a/[code] — creator (affiliate) referral link entry point.

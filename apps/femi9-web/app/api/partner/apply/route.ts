@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { ok, badRequest, handle } from '@/lib/api'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { createApplication } from '@/lib/services/partner'
+import { ok, badRequest, handle } from '@femi9/core/api'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { createApplication } from '@femi9/core/services/partner'
 
 /**
  * /api/partner/apply — public "become a partner" lead capture.

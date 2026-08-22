@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
-import { handle, unauthorized, notFound } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { optOutUser } from '@/lib/services/thara'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, unauthorized, notFound } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { optOutUser } from '@femi9/core/services/thara'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

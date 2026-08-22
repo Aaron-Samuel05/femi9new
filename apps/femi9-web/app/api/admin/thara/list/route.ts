@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { handle, ok, notFound, forbidden } from '@/lib/api'
-import { getAdminSession } from '@/lib/admin-auth'
-import { listMemberships } from '@/lib/services/thara'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, ok, notFound, forbidden } from '@femi9/core/api'
+import { getAdminSession } from '@femi9/core/admin-auth'
+import { listMemberships } from '@femi9/core/services/thara'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 import type { TharaStatus } from '@prisma/client'
 
 export const runtime = 'nodejs'

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { IStar, IThumbUp, IThumbDown, IChevron } from './AppIcons'
-import type { ProductReview } from '@/lib/services/products'
+import type { ProductReview } from '@femi9/core/services/products'
 
 /**
  * "Customer Reviews" — a paged carousel of review cards over a rating summary.

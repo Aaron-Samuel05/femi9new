@@ -1,6 +1,6 @@
-import { handle, ok, unauthorized, notFound } from '@/lib/api'
-import { getSession } from '@/lib/auth'
-import { isTharaEnabled } from '@/lib/thara/feature'
+import { handle, ok, unauthorized, notFound } from '@femi9/core/api'
+import { getSession } from '@femi9/core/auth'
+import { isTharaEnabled } from '@femi9/core/thara/feature'
 import {
   getMembership,
   getTharaCreditBalance,
@@ -14,8 +14,8 @@ import {
   THARA_COMMISSION_PCT,
   THARA_POINTS_PCT,
   TharaDiscountSlabs,
-} from '@/lib/services/thara'
-import { prisma } from '@/lib/db'
+} from '@femi9/core/services/thara'
+import { prisma } from '@femi9/core/db'
 
 /**
  * Every number the explainer UI prints, sent from the server rather than

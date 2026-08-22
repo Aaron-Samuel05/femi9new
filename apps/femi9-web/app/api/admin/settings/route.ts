@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, handle, ok, unauthorized } from '@/lib/api'
-import { requireAdmin } from '@/lib/admin-auth'
-import { getEditableSettings, updateSettings } from '@/lib/services/admin/settings-admin'
+import { badRequest, handle, ok, unauthorized } from '@femi9/core/api'
+import { requireAdmin } from '@femi9/core/admin-auth'
+import { getEditableSettings, updateSettings } from '@femi9/core/services/admin/settings-admin'
 
 /**
  * /api/admin/settings — the settings editor endpoint.

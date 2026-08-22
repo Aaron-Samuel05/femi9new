@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { classifyCarrier } from '@/lib/geo/carriers'
+import { classifyCarrier } from '@femi9/core/geo/carriers'
 
 /**
  * The carrier gate is the piece that decides whether a viewer's region answer is

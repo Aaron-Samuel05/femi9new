@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
-import { badRequest, created, handle, notFound, ok, serviceUnavailable, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
+import { badRequest, created, handle, notFound, ok, serviceUnavailable, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
 import {
   CycleConsentRequiredError,
   FutureDateError,
@@ -10,7 +10,7 @@ import {
   deleteSymptom,
   logSymptom,
   updateSymptom,
-} from '@/lib/services/cycle'
+} from '@femi9/core/services/cycle'
 
 /**
  * /api/cycle/symptoms — how the user felt on a given day.

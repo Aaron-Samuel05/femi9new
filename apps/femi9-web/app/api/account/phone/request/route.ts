@@ -1,15 +1,15 @@
 import type { NextRequest } from 'next/server'
-import { badRequest, conflict, handle, ok, serviceUnavailable, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
-import { ProviderConfigurationError } from '@/lib/runtime-mode'
+import { badRequest, conflict, handle, ok, serviceUnavailable, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
+import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 import {
   assertIdentityFree,
   IdentityConflictError,
   InvalidPhoneError,
   normalizePhone,
   requestOtp,
-} from '@/lib/services/auth'
+} from '@femi9/core/services/auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

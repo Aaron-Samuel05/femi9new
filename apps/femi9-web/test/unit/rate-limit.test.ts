@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { rateLimit } from '@/lib/rate-limit'
+import { rateLimit } from '@femi9/core/rate-limit'
 
 /**
  * The limiter's store is a module-level in-process Map shared across all tests,

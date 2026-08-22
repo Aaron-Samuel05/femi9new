@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, seedSettings, makeProduct, prisma } from '../helpers/db'
-import { createSubscription, pause, resume, generateDueOrders } from '@/lib/services/subscriptions'
+import { createSubscription, pause, resume, generateDueOrders } from '@femi9/core/services/subscriptions'
 
 /**
  * Subscriptions drive real recurring orders. The correctness invariant under test

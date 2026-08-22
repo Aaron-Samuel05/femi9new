@@ -1,5 +1,5 @@
-import { handle, ok } from '@/lib/api'
-import { ADMIN_COOKIE } from '@/lib/admin-auth'
+import { handle, ok } from '@femi9/core/api'
+import { ADMIN_COOKIE } from '@femi9/core/admin-auth'
 
 /** POST /api/admin/logout — drop the session cookie. */
 export async function POST() {

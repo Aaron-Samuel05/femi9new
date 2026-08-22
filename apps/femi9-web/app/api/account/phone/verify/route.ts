@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server'
-import { badRequest, conflict, handle, notFound, ok, unauthorized } from '@/lib/api'
-import { requireUser } from '@/lib/auth'
-import { prisma } from '@/lib/db'
-import { rateLimit, clientIp, tooManyRequests } from '@/lib/rate-limit'
+import { badRequest, conflict, handle, notFound, ok, unauthorized } from '@femi9/core/api'
+import { requireUser } from '@femi9/core/auth'
+import { prisma } from '@femi9/core/db'
+import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 import {
   attachIdentity,
   IdentityConflictError,
@@ -10,8 +10,8 @@ import {
   InvalidPhoneError,
   normalizePhone,
   verifyPhoneChallenge,
-} from '@/lib/services/auth'
-import { missingProfileFields } from '@/lib/services/account'
+} from '@femi9/core/services/auth'
+import { missingProfileFields } from '@femi9/core/services/account'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

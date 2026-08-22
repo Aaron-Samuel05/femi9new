@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { TELECOM_CIRCLES, circleState, isTelecomCircle } from '@/lib/geo/circles'
-import { INDIA_STATES } from '@/lib/geo/india-states'
+import { TELECOM_CIRCLES, circleState, isTelecomCircle } from '@femi9/core/geo/circles'
+import { INDIA_STATES } from '@femi9/core/geo/india-states'
 
 /**
  * The circle map is public fact, but it is fact with sharp edges: several

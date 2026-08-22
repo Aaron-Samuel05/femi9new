@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { listCategoriesAdmin } from '@/lib/services/admin/blog-admin'
+import { listCategoriesAdmin } from '@femi9/core/services/admin/blog-admin'
 import PostForm from '../_form'
 
 /**

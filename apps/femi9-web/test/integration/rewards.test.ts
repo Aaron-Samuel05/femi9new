@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { resetDb, seedSettings, prisma } from '../helpers/db'
-import { redeem, InsufficientPointsError } from '@/lib/services/rewards'
+import { redeem, InsufficientPointsError } from '@femi9/core/services/rewards'
 
 /**
  * Rewards redemption is the security-sensitive path: it turns loyalty points into
