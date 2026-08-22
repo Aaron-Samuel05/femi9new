@@ -60,8 +60,18 @@ legacy prototypes and the other brand's source out of the image.
 between them fail to compile. femi9-web declares the 3D stack but imports none
 of it; its versions exist only to match lumi9-web.
 
-**The two apps are on different Next majors** (15.5 vs 16.3), so lumi9's `next`
-does not hoist. Phase 0b aligns them.
+**Both apps are pinned to Next 16.3.1 exactly**, so `next` hoists to a single
+copy. Keep them in lockstep — a version split un-hoists Next and reintroduces
+the dual-`three` class of type clash.
+
+**Turbo needs `packageManager` in the root package.json.** Without it every
+`turbo run` fails with "Could not resolve workspace". Turborepo also collects
+anonymous telemetry by default; set `TURBO_TELEMETRY_DISABLED=1` to opt out.
+
+**femi9-web still uses the `middleware` file convention**, which Next 16
+deprecates in favour of `proxy`. It is kept deliberately: `proxy` runs on the
+Node runtime only, and this middleware is hand-written to be edge-compatible.
+Every build prints a deprecation warning until that decision is revisited.
 
 **`apps/femi9-web/.github/workflows/deploy.yml` is inert.** GitHub only runs
 workflows from `<repo>/.github/workflows`. It has never executed. The two that

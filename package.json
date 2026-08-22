@@ -10,6 +10,7 @@
   "engines": {
     "node": ">=22"
   },
+  "packageManager": "npm@10.9.3",
   "scripts": {
     "dev": "turbo run dev",
     "dev:femi9": "npm run dev --workspace femi9-web",

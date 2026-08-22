@@ -21,11 +21,12 @@ only root files worth consulting, and only when a task needs product intent.
 
 Femi9 — Indian D2C period-care brand (pads + period panties). Next.js App
 Router: storefront, customer account, and the ops console in one deploy, backed
-by Postgres. One of two apps in the `femi9-platform` workspace.
+by Postgres. One of two apps in the `femi9-platform` workspace, pinned to the
+same exact Next version as `lumi9-web`.
 
 | | |
 | --- | --- |
-| Framework | Next.js 15.5 (App Router) · React 19 · TypeScript strict |
+| Framework | Next.js 16.3.1 (App Router, **Turbopack**) · React 19.2 · TypeScript strict |
 | Data | PostgreSQL via Prisma 6 (`prisma/schema.prisma`, ~60 models) |
 | Styling | Hand-written CSS in `src/styles/*.css` + colocated `*.css`. **No Tailwind.** |
 | Auth | Stateless HS256 JWTs in httpOnly cookies (`jose`) |
@@ -67,6 +68,18 @@ it in a service.
 runs on the edge; `src/lib/auth.ts` and `src/lib/admin-auth.ts` are the Node-side
 counterparts. **Change one and you must change the other** — they are the same
 check written twice on purpose.
+
+**This app uses `middleware.ts`, not `proxy.ts`, on purpose.** Next 16 renamed
+the convention and every build warns about it. We have NOT migrated because
+`proxy` runs on the Node runtime only and cannot be configured, while this file
+is deliberately written to be edge-compatible. Migrating is a real decision, not
+a rename — see the note in `docs/TWO-BRAND-ARCHITECTURE.md`. Do not "fix" the
+warning by running the codemod without that decision being made.
+
+**There is no ESLint here.** This app has never had a config, `next lint` was
+removed in Next 16, and `next build` no longer lints. The `lint` script is gone
+rather than left pretending to work. Adding real linting is worthwhile, but it
+is its own task.
 
 **Guard twice.** Middleware is the first gate, not the only one. Every
 `/api/admin/*` handler still calls `requireAdmin()`; every customer handler still
@@ -118,7 +131,7 @@ npm install                    # ALWAYS at the root; one hoisted lockfile
 
 # from inside apps/femi9-web:
 npm run build
-npm run typecheck              # tsc --noEmit
+npm run typecheck              # tsc --noEmit  (there is no `lint` script — see above)
 npm test                       # vitest — SEE THE WARNING ABOVE
 npm run test:ui                # playwright
 npm run db:generate            # prisma generate
@@ -147,3 +160,4 @@ Append one entry per task. Newest last.
 | 2026-08-22 | Two-brand (Femi9 + Lumi9) platform architecture — brainstorm + plan | `CLAUDE.md` (new) · `docs/TWO-BRAND-ARCHITECTURE.md` (new) | Plan only, no code. Agreed: separate domains, **fully separate customer bases**, admin-only brand selection, two Razorpay accounts. |
 | 2026-08-22 | Architecture revision after review | `docs/TWO-BRAND-ARCHITECTURE.md` | Admin brand pick is a **segmented toggle on the login form**, not a typed `femi9/` prefix (brand is untrusted client input — `AdminBrandRole` still decides). "Same backend" settled as **shared `packages/core`, not an extracted API service**. DB settled as **one Postgres, three schemas** (`femi9` · `lumi9` · `platform`). |
 | 2026-08-23 | **Phase 0 — monorepo** | repo-wide | `femi9-next` → `apps/femi9-web`, `lumi9-web-main` → `apps/lumi9-web`. npm workspaces + Turborepo, one hoisted lockfile. Both apps build. Docker context moved to repo root; runtime layout kept flat and identical. CI/deploy paths updated, Lumi9 CI job added. Next upgrade deferred to Phase 0b. |
+| 2026-08-23 | **Phase 0b — Next 16** | `package.json` · root `package.json` | Next 15.5.23 → **16.3.1** (exact, matching lumi9 — `next` now hoists to one copy). Builds on **Turbopack**; Sentry 10.70 is Turbopack-compatible, so no webpack conflict. `next lint` removed upstream → dead `lint` script dropped. Added `packageManager` to the root manifest (turbo could not resolve the workspace without it). **`middleware.ts` kept, not migrated to `proxy`** — open decision, see architecture doc. Zero `next/image` usage, so every image breaking change was moot. |

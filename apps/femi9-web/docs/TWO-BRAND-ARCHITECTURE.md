@@ -298,10 +298,57 @@ Both apps build. What it took beyond the move:
 - **CI and staging deploy repointed**, and a Lumi9 lint+build job added so the
   second storefront cannot break silently.
 
-*0b — outstanding.* Upgrade femi9 Next 15.5 → 16.3 to match lumi9. Split out
-deliberately: it is a real upgrade with breaking changes, and keeping it off the
-restructure commit means either half can be reverted alone. Until it lands the
-two apps sit on different Next majors, so lumi9's `next` does not hoist.
+*0b — shipped.* femi9 Next 15.5.23 → **16.3.1**, pinned exactly to match lumi9,
+so `next` now hoists to a single copy. Both apps build, and `turbo run build`
+builds them together.
+
+Most of the v16 breaking-change surface turned out not to apply:
+
+- **Zero `next/image` usage** in femi9 (it has its own `OptImg`), so every image
+  breaking change — `minimumCacheTTL`, `imageSizes`, `qualities`, local images
+  with query strings, `images.domains` — was moot.
+- **No `images`, `webpack`, `eslint` or `turbopack` keys** in `next.config.mjs`,
+  so there was no config to migrate.
+- **Turbopack is now the default builder and it worked first try.** The guide
+  warns that a plugin-injected webpack config fails the build; Sentry 10.70 is
+  Turbopack-compatible and ran its `runAfterProductionCompile` source-map hook
+  normally.
+- **`next lint` was removed upstream** and `next build` no longer lints. This app
+  has never had an ESLint config, so the script was already a no-op and was
+  dropped rather than left pretending to work. Giving femi9 real linting is
+  worthwhile and is its own task.
+- **Turbo needed `packageManager` in the root manifest** — without it every
+  `turbo run` fails with "Could not resolve workspace". So `turbo` had in fact
+  never run until this phase.
+
+### Open decision: `middleware.ts` → `proxy.ts`
+
+Next 16 deprecates the `middleware` file convention in favour of `proxy`, and
+femi9 prints that warning on every build. **We did not migrate**, because it is
+not a rename:
+
+> The `edge` runtime is **NOT** supported in `proxy`. The `proxy` runtime is
+> `nodejs`, and it cannot be configured.
+
+`middleware.ts` is deliberately edge-shaped: it hand-rolls HS256 verification
+with Web Crypto, avoiding any Node or `server-only` import, and that duplicated
+verifier is the file's whole design. Switching to `proxy` moves the auth gate to
+the Node runtime — a behavioural change on the most security-sensitive path in
+the app, which did not belong in a version-alignment commit.
+
+The argument **for** migrating, when it is taken up:
+
+- Femi9 deploys to **ECS Fargate as a standalone Node server**. There is no edge
+  network in front of it, so the edge runtime buys nothing here — it only
+  imposes constraints.
+- On the Node runtime the guard could `import { verifySession }` from
+  `src/lib/auth.ts` directly, deleting the inline re-implementation. That kills
+  the standing hazard recorded in `CLAUDE.md`: *the same check written twice, and
+  changing one means changing the other.*
+
+That makes this a natural companion to **Phase 1**, where the auth helpers move
+into `packages/core` and want a single implementation anyway. Until then the
+deprecation warning is expected, not a defect.
 
 **Phase 1 — Extract core.** `prisma/` → `packages/db`, `src/lib` +
 `src/lib/services` → `packages/core`. Every service signature gains `brand` as
