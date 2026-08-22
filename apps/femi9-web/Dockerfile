@@ -42,6 +42,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/femi9-web/package.json apps/femi9-web/
 COPY apps/lumi9-web/package.json apps/lumi9-web/
+COPY packages/db/package.json packages/db/
 
 # `npm ci` = clean, reproducible install straight from package-lock.json.
 # devDependencies are needed here because `next build` and `prisma generate`
@@ -73,8 +74,9 @@ WORKDIR /app/apps/femi9-web
 
 # Generate the Prisma client (writes to the hoisted node_modules/.prisma/client
 # and pulls the correct musl engine). Run BEFORE the build so server code can
-# import it.
-RUN npx prisma generate
+# import it. Via the npm script, because the schema now lives in packages/db and
+# the script carries the --schema flag that points there.
+RUN npm run db:generate
 
 # NEXT_PUBLIC_* values are inlined into the CLIENT bundle at `next build` time —
 # they are NOT read from the container env at runtime. So they must be present as
@@ -157,7 +159,9 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/standalone/app
 COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
 
 # The Prisma schema + migration history — required by `prisma migrate deploy`.
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/prisma  ./prisma
+# It lives in packages/db now (one schema, both brands) but is copied to the same
+# /app/prisma the entrypoint has always used, so that script is unchanged.
+COPY --from=build --chown=nextjs:nodejs /app/packages/db/prisma ./prisma
 COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/scripts ./scripts
 # Keep the static catalog available to the idempotent Prisma seed task.
 COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/src/data ./src/data

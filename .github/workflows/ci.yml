@@ -159,13 +159,15 @@ jobs:
         run: npm ci
 
       - name: Generate Prisma Client
-        run: npx prisma generate
+        # Via the npm script: the schema lives in packages/db now and the script
+        # carries the --schema flag.
+        run: npm run db:generate
 
       - name: Typecheck
         run: npx tsc --noEmit
 
       - name: Push schema to the test database
-        run: npx prisma db push --skip-generate
+        run: npm run db:push -- --skip-generate
 
       - name: Run unit + integration tests
         run: npm test

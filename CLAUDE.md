@@ -11,7 +11,11 @@ apps/
                 Has its own CLAUDE.md — read it before touching this app.
   lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4.
                 Frontend only: no backend, no database, cart in localStorage.
-packages/       (empty — Phase 1 lands db/ and core/ here)
+packages/
+  db/           @femi9/db — the shared Prisma schema and `dbFor(brand)`.
+                One schema, one client per brand. Seeds are NOT here: seed data
+                is brand-specific and lives with each app.
+  core/         (Phase 1b — services, auth, payments)
 ```
 
 Everything else at this root is **dead**: `femi9-app/`, `femi9-react/`,
@@ -32,6 +36,21 @@ phase list. Read it before any structural work. The short version:
   lives in the connection string, so a brand cannot read another's rows.
 - The admin console picks its brand with a **segmented toggle on the login
   form**. That toggle is untrusted client input — `AdminBrandRole` decides.
+
+## Database access
+
+```ts
+import { dbFor, isBrand, type Brand } from '@femi9/db'
+const db = dbFor('femi9')
+```
+
+Isolation lives in the **connection string**, not in a `where` clause somebody
+can forget — each brand's client is bound to its own Postgres schema. `isBrand()`
+has no default: narrow untrusted input through it, and take brand from the
+session or the host, never from a request body.
+
+`DATABASE_URL` still works for Femi9 as a transitional fallback — the live data
+is in `public` and Phase 2 does the rename. Lumi9 has no fallback on purpose.
 
 ## Commands
 

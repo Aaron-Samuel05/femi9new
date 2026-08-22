@@ -28,7 +28,9 @@ const nextConfig = {
   // CMD path both assume that layout.
   outputFileTracingRoot: path.join(import.meta.dirname, '..', '..'),
   // The three.js / R3F stack ships ESM that Next needs to transpile.
-  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
+  // @femi9/db is a workspace package published as TypeScript source, so it
+  // needs transpiling too — there is no build step in front of it.
+  transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', '@femi9/db'],
 
   async headers() {
     return [

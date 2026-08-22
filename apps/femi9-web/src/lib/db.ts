@@ -1,28 +1,36 @@
-import { PrismaClient } from '@prisma/client'
+import { dbFor, type Brand } from '@femi9/db'
 
-// Single Prisma client across hot reloads / serverless invocations. Without the
-// global cache, Next dev (and serverless) would spawn a new pool per reload and
-// exhaust connections.
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient }
+/** This app is Femi9's storefront: single brand, fixed at build time. */
+const BRAND: Brand = 'femi9'
 
 /**
- * Interactive-transaction budget. Prisma's 5s default is sized for a database
- * one network hop away, which is what production is (Fargate → RDS Proxy →
- * Aurora, same VPC, sub-millisecond). It is NOT what a developer running the
- * integration suite against a hosted Postgres has: at ~250ms per round trip,
- * checkout's order transaction — a dozen sequential statements — spends its
- * whole budget on latency and dies with "Transaction already closed" partway
- * through reserving stock, which reads like an oversell bug rather than a slow
- * link. Configurable so the test env can buy headroom without loosening the
- * production ceiling that keeps a stuck transaction from pinning a connection.
+ * Femi9's Prisma client.
+ *
+ * TRANSITIONAL. The client itself now lives in `@femi9/db`, which builds one per
+ * brand from a shared schema. This module keeps the import path that ~80 call
+ * sites in this app already use, so moving the schema out did not touch them.
+ *
+ * As Phase 1 threads `brand` through the service layer, each service should call
+ * `dbFor(brand)` itself and stop importing this. When nothing imports it, delete
+ * it.
+ *
+ * ── Why the Proxy ──────────────────────────────────────────────────────────
+ * It is deliberately LAZY. The previous version called `new PrismaClient()` at
+ * module scope, which was safe because Prisma resolves its connection string at
+ * connect time, not construction. `dbFor()` takes an explicit `datasourceUrl`,
+ * so it needs `DATABASE_URL` to already be present — and the Docker build stage
+ * has no database credentials at all (they are injected at deploy time from
+ * Secrets Manager). Constructing eagerly would throw during `next build` in the
+ * image. Deferring to first property access keeps the build credential-free
+ * while every real call site still gets a client.
  */
-const TRANSACTION_TIMEOUT_MS = Number(process.env.PRISMA_TRANSACTION_TIMEOUT_MS) || 5_000
+let client: ReturnType<typeof dbFor> | undefined
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
-    transactionOptions: { timeout: TRANSACTION_TIMEOUT_MS },
-  })
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma
+export const prisma = new Proxy({} as ReturnType<typeof dbFor>, {
+  get(_target, property) {
+    client ??= dbFor(BRAND)
+    // `client` as the receiver, so methods keep their own `this` rather than
+    // binding to the empty proxy target.
+    return Reflect.get(client, property, client)
+  },
+})

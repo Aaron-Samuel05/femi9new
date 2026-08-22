@@ -50,12 +50,25 @@ src/
                       razorpay.ts · otp.ts · cycle-crypto.ts · geo/ · thara/
   lib/services/       ALL business logic. admin/ subfolder for ops-only logic.
   components/ screens/ store/ styles/ charts/ immersive/ data/
-prisma/               schema.prisma · migrations/ · seed.ts · seed-zones.ts
+prisma/               seed.ts · seed-zones.ts · seed-demo.ts  (brand-specific
+                      seed DATA only — schema + migrations are in packages/db)
 middleware.ts         edge guard for /admin, /api/admin, /account, /dashboard, /welcome
 docs/                 GEOIP.md · TWO-BRAND-ARCHITECTURE.md · phases/ · thara/
 ```
 
 ## 3. Rules that matter here
+
+**The Prisma schema is NOT in this app.** It lives in `packages/db`
+(`@femi9/db`), shared with the other brand. `src/lib/db.ts` is now a thin,
+deliberately LAZY re-export that pins `dbFor('femi9')` behind the import path
+~80 call sites already use. It is lazy because `dbFor()` needs `DATABASE_URL` at
+construction and the Docker build stage has no credentials — constructing
+eagerly would break `next build` in the image. New service code should call
+`dbFor(brand)` directly rather than importing this shim.
+
+The `db:*` scripts pass `--schema ../../packages/db/prisma/schema.prisma`; they
+still run from THIS directory because that is where `.env` is, and the Prisma
+CLI reads env from its working directory.
 
 **Business logic lives in `src/lib/services/*`.** Route handlers parse + authorize
 + delegate. Pages and server components import services directly — they do not
@@ -161,3 +174,4 @@ Append one entry per task. Newest last.
 | 2026-08-22 | Architecture revision after review | `docs/TWO-BRAND-ARCHITECTURE.md` | Admin brand pick is a **segmented toggle on the login form**, not a typed `femi9/` prefix (brand is untrusted client input — `AdminBrandRole` still decides). "Same backend" settled as **shared `packages/core`, not an extracted API service**. DB settled as **one Postgres, three schemas** (`femi9` · `lumi9` · `platform`). |
 | 2026-08-23 | **Phase 0 — monorepo** | repo-wide | `femi9-next` → `apps/femi9-web`, `lumi9-web-main` → `apps/lumi9-web`. npm workspaces + Turborepo, one hoisted lockfile. Both apps build. Docker context moved to repo root; runtime layout kept flat and identical. CI/deploy paths updated, Lumi9 CI job added. Next upgrade deferred to Phase 0b. |
 | 2026-08-23 | **Phase 0b — Next 16** | `package.json` · root `package.json` | Next 15.5.23 → **16.3.1** (exact, matching lumi9 — `next` now hoists to one copy). Builds on **Turbopack**; Sentry 10.70 is Turbopack-compatible, so no webpack conflict. `next lint` removed upstream → dead `lint` script dropped. Added `packageManager` to the root manifest (turbo could not resolve the workspace without it). **`middleware.ts` kept, not migrated to `proxy`** — open decision, see architecture doc. Zero `next/image` usage, so every image breaking change was moot. |
+| 2026-08-23 | **Phase 1a — `packages/db`** | `packages/db/*` (new) · `src/lib/db.ts` · `Dockerfile` · `ci.yml` · `next.config.mjs` | Schema + 13 migrations → `@femi9/db`; seeds stayed (brand-specific). `dbFor(brand)` builds one client per brand from one schema — isolation in the connection string. `src/lib/db.ts` became a lazy Proxy shim so all ~80 call sites kept working and the credential-free Docker build still passes. Verified: proxy forwards delegates, `dbFor` memoises, `isBrand` rejects case/traversal/undefined, and **lumi9 refuses to fall back to femi9's `DATABASE_URL`**. |
