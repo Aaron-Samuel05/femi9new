@@ -1,5 +1,5 @@
 import 'server-only'
-import { Prisma } from '@prisma/client'
+import { Prisma, type ProductType } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
 
 /**
@@ -21,7 +21,8 @@ export interface InventoryRow {
   productId: string
   productName: string
   productSlug: string
-  productType: 'pad' | 'panty'
+  // The shared ProductType, not Femi9's two values — Lumi9 files diapers here.
+  productType: ProductType
   kind: 'pack' | 'size'
   label: string
   sku: string | null

@@ -107,6 +107,20 @@ TEST_PLATFORM_DATABASE_URL="postgresql://USER:PASS@127.0.0.1:5432/femi9_platform
 The platform test database is separate from the brand one. Push the schema with
 `npm run push --workspace @femi9/db-platform` pointed at it first.
 
+## Running the tests
+
+They need a platform database AND both brand schemas, because the isolation
+suite checks that one brand's console cannot reach the other's data:
+
+```bash
+psql -c 'CREATE DATABASE femi9_twobrand'
+psql -d femi9_twobrand -c 'CREATE SCHEMA femi9; CREATE SCHEMA lumi9;'
+# migrate packages/db once per schema, then seed each app's own catalogue
+TEST_PLATFORM_DATABASE_URL=... TEST_FEMI9_DATABASE_URL=... TEST_LUMI9_DATABASE_URL=... npx vitest run
+```
+
+CI does exactly this — see the `admin` job.
+
 ## Things that will bite
 
 **The platform Prisma client has a custom output path** (`generated/`, gitignored).
@@ -116,6 +130,13 @@ clone or Docker build must run `prisma generate` for **both** packages.
 
 **Turbopack warns "Dynamic filesystem access causes tracing of the whole
 project"** on build. That is Prisma's engine loader, not a defect.
+
+**A brand sells only some product types.** `brandConfig(brand).productTypes`
+drives the form's options AND the product routes reject anything outside it. The
+`ProductType` enum is shared across brands, so without that check a request could
+file a diaper under Femi9. Femi9's vocabulary was baked into four layers before
+Lumi9 existed — the Prisma enum, the Zod schema, the form, and `InventoryRow` —
+so expect to find more of it.
 
 **This app must build with no database credentials.** The Docker build stage has
 none — they arrive at deploy time from Secrets Manager. `platformDb()` is called

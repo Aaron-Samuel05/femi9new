@@ -8,10 +8,25 @@ import { fileURLToPath } from 'node:url'
  * per-test, so they run serially.
  */
 const dotenv = loadEnv('test', fileURLToPath(new URL('.', import.meta.url)), '')
-const TEST_DB =
-  process.env.TEST_PLATFORM_DATABASE_URL ||
-  dotenv.TEST_PLATFORM_DATABASE_URL ||
-  'postgresql://postgres:postgres@127.0.0.1:5432/femi9_platform_test?schema=public'
+const pick = (name: string, fallback: string) =>
+  process.env[name] || dotenv[name] || fallback
+
+const TEST_DB = pick(
+  'TEST_PLATFORM_DATABASE_URL',
+  'postgresql://postgres:postgres@127.0.0.1:5432/femi9_platform_test?schema=public',
+)
+
+// The console reads BRAND data as well as admin identity, and the isolation
+// tests need both brands. One database, a schema each — the same shape
+// production will have.
+const TEST_FEMI9 = pick(
+  'TEST_FEMI9_DATABASE_URL',
+  'postgresql://postgres:postgres@127.0.0.1:5432/femi9_twobrand?schema=femi9',
+)
+const TEST_LUMI9 = pick(
+  'TEST_LUMI9_DATABASE_URL',
+  'postgresql://postgres:postgres@127.0.0.1:5432/femi9_twobrand?schema=lumi9',
+)
 
 export default defineConfig({
   test: {
@@ -22,6 +37,8 @@ export default defineConfig({
     testTimeout: 120_000,
     env: {
       DATABASE_URL_PLATFORM: TEST_DB,
+      DATABASE_URL_FEMI9: TEST_FEMI9,
+      DATABASE_URL_LUMI9: TEST_LUMI9,
       ADMIN_AUTH_SECRET: 'admin-test-secret-0123456789abcdef0123456789abcdef',
       NODE_ENV: 'test',
     },

@@ -9,8 +9,10 @@ apps/
   femi9-web/    Femi9 storefront + account + (for now) the ops console.
                 Next 15.5 · hand-written CSS · Prisma/Postgres · LIVE.
                 Has its own CLAUDE.md — read it before touching this app.
-  lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4.
-                Frontend only: no backend, no database, cart in localStorage.
+  lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4. Has its own CLAUDE.md.
+                Its catalogue IS in the database now and manageable in the
+                console — but this app still renders from hardcoded modules.
+                Wiring it up is Phase 4.
   admin/        ONE console, both brands. :3002. Has its own CLAUDE.md.
                 Brand comes from the SESSION, never the URL segment.
                 Holds ALL the ops pages and APIs — femi9-web has none.
@@ -114,6 +116,10 @@ databases — see each app's CLAUDE.md.
 **Two Prisma generators, two output paths.** A fresh clone or Docker build must
 run `prisma generate` for `@femi9/db` AND `@femi9/db-platform`; the second uses
 a package-local `generated/` directory so the two do not overwrite each other.
+
+**One schema per brand, migrated from the same history.** `prisma migrate deploy`
+runs once per brand database. `packages/db` is the only schema; a brand simply
+never uses the other's enum values.
 
 **The `public` → `femi9` schema rename has NOT been run** against the live
 database. Femi9 still reads `DATABASE_URL`. See

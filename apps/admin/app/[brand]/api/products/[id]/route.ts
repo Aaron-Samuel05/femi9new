@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { allowsProductType } from '@femi9/core/brands'
 import {
   ProductInputSchema,
   archiveProduct,
@@ -57,6 +58,10 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     const raw = await req.json().catch(() => null)
     const parsed = ProductInputSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
+    // The Prisma enum is shared; this brand's catalogue is not.
+    if (!allowsProductType(brand, parsed.data.type)) {
+      return badRequest(`${brand} does not sell ${parsed.data.type} products`)
+    }
 
     try {
       return ok(await updateProduct(brand, params.id, parsed.data))

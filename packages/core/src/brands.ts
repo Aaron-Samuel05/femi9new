@@ -31,6 +31,10 @@ export const ADMIN_MODULES = [
 
 export type AdminModule = (typeof ADMIN_MODULES)[number]
 
+/** The Prisma ProductType values. A brand sells some of them, never all. */
+export const PRODUCT_TYPES = ['pad', 'panty', 'diaper'] as const
+export type ProductTypeValue = (typeof PRODUCT_TYPES)[number]
+
 export interface BrandConfig {
   key: Brand
   name: string
@@ -41,6 +45,13 @@ export interface BrandConfig {
   accent: string
   accentInk: string
   modules: readonly AdminModule[]
+  /**
+   * What this brand actually sells. The console's product form renders its
+   * options from here, and the routes reject anything outside it — a Lumi9
+   * admin has no business creating a sanitary pad, and the shared enum would
+   * otherwise let them.
+   */
+  productTypes: readonly ProductTypeValue[]
 }
 
 export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
@@ -51,6 +62,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     host: 'femi9.in',
     accent: '#352D78',
     accentInk: '#ffffff',
+    productTypes: ['pad', 'panty'],
     modules: [
       'dashboard',
       'catalog',
@@ -76,6 +88,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     host: 'lumi9.in',
     accent: '#4F6F52',
     accentInk: '#ffffff',
+    productTypes: ['diaper'],
     // No community, affiliates, partners or thara: those are Femi9 programmes,
     // and the Lumi9 database has no rows for them.
     modules: [
@@ -101,4 +114,15 @@ export function brandConfig(brand: Brand): BrandConfig {
 /** Whether a brand's console includes a module. The route guard calls this. */
 export function hasModule(brand: Brand, moduleName: AdminModule): boolean {
   return BRAND_CONFIG[brand].modules.includes(moduleName)
+}
+
+/**
+ * Whether a brand may sell this product type.
+ *
+ * The Prisma enum is shared across brands, so without this check a crafted
+ * request could file a diaper under Femi9. Validation at the boundary knows the
+ * union; only this knows which member belongs to whom.
+ */
+export function allowsProductType(brand: Brand, type: string): type is ProductTypeValue {
+  return (BRAND_CONFIG[brand].productTypes as readonly string[]).includes(type)
 }

@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { brandConfig, isBrand, type ProductTypeValue } from '@femi9/core/brands'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -32,7 +33,7 @@ export interface VariantValue {
 export interface ProductFormValues {
   name: string
   slug: string
-  type: 'pad' | 'panty'
+  type: ProductTypeValue
   basePrice: number
   meta: string
   flow: string
@@ -98,6 +99,13 @@ function toVariantRow(v: VariantValue): VariantRow {
   }
 }
 
+/** What each type means to whoever is filling the form in. */
+const TYPE_LABELS: Record<ProductTypeValue, string> = {
+  pad: 'Pad (sold by pack)',
+  panty: 'Panty (sold by size)',
+  diaper: 'Diaper (sold by pack)',
+}
+
 export default function ProductForm({
   mode,
   productId,
@@ -108,11 +116,15 @@ export default function ProductForm({
   initial?: Partial<ProductFormValues>
 }) {
   const { brand } = useParams<{ brand: string }>()
+  // Only what THIS brand sells. The routes reject anything else anyway, but a
+  // dropdown offering a product the brand cannot file is a bug report waiting.
+  const allowedTypes = (isBrand(brand) ? brandConfig(brand).productTypes : ['pad']) as
+    readonly ProductTypeValue[]
   const router = useRouter()
 
   const [name, setName] = useState(initial?.name ?? '')
   const [slug, setSlug] = useState(initial?.slug ?? '')
-  const [type, setType] = useState<'pad' | 'panty'>(initial?.type ?? 'pad')
+  const [type, setType] = useState<ProductTypeValue>(initial?.type ?? allowedTypes[0])
   const [basePrice, setBasePrice] = useState(
     initial?.basePrice != null ? String(initial.basePrice) : '',
   )
@@ -325,10 +337,13 @@ export default function ProductForm({
                 id="p-type"
                 className="adm-select"
                 value={type}
-                onChange={(e) => setType(e.target.value as 'pad' | 'panty')}
+                onChange={(e) => setType(e.target.value as ProductTypeValue)}
               >
-                <option value="pad">Pad (sold by pack)</option>
-                <option value="panty">Panty (sold by size)</option>
+                {allowedTypes.map((value) => (
+                  <option key={value} value={value}>
+                    {TYPE_LABELS[value]}
+                  </option>
+                ))}
               </select>
             </div>
             <div className="adm-field">

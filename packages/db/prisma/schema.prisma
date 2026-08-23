@@ -27,6 +27,10 @@ enum Role {
 enum ProductType {
   pad
   panty
+  // Lumi9. The enum is shared because the schema is: one definition, one client
+  // generator, a database schema per brand. A brand simply never uses the other
+  // brand's values.
+  diaper
 }
 
 enum ProductStatus {

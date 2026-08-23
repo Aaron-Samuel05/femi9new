@@ -388,7 +388,38 @@ Seed the current admin as an `AdminUser` with a femi9 `owner` role, retire the
 env credentials. Brand toggle login, brand-scoped session, module-gated nav,
 per-brand theme. `/admin` on femi9-web 301s to the admin host.
 
-**Phase 3 — Lumi9 data + catalog.** Migrate the `lumi9` schema, seed the catalog
+**Phase 3 — Lumi9 data + catalog. ✅ DONE (locally; awaiting the rename).**
+
+Lumi9 has a real catalogue: 5 sizes (NB · S · M · L · XL), 12 pack variants,
+price zones, seeded from `apps/lumi9-web/src/lib/catalog.ts` — the same module
+its storefront renders from today. Idempotent: a rerun updates in place.
+
+Proved against a local database carrying **both** brand schemas, built from the
+same migration history: the same service returns Femi9's period care and Lumi9's
+diapers, both brands can hold the *same slug* without colliding (a discriminator
+column would have needed a composite unique), and inventory is scoped per brand.
+Four isolation tests pin it.
+
+Three things this phase exposed, none of them about Lumi9:
+
+- **The migration history had drifted from `schema.prisma`.** The cycle-encryption
+  columns were applied with `db push` and never captured, so a database built from
+  history alone — CI, a fresh environment, or Lumi9's brand-new schema — would
+  have been missing them while the live one had them. Reconciled with an
+  idempotent migration; `prisma migrate diff` now reports **no difference**.
+- **Femi9's vocabulary was baked into four layers**, not one: the Prisma
+  `ProductType` enum, the Zod schema at the service boundary, the console's
+  product form, and `InventoryRow`. Adding `diaper` to the enum alone would have
+  produced a console that still could not create a Lumi9 product.
+- **A shared enum needs a per-brand guard.** `brandConfig(brand).productTypes`
+  now drives the form's options and the product routes reject anything outside
+  it — otherwise a crafted request files a sanitary pad under Lumi9.
+
+`Product.flow` remains Femi9's word, reused by Lumi9 for what a diaper is rated
+for. Renaming it is worth doing; it was not worth doing in the change that first
+filled it.
+
+**Phase 3 (original plan) — Lumi9 data + catalog.** Migrate the `lumi9` schema, seed the catalog
 from `lumi9-web-main/src/lib/catalog.ts` (NB · S · M · L · XL × pack tiers →
 `Product` + `ProductVariant`). Seed Lumi9 price zones. Enable the Lumi9 admin
 modules — ops can manage a real Lumi9 catalog before the storefront is wired.

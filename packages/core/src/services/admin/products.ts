@@ -50,7 +50,10 @@ export const ProductInputSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   // Blank slug => auto-derived from the name and made unique in the service.
   slug: z.string().trim().optional().default(''),
-  type: z.enum(['pad', 'panty']),
+  // The union of what ANY brand sells. Which of them a given brand may use is
+  // not a validation concern — see allowsProductType in @femi9/core/brands,
+  // called by the routes that accept this input.
+  type: z.enum(['pad', 'panty', 'diaper']),
   basePrice: z.coerce.number().int().min(0, 'Base price must be ≥ 0'),
   // meta/flow/description are NOT NULL in the schema; default '' keeps the form
   // forgiving while still writing a valid row.

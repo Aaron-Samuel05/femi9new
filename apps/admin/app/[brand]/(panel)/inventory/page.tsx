@@ -26,7 +26,8 @@ interface ProductGroup {
   productId: string
   name: string
   slug: string
-  type: 'pad' | 'panty'
+  // Mirrors InventoryRow.productType, which is the shared enum now.
+  type: InventoryRow['productType']
   rows: InventoryRow[]
 }
 

@@ -341,6 +341,12 @@ jobs:
       NEXT_TELEMETRY_DISABLED: "1"
       DATABASE_URL_PLATFORM: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=public
       TEST_PLATFORM_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=public
+      # The console reads BRAND data too, and the isolation tests need both.
+      # One database, a schema each — the shape production will have.
+      DATABASE_URL_FEMI9: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=femi9
+      DATABASE_URL_LUMI9: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=lumi9
+      TEST_FEMI9_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=femi9
+      TEST_LUMI9_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=lumi9
       # Never a real key: the console mints session tokens with it in tests.
       ADMIN_AUTH_SECRET: ci-admin-secret-0123456789abcdef0123456789abcdef
 
@@ -375,6 +381,28 @@ jobs:
       - name: Push the platform schema
         working-directory: .
         run: npm run push --workspace @femi9/db-platform
+
+      # ── Both brand schemas, built the way production will be ──────────────
+      # `migrate deploy` rather than `db push`, because the brand schemas ARE
+      # migrated in production and a drift between the two is exactly what this
+      # should catch.
+      - name: Create the brand schemas
+        working-directory: .
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d femi9_platform_test             -c 'CREATE SCHEMA IF NOT EXISTS femi9; CREATE SCHEMA IF NOT EXISTS lumi9;'
+
+      - name: Migrate both brand schemas
+        working-directory: packages/db
+        run: |
+          for schema in femi9 lumi9; do
+            DATABASE_URL="postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=$schema"             DIRECT_URL="postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=$schema"             npx prisma migrate deploy
+          done
+
+      - name: Seed each brand's own catalogue
+        working-directory: .
+        run: |
+          DATABASE_URL="$DATABASE_URL_FEMI9" DIRECT_URL="$DATABASE_URL_FEMI9"             npx tsx apps/femi9-web/prisma/seed.ts
+          npm run db:seed --workspace lumi9-web
 
       - name: Typecheck
         run: npx tsc --noEmit
