@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const email = url.searchParams.get('email') ?? ''
   const base = process.env.NEXT_PUBLIC_SITE_URL || url.origin
 
-  const session = await getSession()
+  const session = await getSession('femi9')
   if (!session) {
     // Send them through sign-in and back to the same link, so a click from a
     // browser that isn't signed in still completes instead of dead-ending.

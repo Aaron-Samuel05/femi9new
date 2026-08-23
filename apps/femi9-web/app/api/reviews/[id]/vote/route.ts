@@ -45,7 +45,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const parsed = bodySchema.safeParse(json)
     if (!parsed.success) return badRequest('Invalid vote', parsed.error.flatten())
 
-    const session = await getSession()
+    const session = await getSession('femi9')
     try {
       const tallies = await voteOnReview('femi9', id, voterKey(req, session?.sub), parsed.data.helpful)
       return ok(tallies)

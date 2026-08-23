@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     try {
       const user = await verifyOtp('femi9', phone, code, attributionCtx)
       await mergeGuestCartIntoUser('femi9', req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
-      const token = await createSession({
+      const token = await createSession('femi9', {
         sub: user.id,
         phone: user.phone ?? undefined,
         email: user.email ?? undefined,

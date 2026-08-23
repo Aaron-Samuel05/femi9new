@@ -34,7 +34,7 @@ export default async function WelcomePage(props: {
   const searchParams = await props.searchParams
   const next = resolveNext(typeof searchParams?.next === 'string' ? searchParams.next : null)
 
-  const session = await getSession()
+  const session = await getSession('femi9')
   // Middleware already bounced an anonymous visitor; this re-check runs in the
   // Node runtime and covers a cookie that expired between the two.
   if (!session) redirect('/login?next=%2Fdashboard')

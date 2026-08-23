@@ -42,7 +42,7 @@ export default async function OrderConfirmationPage(
   const t = Array.isArray(rawT) ? rawT[0] : rawT
   let authorized = verifyOrderToken(params.orderNo, t)
   if (!authorized) {
-    const session = await getSession()
+    const session = await getSession('femi9')
     if (session) {
       const owned = await prisma.order.findFirst({
         where: { orderNo: params.orderNo, userId: session.sub },

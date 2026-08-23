@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
     const token = await getGuestToken()
     if (!token) return badRequest('Your bag is empty.')
 
-    const session = await getSession()
+    const session = await getSession('femi9')
 
     const raw = await req.json().catch(() => null)
     const parsed = CheckoutSchema.safeParse(raw)

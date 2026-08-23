@@ -1,4 +1,6 @@
 import 'server-only'
+import type { Brand } from '@femi9/db'
+import { brandName, emailFromFor, mailConfigured, resendKeyFor } from './mail-identity'
 import { randomInt, randomBytes, createHash } from 'node:crypto'
 import {
   configuredEnv,
@@ -130,25 +132,29 @@ export async function sendTextSms(
  * MOCK: explicit local/test mode does nothing and reports mock:true; the caller
  * returns the link as a dev field. LIVE: send via Resend. Throws on a non-2xx.
  */
-export async function sendMagicLink(email: string, url: string): Promise<SendResult> {
-  if (!emailConfigured()) {
+export async function sendMagicLink(brand: Brand, email: string, url: string): Promise<SendResult> {
+  if (!mailConfigured(brand)) {
     if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Resend')
     return { mock: true }
   }
 
-  const apiKey = process.env.RESEND_API_KEY as string
-  const from = process.env.EMAIL_FROM as string
+  // Per-brand credentials, falling back to the shared ones — see mail-identity.
+  const apiKey = resendKeyFor(brand) as string
+  const from = emailFromFor(brand) as string
+  // The copy carries the brand too. A Lumi9 parent receiving a Femi9-branded
+  // sign-in link reads as phishing, not as a sibling company.
+  const name = brandName(brand)
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
     body: JSON.stringify({
       from,
       to: email,
-      subject: 'Your Femi9 sign-in link',
+      subject: `Your ${name} sign-in link`,
       html:
-        `<p>Tap the button below to sign in to Femi9. This link expires in 15 minutes.</p>` +
+        `<p>Tap the button below to sign in to ${name}. This link expires in 15 minutes.</p>` +
         `<p><a href="${url}" style="display:inline-block;padding:12px 20px;border-radius:999px;` +
-        `background:#F0C14E;color:#34204E;font-weight:600;text-decoration:none">Sign in to Femi9</a></p>` +
+        `background:#F0C14E;color:#34204E;font-weight:600;text-decoration:none">Sign in to ${name}</a></p>` +
         `<p>If you didn't request this, you can safely ignore this email.</p>`,
     }),
   })

@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     return ok(await getCycleData('femi9', u.sub))
   })
@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     const parsed = z.object({ consent: z.boolean() }).safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Invalid consent setting')

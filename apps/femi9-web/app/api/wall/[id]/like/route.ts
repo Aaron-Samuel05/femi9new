@@ -13,7 +13,7 @@ import { likePost } from '@femi9/core/services/wall'
 export async function POST(_req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
     const result = await likePost('femi9', params.id, user.sub)
     // null → post missing or not approved (can't like a pending/hidden story).

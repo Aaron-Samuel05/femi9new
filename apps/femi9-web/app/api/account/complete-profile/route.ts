@@ -48,7 +48,7 @@ const CompleteProfileSchema = z.object({
 
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    const session = await requireUser()
+    const session = await requireUser('femi9')
     if (!session) return unauthorized()
 
     // Keyed per user, not per IP: this is an authenticated endpoint and the only

@@ -14,6 +14,11 @@ import {
  * signed with the SAME AUTH_SECRET. A valid signature is therefore NOT enough —
  * a token minted for one side must be rejected by the other's verifier.
  *
+ * The same now holds ACROSS BRANDS: a Lumi9 shopper's token carries audience
+ * 'lumi9-customer' and must be refused by Femi9's verifier, and the reverse.
+ * Both brands sign with the same secret, so the audience is the only thing
+ * standing between them — see the third test.
+ *
  * If the `audience:` guard were dropped from either verifySession, the
  * cross-audience assertions below would start returning a session instead of
  * null and these tests would fail — which is exactly the regression they exist
@@ -33,19 +38,19 @@ describe('auth session audience separation', () => {
     expect(asAdmin).toEqual({ sub: 'admin-1', email: 'admin@femi9.in', name: 'Ops Admin' })
 
     // Same signature, wrong audience → must be refused by the customer verifier.
-    const asCustomer = await verifyCustomerSession(token)
+    const asCustomer = await verifyCustomerSession('femi9', token)
     expect(asCustomer).toBeNull()
   })
 
   it('customer token: accepted by customer verify, rejected by admin verify', async () => {
-    const token = await createCustomerSession({
+    const token = await createCustomerSession('femi9', {
       sub: 'user-9',
       phone: '9876543210',
       email: 'shopper@example.com',
       name: 'Shopper',
     })
 
-    const asCustomer = await verifyCustomerSession(token)
+    const asCustomer = await verifyCustomerSession('femi9', token)
     expect(asCustomer).not.toBeNull()
     expect(asCustomer?.sub).toBe('user-9')
     expect(asCustomer?.email).toBe('shopper@example.com')
@@ -70,11 +75,24 @@ describe('auth session audience separation', () => {
     const tampered = parts.join('.')
 
     expect(await verifyAdminSession(tampered)).toBeNull()
-    expect(await verifyCustomerSession(tampered)).toBeNull()
+    expect(await verifyCustomerSession('femi9', tampered)).toBeNull()
 
     for (const garbage of ['', 'not-a-jwt', 'a.b.c', 'x'.repeat(40)]) {
       expect(await verifyAdminSession(garbage)).toBeNull()
-      expect(await verifyCustomerSession(garbage)).toBeNull()
+      expect(await verifyCustomerSession('femi9', garbage)).toBeNull()
     }
+  })
+
+  it('customer token is bound to ONE brand: Femi9 accepts it, Lumi9 refuses it', async () => {
+    const femi9Token = await createCustomerSession('femi9', { sub: 'user-9', name: 'Shopper' })
+    const lumi9Token = await createCustomerSession('lumi9', { sub: 'user-9', name: 'Shopper' })
+
+    // Each verifies under its own brand …
+    expect(await verifyCustomerSession('femi9', femi9Token)).not.toBeNull()
+    expect(await verifyCustomerSession('lumi9', lumi9Token)).not.toBeNull()
+
+    // … and NOT under the other's, despite the identical secret and claims.
+    expect(await verifyCustomerSession('lumi9', femi9Token)).toBeNull()
+    expect(await verifyCustomerSession('femi9', lumi9Token)).toBeNull()
   })
 })

@@ -63,7 +63,7 @@ function mapError(err: unknown) {
 
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     if (!cycleStorageReady()) return serviceUnavailable('Cycle tracking is temporarily unavailable.')
 
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     if (!cycleStorageReady()) return serviceUnavailable('Cycle tracking is temporarily unavailable.')
 
@@ -115,7 +115,7 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     const id = req.nextUrl.searchParams.get('id')?.trim()
     if (!id) return badRequest('Symptom id is required')

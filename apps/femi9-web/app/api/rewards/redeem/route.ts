@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
 
     const body = (await req.json().catch(() => ({}))) as { rewardOptionId?: unknown }

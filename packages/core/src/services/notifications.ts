@@ -1,4 +1,5 @@
 import 'server-only'
+import { emailFromFor, mailConfigured, resendKeyFor } from '../mail-identity'
 import { dbFor, type Brand } from '@femi9/db'
 import { configuredEnv, mockProvidersAllowed } from '../runtime-mode'
 
@@ -29,7 +30,10 @@ export async function sendEmailNotification(brand: Brand, input: EmailNotificati
     },
   })
 
-  if (!configuredEnv('RESEND_API_KEY') || !configuredEnv('EMAIL_FROM')) {
+  // Per-brand credentials, falling back to the shared ones. Sending a Lumi9
+  // order confirmation from Femi9's address would be wrong in the inbox and
+  // bad for deliverability — see mail-identity.
+  if (!mailConfigured(brand)) {
     if (!mockProvidersAllowed()) {
       await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'failed', error: 'Resend is not configured' } })
       return { sent: false }
@@ -41,8 +45,17 @@ export async function sendEmailNotification(brand: Brand, input: EmailNotificati
   try {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: { authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'content-type': 'application/json' },
-      body: JSON.stringify({ from: process.env.EMAIL_FROM, to: [input.to], subject: input.subject, html: input.html, text: input.text }),
+      headers: {
+        authorization: `Bearer ${resendKeyFor(brand)}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: emailFromFor(brand),
+        to: [input.to],
+        subject: input.subject,
+        html: input.html,
+        text: input.text,
+      }),
     })
     if (!res.ok) throw new Error(`Resend returned ${res.status}`)
     await prisma.notificationLog.update({ where: { id: log.id }, data: { status: 'sent', sentAt: new Date(), error: null } })

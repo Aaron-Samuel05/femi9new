@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
 
-    const session = await getSession()
+    const session = await getSession('femi9')
     if (!session) return unauthorized()
 
     const parsed = bodySchema.safeParse(await req.json().catch(() => null))

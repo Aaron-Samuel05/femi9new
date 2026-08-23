@@ -26,7 +26,7 @@ const ACTIONS = { pause, resume, skip: skipNext, cancel } as const
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
 
     const parsed = patchSchema.safeParse(await req.json().catch(() => null))

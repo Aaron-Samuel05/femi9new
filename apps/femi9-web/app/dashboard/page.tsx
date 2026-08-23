@@ -16,7 +16,7 @@ import { UserDashboard } from '@/screens/UserDashboard'
  * "Femi9 member" on one page. One resolver, one fallback, one initials function.
  */
 export default async function DashboardPage() {
-  const s = await getSession()
+  const s = await getSession('femi9')
   // Middleware already guards /dashboard, but the page re-checks so it never
   // renders for an anonymous request (defence in depth) and so it has a concrete
   // user id to load data for. `next` survives the round trip, unlike before.

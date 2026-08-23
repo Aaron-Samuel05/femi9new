@@ -26,7 +26,7 @@ const SHIPPING_FEE = 49
  * form — but a returning customer should never be retyping her own street.
  */
 async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
-  const session = await getSession()
+  const session = await getSession('femi9')
   if (!session) return undefined
 
   const user = await prisma.user.findUnique({

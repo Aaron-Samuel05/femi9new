@@ -29,7 +29,7 @@ const createSchema = z.object({
 
 export async function GET() {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
     return ok({ subscriptions: await listForUser('femi9', u.sub) })
   })
@@ -37,7 +37,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
   return handle(async () => {
-    const u = await requireUser()
+    const u = await requireUser('femi9')
     if (!u) return unauthorized()
 
     const parsed = createSchema.safeParse(await req.json().catch(() => null))

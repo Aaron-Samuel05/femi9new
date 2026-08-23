@@ -38,7 +38,7 @@ export async function POST(
 
     let authorized = verifyOrderToken(orderNo, parsed.data.token)
     if (!authorized && order.userId) {
-      const session = await getSession()
+      const session = await getSession('femi9')
       authorized = session?.sub === order.userId
     }
     // Hide whether an order number exists when the caller does not own it.

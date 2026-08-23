@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 /** Owner-scoped affiliate metrics. A shareable promo code is not authentication. */
 export async function GET() {
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
     const stats = await getForUser('femi9', user.sub)
     if (!stats) return notFound('No approved affiliate account was found.')

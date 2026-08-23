@@ -35,7 +35,7 @@ const AddressSchema = z.object({
 
 export async function POST(req: Request) {
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
     const parsed = AddressSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Check the address fields.', parsed.error.flatten())

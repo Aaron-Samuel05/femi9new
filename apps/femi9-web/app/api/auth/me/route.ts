@@ -21,7 +21,7 @@ export async function GET() {
   return handle(async () => {
     const empty = { user: null, profile: { complete: false, missing: [] as string[] } }
 
-    const session = await getSession()
+    const session = await getSession('femi9')
     if (!session) return ok(empty)
 
     const row = await prisma.user.findUnique({

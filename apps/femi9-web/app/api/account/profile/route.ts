@@ -39,7 +39,7 @@ const ProfileSchema = z
 
 export async function PATCH(req: Request) {
   return handle(async () => {
-    const session = await requireUser()
+    const session = await requireUser('femi9')
     if (!session) return unauthorized()
 
     const parsed = ProfileSchema.safeParse(await req.json().catch(() => null))

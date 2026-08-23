@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic'
  * to /welcome. Typing the URL does not bypass that.
  */
 export default async function AccountPage() {
-  const s = await getSession()
+  const s = await getSession('femi9')
   // Carry the destination so /login returns the customer here rather than
   // dropping them on a generic landing after they sign in.
   if (!s) redirect('/login?next=/account')

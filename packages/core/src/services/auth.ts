@@ -258,7 +258,7 @@ export async function requestMagicLink(brand: Brand, email: string, next?: strin
   const nextParam = next && next !== '/account' ? `&next=${encodeURIComponent(next)}` : ''
   const link = `${base}/api/auth/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}${nextParam}`
 
-  const { mock } = await sendMagicLink(normalized, link)
+  const { mock } = await sendMagicLink(brand, normalized, link)
   return { mock, ...(mock ? { devLink: link } : {}) }
 }
 
@@ -499,7 +499,7 @@ export async function requestAttachEmailLink(brand: Brand,
   const base = process.env.NEXT_PUBLIC_SITE_URL || ''
   const link = `${base}/api/account/email/verify?token=${encodeURIComponent(raw)}&email=${encodeURIComponent(normalized)}`
 
-  const { mock } = await sendMagicLink(normalized, link)
+  const { mock } = await sendMagicLink(brand, normalized, link)
   return { mock, ...(mock ? { devLink: link } : {}) }
 }
 

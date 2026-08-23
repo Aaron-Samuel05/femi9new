@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function POST() {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const session = await getSession()
+    const session = await getSession('femi9')
     if (!session) return unauthorized()
     await optOutUser('femi9', session.sub)
     return new NextResponse(null, { status: 204 })

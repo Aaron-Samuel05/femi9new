@@ -93,7 +93,7 @@ describe('otp provider configuration flags', () => {
     mutableEnv.NODE_ENV = 'production'
     try {
       await expect(sendSms('9999999999', '123456')).rejects.toThrow('MSG91 is not configured')
-      await expect(sendMagicLink('a@example.test', 'https://example.test/link')).rejects.toThrow(
+      await expect(sendMagicLink('femi9', 'a@example.test', 'https://example.test/link')).rejects.toThrow(
         'Resend is not configured',
       )
     } finally {

@@ -1,8 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 
@@ -16,7 +15,43 @@ type Mode = (typeof MODES)[number]["key"];
 /** Two-panel auth card: brand panel + segmented sign-in / create-account form. */
 export function AuthCard() {
   const [mode, setMode] = useState<Mode>("login");
-  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
+  const [sentTo, setSentTo] = useState("");
+  const [devLink, setDevLink] = useState<string | null>(null);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/auth/email/request", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, next: nextPath }),
+      });
+      const body = (await res.json().catch(() => null)) as
+        | { devLink?: string; error?: string }
+        | null;
+      if (!res.ok) {
+        setError(body?.error ?? "Could not send the link. Try again.");
+        return;
+      }
+      setSentTo(email);
+      setDevLink(body?.devLink ?? null);
+      setSent(true);
+    } catch {
+      setError("Could not reach the server. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  const searchParams = useSearchParams();
+  // Where the guard was sending her before it bounced her here.
+  const nextPath = searchParams.get("next") ?? "/account";
   const isLogin = mode === "login";
 
   return (
@@ -65,41 +100,50 @@ export function AuthCard() {
             : "Join 40,000+ families and save 20% with a subscription."}
         </p>
 
-        <form
-          className="flex flex-col gap-3.5"
-          onSubmit={(event) => {
-            event.preventDefault();
-            router.push("/account");
-          }}
-        >
-          {!isLogin && (
-            <input aria-label="Full name" placeholder="Full name" required autoComplete="name" className="field" />
-          )}
-          <input
-            type="email"
-            aria-label="Email address"
-            placeholder="Email address"
-            required
-            autoComplete="email"
-            className="field"
-          />
-          <input
-            type="password"
-            aria-label="Password"
-            placeholder="Password"
-            required
-            autoComplete={isLogin ? "current-password" : "new-password"}
-            className="field"
-          />
-          {isLogin && (
-            <Link href="/contact" className="inline-flex items-center coarse:min-h-10 self-end text-[13px] text-moss-deep hover:text-midnight">
-              Forgot password?
-            </Link>
-          )}
-          <button type="submit" className="btn btn-dark mt-1 w-full font-bold">
-            {isLogin ? "Sign in" : "Create account"}
-          </button>
-        </form>
+        {sent ? (
+          /* Deliberately the same message whether or not that address has an
+             account: "no account found" turns this form into a way to test
+             whether someone shops here. */
+          <div className="rounded-card bg-paper p-card text-[clamp(14px,1.3vw,15px)]">
+            <p className="m-0 font-bold text-midnight">Check your inbox</p>
+            <p className="mt-2 mb-0 text-muted">
+              If {sentTo} can sign in, a link is on its way. It expires shortly.
+            </p>
+            {devLink && (
+              /* Only ever present when the mail provider is mocked, so the flow
+                 is testable before real delivery is configured. */
+              <a className="mt-3 inline-block break-all text-moss-deep underline" href={devLink}>
+                Development link
+              </a>
+            )}
+          </div>
+        ) : (
+          <form className="flex flex-col gap-3.5" onSubmit={submit}>
+            <input
+              type="email"
+              aria-label="Email address"
+              placeholder="Email address"
+              required
+              autoComplete="email"
+              className="field"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={busy}
+            />
+            {/* No password field: this platform has no customer passwords. Both
+                brands sign shoppers in with a emailed link or a phone OTP, so
+                there is nothing to forget and nothing to breach. */}
+            <p className="m-0 text-[13px] text-muted">
+              We will email you a sign-in link — no password to remember.
+            </p>
+            <p className="m-0 min-h-5 text-[13px] text-[#b4232c]" role="alert" aria-live="polite">
+              {error ?? " "}
+            </p>
+            <button type="submit" className="btn btn-dark mt-1 w-full font-bold" disabled={busy}>
+              {busy ? "Sending…" : isLogin ? "Email me a link" : "Create account"}
+            </button>
+          </form>
+        )}
 
         <div className="my-6 flex items-center gap-3.5 text-[13px] text-muted">
           <span className="h-px flex-1 bg-moss-tint" />

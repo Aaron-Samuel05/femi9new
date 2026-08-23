@@ -47,7 +47,7 @@ export const dynamic = 'force-dynamic'
 export async function GET() {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const session = await getSession()
+    const session = await getSession('femi9')
     if (!session) return unauthorized()
 
     const userId = session.sub

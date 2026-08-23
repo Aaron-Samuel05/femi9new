@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await verifyMagicLink('femi9', email, token, attributionCtx)
     await mergeGuestCartIntoUser('femi9', req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
-    const jwt = await createSession({
+    const jwt = await createSession('femi9', {
       sub: user.id,
       email: user.email ?? undefined,
       phone: user.phone ?? undefined,

@@ -34,7 +34,7 @@ const PatchSchema = z.object({
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
     const parsed = PatchSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Check the address fields.', parsed.error.flatten())
@@ -54,7 +54,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
  */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   return handle(async () => {
-    const user = await requireUser()
+    const user = await requireUser('femi9')
     if (!user) return unauthorized()
     const result = await deleteAddress('femi9', user.sub, (await ctx.params).id)
     if (result === 'missing') return notFound('Address not found')

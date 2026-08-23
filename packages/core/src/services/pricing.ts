@@ -237,7 +237,7 @@ export const resolveAmbientZone = cache(async (brand: Brand): Promise<ResolvedZo
 async function savedAddressSignal(brand: Brand): Promise<LocationSignal | null> {
   const prisma = dbFor(brand)
   const { getSession } = await import('../auth')
-  const session = await getSession()
+  const session = await getSession(brand)
   if (!session) return null
 
   const address = await prisma.address.findFirst({
