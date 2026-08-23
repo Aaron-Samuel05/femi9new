@@ -23,6 +23,6 @@ export async function GET(req: NextRequest) {
     const status = STATUSES.includes(raw as PartnerStatus)
       ? (raw as PartnerStatus)
       : undefined
-    return ok(await listApplications({ status }))
+    return ok(await listApplications('femi9', { status }))
   })
 }

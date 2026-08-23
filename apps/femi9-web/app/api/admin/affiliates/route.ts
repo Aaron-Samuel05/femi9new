@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams
     if (sp.get('payouts')) {
       const affiliateId = sp.get('affiliateId') ?? undefined
-      return ok({ payouts: await listPayouts(affiliateId) })
+      return ok({ payouts: await listPayouts('femi9', affiliateId) })
     }
 
-    return ok({ affiliates: await listAffiliates() })
+    return ok({ affiliates: await listAffiliates('femi9') })
   })
 }

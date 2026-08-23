@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma, type OrderStatus } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin customers service — the read seam for the "who are our customers and
@@ -94,9 +94,10 @@ export interface CustomerDetail {
  * then fetch the order/points aggregates for only that page's ids via groupBy,
  * so the query cost stays flat regardless of how large the customer base grows.
  */
-export async function listCustomers(
+export async function listCustomers(brand: Brand, 
   opts: { q?: string; page?: number } = {},
 ): Promise<CustomerListResult> {
+  const prisma = dbFor(brand)
   const emptyResult: CustomerListResult = {
     items: [],
     total: 0,
@@ -206,7 +207,8 @@ export async function listCustomers(
  * totals used in the list. Returns null when the id isn't a customer, so the
  * caller renders a 404 rather than leaking staff/admin records.
  */
-export async function getCustomer(id: string): Promise<CustomerDetail | null> {
+export async function getCustomer(brand: Brand, id: string): Promise<CustomerDetail | null> {
+  const prisma = dbFor(brand)
   const [user, orderCount, revenue, pointsTotal] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
@@ -285,7 +287,8 @@ export async function getCustomer(id: string): Promise<CustomerDetail | null> {
   }
 }
 
-export async function adjustCustomerPoints(id: string, delta: number, reason: string): Promise<boolean> {
+export async function adjustCustomerPoints(brand: Brand, id: string, delta: number, reason: string): Promise<boolean> {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const user = await tx.user.findUnique({ where: { id }, select: { id: true } })
     if (!user) return false
@@ -297,7 +300,8 @@ export async function adjustCustomerPoints(id: string, delta: number, reason: st
   })
 }
 
-export async function changeCustomerRole(id: string, role: import('@prisma/client').Role): Promise<boolean> {
+export async function changeCustomerRole(brand: Brand, id: string, role: import('@prisma/client').Role): Promise<boolean> {
+  const prisma = dbFor(brand)
   const result = await prisma.user.updateMany({ where: { id }, data: { role } })
   return result.count === 1
 }

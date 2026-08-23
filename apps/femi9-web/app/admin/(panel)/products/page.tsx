@@ -18,7 +18,7 @@ const STATUS_BADGE: Record<string, string> = {
 }
 
 export default async function AdminProductsPage() {
-  const products = await listAdminProducts()
+  const products = await listAdminProducts('femi9')
 
   return (
     <>

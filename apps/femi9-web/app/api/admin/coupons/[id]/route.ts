@@ -42,7 +42,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     // Quick toggle path — the list row flips active without resending everything.
     if (raw && typeof raw === 'object' && (raw as { toggle?: unknown }).toggle === true) {
-      const updated = await toggleActive(params.id)
+      const updated = await toggleActive('femi9', params.id)
       if (!updated) return notFound('Coupon not found')
       return ok(updated)
     }
@@ -51,7 +51,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return ok(await updateCoupon(params.id, parsed.data))
+      return ok(await updateCoupon('femi9', params.id, parsed.data))
     } catch (err) {
       const mapped = mapCouponError(err)
       if (mapped) return mapped
@@ -67,7 +67,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
 
   return handle(async () => {
     try {
-      return ok(await deleteCoupon(params.id))
+      return ok(await deleteCoupon('femi9', params.id))
     } catch (err) {
       const mapped = mapCouponError(err)
       if (mapped) return mapped

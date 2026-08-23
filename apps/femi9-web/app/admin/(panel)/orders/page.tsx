@@ -44,7 +44,7 @@ export default async function OrdersPage(props: { searchParams: Promise<Search> 
   const q = searchParams.q?.trim() || undefined
   const page = Number(searchParams.page) || 1
 
-  const { orders, total, page: current, pageCount } = await listOrders({ status, q, page })
+  const { orders, total, page: current, pageCount } = await listOrders('femi9', { status, q, page })
 
   const chips: { label: string; value?: string }[] = [
     { label: 'All' },

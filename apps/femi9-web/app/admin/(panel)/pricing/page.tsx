@@ -56,8 +56,8 @@ function toRow(z: ServiceZone): ZoneRow {
 
 export default async function PricingZonesPage() {
   const [zones, catalog] = await Promise.all([
-    listZones() as Promise<ServiceZone[]>,
-    listPricingCatalog(),
+    listZones('femi9') as Promise<ServiceZone[]>,
+    listPricingCatalog('femi9'),
   ])
   const rows: ZoneRow[] = zones
     .map(toRow)

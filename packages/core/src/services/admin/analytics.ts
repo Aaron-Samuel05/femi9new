@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 import type { OrderStatus } from '@prisma/client'
 
 /**
@@ -74,7 +74,8 @@ function monthIndex(d: Date): number {
   return d.getFullYear() * 12 + d.getMonth()
 }
 
-export async function getOverview(): Promise<Overview> {
+export async function getOverview(brand: Brand): Promise<Overview> {
+  const prisma = dbFor(brand)
   const emptyOverview: Overview = {
     totalRevenue: 0,
     orderCount: 0,

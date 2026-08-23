@@ -39,6 +39,6 @@ export async function PATCH(req: NextRequest) {
     const parsed = SettingsPatchSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
-    return ok(await updateSettings(parsed.data))
+    return ok(await updateSettings('femi9', parsed.data))
   })
 }

@@ -37,8 +37,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const { status, notes } = parsed.data
     const row =
       status !== undefined
-        ? await updateStatus(params.id, status)
-        : await addNote(params.id, notes ?? '')
+        ? await updateStatus('femi9', params.id, status)
+        : await addNote('femi9', params.id, notes ?? '')
 
     // Service returns null when the lead id doesn't exist.
     if (!row) return notFound('Application not found')

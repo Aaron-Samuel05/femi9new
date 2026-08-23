@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin product service — the write-side counterpart to src/lib/services/products.ts
@@ -97,7 +97,8 @@ function slugify(source: string): string {
  * finds a free one. `excludeId` lets an edit keep its own slug. Racy under heavy
  * concurrency, but the DB unique index is the real backstop (P2002 → 400).
  */
-async function resolveSlug(source: string, excludeId?: string): Promise<string> {
+async function resolveSlug(brand: Brand, source: string, excludeId?: string): Promise<string> {
+  const prisma = dbFor(brand)
   const base = slugify(source) || 'product'
   let candidate = base
   let n = 2
@@ -131,7 +132,8 @@ function cleanVariant(v: VariantInputT) {
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** All products (every status) with image thumb, variant count + total stock. */
-export async function listAdminProducts() {
+export async function listAdminProducts(brand: Brand) {
+  const prisma = dbFor(brand)
   try {
     const rows = await prisma.product.findMany({
       orderBy: { createdAt: 'desc' },
@@ -162,7 +164,8 @@ export async function listAdminProducts() {
 }
 
 /** One product, fully loaded for the editor (variants/images/features/specs). */
-export async function getAdminProduct(id: string) {
+export async function getAdminProduct(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   return prisma.product.findUnique({
     where: { id },
     include: {
@@ -176,8 +179,9 @@ export async function getAdminProduct(id: string) {
 
 // ─────────────────────────────── Writes ─────────────────────────────────
 
-export async function createProduct(input: ProductInput) {
-  const slug = await resolveSlug(input.slug || input.name)
+export async function createProduct(brand: Brand, input: ProductInput) {
+  const prisma = dbFor(brand)
+  const slug = await resolveSlug(brand, input.slug || input.name)
 
   return prisma.product.create({
     data: {
@@ -212,8 +216,9 @@ export async function createProduct(input: ProductInput) {
  * Images are simply replaced (they're a plain ordered URL list). All in one
  * transaction so a partial failure never leaves half-applied edits.
  */
-export async function updateProduct(id: string, input: ProductInput) {
-  const slug = await resolveSlug(input.slug || input.name, id)
+export async function updateProduct(brand: Brand, id: string, input: ProductInput) {
+  const prisma = dbFor(brand)
+  const slug = await resolveSlug(brand, input.slug || input.name, id)
 
   const existing = await prisma.productVariant.findMany({
     where: { productId: id },
@@ -298,7 +303,8 @@ export async function updateProduct(id: string, input: ProductInput) {
 }
 
 /** Soft-delete: archived products drop out of the storefront (status filter). */
-export async function archiveProduct(id: string) {
+export async function archiveProduct(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   return prisma.product.update({
     where: { id },
     data: { status: 'archived' },

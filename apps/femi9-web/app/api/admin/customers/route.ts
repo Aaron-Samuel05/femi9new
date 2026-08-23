@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
     const pageNum = Number(searchParams.get('page'))
     const page = Number.isFinite(pageNum) && pageNum > 0 ? pageNum : undefined
 
-    return ok(await listCustomers({ q, page }))
+    return ok(await listCustomers('femi9', { q, page }))
   })
 }

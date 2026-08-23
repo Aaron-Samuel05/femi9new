@@ -1,7 +1,7 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import type { ModerationStatus } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin reviews service — the moderation-side counterpart to the storefront read
@@ -52,9 +52,10 @@ function toRow(r: ReviewWithProduct): ReviewRow {
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** All reviews (optionally filtered by status), newest first, with product name. */
-export async function listReviews({
+export async function listReviews(brand: Brand, {
   status,
 }: { status?: ModerationStatus } = {}): Promise<ReviewRow[]> {
+  const prisma = dbFor(brand)
   try {
     const rows = await prisma.review.findMany({
       // Omit the filter entirely when no status is given so the query planner sees
@@ -76,10 +77,11 @@ export async function listReviews({
  * Set a review's moderation status. Returns the reconciled row so the queue can
  * update in place, or null when the id no longer exists (P2025 → 404 upstream).
  */
-export async function setReviewStatus(
+export async function setReviewStatus(brand: Brand, 
   id: string,
   status: ModerationStatus,
 ): Promise<ReviewRow | null> {
+  const prisma = dbFor(brand)
   try {
     const r = await prisma.review.update({
       where: { id },
@@ -94,7 +96,8 @@ export async function setReviewStatus(
 }
 
 /** Hard-delete a review. Returns null when the row is already gone (P2025). */
-export async function deleteReview(id: string): Promise<{ id: string } | null> {
+export async function deleteReview(brand: Brand, id: string): Promise<{ id: string } | null> {
+  const prisma = dbFor(brand)
   try {
     await prisma.review.delete({ where: { id } })
     return { id }

@@ -41,19 +41,19 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     try {
       if (body.action === 'approve') {
-        const updated = await approve(params.id)
+        const updated = await approve('femi9', params.id)
         if (!updated) return notFound('Affiliate not found')
         return ok(updated)
       }
 
       if (body.action === 'suspend') {
-        const updated = await suspend(params.id)
+        const updated = await suspend('femi9', params.id)
         if (!updated) return notFound('Affiliate not found')
         return ok(updated)
       }
 
       // payout
-      const payout = await createPayout(
+      const payout = await createPayout('femi9', 
         params.id,
         body.amount,
         body.periodStart,

@@ -40,7 +40,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
   if (!s) return unauthorized()
 
   return handle(async () => {
-    const product = await getAdminProduct(params.id)
+    const product = await getAdminProduct('femi9', params.id)
     if (!product) return notFound('Product not found')
     return ok(product)
   })
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return ok(await updateProduct(params.id, parsed.data))
+      return ok(await updateProduct('femi9', params.id, parsed.data))
     } catch (err) {
       const mapped = mapPrismaError(err)
       if (mapped) return mapped
@@ -73,7 +73,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
 
   return handle(async () => {
     try {
-      return ok(await archiveProduct(params.id))
+      return ok(await archiveProduct('femi9', params.id))
     } catch (err) {
       const mapped = mapPrismaError(err)
       if (mapped) return mapped

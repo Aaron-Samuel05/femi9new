@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function EditProductPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const p = await getAdminProduct(params.id)
+  const p = await getAdminProduct('femi9', params.id)
   if (!p) notFound()
 
   const initial: ProductFormValues = {

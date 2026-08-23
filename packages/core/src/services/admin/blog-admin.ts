@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin blog/content service — the write-side CMS for BlogPost rows. Mirrors the
@@ -55,7 +55,8 @@ function slugify(source: string): string {
  * finds a free one. `excludeId` lets an edit keep its own slug. The DB unique
  * index is the real backstop (P2002 → 400) if two writes race.
  */
-async function resolveSlug(source: string, excludeId?: string): Promise<string> {
+async function resolveSlug(brand: Brand, source: string, excludeId?: string): Promise<string> {
+  const prisma = dbFor(brand)
   const base = slugify(source) || 'post'
   let candidate = base
   let n = 2
@@ -85,7 +86,8 @@ function splitBody(raw: string): string[] {
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** All posts (every status) newest first, each with its category name. */
-export async function listPostsAdmin() {
+export async function listPostsAdmin(brand: Brand) {
+  const prisma = dbFor(brand)
   try {
     const rows = await prisma.blogPost.findMany({
       orderBy: { publishedAt: 'desc' },
@@ -108,7 +110,8 @@ export async function listPostsAdmin() {
 }
 
 /** One post, fully loaded for the editor (includes its category). */
-export async function getPostAdmin(id: string) {
+export async function getPostAdmin(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   return prisma.blogPost.findUnique({
     where: { id },
     include: { category: { select: { id: true, name: true } } },
@@ -116,7 +119,8 @@ export async function getPostAdmin(id: string) {
 }
 
 /** Categories for the editor's <select>, alphabetical. */
-export async function listCategoriesAdmin() {
+export async function listCategoriesAdmin(brand: Brand) {
+  const prisma = dbFor(brand)
   try {
     return await prisma.blogCategory.findMany({
       orderBy: { name: 'asc' },
@@ -129,8 +133,9 @@ export async function listCategoriesAdmin() {
 
 // ─────────────────────────────── Writes ─────────────────────────────────
 
-export async function createPost(input: BlogPostInput) {
-  const slug = await resolveSlug(input.slug || input.title)
+export async function createPost(brand: Brand, input: BlogPostInput) {
+  const prisma = dbFor(brand)
+  const slug = await resolveSlug(brand, input.slug || input.title)
 
   return prisma.blogPost.create({
     data: {
@@ -150,8 +155,9 @@ export async function createPost(input: BlogPostInput) {
   })
 }
 
-export async function updatePost(id: string, input: BlogPostInput) {
-  const slug = await resolveSlug(input.slug || input.title, id)
+export async function updatePost(brand: Brand, id: string, input: BlogPostInput) {
+  const prisma = dbFor(brand)
+  const slug = await resolveSlug(brand, input.slug || input.title, id)
 
   return prisma.blogPost.update({
     where: { id },
@@ -173,6 +179,7 @@ export async function updatePost(id: string, input: BlogPostInput) {
 }
 
 /** Hard delete — a post has no order/history dependents, so removal is clean. */
-export async function deletePost(id: string) {
+export async function deletePost(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   return prisma.blogPost.delete({ where: { id }, select: { id: true } })
 }

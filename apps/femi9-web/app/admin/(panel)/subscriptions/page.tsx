@@ -34,7 +34,7 @@ export default async function SubscriptionsPage(
 ) {
   const searchParams = await props.searchParams;
   const status = searchParams.status
-  const rows = await listSubscriptions({ status })
+  const rows = await listSubscriptions('femi9', { status })
 
   const chips: { label: string; value?: string }[] = [
     { label: 'All' },

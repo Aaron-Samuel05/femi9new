@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 import type { OrderStatus, Prisma } from '@prisma/client'
 import * as razorpay from '../../razorpay'
 import { sendOrderStatusEmail } from '../order-mail'
@@ -67,7 +67,8 @@ function isStatus(s: string): s is OrderStatus {
  * Paginated orders, newest first. Optional status filter and a free-text query
  * matched against order number, customer name or shipping city.
  */
-export async function listOrders({ status, q, page = 1 }: ListOrdersArgs = {}): Promise<OrderListResult> {
+export async function listOrders(brand: Brand, { status, q, page = 1 }: ListOrdersArgs = {}): Promise<OrderListResult> {
+  const prisma = dbFor(brand)
   const current = Math.max(1, Math.floor(page) || 1)
   try {
     const where: Prisma.OrderWhereInput = {}
@@ -168,7 +169,8 @@ export interface OrderDetail {
 }
 
 /** Full order — items (purchase-time snapshots), customer and shipping. */
-export async function getOrder(id: string): Promise<OrderDetail | null> {
+export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | null> {
+  const prisma = dbFor(brand)
   try {
     const r = await prisma.order.findUnique({
       where: { id },
@@ -237,7 +239,8 @@ const STOCK_RESERVING_STATUSES: OrderStatus[] = ['pending', 'paid', 'processing'
  * flips a reservation-holding order to 'cancelled' restores stock, so concurrent
  * or repeated cancels can't restore the same lines twice.
  */
-export async function updateOrderStatus(id: string, status: OrderStatus): Promise<OrderDetail | null> {
+export async function updateOrderStatus(brand: Brand, id: string, status: OrderStatus): Promise<OrderDetail | null> {
+  const prisma = dbFor(brand)
   // Non-cancellation transitions are a plain status flip (no stock effect).
   if (status !== 'cancelled') {
     // Only send on a REAL transition — the update is scoped to a differing
@@ -249,13 +252,13 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
     })
     if (res.count === 0) {
       // Either the order does not exist or it was already in this status.
-      return getOrder(id)
+      return getOrder(brand, id)
     }
     if (status === 'shipped') {
       const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } })
       if (order) await sendOrderStatusEmail(order.orderNo, 'shipped')
     }
-    return getOrder(id)
+    return getOrder(brand, id)
   }
 
   const outcome = await prisma.$transaction(async (tx) => {
@@ -298,7 +301,7 @@ export async function updateOrderStatus(id: string, status: OrderStatus): Promis
   })
 
   if (outcome.kind === 'missing') return null
-  return getOrder(id)
+  return getOrder(brand, id)
 }
 
 /**
@@ -333,7 +336,8 @@ export class NotRefundableError extends Error {
  * Returns null when no such order exists (clean 404 at the route); throws
  * NotRefundableError when the order isn't 'paid'.
  */
-export async function refundOrder(id: string): Promise<OrderDetail | null> {
+export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail | null> {
+  const prisma = dbFor(brand)
   const outcome = await prisma.$transaction(async (tx) => {
     // Pull items (to give stock back), payments (to refund + flip), and the
     // loyalty rows tied to this order (to reverse) in the same read the guard
@@ -417,5 +421,5 @@ export async function refundOrder(id: string): Promise<OrderDetail | null> {
 
   if (outcome.kind === 'missing') return null
   if (outcome.kind === 'not_paid') throw new NotRefundableError(outcome.status)
-  return getOrder(id)
+  return getOrder(brand, id)
 }

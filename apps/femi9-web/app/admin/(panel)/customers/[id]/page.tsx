@@ -47,7 +47,7 @@ function location(city: string | null, state: string | null): string {
 
 export default async function CustomerDetailPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const c = await getCustomer(params.id)
+  const c = await getCustomer('femi9', params.id)
   if (!c) notFound()
 
   const loc = location(c.city, c.state)

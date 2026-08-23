@@ -1,6 +1,6 @@
 import 'server-only'
 import type { AffiliateStatus, PayoutStatus } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../../logger'
 import { isPlaceholder } from '../affiliate'
 import { sendEmailNotification } from '../notifications'
@@ -53,7 +53,8 @@ interface EventTotals {
 const ZERO_TOTALS: EventTotals = { clicks: 0, orders: 0, earnings: 0 }
 
 /** Roll one affiliate's events up into clicks/orders/earnings. */
-async function totalsFor(affiliateId: string): Promise<EventTotals> {
+async function totalsFor(brand: Brand, affiliateId: string): Promise<EventTotals> {
+  const prisma = dbFor(brand)
   const rows = await prisma.affiliateEvent.groupBy({
     by: ['type'],
     where: { affiliateId },
@@ -95,7 +96,8 @@ function toListItem(
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** Every creator, newest first, with computed clicks/orders/earnings + email. */
-export async function listAffiliates(): Promise<AffiliateListItem[]> {
+export async function listAffiliates(brand: Brand): Promise<AffiliateListItem[]> {
+  const prisma = dbFor(brand)
   try {
     const affiliates = await prisma.affiliate.findMany({
       orderBy: { createdAt: 'desc' },
@@ -125,17 +127,19 @@ export async function listAffiliates(): Promise<AffiliateListItem[]> {
 }
 
 /** Refresh one row (used after a status change) or null if it's gone. */
-async function listItem(id: string): Promise<AffiliateListItem | null> {
+async function listItem(brand: Brand, id: string): Promise<AffiliateListItem | null> {
+  const prisma = dbFor(brand)
   const a = await prisma.affiliate.findUnique({
     where: { id },
     include: { user: { select: { email: true } } },
   })
   if (!a) return null
-  return toListItem(a, await totalsFor(id))
+  return toListItem(a, await totalsFor(brand, id))
 }
 
 /** Payouts, newest first — all, or scoped to one affiliate. */
-export async function listPayouts(affiliateId?: string): Promise<PayoutListItem[]> {
+export async function listPayouts(brand: Brand, affiliateId?: string): Promise<PayoutListItem[]> {
+  const prisma = dbFor(brand)
   const rows = await prisma.affiliatePayout.findMany({
     where: affiliateId ? { affiliateId } : {},
     orderBy: { createdAt: 'desc' },
@@ -158,7 +162,8 @@ export async function listPayouts(affiliateId?: string): Promise<PayoutListItem[
 /** Build a unique promoCode from the handle: uppercase alphanumerics, deduped
  *  with a numeric suffix. The DB @unique on promoCode is the real backstop; this
  *  loop just avoids the collision in the common case. */
-async function allocateCode(handle: string): Promise<string> {
+async function allocateCode(brand: Brand, handle: string): Promise<string> {
+  const prisma = dbFor(brand)
   const base = handle.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 12) || 'CREATOR'
   let candidate = base
   let n = 1
@@ -175,7 +180,8 @@ async function allocateCode(handle: string): Promise<string> {
  * they already hold a real code (e.g. re-approving after a suspension) it's kept
  * so their live links keep working. Returns the refreshed row, or null if gone.
  */
-export async function approve(id: string): Promise<AffiliateListItem | null> {
+export async function approve(brand: Brand, id: string): Promise<AffiliateListItem | null> {
+  const prisma = dbFor(brand)
   const current = await prisma.affiliate.findUnique({
     where: { id },
     select: { handle: true, promoCode: true, userId: true, user: { select: { email: true, name: true } } },
@@ -183,7 +189,7 @@ export async function approve(id: string): Promise<AffiliateListItem | null> {
   if (!current) return null
 
   const promoCode = isPlaceholder(current.promoCode)
-    ? await allocateCode(current.handle)
+    ? await allocateCode(brand, current.handle)
     : current.promoCode
 
   await prisma.affiliate.update({
@@ -193,11 +199,11 @@ export async function approve(id: string): Promise<AffiliateListItem | null> {
 
   // Send the email the /affiliate page promises three separate times ("we'll
   // email your personal Femi9 code the moment you're approved"). Until now
-  // approve() only wrote the row, so that promise was never kept and the
+  // approve(brand) only wrote the row, so that promise was never kept and the
   // creator had no way to learn her own code.
   await sendApprovalEmail(id, current.user?.email ?? null, current.user?.name ?? null, promoCode)
 
-  return listItem(id)
+  return listItem(brand, id)
 }
 
 /** The tracked share URL. Commission is only attributed to visitors who arrive
@@ -239,23 +245,25 @@ Femi9`,
 }
 
 /** Suspend a creator (their code stops attributing). Null if the row is gone. */
-export async function suspend(id: string): Promise<AffiliateListItem | null> {
+export async function suspend(brand: Brand, id: string): Promise<AffiliateListItem | null> {
+  const prisma = dbFor(brand)
   const res = await prisma.affiliate.updateMany({ where: { id }, data: { status: 'suspended' } })
   if (res.count === 0) return null
-  return listItem(id)
+  return listItem(brand, id)
 }
 
 /**
  * Log a payout for a period. Records the admin's statement that commission was
  * (or is being) paid; status defaults to 'pending' per the schema.
  */
-export async function createPayout(
+export async function createPayout(brand: Brand, 
   affiliateId: string,
   amount: number,
   periodStart: Date,
   periodEnd: Date,
   reference?: string,
 ): Promise<PayoutListItem> {
+  const prisma = dbFor(brand)
   const p = await prisma.affiliatePayout.create({
     data: {
       affiliateId,

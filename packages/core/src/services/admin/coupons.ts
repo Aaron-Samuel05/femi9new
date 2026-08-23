@@ -1,6 +1,6 @@
 import 'server-only'
 import { z } from 'zod'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin coupon service. Coupons are simple discount codes shoppers type at
@@ -61,7 +61,8 @@ export class CouponCodeTakenError extends Error {
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** Every coupon, newest first — the admin list shows all (active + inactive). */
-export async function listCoupons() {
+export async function listCoupons(brand: Brand) {
+  const prisma = dbFor(brand)
   try {
     return await prisma.coupon.findMany({ orderBy: { createdAt: 'desc' } })
   } catch {
@@ -72,7 +73,8 @@ export async function listCoupons() {
 // ─────────────────────────────── Writes ─────────────────────────────────
 
 /** Reject a code that already belongs to another coupon (uniqueness guard). */
-async function assertCodeFree(code: string, excludeId?: string) {
+async function assertCodeFree(brand: Brand, code: string, excludeId?: string) {
+  const prisma = dbFor(brand)
   const clash = await prisma.coupon.findFirst({
     where: { code, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
     select: { id: true },
@@ -80,9 +82,10 @@ async function assertCodeFree(code: string, excludeId?: string) {
   if (clash) throw new CouponCodeTakenError(code)
 }
 
-export async function createCoupon(input: CouponInput) {
+export async function createCoupon(brand: Brand, input: CouponInput) {
+  const prisma = dbFor(brand)
   // input.code is already uppercased by the schema transform.
-  await assertCodeFree(input.code)
+  await assertCodeFree(brand, input.code)
 
   return prisma.coupon.create({
     data: {
@@ -97,8 +100,9 @@ export async function createCoupon(input: CouponInput) {
   })
 }
 
-export async function updateCoupon(id: string, input: CouponInput) {
-  await assertCodeFree(input.code, id)
+export async function updateCoupon(brand: Brand, id: string, input: CouponInput) {
+  const prisma = dbFor(brand)
+  await assertCodeFree(brand, input.code, id)
 
   // usedCount is intentionally left untouched — it belongs to the redemption flow.
   return prisma.coupon.update({
@@ -116,12 +120,14 @@ export async function updateCoupon(id: string, input: CouponInput) {
 }
 
 /** Flip active on/off. Returns null when the coupon is gone so the route 404s. */
-export async function toggleActive(id: string) {
+export async function toggleActive(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   const current = await prisma.coupon.findUnique({ where: { id }, select: { active: true } })
   if (!current) return null
   return prisma.coupon.update({ where: { id }, data: { active: !current.active } })
 }
 
-export async function deleteCoupon(id: string) {
+export async function deleteCoupon(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   return prisma.coupon.delete({ where: { id }, select: { id: true } })
 }

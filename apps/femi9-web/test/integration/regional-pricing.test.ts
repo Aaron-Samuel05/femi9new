@@ -255,7 +255,7 @@ describe('the default zone cannot be left orphaned', () => {
   it('refuses to clear isDefault on the only default zone', async () => {
     const { def } = await seedZones()
 
-    await expect(updateZone(def.id, { isDefault: false })).rejects.toBeInstanceOf(
+    await expect(updateZone('femi9', def.id, { isDefault: false })).rejects.toBeInstanceOf(
       CannotUnsetDefaultError,
     )
     const after = await prisma.priceZone.findUnique({ where: { id: def.id } })
@@ -265,7 +265,7 @@ describe('the default zone cannot be left orphaned', () => {
   it('allows moving the default by promoting another zone', async () => {
     const { def, tn } = await seedZones()
 
-    await updateZone(tn.id, { isDefault: true })
+    await updateZone('femi9', tn.id, { isDefault: true })
 
     expect((await prisma.priceZone.findUnique({ where: { id: tn.id } }))!.isDefault).toBe(true)
     expect((await prisma.priceZone.findUnique({ where: { id: def.id } }))!.isDefault).toBe(false)

@@ -1,7 +1,7 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import type { ModerationStatus } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin community-wall service — the moderation-side counterpart to the
@@ -51,9 +51,10 @@ function toRow(r: WallPostWithProduct): WallRow {
 // ─────────────────────────────── Reads ──────────────────────────────────
 
 /** All wall posts (optionally filtered by status), newest first. */
-export async function listWall({
+export async function listWall(brand: Brand, {
   status,
 }: { status?: ModerationStatus } = {}): Promise<WallRow[]> {
+  const prisma = dbFor(brand)
   const rows = await prisma.wallPost.findMany({
     // Omit the filter entirely when no status is given so the query planner sees
     // a plain "all rows" read rather than `status IN (…)`.
@@ -70,10 +71,11 @@ export async function listWall({
  * Set a post's moderation status. Returns the reconciled row so the queue can
  * update in place, or null when the id no longer exists (P2025 → 404 upstream).
  */
-export async function setStatus(
+export async function setStatus(brand: Brand, 
   id: string,
   status: ModerationStatus,
 ): Promise<WallRow | null> {
+  const prisma = dbFor(brand)
   try {
     const r = await prisma.wallPost.update({
       where: { id },
@@ -88,7 +90,8 @@ export async function setStatus(
 }
 
 /** Hard-delete a post. Returns null when the row is already gone (P2025). */
-export async function remove(id: string): Promise<{ id: string } | null> {
+export async function remove(brand: Brand, id: string): Promise<{ id: string } | null> {
+  const prisma = dbFor(brand)
   try {
     await prisma.wallPost.delete({ where: { id } })
     return { id }

@@ -75,7 +75,7 @@ describe('refund', () => {
     expect(stockBeforeRefund).toBe(initialStock - qty)
     expect(await pointsSum(order.userId!)).toBe(expectedPoints)
 
-    const detail = await refundOrder(order.id)
+    const detail = await refundOrder('femi9', order.id)
     expect(detail).not.toBeNull()
     expect(detail!.status).toBe('refunded')
 
@@ -106,7 +106,7 @@ describe('refund', () => {
     const { order, variant, initialStock, qty } = await placeTestOrder()
     expect(order.status).toBe('pending')
 
-    await expect(refundOrder(order.id)).rejects.toBeInstanceOf(NotRefundableError)
+    await expect(refundOrder('femi9', order.id)).rejects.toBeInstanceOf(NotRefundableError)
 
     const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
     expect(after.status).toBe('pending')
@@ -121,13 +121,13 @@ describe('refund', () => {
     const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
 
     // First refund succeeds.
-    await refundOrder(order.id)
+    await refundOrder('femi9', order.id)
     const stockAfterFirst = await stockOf(variant.id)
     expect(stockAfterFirst).toBe(initialStock)
     expect(await pointsSum(order.userId!)).toBe(0)
 
     // Second refund is rejected by the state guard.
-    await expect(refundOrder(order.id)).rejects.toBeInstanceOf(NotRefundableError)
+    await expect(refundOrder('femi9', order.id)).rejects.toBeInstanceOf(NotRefundableError)
 
     // Nothing double-restored / double-reversed.
     expect(await stockOf(variant.id)).toBe(initialStock)

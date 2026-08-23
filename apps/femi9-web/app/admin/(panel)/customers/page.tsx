@@ -31,7 +31,7 @@ export default async function CustomersPage(
   const pageNum = Number(searchParams.page)
   const page = Number.isFinite(pageNum) && pageNum > 0 ? pageNum : 1
 
-  const { items, total, totalPages, pageSize } = await listCustomers({ q, page })
+  const { items, total, totalPages, pageSize } = await listCustomers('femi9', { q, page })
 
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1
   const to = Math.min(page * pageSize, total)

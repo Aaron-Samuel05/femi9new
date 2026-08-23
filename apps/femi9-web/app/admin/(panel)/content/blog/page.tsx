@@ -24,7 +24,7 @@ const dateFmt = new Intl.DateTimeFormat('en-IN', {
 })
 
 export default async function AdminBlogPage() {
-  const posts = await listPostsAdmin()
+  const posts = await listPostsAdmin('femi9')
 
   return (
     <>

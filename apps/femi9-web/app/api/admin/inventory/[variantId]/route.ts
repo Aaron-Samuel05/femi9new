@@ -28,8 +28,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ variant
 
     const row =
       'stock' in parsed.data
-        ? await setStock(params.variantId, parsed.data.stock)
-        : await adjustStock(params.variantId, parsed.data.delta)
+        ? await setStock('femi9', params.variantId, parsed.data.stock)
+        : await adjustStock('femi9', params.variantId, parsed.data.delta)
 
     // Service returns null when the variant id doesn't exist.
     if (!row) return notFound('Variant not found')

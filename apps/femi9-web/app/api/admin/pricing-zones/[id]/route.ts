@@ -43,7 +43,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return ok(await updateZone(params.id, parsed.data))
+      return ok(await updateZone('femi9', params.id, parsed.data))
     } catch (err) {
       const mapped = mapZoneError(err)
       if (mapped) return mapped
@@ -59,7 +59,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
 
   return handle(async () => {
     try {
-      return ok(await deleteZone(params.id))
+      return ok(await deleteZone('femi9', params.id))
     } catch (err) {
       const mapped = mapZoneError(err)
       if (mapped) return mapped

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     const q = sp.get('q') ?? undefined
     const page = Number(sp.get('page')) || 1
 
-    const result = await listOrders({ status, q, page })
+    const result = await listOrders('femi9', { status, q, page })
     return ok(result)
   })
 }

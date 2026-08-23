@@ -69,7 +69,7 @@ describe('admin pricing service (integration)', () => {
   })
 
   it('createZone attaches the given states as kind=state regions', async () => {
-    const zone = await createZone({
+    const zone = await createZone('femi9', {
       name: 'South',
       discountPct: 5,
       active: true,
@@ -86,14 +86,14 @@ describe('admin pricing service (integration)', () => {
   })
 
   it('updateZone re-points a moved state so only one zone ever owns it', async () => {
-    const a = await createZone({
+    const a = await createZone('femi9', {
       name: 'Zone A',
       discountPct: 5,
       active: true,
       isDefault: false,
       states: ['Kerala'],
     })
-    const b = await createZone({
+    const b = await createZone('femi9', {
       name: 'Zone B',
       discountPct: 8,
       active: true,
@@ -102,7 +102,7 @@ describe('admin pricing service (integration)', () => {
     })
 
     // Give 'Kerala' to zone B — it must leave zone A, never duplicate.
-    await updateZone(b.id, { states: ['Kerala'] })
+    await updateZone('femi9', b.id, { states: ['Kerala'] })
 
     const kerala = await prisma.zoneRegion.findMany({ where: { kind: 'state', value: 'Kerala' } })
     expect(kerala).toHaveLength(1)
@@ -113,14 +113,14 @@ describe('admin pricing service (integration)', () => {
   })
 
   it('deleteZone blocks the default and succeeds (cascading regions) on a non-default', async () => {
-    const def = await createZone({
+    const def = await createZone('femi9', {
       name: 'Default',
       discountPct: 0,
       active: true,
       isDefault: true,
       states: [],
     })
-    const tn = await createZone({
+    const tn = await createZone('femi9', {
       name: 'Tamil Nadu',
       discountPct: 10,
       active: true,
@@ -128,9 +128,9 @@ describe('admin pricing service (integration)', () => {
       states: ['Tamil Nadu'],
     })
 
-    await expect(deleteZone(def.id)).rejects.toBeInstanceOf(CannotDeleteDefaultError)
+    await expect(deleteZone('femi9', def.id)).rejects.toBeInstanceOf(CannotDeleteDefaultError)
 
-    await deleteZone(tn.id)
+    await deleteZone('femi9', tn.id)
     expect(await prisma.priceZone.findUnique({ where: { id: tn.id } })).toBeNull()
     // Its state region cascaded away.
     expect(await prisma.zoneRegion.count({ where: { zoneId: tn.id } })).toBe(0)

@@ -1,7 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { Prisma } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin pricing-zone service (write side; the read-side resolver lives in
@@ -150,7 +150,8 @@ function isUniqueOn(err: unknown, field: string): boolean {
  * the custom prices set for it (so the editor can prefill the price boxes and
  * the table can say how many products are priced by hand).
  */
-export async function listZones() {
+export async function listZones(brand: Brand) {
+  const prisma = dbFor(brand)
   const zones = await prisma.priceZone.findMany({
     orderBy: { position: 'asc' },
     include: {
@@ -190,7 +191,8 @@ export async function listZones() {
  * on the next save and lost the moment the product went live again. Archived
  * products are the one exception: those are gone for good.
  */
-export async function listPricingCatalog() {
+export async function listPricingCatalog(brand: Brand) {
+  const prisma = dbFor(brand)
   const products = await prisma.product.findMany({
     where: { status: { not: 'archived' } },
     orderBy: [{ status: 'asc' }, { name: 'asc' }],
@@ -293,7 +295,8 @@ async function reconcilePrices(tx: Prisma.TransactionClient, zoneId: string, pri
   await tx.zoneVariantPrice.deleteMany({ where: staleVariants })
 }
 
-export async function createZone(input: ZoneInput) {
+export async function createZone(brand: Brand, input: ZoneInput) {
+  const prisma = dbFor(brand)
   try {
     return await prisma.$transaction(async (tx) => {
       // A single default: promoting this one demotes every other.
@@ -318,7 +321,8 @@ export async function createZone(input: ZoneInput) {
   }
 }
 
-export async function updateZone(id: string, patch: ZonePatch) {
+export async function updateZone(brand: Brand, id: string, patch: ZonePatch) {
+  const prisma = dbFor(brand)
   try {
     return await prisma.$transaction(async (tx) => {
       if (patch.isDefault === true) {
@@ -358,7 +362,8 @@ export async function updateZone(id: string, patch: ZonePatch) {
   }
 }
 
-export async function deleteZone(id: string) {
+export async function deleteZone(brand: Brand, id: string) {
+  const prisma = dbFor(brand)
   const zone = await prisma.priceZone.findUnique({ where: { id }, select: { isDefault: true } })
   // Never orphan the fallback — a store must always have a default price.
   if (zone?.isDefault) throw new CannotDeleteDefaultError()

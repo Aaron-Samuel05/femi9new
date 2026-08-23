@@ -14,7 +14,7 @@ export async function GET() {
     const s = await requireAdmin()
     if (!s) return unauthorized()
 
-    const rows = await listInventory()
+    const rows = await listInventory('femi9')
     return ok({ rows })
   })
 }

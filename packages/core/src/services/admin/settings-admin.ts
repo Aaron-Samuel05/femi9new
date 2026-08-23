@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { getSettings, type Settings } from '../settings'
 
 /**
@@ -35,7 +35,8 @@ export async function getEditableSettings(): Promise<Settings> {
  * upserts in one transaction so a partial failure never leaves the config in a
  * half-applied state.
  */
-export async function updateSettings(patch: SettingsPatch): Promise<Settings> {
+export async function updateSettings(brand: Brand, patch: SettingsPatch): Promise<Settings> {
+  const prisma = dbFor(brand)
   const ops = (Object.entries(patch) as [keyof Settings, Settings[keyof Settings]][])
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => {

@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin inventory service — the single seam for reading + mutating stock levels
@@ -66,7 +66,8 @@ function isNotFound(err: unknown): boolean {
  * product name so the admin table can group by product. Sorted by product name,
  * then price, so the page can build ordered groups by simple iteration.
  */
-export async function listInventory(): Promise<InventoryRow[]> {
+export async function listInventory(brand: Brand): Promise<InventoryRow[]> {
+  const prisma = dbFor(brand)
   try {
     const variants = await prisma.productVariant.findMany({
       orderBy: [{ product: { name: 'asc' } }, { price: 'asc' }],
@@ -83,7 +84,8 @@ export async function listInventory(): Promise<InventoryRow[]> {
  * the zod-validated route could pass anything). Returns null when the variant is
  * gone so the route can answer 404 instead of a 500.
  */
-export async function setStock(variantId: string, stock: number): Promise<InventoryRow | null> {
+export async function setStock(brand: Brand, variantId: string, stock: number): Promise<InventoryRow | null> {
+  const prisma = dbFor(brand)
   const next = Math.max(0, Math.trunc(stock))
   try {
     const v = await prisma.productVariant.update({
@@ -105,7 +107,8 @@ export async function setStock(variantId: string, stock: number): Promise<Invent
  * or a conditional guard, never an absolute value computed from a stale read —
  * so two concurrent adjustments can't clobber each other (the lost-update bug).
  */
-export async function adjustStock(variantId: string, delta: number): Promise<InventoryRow | null> {
+export async function adjustStock(brand: Brand, variantId: string, delta: number): Promise<InventoryRow | null> {
+  const prisma = dbFor(brand)
   const step = Math.trunc(delta)
   try {
     // Restock (or no-op): a single atomic increment. Nothing to floor.

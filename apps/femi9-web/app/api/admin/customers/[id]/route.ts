@@ -13,7 +13,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
     const s = await requireAdmin()
     if (!s) return unauthorized()
 
-    const customer = await getCustomer(params.id)
+    const customer = await getCustomer('femi9', params.id)
     if (!customer) return notFound('Customer not found')
 
     return ok(customer)
@@ -33,8 +33,8 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     if (!parsed.success) return badRequest('Invalid customer update', parsed.error.flatten())
     const id = (await props.params).id
     const changed = parsed.data.action === 'adjust-points'
-      ? await adjustCustomerPoints(id, parsed.data.delta, parsed.data.reason)
-      : await changeCustomerRole(id, parsed.data.role)
+      ? await adjustCustomerPoints('femi9', id, parsed.data.delta, parsed.data.reason)
+      : await changeCustomerRole('femi9', id, parsed.data.role)
     if (!changed) return notFound('Customer not found')
     return ok({ ok: true })
   })

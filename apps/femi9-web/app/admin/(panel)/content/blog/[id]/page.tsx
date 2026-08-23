@@ -14,8 +14,8 @@ export const dynamic = 'force-dynamic'
 export default async function EditPostPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const [post, categories] = await Promise.all([
-    getPostAdmin(params.id),
-    listCategoriesAdmin(),
+    getPostAdmin('femi9', params.id),
+    listCategoriesAdmin('femi9'),
   ])
   if (!post) notFound()
 

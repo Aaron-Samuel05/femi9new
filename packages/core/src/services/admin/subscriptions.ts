@@ -1,6 +1,6 @@
 import 'server-only'
 import type { Prisma, SubscriptionStatus } from '@prisma/client'
-import { prisma } from '../../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Admin subscriptions service — the read side for the Ops console's subscription
@@ -38,9 +38,10 @@ export interface AdminSubscriptionRow {
  * All subscriptions (optionally filtered by status), ordered by the soonest next
  * delivery so the ops team sees what's shipping next at the top.
  */
-export async function listSubscriptions({
+export async function listSubscriptions(brand: Brand, {
   status,
 }: { status?: string } = {}): Promise<AdminSubscriptionRow[]> {
+  const prisma = dbFor(brand)
   try {
     const where: Prisma.SubscriptionWhereInput = {}
     // Silently ignore an unknown status so a stale/hand-edited URL never 500s.

@@ -28,7 +28,7 @@ const STATUS_META: Record<OrderStatus, { label: string; color: string; badge: st
 }
 
 export default async function AdminDashboardPage() {
-  const o = await getOverview()
+  const o = await getOverview('femi9')
 
   const cityBars = o.ordersByCity.slice(0, 6).map((c) => ({ label: c.city, value: c.orders }))
   const statusData = o.ordersByStatus.map((s) => ({

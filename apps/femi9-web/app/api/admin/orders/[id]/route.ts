@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ id: stri
     const s = await requireAdmin()
     if (!s) return unauthorized()
 
-    const order = await getOrder(params.id)
+    const order = await getOrder('femi9', params.id)
     if (!order) return notFound('Order not found')
     return ok(order)
   })
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
 
     if ('action' in parsed.data) {
       try {
-        const refunded = await refundOrder(params.id)
+        const refunded = await refundOrder('femi9', params.id)
         if (!refunded) return notFound('Order not found')
         return ok(refunded)
       } catch (err) {
@@ -61,7 +61,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
       }
     }
 
-    const updated = await updateOrderStatus(params.id, parsed.data.status)
+    const updated = await updateOrderStatus('femi9', params.id, parsed.data.status)
     if (!updated) return notFound('Order not found')
     return ok(updated)
   })

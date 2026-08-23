@@ -9,7 +9,7 @@ import PostForm from '../_form'
 export const dynamic = 'force-dynamic'
 
 export default async function NewPostPage() {
-  const categories = await listCategoriesAdmin()
+  const categories = await listCategoriesAdmin('femi9')
 
   return (
     <>

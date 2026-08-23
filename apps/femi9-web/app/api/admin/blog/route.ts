@@ -30,7 +30,7 @@ export async function GET() {
   const s = await requireAdmin()
   if (!s) return unauthorized()
 
-  return handle(async () => ok(await listPostsAdmin()))
+  return handle(async () => ok(await listPostsAdmin('femi9')))
 }
 
 export async function POST(req: NextRequest) {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return created(await createPost(parsed.data))
+      return created(await createPost('femi9', parsed.data))
     } catch (err) {
       const mapped = mapPrismaError(err)
       if (mapped) return mapped

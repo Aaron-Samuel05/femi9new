@@ -25,7 +25,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const parsed = PatchSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
 
-    const row = await setStatus(params.id, parsed.data.status)
+    const row = await setStatus('femi9', params.id, parsed.data.status)
     // Service returns null when the post id doesn't exist.
     if (!row) return notFound('Post not found')
     return ok({ row })
@@ -38,7 +38,7 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ id: s
   if (!s) return unauthorized()
 
   return handle(async () => {
-    const res = await remove(params.id)
+    const res = await remove('femi9', params.id)
     if (!res) return notFound('Post not found')
     return ok(res)
   })
