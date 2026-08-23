@@ -459,7 +459,32 @@ Two things this forced, both worth keeping:
 `src/lib/catalog.ts` survives as the SEED's input. Editing it changes what a
 fresh seed writes and nothing that is already live.
 
-**Phase 4b–e — still to do:** the cart is still localStorage, checkout is local
+**Phases 4b–e — ✅ DONE.** Cart, sign-in, checkout and account all run on the
+shared backend. Lumi9 had no API routes at all before this; it has eleven now,
+and they are thin, because the services were already brand-parameterised.
+
+Two shapes recurred, both now settled the same way:
+
+- **Femi9's identity was baked into shared code** in five more places — the
+  session cookie and audience, the magic-link subject and FROM address, the
+  Razorpay credentials, the `FM-` order prefix, and `ProductType`. Each is
+  per-brand now with a fallback to the shared value, exactly as `dbFor` falls
+  back to `DATABASE_URL`.
+- **The fallbacks are what make the cutover cheap.** Lumi9 sends mail and takes
+  payment on Femi9's accounts today and moves to its own by setting variables,
+  with no code change. The webhook secret is the one that cannot stay shared —
+  see the note above.
+
+**Phase 5 — ✅ DONE.** A group view showing both brands, scoped so an admin sees
+only the brands they hold a role in.
+
+**Verified across both apps:** 20/20 Femi9 page routes and 15/15 Lumi9 routes
+respond; both storefronts complete a purchase against the same database
+(`FM-00001` and `LM-00001`/`LM-00002`); no cross-contamination in either schema;
+and a session token signed with the SAME secret is accepted by its own brand and
+refused by the other.
+
+**Original Phase 4b–e plan:** the cart is still localStorage, checkout is local
 state, there is no auth, and `AccountDashboard` shows placeholder orders. Those
 need Lumi9 API routes, a customer session, and Razorpay.
 

@@ -5,7 +5,11 @@ react-three-fiber for the mascot. Runs on `:3001`.
 
 ## Where this app is in the migration
 
-**The CATALOGUE now comes from the database.** `src/lib/catalog.ts` is the seed's
+**This storefront runs on the shared backend.** Catalogue, cart, sign-in,
+checkout and account are all real; `src/lib/content.ts` still supplies marketing
+copy and the loyalty stats.
+
+**The CATALOGUE comes from the database.** `src/lib/catalog.ts` is the seed's
 input, not the storefront's source: a server loader reads the `lumi9` schema and
 a provider hands it to client components. Cart, checkout and auth are still
 local — those are the rest of Phase 4.
@@ -17,7 +21,10 @@ So right now:
 | Catalogue in the database | ✅ 5 sizes · 12 pack variants · price zones |
 | Manageable in the console | ✅ `/lumi9/products` |
 | **Read by THIS app** | ✅ **live — a console price change shows without a rebuild** |
-| Cart / checkout / auth | ❌ still localStorage and local state (Phase 4b–e) |
+| Cart | ✅ server-side, in `lumi9.Cart`, priced by the server |
+| Sign-in | ✅ emailed link — no passwords on this platform |
+| Checkout + payment | ✅ real orders (`LM-00001`), Razorpay, brand-routed webhook |
+| Account orders | ✅ real — only the loyalty stats are still placeholder copy |
 
 ## How the catalogue reaches the page
 

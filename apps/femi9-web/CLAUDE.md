@@ -227,3 +227,13 @@ Append one entry per task. Newest last.
 | 2026-08-23 | **Phase 3 — Lumi9 data** | `packages/db` migrations · `apps/lumi9-web/prisma/*` · `brands.ts` | Lumi9 catalogue seeded (5 sizes, 12 variants, zones) and provable in isolation from Femi9. Found and fixed **migration drift**: cycle-encryption columns were `db push`-ed and never captured, so history could not rebuild the schema — `migrate diff` now clean. `ProductType += diaper`, and Femi9's vocabulary un-baked from the Zod boundary, the product form and `InventoryRow`. Product types are now per-brand and enforced at the routes. |
 | 2026-08-23 | **Phase 2 — console moved out** | 15 pages + 31 routes → `apps/admin` | Every ops page and API left this app. Brand now comes from the SESSION (`requireConsole` / `requireConsoleApi`), never the URL segment. `/admin` redirects to `ADMIN_CONSOLE_URL` or 404s; `middleware.ts` no longer guards an admin surface. Storefront E2E rewritten: the seed script calls the services directly instead of the departed admin API, and both suites now assert the surface is **gone**. ⚠️ cron routes' admin fallback is inert — `CRON_SECRET` is required. |
 | 2026-08-23 | **Phase 1 verified end-to-end** | `test/unit/geo-ladder.test.ts` | Ran the full suite against a LOCAL scratch `femi9_test`: **37 files / 247 tests pass**. Found a Phase 1b regression typecheck could not see — `vi.mock('@/lib/geo/mmdb'…)` still named the pre-move path, so the mocks were inert and 6 geo tests were exercising real lookups. Specifiers repointed at `@femi9/core/geo/*`. |
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
