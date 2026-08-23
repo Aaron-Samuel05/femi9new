@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   inr,
   packImage,
@@ -106,6 +114,40 @@ function writeOrder(order: PlacedOrder | null) {
   }
 }
 
+/**
+ * The last order is read through an external store rather than pulled into
+ * state by an effect.
+ *
+ * localStorage is not available while rendering on the server, so it cannot be
+ * a lazy `useState` initialiser without a hydration mismatch — and setting it
+ * synchronously inside an effect causes a cascading render. `useSyncExternalStore`
+ * is the shape React provides for exactly this: a server snapshot of null, a
+ * client snapshot read once and cached, and subscribers notified on write.
+ */
+let orderCache: PlacedOrder | null | undefined;
+const orderListeners = new Set<() => void>();
+
+function subscribeOrder(onChange: () => void) {
+  orderListeners.add(onChange);
+  return () => orderListeners.delete(onChange);
+}
+
+function getOrderSnapshot(): PlacedOrder | null {
+  if (orderCache === undefined) orderCache = readOrder();
+  return orderCache;
+}
+
+/** Null on the server, so SSR and first paint agree. */
+function getOrderServerSnapshot(): PlacedOrder | null {
+  return null;
+}
+
+function publishOrder(order: PlacedOrder | null) {
+  writeOrder(order);
+  orderCache = order;
+  for (const listener of orderListeners) listener();
+}
+
 // ───────────────────────────────── context ─────────────────────────────────
 
 interface CartState {
@@ -122,7 +164,7 @@ const CartContext = createContext<CartState | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartDTO>(EMPTY);
   const [ready, setReady] = useState(false);
-  const [lastOrder, setLastOrderState] = useState<PlacedOrder | null>(null);
+  const lastOrder = useSyncExternalStore(subscribeOrder, getOrderSnapshot, getOrderServerSnapshot);
 
   useEffect(() => {
     let cancelled = false;
@@ -136,16 +178,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setCart(data ?? EMPTY);
         setReady(true);
       });
-    setLastOrderState(readOrder());
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const setLastOrder = useCallback((order: PlacedOrder | null) => {
-    writeOrder(order);
-    setLastOrderState(order);
-  }, []);
+  const setLastOrder = useCallback((order: PlacedOrder | null) => publishOrder(order), []);
 
   const value = useMemo(
     () => ({ cart, ready, setCart, lastOrder, setLastOrder }),
