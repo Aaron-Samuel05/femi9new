@@ -277,6 +277,19 @@ export function useCart() {
     [catalog, send],
   );
 
+  /** Add an exact variant. "Buy again" knows the id the order was placed with,
+   *  so it should not have to find it back through size and pack count. */
+  const addVariant = useCallback(
+    async (variantId: string, qty = 1) => {
+      await send("/api/cart", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ variantId, qty }),
+      });
+    },
+    [send],
+  );
+
   const setQty = useCallback(
     async (key: string, qty: number) => {
       await send(`/api/cart/items/${key}`, {
@@ -353,6 +366,7 @@ export function useCart() {
     zone: cart.zone,
     lastOrder,
     add,
+    addVariant,
     increment,
     decrement,
     remove,

@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
-import { ACCOUNT_ADDRESSES, ACCOUNT_ORDERS, ACCOUNT_STATS } from "@/lib/content";
-import { defaultPack } from "@/lib/catalog";
-import { useCatalogData } from "@/lib/catalog-context";
+// Orders and addresses are real now and arrive as props; the loyalty stats are
+// still placeholder copy, which is why ACCOUNT_STATS survives.
+import { ACCOUNT_STATS } from "@/lib/content";
+import { inr } from "@/lib/catalog";
+import type { AccountOrder, AccountAddress } from "@femi9/core/services/account";
 
 const TABS: { key: Tab; label: string; icon: IconName }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
@@ -17,17 +19,23 @@ const TABS: { key: Tab; label: string; icon: IconName }[] = [
 
 type Tab = "overview" | "orders" | "subscription" | "addresses";
 
-type Order = (typeof ACCOUNT_ORDERS)[number];
 
-function OrderRow({ order, action }: { order: Order; action?: React.ReactNode }) {
+
+function OrderRow({ order, action }: { order: AccountOrder; action?: React.ReactNode }) {
+  // "2 items" beats an empty cell when an order has more than one line.
+  const title =
+    order.items.length === 1
+      ? order.items[0]!.name
+      : `${order.items.length} items`;
+  const initial = title.replace(/^Cloud Soft — /, "").charAt(0).toUpperCase();
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-moss-tint py-4">
       <div className="flex items-center gap-4">
         <div className="flex size-11 shrink-0 items-center justify-center rounded-chip bg-moss-tint font-display font-bold text-moss-deep">
-          {order.size}
+          {initial}
         </div>
         <div>
-          <div className="text-[clamp(14px,1.3vw,15px)] font-bold">{order.title}</div>
+          <div className="text-[clamp(14px,1.3vw,15px)] font-bold">{title}</div>
           <div className="text-[13px] text-muted">
             {order.id} · {order.date}
           </div>
@@ -37,7 +45,7 @@ function OrderRow({ order, action }: { order: Order; action?: React.ReactNode })
         <span className="rounded-pill bg-moss-tint px-3 py-1.25 text-xs font-semibold text-moss-deep">
           {order.status}
         </span>
-        <span className="text-[15px] font-bold">{order.total}</span>
+        <span className="text-[15px] font-bold">{inr(order.total)}</span>
         {action}
       </div>
     </div>
@@ -45,16 +53,26 @@ function OrderRow({ order, action }: { order: Order; action?: React.ReactNode })
 }
 
 /** Sidebar tabs (overview / orders / subscription / addresses) switching the panel. */
-export function AccountDashboard() {
-  const { getSizeOrDefault } = useCatalogData();
+export function AccountDashboard({
+  orders,
+  addresses,
+}: {
+  orders: AccountOrder[];
+  addresses: AccountAddress[];
+}) {
   const [tab, setTab] = useState<Tab>("overview");
-  const { add } = useCart();
+  const { addVariant } = useCart();
 
-  function reorder(order: Order) {
-    const size = getSizeOrDefault(order.size);
-    const match = order.title.match(/(\d+)\s*pcs/);
-    const count = match ? Number(match[1]) : defaultPack(size).count;
-    add(size.size, count);
+  /**
+   * Put the exact lines back in the bag.
+   *
+   * The order carries the variant ids it was placed with, so this no longer has
+   * to parse "54 pcs" out of a title and hope the catalogue still has that pack
+   * — and a size discontinued since is simply not re-added rather than silently
+   * becoming a different one.
+   */
+  function reorder(order: AccountOrder) {
+    for (const item of order.items) void addVariant(item.variantId, item.qty);
   }
 
   return (
@@ -124,7 +142,7 @@ export function AccountDashboard() {
                   View all →
                 </button>
               </div>
-              {ACCOUNT_ORDERS.slice(0, 2).map((order) => (
+              {orders.slice(0, 2).map((order) => (
                 <OrderRow key={order.id} order={order} />
               ))}
             </div>
@@ -134,7 +152,7 @@ export function AccountDashboard() {
         {tab === "orders" && (
           <div className="panel p-card">
             <h2 className="m-0 mb-5.5 font-display text-[clamp(21px,2.6vw,26px)] font-normal">Order history</h2>
-            {ACCOUNT_ORDERS.map((order) => (
+            {orders.map((order) => (
               <OrderRow
                 key={order.id}
                 order={order}
@@ -207,17 +225,23 @@ export function AccountDashboard() {
               </button>
             </div>
             <div className="grid grid-cols-1 gap-[clamp(12px,1.6vw,18px)] md:grid-cols-2">
-              {ACCOUNT_ADDRESSES.map((address) => (
-                <div key={address.label} className="rounded-chip border-[1.5px] border-moss-tint p-[clamp(16px,2vw,24px)]">
+              {addresses.map((address) => (
+                <div key={address.id} className="rounded-chip border-[1.5px] border-moss-tint p-[clamp(16px,2vw,24px)]">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-[15px] font-bold">{address.label}</span>
-                    {address.isDefault && (
+                    {address.primary && (
                       <span className="rounded-pill bg-moss-tint px-2.5 py-1 text-[12px] font-semibold text-moss-deep">
                         Default
                       </span>
                     )}
                   </div>
-                  <p className="m-0 text-sm leading-[1.6] text-muted">{address.lines}</p>
+                  <p className="m-0 text-sm leading-[1.6] text-muted">
+                    {address.name}
+                    <br />
+                    {address.line}
+                    <br />
+                    {address.city}
+                  </p>
                 </div>
               ))}
             </div>
