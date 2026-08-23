@@ -8,6 +8,8 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@femi9/db": "*"
+    "@femi9/db": "*",
+    "@femi9/db-platform": "*",
+    "jose": "^6.2.3"
   }
 }
