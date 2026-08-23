@@ -6,9 +6,10 @@
  * rather than beside the schema. Femi9's seed does the same with its own
  * catalog.
  *
- * Source of truth is `src/lib/catalog.ts`, the same module the storefront
- * renders from today. Once the storefront reads the database (Phase 4), that
- * file becomes the seed's input only, and the database becomes the truth.
+ * `src/lib/catalog.ts` is this seed's INPUT. The storefront no longer reads it —
+ * it reads the database, through `catalog.server.ts`. So editing that module
+ * changes what a fresh seed writes and nothing that is already live; a live
+ * catalogue is edited in the console.
  *
  *   DATABASE_URL_LUMI9=postgresql://…/db?schema=lumi9 npm run db:seed
  *
@@ -75,7 +76,8 @@ async function main() {
       ? await db.product.update({ where: { id: existing.id }, data: base })
       : await db.product.create({ data: { ...base, slug } })
 
-    existing ? updated++ : created++
+    if (existing) updated++
+    else created++
 
     // ── Variants: one per pack tier ────────────────────────────────────────
     for (const pack of size.packs) {

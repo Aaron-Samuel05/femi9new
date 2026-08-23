@@ -424,7 +424,46 @@ from `lumi9-web-main/src/lib/catalog.ts` (NB · S · M · L · XL × pack tiers 
 `Product` + `ProductVariant`). Seed Lumi9 price zones. Enable the Lumi9 admin
 modules — ops can manage a real Lumi9 catalog before the storefront is wired.
 
-**Phase 4 — Lumi9 storefront goes live.** Replace the localStorage cart
+**Phase 4a — Lumi9's catalogue goes live. ✅ DONE.**
+
+The Lumi9 storefront reads its catalogue from the database. Proved by changing a
+price in Postgres and reloading: the PDP and the shop grid both moved, with no
+rebuild and no restart.
+
+```
+lumi9 schema ──▶ getCatalog('lumi9')   brand-agnostic rows, new in @femi9/core
+             ──▶ loadCatalog()         maps them to Lumi9's size/pack shape
+             ──▶ <CatalogProvider>     root layout, ONE query per request
+             ──▶ useCatalogData()      twelve client components
+```
+
+Twelve of the fourteen call sites were CLIENT components importing `SIZES`
+directly, and a client component cannot query a database. A context provider
+hydrated by the server layout was the way in that did not mean threading a prop
+through twelve component trees. The hook returns `getSize` / `getSizeOrDefault`
+as plain closures on purpose — both are called inside event handlers and
+`useMemo` bodies, where a hook cannot go.
+
+Two things this forced, both worth keeping:
+
+- **The tree is `force-dynamic`.** Prerendering the catalogue made the BUILD
+  require a database, and the Docker build stage has no credentials — the build
+  failed exactly as the admin app's would have. Rendering per request also means
+  a console edit is live immediately. If SSR cost bites, cache the read behind a
+  tag the console invalidates; do not go back to build-time data.
+- **Live data made two stale-closure warnings into real bugs.** A `useMemo` over
+  the size grid and the `placeOrder` callback both omitted the catalogue from
+  their dependencies — harmless while it was a frozen module, wrong the moment a
+  price could change mid-session.
+
+`src/lib/catalog.ts` survives as the SEED's input. Editing it changes what a
+fresh seed writes and nothing that is already live.
+
+**Phase 4b–e — still to do:** the cart is still localStorage, checkout is local
+state, there is no auth, and `AccountDashboard` shows placeholder orders. Those
+need Lumi9 API routes, a customer session, and Razorpay.
+
+**Phase 4 (original plan) — Lumi9 storefront goes live.** Replace the localStorage cart
 (`src/lib/cart.tsx`) with the cart API, wire checkout → Razorpay, wire OTP/Google
 auth, make `AccountDashboard.tsx` read real orders, move the placeholder journal
 content out of `lib/content.ts` into the CMS.

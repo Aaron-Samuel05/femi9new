@@ -9,7 +9,8 @@ import { Reveal } from "@/components/motion/Reveal";
 import { Em, QuoteCard, SectionHeading } from "@/components/ui/bits";
 import { ProductBuyBox } from "@/components/pdp/ProductBuyBox";
 import { FEATURE_IMAGES, PDP_REVIEWS } from "@/lib/content";
-import { SIZES, getSize, inr } from "@/lib/catalog";
+import { inr } from "@/lib/catalog";
+import { loadCatalog } from "@/lib/catalog.server";
 
 const FEATURE_BAND = [
   { image: FEATURE_IMAGES.wetnessLock, factor: 0.06, offset: false },
@@ -17,8 +18,16 @@ const FEATURE_BAND = [
   { image: FEATURE_IMAGES.softAsCotton, factor: 0.1, offset: false },
 ];
 
-export function generateStaticParams() {
-  return SIZES.map((size) => ({ size: size.size.toLowerCase() }));
+/**
+ * No build-time prerendering: which sizes exist is a database question, and the
+ * build has no database. Pages render on demand instead, so a size added in the
+ * console is live immediately rather than on the next deploy.
+ */
+
+/** One size by its URL segment, case-insensitively. */
+async function findSize(slug: string) {
+  const catalog = await loadCatalog();
+  return catalog.find((entry) => entry.size === slug.toUpperCase());
 }
 
 export async function generateMetadata({
@@ -27,7 +36,7 @@ export async function generateMetadata({
   params: Promise<{ size: string }>;
 }): Promise<Metadata> {
   const { size: slug } = await params;
-  const size = getSize(slug);
+  const size = await findSize(slug);
   if (!size) return { title: "Product not found" };
 
   return {
@@ -40,7 +49,7 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ size: string }> }) {
   const { size: slug } = await params;
-  const size = getSize(slug);
+  const size = await findSize(slug);
   if (!size) notFound();
 
   return (

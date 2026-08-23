@@ -5,10 +5,12 @@ import { useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, SectionHeading } from "@/components/ui/bits";
 import { useCart } from "@/lib/cart";
-import { WEIGHT_OPTIONS, defaultPack, getSize, type SizeCode } from "@/lib/catalog";
+import { defaultPack, type SizeCode } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 
 /** Weight chips → recommended size card → add that size to the cart. */
 export function SizeFinder() {
+  const { weightOptions, getSize } = useCatalogData();
   const [picked, setPicked] = useState<SizeCode | null>(null);
   const { add } = useCart();
   const recommended = getSize(picked);
@@ -25,7 +27,7 @@ export function SizeFinder() {
           </p>
           <div className="mb-3 text-sm font-semibold text-midnight">Baby&apos;s weight</div>
           <div className="flex flex-wrap gap-2.5">
-            {WEIGHT_OPTIONS.map((option) => (
+            {weightOptions.map((option) => (
               <button
                 key={option.size}
                 type="button"

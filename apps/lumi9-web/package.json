@@ -20,7 +20,8 @@
     "react-dom": "19.2.8",
     "three": "^0.185.1",
     "@femi9/db": "*",
-    "@femi9/core": "*"
+    "@femi9/core": "*",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@gltf-transform/cli": "^4.4.2",

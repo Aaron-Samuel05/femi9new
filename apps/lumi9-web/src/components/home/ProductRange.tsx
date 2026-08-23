@@ -6,9 +6,11 @@ import { useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, SectionHeading } from "@/components/ui/bits";
 import { AddButton } from "@/components/product/AddButton";
-import { SIZES, defaultPack, getPack, inr, packImage, type ProductSize } from "@/lib/catalog";
+import { defaultPack, getPack, inr, packImage } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
+import type { DbProductSize } from "@/lib/catalog.server";
 
-function RangeCard({ size }: { size: ProductSize }) {
+function RangeCard({ size }: { size: DbProductSize }) {
   const [packCount, setPackCount] = useState(defaultPack(size).count);
   const pack = getPack(size, packCount);
   const href = `/product/${size.size.toLowerCase()}`;
@@ -72,6 +74,7 @@ function RangeCard({ size }: { size: ProductSize }) {
 
 /** "One diaper. Every stage." — the Cloud Soft range with per-card pack selection. */
 export function ProductRange() {
+  const { sizes } = useCatalogData();
   return (
     <section id="shop" className="px-safe bg-paper py-section">
       <div className="mx-auto max-w-[1180px]">
@@ -86,7 +89,7 @@ export function ProductRange() {
 
         {/* two-up on the narrowest phones, then auto-fit as space allows */}
         <div className="grid grid-cols-2 gap-[clamp(10px,1.6vw,22px)] min-[560px]:grid-cols-[repeat(auto-fit,minmax(220px,1fr))]">
-          {SIZES.map((size) => (
+          {sizes.map((size) => (
             <RangeCard key={size.size} size={size} />
           ))}
         </div>

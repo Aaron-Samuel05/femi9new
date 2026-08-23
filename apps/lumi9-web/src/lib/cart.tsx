@@ -1,15 +1,8 @@
 "use client";
 
 import { useCallback, useMemo, useSyncExternalStore } from "react";
-import {
-  getSize,
-  getSizeOrDefault,
-  inr,
-  packImage,
-  standardShipping,
-  EXPRESS_SHIPPING_FEE,
-  type SizeCode,
-} from "@/lib/catalog";
+import { inr, packImage, standardShipping, EXPRESS_SHIPPING_FEE, type SizeCode } from "@/lib/catalog";
+import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
 
 /**
  * Cart + last-order state for the storefront, held in a module-level store so any
@@ -80,8 +73,7 @@ function isCartLine(value: unknown): value is CartLine {
   return (
     typeof line.count === "number" &&
     typeof line.qty === "number" &&
-    typeof line.size === "string" &&
-    getSize(line.size) !== undefined
+    typeof line.size === "string"
   );
 }
 
@@ -167,8 +159,15 @@ function getServerSnapshot() {
   return SERVER_SNAPSHOT;
 }
 
-export function resolveLine(line: CartLine): ResolvedLine {
-  const size = getSizeOrDefault(line.size);
+/**
+ * Turn a stored line into something displayable.
+ *
+ * Takes the catalogue rather than reaching for it, because this module is a
+ * store and not a component: prices, names and images now come from the
+ * database, and only a component can read the provider that holds it.
+ */
+export function resolveLine(catalog: CatalogData, line: CartLine): ResolvedLine {
+  const size = catalog.getSizeOrDefault(line.size);
   const pack = size.packs.find((p) => p.count === line.count) ?? size.packs[size.packs.length - 1];
   return {
     ...line,
@@ -181,9 +180,10 @@ export function resolveLine(line: CartLine): ResolvedLine {
 }
 
 export function useCart() {
+  const catalog = useCatalogData();
   const { ready, lines, lastOrder } = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const resolved = useMemo(() => lines.map(resolveLine), [lines]);
+  const resolved = useMemo(() => lines.map((line) => resolveLine(catalog, line)), [catalog, lines]);
   const subtotal = useMemo(() => resolved.reduce((sum, line) => sum + line.lineTotal, 0), [resolved]);
   const count = useMemo(() => lines.reduce((sum, line) => sum + line.qty, 0), [lines]);
   const shipping = standardShipping(subtotal);
@@ -216,7 +216,7 @@ export function useCart() {
   const placeOrder = useCallback(
     (details: Omit<PlacedOrder, "lines" | "subtotal" | "shipping" | "total">) => {
       const orderLines = snapshot.lines;
-      const orderSubtotal = orderLines.reduce((sum, line) => sum + resolveLine(line).lineTotal, 0);
+      const orderSubtotal = orderLines.reduce((sum, line) => sum + resolveLine(catalog, line).lineTotal, 0);
       const orderShipping =
         details.delivery === "express" ? EXPRESS_SHIPPING_FEE : standardShipping(orderSubtotal);
       const order: PlacedOrder = {
@@ -231,7 +231,11 @@ export function useCart() {
       set({ lines: [], lastOrder: order });
       return order;
     },
-    [],
+    // `catalog` matters: the order total is computed with resolveLine(catalog, …).
+    // Omitted, this callback keeps whatever prices it first closed over — which
+    // was harmless while the catalogue was a hardcoded module and is a real
+    // staleness bug now that a console edit can change them mid-session.
+    [catalog],
   );
 
   return {

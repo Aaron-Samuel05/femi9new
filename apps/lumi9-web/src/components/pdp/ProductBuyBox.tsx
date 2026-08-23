@@ -7,15 +7,9 @@ import { Accordion } from "@/components/ui/Accordion";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
-import {
-  SIZES,
-  defaultPack,
-  getPack,
-  inr,
-  packImage,
-  subscriptionPrice,
-  type ProductSize,
-} from "@/lib/catalog";
+import { defaultPack, getPack, inr, packImage, subscriptionPrice } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
+import type { DbProductSize } from "@/lib/catalog.server";
 import { FEATURE_IMAGES, PDP_ACCORDION } from "@/lib/content";
 
 const TRUST: { icon: IconName; label: string }[] = [
@@ -30,7 +24,8 @@ const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEA
  * Sticky gallery + buy column. Size lives in the URL (`/product/m`) so packs and
  * prices are shareable; pack, quantity and the active image are local state.
  */
-export function ProductBuyBox({ size }: { size: ProductSize }) {
+export function ProductBuyBox({ size }: { size: DbProductSize }) {
+  const { sizes } = useCatalogData();
   const [packCount, setPackCount] = useState(defaultPack(size).count);
   const [qty, setQty] = useState(1);
   const [mainImage, setMainImage] = useState<string | null>(null);
@@ -120,7 +115,7 @@ export function ProductBuyBox({ size }: { size: ProductSize }) {
           Size <span className="ml-1 font-normal text-muted">· fits {size.fits}</span>
         </div>
         <div className="mb-6.5 grid grid-cols-5 gap-[clamp(6px,0.9vw,10px)]">
-          {SIZES.map((option) => {
+          {sizes.map((option) => {
             const selected = option.size === size.size;
             return (
               <Link

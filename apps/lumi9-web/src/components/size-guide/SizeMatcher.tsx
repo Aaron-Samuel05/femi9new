@@ -2,17 +2,19 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { WEIGHT_OPTIONS, getSizeOrDefault, type SizeCode } from "@/lib/catalog";
+import { type SizeCode } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 
 /** Weight chips → recommended size card. Defaults to M, as in the design. */
 export function SizeMatcher() {
+  const { weightOptions, getSizeOrDefault } = useCatalogData();
   const [picked, setPicked] = useState<SizeCode>("M");
   const size = getSizeOrDefault(picked);
 
   return (
     <section className="px-safe mx-auto max-w-[900px] pt-5 pb-section-sm">
       <div className="mb-[clamp(24px,4vw,40px)] flex flex-wrap justify-center gap-2.5">
-        {WEIGHT_OPTIONS.map((option) => (
+        {weightOptions.map((option) => (
           <button
             key={option.size}
             type="button"

@@ -1,6 +1,14 @@
 /**
- * Canonical Lumi9 product data.
- * Prices are the placeholders supplied in the design handoff (client to confirm).
+ * Lumi9 product data — now the SEED's input, not the storefront's source.
+ *
+ * `prisma/seed.ts` reads `SIZES` and writes it into the `lumi9` schema; the
+ * storefront reads the database through `catalog.server.ts` and hands it to
+ * client components via `catalog-context.tsx`. Editing this file changes what a
+ * fresh seed writes, and nothing that is already live — the console is where a
+ * live catalogue is edited.
+ *
+ * The pure helpers below (pricing, shipping, formatting, image paths) are used
+ * by BOTH, which is why they stay here.
  */
 
 export type SizeCode = "NB" | "S" | "M" | "L" | "XL";
@@ -116,11 +124,14 @@ export function getSizeOrDefault(code: string | undefined | null, fallback: Size
   return getSize(code) ?? getSize(fallback)!;
 }
 
-export function defaultPack(size: ProductSize): Pack {
-  return size.packs.find((p) => p.count === DEFAULT_PACK_COUNT) ?? size.packs[size.packs.length - 1];
+export function defaultPack<P extends { count: number }>(size: { packs: P[] }): P {
+  return size.packs.find((p) => p.count === DEFAULT_PACK_COUNT) ?? size.packs[size.packs.length - 1]!;
 }
 
-export function getPack(size: ProductSize, count: number | undefined | null): Pack {
+export function getPack<P extends { count: number }>(
+  size: { packs: P[] },
+  count: number | undefined | null,
+): P {
   return size.packs.find((p) => p.count === count) ?? defaultPack(size);
 }
 
@@ -128,7 +139,7 @@ export function packImage(size: SizeCode, count: number) {
   return `/assets/products/${size}-${count}.jpeg`;
 }
 
-export function productName(size: ProductSize) {
+export function productName(size: { name: string }) {
   return `Cloud Soft — ${size.name}`;
 }
 

@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SUBSCRIPTION_FREQUENCIES } from "@/lib/content";
-import { SIZES, getSizeOrDefault, inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
+import { inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
+import type { DbProductSize } from "@/lib/catalog.server";
 
 /** Subscribable pack tiers — the 3-count trial packs aren't offered on subscription. */
-function subscribablePacks(size: ReturnType<typeof getSizeOrDefault>) {
+function subscribablePacks(size: DbProductSize) {
   return size.packs.filter((pack) => pack.count >= 24);
 }
 
 export function BoxBuilder() {
+  const { sizes, getSizeOrDefault } = useCatalogData();
   const [sizeCode, setSizeCode] = useState<SizeCode>("M");
   const [packCount, setPackCount] = useState<number | null>(null);
   const [frequency, setFrequency] = useState<(typeof SUBSCRIPTION_FREQUENCIES)[number]>("4 weeks");
@@ -27,7 +30,7 @@ export function BoxBuilder() {
 
           <div className="mb-3 text-sm font-semibold">Size</div>
           <div className="mb-7 grid grid-cols-5 gap-[clamp(6px,0.9vw,10px)]" role="group" aria-label="Size">
-            {SIZES.map((option) => (
+            {sizes.map((option) => (
               <button
                 key={option.size}
                 type="button"

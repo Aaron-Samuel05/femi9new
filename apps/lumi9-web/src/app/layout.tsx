@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { ABeeZee, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
+import { loadCatalog } from "@/lib/catalog.server";
+import { CatalogProvider } from "@/lib/catalog-context";
 
 const display = ABeeZee({
   subsets: ["latin"],
@@ -38,11 +40,36 @@ export const viewport: Viewport = {
   themeColor: "#f7f5ea",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Rendered per request, not at build time.
+ *
+ * The catalogue is live data now — the console can change a price or retire a
+ * size — so prerendering it would serve whatever was true when the image was
+ * built. It also keeps the BUILD free of database credentials, which matters
+ * because the Docker build stage has none: they arrive at deploy time from
+ * Secrets Manager. A build that needs a database is a build that cannot run in
+ * CI without one.
+ *
+ * The cost is an SSR per request, which is what the Femi9 storefront already
+ * does. If that becomes a problem, the fix is caching the catalogue read behind
+ * a tag the console invalidates on write — not going back to build-time data.
+ */
+export const dynamic = "force-dynamic";
+
+/**
+ * The catalogue is loaded ONCE here, per request, and handed to the client tree
+ * through CatalogProvider. Every size chip, price and pack tier on the page
+ * comes from that single query rather than from a hardcoded module.
+ */
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const catalog = await loadCatalog();
+
   return (
     // data-scroll-behavior keeps route changes instant while in-page anchors stay smooth
     <html lang="en-IN" data-scroll-behavior="smooth" className={`${display.variable} ${ui.variable}`}>
-      <body className="font-ui antialiased">{children}</body>
+      <body className="font-ui antialiased">
+        <CatalogProvider catalog={catalog}>{children}</CatalogProvider>
+      </body>
     </html>
   );
 }

@@ -1,5 +1,5 @@
 import 'server-only'
-import { dbFor, type Brand } from '@femi9/db'
+import { dbFor, type Brand, type ProductType as DbProductType } from '@femi9/db'
 import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from './pricing'
 import type { Product, ProductType } from '../types/catalog'
 import type { ProductExtra } from '../types/catalog'
@@ -50,6 +50,62 @@ export interface ProductReview {
   /** True only when this reviewer actually bought this product. The badge used
    *  to read "Verified Buyer" unconditionally on every card. */
   verified: boolean
+}
+
+/**
+ * A product as the DATABASE has it, before any brand's view model is applied.
+ *
+ * `getProducts` below maps rows onto Femi9's `Product` shape — `meta`, `flow`,
+ * `packs` — which is exactly right for that storefront and wrong for Lumi9,
+ * whose UI is organised by nappy size with pack tiers underneath. Rather than
+ * teach one mapper two vocabularies, this returns the rows and lets each
+ * storefront shape them.
+ *
+ * It carries `specs`, which the Femi9 mapper drops, and real variant ids, which
+ * a cart needs.
+ */
+export interface CatalogEntry {
+  id: string
+  slug: string
+  name: string
+  /** The DATABASE enum, not a storefront's view model — this row is unmapped. */
+  type: DbProductType
+  basePrice: number
+  meta: string
+  flow: string
+  description: string
+  longDescription: string | null
+  images: { url: string; alt: string | null }[]
+  specs: { key: string; value: string }[]
+  variants: Variant[]
+}
+
+/** Every active product for a brand, unmapped. Ordered oldest-first, which is
+ *  the order the seeds write and therefore the order a size run reads in. */
+export async function getCatalog(brand: Brand): Promise<CatalogEntry[]> {
+  const rows = await loadRows(brand)
+  return rows.map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    name: row.name,
+    type: row.type,
+    basePrice: row.basePrice,
+    meta: row.meta,
+    flow: row.flow,
+    description: row.description,
+    longDescription: row.longDescription,
+    images: row.images.map((i) => ({ url: i.url, alt: i.alt })),
+    specs: row.specs.map((sp) => ({ key: sp.key, value: sp.value })),
+    variants: row.variants.map((v) => ({
+      id: v.id,
+      kind: v.kind,
+      label: v.label,
+      packCount: v.packCount,
+      size: v.size,
+      price: v.price,
+      stock: v.stock,
+    })),
+  }))
 }
 
 export interface FullProduct {

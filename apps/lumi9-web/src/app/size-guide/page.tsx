@@ -6,14 +6,15 @@ import { Reveal } from "@/components/motion/Reveal";
 import { SizeMatcher } from "@/components/size-guide/SizeMatcher";
 import { Em, NumberedCard } from "@/components/ui/bits";
 import { FEATURE_IMAGES, FIT_TIPS } from "@/lib/content";
-import { SIZES } from "@/lib/catalog";
+import { loadCatalog } from "@/lib/catalog.server";
 
 export const metadata: Metadata = {
   title: "Size guide",
   description: "Always go by weight, not age. Tap your baby's weight to find the Cloud Soft size that fits.",
 };
 
-export default function SizeGuidePage() {
+export default async function SizeGuidePage() {
+  const sizes = await loadCatalog();
   return (
     <PageShell links={SUPPORT_LINKS} cta="shop">
       <header className="px-safe mx-auto max-w-[720px] pt-[clamp(44px,6vw,80px)] pb-10 text-center">
@@ -61,7 +62,7 @@ export default function SizeGuidePage() {
               </tr>
             </thead>
             <tbody className="text-[clamp(14px,1.3vw,15px)]">
-              {SIZES.map((size) => (
+              {sizes.map((size) => (
                 <tr key={size.size} className="border-t border-moss-tint">
                   <th scope="row" className="px-[clamp(14px,2vw,24px)] py-4 font-bold text-moss-deep">
                     {size.size}
@@ -76,7 +77,7 @@ export default function SizeGuidePage() {
           </table>
 
           <ul className="m-0 flex list-none flex-col gap-3 p-0 sm:hidden">
-            {SIZES.map((size) => (
+            {sizes.map((size) => (
               <li key={size.size} className="panel flex items-center gap-4 p-4">
                 <span className="flex size-11 shrink-0 items-center justify-center rounded-chip bg-moss-tint font-display text-lg font-bold text-moss-deep">
                   {size.size}

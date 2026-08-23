@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { resolveLine, useCart } from "@/lib/cart";
+import { useCatalogData } from "@/lib/catalog-context";
 import { inr, shippingLabel } from "@/lib/catalog";
 
 const TIMELINE = [
@@ -12,6 +13,7 @@ const TIMELINE = [
 ];
 
 export function ConfirmationView() {
+  const catalog = useCatalogData();
   const { lastOrder, ready } = useCart();
 
   if (!ready) {
@@ -32,7 +34,7 @@ export function ConfirmationView() {
     );
   }
 
-  const lines = lastOrder.lines.map(resolveLine);
+  const lines = lastOrder.lines.map((line) => resolveLine(catalog, line));
 
   return (
     <section className="px-safe mx-auto max-w-[760px] pt-[clamp(40px,6vw,70px)] pb-section">

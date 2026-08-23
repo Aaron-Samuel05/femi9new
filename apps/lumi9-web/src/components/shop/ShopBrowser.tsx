@@ -4,7 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AddButton } from "@/components/product/AddButton";
-import { SIZES, defaultPack, inr, packImage } from "@/lib/catalog";
+import { defaultPack, inr, packImage } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 
 const SIZE_FILTERS = ["All", "NB", "S", "M", "L", "XL"] as const;
 const SORTS = ["Featured", "Price: low to high", "Price: high to low"] as const;
@@ -14,11 +15,12 @@ type Sort = (typeof SORTS)[number];
 
 /** Collection grid: size filter chips + sort, cards link through to the PDP. */
 export function ShopBrowser() {
+  const { sizes } = useCatalogData();
   const [sizeFilter, setSizeFilter] = useState<SizeFilter>("All");
   const [sort, setSort] = useState<Sort>("Featured");
 
   const products = useMemo(() => {
-    const rows = SIZES.filter((size) => sizeFilter === "All" || size.size === sizeFilter).map((size) => ({
+    const rows = sizes.filter((size) => sizeFilter === "All" || size.size === sizeFilter).map((size) => ({
       size,
       pack: defaultPack(size),
     }));
@@ -26,7 +28,7 @@ export function ShopBrowser() {
     if (sort === "Price: low to high") rows.sort((a, b) => a.pack.price - b.pack.price);
     if (sort === "Price: high to low") rows.sort((a, b) => b.pack.price - a.pack.price);
     return rows;
-  }, [sizeFilter, sort]);
+  }, [sizes, sizeFilter, sort]);
 
   return (
     <section className="px-safe mx-auto grid max-w-[1240px] grid-cols-1 items-start gap-[clamp(20px,3vw,40px)] pt-6 pb-section md:grid-cols-[minmax(180px,220px)_1fr]">

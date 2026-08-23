@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
 import { ACCOUNT_ADDRESSES, ACCOUNT_ORDERS, ACCOUNT_STATS } from "@/lib/content";
-import { getSizeOrDefault, defaultPack } from "@/lib/catalog";
+import { defaultPack } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 
 const TABS: { key: Tab; label: string; icon: IconName }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
@@ -45,6 +46,7 @@ function OrderRow({ order, action }: { order: Order; action?: React.ReactNode })
 
 /** Sidebar tabs (overview / orders / subscription / addresses) switching the panel. */
 export function AccountDashboard() {
+  const { getSizeOrDefault } = useCatalogData();
   const [tab, setTab] = useState<Tab>("overview");
   const { add } = useCart();
 

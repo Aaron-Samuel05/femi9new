@@ -10,6 +10,9 @@ import type { NextConfig } from "next";
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
 const nextConfig: NextConfig = {
+  // The workspace packages ship TypeScript source with no build step in front.
+  transpilePackages: ["@femi9/core", "@femi9/db"],
+
   async headers() {
     return [
       { source: "/assets/:path*", headers: [{ key: "Cache-Control", value: IMMUTABLE }] },
