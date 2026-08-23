@@ -3,6 +3,7 @@ import { ABeeZee, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import { loadCatalog } from "@/lib/catalog.server";
 import { CatalogProvider } from "@/lib/catalog-context";
+import { CartProvider } from "@/lib/cart";
 
 const display = ABeeZee({
   subsets: ["latin"],
@@ -68,7 +69,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // data-scroll-behavior keeps route changes instant while in-page anchors stay smooth
     <html lang="en-IN" data-scroll-behavior="smooth" className={`${display.variable} ${ui.variable}`}>
       <body className="font-ui antialiased">
-        <CatalogProvider catalog={catalog}>{children}</CatalogProvider>
+        <CatalogProvider catalog={catalog}>
+          <CartProvider>{children}</CartProvider>
+        </CatalogProvider>
       </body>
     </html>
   );
