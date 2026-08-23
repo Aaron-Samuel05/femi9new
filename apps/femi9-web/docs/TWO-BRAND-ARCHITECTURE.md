@@ -355,7 +355,34 @@ deprecation warning is expected, not a defect.
 its first parameter, resolving its client via `dbFor(brand)`. femi9-web imports
 from core. Vitest suite green. *No schema change to the live database.*
 
-**Phase 2 — Schemas + unified admin.** Rename `public` → `femi9`, create `lumi9`
+**Phase 2 — Schemas + unified admin. ⏳ IN PROGRESS.**
+
+*Shipped:* the platform schema and admin identity (`@femi9/db-platform`:
+`AdminUser` · `AdminBrandRole` · `AdminAuditLog`), and `apps/admin` — brand
+toggle login, `proxy.ts` guard on the Node runtime, module-gated nav, per-brand
+cookies and audiences, `create-admin` script. 21 tests.
+
+Two deviations from this document, both deliberate:
+
+- **scrypt, not argon2id.** Every argon2 binding for Node is native; this image
+  is Alpine built from a workspace root, and a prebuilt resolving to the wrong
+  libc is a deploy failure on the one endpoint that must never be down. The
+  encoded hash names its own algorithm and cost, so argon2id can be adopted
+  later and old hashes upgraded on next sign-in.
+- **`proxy.ts`, not `middleware.ts`,** for the admin app — it is Next 16's
+  convention and runs on Node, so the guard calls the same `verifyAdminSession`
+  the handlers do. That is the duplication the storefront still carries.
+
+*Not run:* the `public` → `femi9` rename. It is the only step that touches live
+data, so it waits for a human. It has been **rehearsed end-to-end** against a
+local copy — 49 tables moved, data intact, Prisma "already in sync" against
+`?schema=femi9`, `dbFor('lumi9')` provably unable to read Femi9's rows, and the
+rollback verified and re-applied. See `docs/RENAME-RUNBOOK.md`.
+
+*Remaining:* move the 15 admin pages and 33 admin routes out of femi9-web into
+`apps/admin`, and retire the env-credential login there.
+
+**Phase 2 (original plan) — Schemas + unified admin.** Rename `public` → `femi9`, create `lumi9`
 and `platform`. Move the 15 admin pages and 33 admin routes into `apps/admin`.
 Seed the current admin as an `AdminUser` with a femi9 `owner` role, retire the
 env credentials. Brand toggle login, brand-scoped session, module-gated nav,
