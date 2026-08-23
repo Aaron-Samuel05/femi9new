@@ -23,7 +23,9 @@
     "typecheck": "turbo run typecheck",
     "db:generate": "npm run db:generate --workspace femi9-web",
     "db:migrate": "npm run db:migrate --workspace femi9-web",
-    "db:studio": "npm run db:studio --workspace femi9-web"
+    "db:studio": "npm run db:studio --workspace femi9-web",
+    "dev:admin": "npm run dev --workspace admin-web",
+    "build:admin": "npm run build --workspace admin-web"
   },
   "devDependencies": {
     "turbo": "^2"

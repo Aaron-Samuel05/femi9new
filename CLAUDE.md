@@ -11,10 +11,15 @@ apps/
                 Has its own CLAUDE.md — read it before touching this app.
   lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4.
                 Frontend only: no backend, no database, cart in localStorage.
+  admin/        ONE console, both brands. :3002. Has its own CLAUDE.md.
+                Brand comes from the SESSION, never the URL segment.
 packages/
   db/           @femi9/db — the shared Prisma schema and `dbFor(brand)`.
                 One schema, one client per brand. Seeds are NOT here: seed data
                 is brand-specific and lives with each app.
+  db-platform/  @femi9/db-platform — admin identity in its OWN schema, which
+                neither brand's client can reach. Generates to `generated/`
+                (gitignored) because the brand client owns the default output.
   core/         @femi9/core — the shared backend. 64 modules: the whole
                 service layer, auth, Razorpay, pricing, geo, OTP, Thara.
                 Import by SUBPATH, never from a barrel:
@@ -62,6 +67,7 @@ is in `public` and Phase 2 does the rename. Lumi9 has no fallback on purpose.
 npm install          # ALWAYS here. One hoisted lockfile; apps have none.
 npm run dev:femi9    # :3000
 npm run dev:lumi9    # :3001
+npm run dev:admin    # :3002
 npm run build        # turbo — both apps
 npm run typecheck
 ```
@@ -101,4 +107,13 @@ workflows from `<repo>/.github/workflows`. It has never executed. The two that
 DO run are `ci.yml` and `deploy-staging.yml` at this root.
 
 **`npm test` in femi9-web truncates every table.** Never run it against a `.env`
-pointing at staging or production.
+pointing at staging or production. Both suites are safe against local scratch
+databases — see each app's CLAUDE.md.
+
+**Two Prisma generators, two output paths.** A fresh clone or Docker build must
+run `prisma generate` for `@femi9/db` AND `@femi9/db-platform`; the second uses
+a package-local `generated/` directory so the two do not overwrite each other.
+
+**The `public` → `femi9` schema rename has NOT been run** against the live
+database. Femi9 still reads `DATABASE_URL`. See
+`apps/femi9-web/docs/TWO-BRAND-ARCHITECTURE.md` and `docs/rename-public-to-femi9.sql`.
