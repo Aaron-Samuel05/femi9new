@@ -19,7 +19,7 @@ async function activeMember(overrides: { email?: string; name?: string } = {}) {
       role: 'customer',
     },
   })
-  const { id } = await enrollUser(u.id, 'v1')
+  const { id } = await enrollUser('femi9', u.id, 'v1')
   await prisma.tharaMembership.update({
     where: { id },
     data: { status: 'active', activatedAt: new Date() },
@@ -59,7 +59,7 @@ describe('Thara invite (sub-project E)', () => {
     process.env.ALLOW_MOCK_PROVIDERS = 'true'
     try {
       const u = await activeMember({ email: 'sender@t.local' })
-      const result = await sendTharaInvite(u.id, 'friend@t.local')
+      const result = await sendTharaInvite('femi9', u.id, 'friend@t.local')
       expect(result.mock).toBe(true)
     } finally {
       process.env.ALLOW_MOCK_PROVIDERS = original
@@ -68,14 +68,14 @@ describe('Thara invite (sub-project E)', () => {
 
   it('rejects a bad email address', async () => {
     const u = await activeMember()
-    await expect(sendTharaInvite(u.id, 'not-an-email')).rejects.toBeInstanceOf(
+    await expect(sendTharaInvite('femi9', u.id, 'not-an-email')).rejects.toBeInstanceOf(
       TharaInviteBadEmailError,
     )
   })
 
   it('rejects a non-member trying to send an invite', async () => {
     const u = await prisma.user.create({ data: { email: 'never@t.local', role: 'customer' } })
-    await expect(sendTharaInvite(u.id, 'friend@t.local')).rejects.toBeInstanceOf(
+    await expect(sendTharaInvite('femi9', u.id, 'friend@t.local')).rejects.toBeInstanceOf(
       TharaInviteNotEligibleError,
     )
   })
@@ -86,18 +86,18 @@ describe('Thara invite (sub-project E)', () => {
       where: { userId: u.id },
       data: { status: 'deactivated', deactivatedAt: new Date() },
     })
-    await expect(sendTharaInvite(u.id, 'friend@t.local')).rejects.toBeInstanceOf(
+    await expect(sendTharaInvite('femi9', u.id, 'friend@t.local')).rejects.toBeInstanceOf(
       TharaInviteNotEligibleError,
     )
   })
 
   it('rejects a self-invite (email matches referrer)', async () => {
     const u = await activeMember({ email: 'me@t.local' })
-    await expect(sendTharaInvite(u.id, 'me@t.local')).rejects.toBeInstanceOf(
+    await expect(sendTharaInvite('femi9', u.id, 'me@t.local')).rejects.toBeInstanceOf(
       TharaInviteSelfError,
     )
     // Case-insensitive too.
-    await expect(sendTharaInvite(u.id, 'ME@T.LOCAL')).rejects.toBeInstanceOf(
+    await expect(sendTharaInvite('femi9', u.id, 'ME@T.LOCAL')).rejects.toBeInstanceOf(
       TharaInviteSelfError,
     )
   })
@@ -107,8 +107,8 @@ describe('Thara invite (sub-project E)', () => {
     process.env.ALLOW_MOCK_PROVIDERS = 'true'
     try {
       const u = await activeMember()
-      await suppressEmail('bounced@t.local', 'hard_bounce')
-      await expect(sendTharaInvite(u.id, 'bounced@t.local')).rejects.toBeInstanceOf(
+      await suppressEmail('femi9', 'bounced@t.local', 'hard_bounce')
+      await expect(sendTharaInvite('femi9', u.id, 'bounced@t.local')).rejects.toBeInstanceOf(
         TharaInviteSuppressedError,
       )
     } finally {
@@ -117,8 +117,8 @@ describe('Thara invite (sub-project E)', () => {
   })
 
   it('suppressEmail is idempotent and case-normalising', async () => {
-    await suppressEmail('BOUNCE@T.LOCAL', 'hard_bounce')
-    await suppressEmail('bounce@t.local', 'complaint') // update reason
+    await suppressEmail('femi9', 'BOUNCE@T.LOCAL', 'hard_bounce')
+    await suppressEmail('femi9', 'bounce@t.local', 'complaint') // update reason
     const rows = await prisma.tharaSuppressedEmail.findMany()
     expect(rows.length).toBe(1)
     expect(rows[0].email).toBe('bounce@t.local')

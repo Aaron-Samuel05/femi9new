@@ -46,11 +46,11 @@ export async function POST(req: NextRequest) {
     if (!address) return ok({ ignored: true })
 
     if (type === 'email.bounced' && body.data?.bounce?.type === 'hard') {
-      await suppressEmail(address, 'hard_bounce')
+      await suppressEmail('femi9', address, 'hard_bounce')
       return ok({ suppressed: address })
     }
     if (type === 'email.complained') {
-      await suppressEmail(address, 'complaint')
+      await suppressEmail('femi9', address, 'complaint')
       return ok({ suppressed: address })
     }
     return ok({ ignored: true, type })

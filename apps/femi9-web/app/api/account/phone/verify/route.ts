@@ -1,7 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { badRequest, conflict, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireUser } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 import {
   attachIdentity,
@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     if (!phHit.ok) return tooManyRequests(phHit.retryAfterSec)
 
     try {
-      const normalized = await verifyPhoneChallenge(phone, code)
+      const normalized = await verifyPhoneChallenge('femi9', phone, code)
       await attachIdentity(prisma, session.sub, {
         phone: normalized,
         phoneVerified: new Date(),

@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const membership = await enrollUser(session.sub, parsed.data.termsVersion)
+      const membership = await enrollUser('femi9', session.sub, parsed.data.termsVersion)
       return ok(membership)
     } catch (e) {
       if (e instanceof TharaDeactivatedError) return badRequest(e.message)

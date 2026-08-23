@@ -31,7 +31,7 @@ export async function GET() {
   return handle(async () => {
     const u = await requireUser()
     if (!u) return unauthorized()
-    return ok({ subscriptions: await listForUser(u.sub) })
+    return ok({ subscriptions: await listForUser('femi9', u.sub) })
   })
 }
 
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     if (!parsed.success) return badRequest('Invalid subscription', parsed.error.flatten())
 
     try {
-      const subscription = await createSubscription(u.sub, parsed.data)
+      const subscription = await createSubscription('femi9', u.sub, parsed.data)
       return created({ subscription })
     } catch (err) {
       // Stale cadence code / product option is a client problem, not a 500.

@@ -24,9 +24,9 @@ export async function POST(req: NextRequest) {
       if (!admin) return unauthorized()
     }
 
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     if (cycle.status !== 'open') return badRequest('No open cycle to close.')
-    const result = await closeCycle(cycle.id)
+    const result = await closeCycle('femi9', cycle.id)
     return ok({ cycleId: cycle.id, ...result })
   })
 }

@@ -1,4 +1,5 @@
 import 'server-only'
+import type { Brand } from '@femi9/db'
 import { headers } from 'next/headers'
 import { INDIA_STATES } from './india-states'
 import { parseIp, type ParsedIp } from './ip'
@@ -216,7 +217,7 @@ function reject(reason: GeoRejection, detail: GeoReading['detail'] = {}): GeoRea
  * Returns an empty reading outside a request scope (cron, tests, build-time
  * prerender) instead of throwing, so every caller can treat geo as best-effort.
  */
-export async function detectGeoReading(): Promise<GeoReading> {
+export async function detectGeoReading(brand: Brand): Promise<GeoReading> {
   let h: Awaited<ReturnType<typeof headers>>
   try {
     h = await headers()
@@ -266,7 +267,7 @@ export async function detectGeoReading(): Promise<GeoReading> {
   const hint = languageHint(h.get(H.acceptLanguage))
   if (hint) detail.language = hint.language
 
-  const reading = await resolveTiers({ h, ip, network, city, detail })
+  const reading = await resolveTiers(brand, { h, ip, network, city, detail })
   return applyLanguageVeto(reading, hint)
 }
 
@@ -274,8 +275,8 @@ export async function detectGeoReading(): Promise<GeoReading> {
  * Back-compatible entry point: the signal alone, and only when it is trustworthy
  * enough to set a price. Callers that want provenance use `detectGeoReading`.
  */
-export async function detectGeoSignal(): Promise<LocationSignal> {
-  const reading = await detectGeoReading()
+export async function detectGeoSignal(brand: Brand): Promise<LocationSignal> {
+  const reading = await detectGeoReading(brand)
   return USABLE.has(reading.confidence) ? reading.signal : {}
 }
 
@@ -340,11 +341,11 @@ interface TierInput {
 }
 
 /** Walk the ladder, stopping at the first tier that produces a usable state. */
-async function resolveTiers({ h, ip, network, city, detail }: TierInput): Promise<GeoReading> {
+async function resolveTiers(brand: Brand, { h, ip, network, city, detail }: TierInput): Promise<GeoReading> {
   // ── Tiers 2–3: IPv6. Carriers do not NAT it, so this survives the gate that
   // rejects their IPv4 — this is the tier that actually fixes mobile data.
   if (ip?.version === 'v6' && !ip.isPrivate) {
-    const circle = await lookupCircle(ip.address)
+    const circle = await lookupCircle(brand, ip.address)
     if (circle) {
       detail.circle = circle.circle
       detail.circlePrefix = circle.prefix

@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const { name, phone, city, situation, reason } = parsed.data
-    await createApplication({ name, phone, city, situation, reason })
+    await createApplication('femi9', { name, phone, city, situation, reason })
     return ok({ ok: true })
   })
 }

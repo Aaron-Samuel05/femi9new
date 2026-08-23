@@ -1,6 +1,6 @@
 import 'server-only'
 import type { TharaMembership, TharaStatus, Prisma, User } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand, type PrismaClient } from '@femi9/db'
 import { PAID_ORDER_STATUSES } from '../order-status'
 import { generateReferralCode } from '../thara/codes'
 import { verifyTharaRefCookie } from '../thara/cookies'
@@ -39,10 +39,11 @@ async function issueUniqueCode(tx: Prisma.TransactionClient): Promise<string> {
   throw new Error('Could not issue a unique referral code after 5 tries')
 }
 
-export async function enrollUser(
+export async function enrollUser(brand: Brand, 
   userId: string,
   termsVersion: string,
 ): Promise<{ id: string; status: TharaStatus; referralCode: string }> {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const existing = await tx.tharaMembership.findUnique({ where: { userId } })
     if (existing) {
@@ -81,14 +82,16 @@ export async function enrollUser(
   })
 }
 
-export async function optOutUser(userId: string): Promise<void> {
+export async function optOutUser(brand: Brand, userId: string): Promise<void> {
+  const prisma = dbFor(brand)
   await prisma.tharaMembership.update({
     where: { userId },
     data: { status: 'deactivated', deactivatedAt: new Date() },
   })
 }
 
-export async function getMembership(userId: string): Promise<TharaMembership | null> {
+export async function getMembership(brand: Brand, userId: string): Promise<TharaMembership | null> {
+  const prisma = dbFor(brand)
   return prisma.tharaMembership.findUnique({ where: { userId } })
 }
 
@@ -113,10 +116,11 @@ export interface AttributionInput {
  * Called from every sign-in path after a User is upserted. Silently no-ops
  * for any reject reason so sign-in never fails because of attribution.
  */
-export async function attributeReferralIfPresent(
+export async function attributeReferralIfPresent(brand: Brand, 
   user: User,
   input: AttributionInput,
 ): Promise<{ attributed: boolean; reason?: AttributionReason }> {
+  const prisma = dbFor(brand)
   if (!input.cookieToken) return { attributed: false, reason: 'no-cookie' }
   const claim = await verifyTharaRefCookie(input.cookieToken)
   if (!claim) return { attributed: false, reason: 'bad-cookie' }
@@ -260,7 +264,8 @@ export async function activateFromPastOrders(
  * is a no-op for anyone who is not an unpromoted member, and it never throws
  * into the response — a repair that fails should not blank the dashboard.
  */
-export async function syncTharaActivation(userId: string): Promise<void> {
+export async function syncTharaActivation(brand: Brand, userId: string): Promise<void> {
+  const prisma = dbFor(brand)
   if (!isTharaEnabled()) return
   try {
     await prisma.$transaction((tx) => activateFromPastOrders(tx, userId))
@@ -287,7 +292,8 @@ export interface TharaUnlockProgress {
   shortfallPaise: number
 }
 
-export async function getUnlockProgress(userId: string): Promise<TharaUnlockProgress> {
+export async function getUnlockProgress(brand: Brand, userId: string): Promise<TharaUnlockProgress> {
+  const prisma = dbFor(brand)
   const [best, paidOrderCount] = await Promise.all([
     prisma.order.findFirst({
       where: { userId, status: { in: PAID_ORDER_STATUSES } },
@@ -314,10 +320,11 @@ export class TharaNotFoundError extends Error {
   }
 }
 
-export async function suspendMembership(
+export async function suspendMembership(brand: Brand, 
   id: string,
   reason: string,
 ): Promise<TharaMembership> {
+  const prisma = dbFor(brand)
   const existing = await prisma.tharaMembership.findUnique({ where: { id } })
   if (!existing) throw new TharaNotFoundError()
   if (existing.status === 'suspended') return existing
@@ -332,7 +339,8 @@ export async function suspendMembership(
   })
 }
 
-export async function unsuspendMembership(id: string): Promise<TharaMembership> {
+export async function unsuspendMembership(brand: Brand, id: string): Promise<TharaMembership> {
+  const prisma = dbFor(brand)
   const existing = await prisma.tharaMembership.findUnique({ where: { id } })
   if (!existing) throw new TharaNotFoundError()
   if (existing.status !== 'suspended') return existing
@@ -347,7 +355,8 @@ export async function unsuspendMembership(id: string): Promise<TharaMembership> 
   })
 }
 
-export async function getMembershipById(id: string): Promise<TharaMembership | null> {
+export async function getMembershipById(brand: Brand, id: string): Promise<TharaMembership | null> {
+  const prisma = dbFor(brand)
   return prisma.tharaMembership.findUnique({ where: { id } })
 }
 
@@ -370,9 +379,10 @@ export const TharaPointsReason = {
  * default cycle boundaries are the calendar quarter that contains `now`
  * — Q1 Jan–Mar, Q2 Apr–Jun, Q3 Jul–Sep, Q4 Oct–Dec.
  */
-export async function currentOpenCycle(
+export async function currentOpenCycle(brand: Brand, 
   now: Date = new Date(),
 ): Promise<TharaCycle> {
+  const prisma = dbFor(brand)
   const open = await prisma.tharaCycle.findFirst({
     where: { status: 'open' },
     orderBy: { startDate: 'desc' },
@@ -395,10 +405,11 @@ export async function currentOpenCycle(
  * (locked + active) referrer, add 1% of subtotal (as an integer point count)
  * to the referrer's ledger row in the current open cycle.
  */
-export async function accrueTharaPoints(
+export async function accrueTharaPoints(brand: Brand, 
   tx: Prisma.TransactionClient,
   orderId: string,
 ): Promise<void> {
+  const prisma = dbFor(brand)
   if (!isTharaEnabled()) return
 
   const order = await tx.order.findUnique({
@@ -423,7 +434,7 @@ export async function accrueTharaPoints(
   // Cycle lookup goes on prisma (not tx) so an already-open cycle survives
   // a rollback of the outer order-paid transaction. Creating a cycle from
   // inside a transaction is safe too, but reading it outside is quicker.
-  const cycle = await currentOpenCycle()
+  const cycle = await currentOpenCycle(brand)
 
   await tx.tharaRewardPointsLedger.create({
     data: {
@@ -458,10 +469,11 @@ export async function reverseTharaPointsForRefund(
 }
 
 /** Get a user's points balance in a given cycle (or the current open cycle). */
-export async function getUserCyclePoints(
+export async function getUserCyclePoints(brand: Brand, 
   userId: string,
   cycleId: string,
 ): Promise<number> {
+  const prisma = dbFor(brand)
   const agg = await prisma.tharaRewardPointsLedger.aggregate({
     where: { userId, cycleId },
     _sum: { delta: true },
@@ -475,10 +487,11 @@ export async function getUserCyclePoints(
  * manual issuance if the issuer defers or is not yet onboarded), stamp the
  * cycle closed. Idempotent — a second call on the same cycle is a no-op.
  */
-export async function closeCycle(
+export async function closeCycle(brand: Brand, 
   cycleId: string,
   issuer: VoucherIssuer = selectVoucherIssuer(),
 ): Promise<{ vouchersIssued: number }> {
+  const prisma = dbFor(brand)
   const cycle = await prisma.tharaCycle.findUnique({ where: { id: cycleId } })
   if (!cycle) throw new Error(`Cycle ${cycleId} not found`)
   if (cycle.status === 'closed') return { vouchersIssued: 0 }
@@ -560,7 +573,8 @@ export async function closeCycle(
 }
 
 /** Expire vouchers whose claimDeadline has passed. Returns the count expired. */
-export async function expireStaleVouchers(now: Date = new Date()): Promise<number> {
+export async function expireStaleVouchers(brand: Brand, now: Date = new Date()): Promise<number> {
+  const prisma = dbFor(brand)
   const res = await prisma.tharaVoucher.updateMany({
     where: { status: 'available', claimDeadline: { lt: now } },
     data: { status: 'expired' },
@@ -576,10 +590,11 @@ export class TharaVoucherNotClaimableError extends Error {
 }
 
 /** Mark a voucher claimed. Refuses non-available vouchers and mismatched users. */
-export async function claimVoucher(
+export async function claimVoucher(brand: Brand, 
   voucherId: string,
   userId: string,
 ): Promise<TharaVoucher> {
+  const prisma = dbFor(brand)
   const v = await prisma.tharaVoucher.findUnique({ where: { id: voucherId } })
   if (!v || v.userId !== userId) {
     throw new TharaVoucherNotClaimableError('Voucher not found.')
@@ -634,10 +649,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
  * Thara member (either purchase_pending or active), refuses suppressed
  * addresses, refuses self-invites. Rate limiting lives at the route layer.
  */
-export async function sendTharaInvite(
+export async function sendTharaInvite(brand: Brand, 
   referrerUserId: string,
   toEmail: string,
 ): Promise<{ mock: boolean }> {
+  const prisma = dbFor(brand)
   const to = toEmail.trim().toLowerCase()
   if (!EMAIL_RE.test(to)) throw new TharaInviteBadEmailError()
 
@@ -666,7 +682,8 @@ export async function sendTharaInvite(
   return sendTharaInviteEmail({ to, subject, html, text })
 }
 
-export async function suppressEmail(email: string, reason: 'hard_bounce' | 'complaint' | 'manual'): Promise<void> {
+export async function suppressEmail(brand: Brand, email: string, reason: 'hard_bounce' | 'complaint' | 'manual'): Promise<void> {
+  const prisma = dbFor(brand)
   const key = email.trim().toLowerCase()
   if (!EMAIL_RE.test(key)) return
   await prisma.tharaSuppressedEmail.upsert({
@@ -735,7 +752,7 @@ export async function accrueTharaCommission(
 /** Current spendable balance for a user. Clamped to ≥ 0 (a negative running
  *  balance from a refund clawback cannot be spent). */
 export async function getTharaCreditBalance(
-  tx: Prisma.TransactionClient | typeof prisma,
+  tx: Prisma.TransactionClient | PrismaClient,
   userId: string,
 ): Promise<number> {
   const agg = await tx.tharaCreditLedger.aggregate({
@@ -888,12 +905,13 @@ export type TharaMembershipRow = TharaMembership & {
   user: { id: string; name: string | null; email: string | null; phone: string | null }
 }
 
-export async function listMemberships(filter: {
+export async function listMemberships(brand: Brand, filter: {
   status?: TharaStatus
   q?: string
   take: number
   skip: number
 }): Promise<{ rows: TharaMembershipRow[]; total: number }> {
+  const prisma = dbFor(brand)
   const where: Prisma.TharaMembershipWhereInput = {
     ...(filter.status ? { status: filter.status } : {}),
     ...(filter.q

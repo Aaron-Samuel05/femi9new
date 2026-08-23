@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getSession } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import {
   attachIdentity,
   IdentityConflictError,
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const normalized = await verifyAttachEmailToken(session.sub, email, token)
+    const normalized = await verifyAttachEmailToken('femi9', session.sub, email, token)
     await attachIdentity(prisma, session.sub, {
       email: normalized,
       emailVerified: new Date(),

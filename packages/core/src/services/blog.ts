@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Blog service — the single seam between the database and the marketing pages.
@@ -34,7 +34,8 @@ export interface BlogCategoryDTO {
 // featured first, then newest — the order the storefront grid expects.
 const POST_ORDER = [{ featured: 'desc' }, { publishedAt: 'desc' }] as const
 
-function loadRows() {
+function loadRows(brand: Brand) {
+  const prisma = dbFor(brand)
   return prisma.blogPost.findMany({
     where: { status: 'approved' },
     orderBy: [...POST_ORDER],
@@ -67,13 +68,14 @@ function toPost(row: Row): BlogPostDTO {
 }
 
 /** All approved posts, featured first then newest. */
-export async function listPosts(): Promise<BlogPostDTO[]> {
-  const rows = await loadRows()
+export async function listPosts(brand: Brand): Promise<BlogPostDTO[]> {
+  const rows = await loadRows(brand)
   return rows.map(toPost)
 }
 
 /** One approved post by slug, or null. */
-export async function getPost(slug: string): Promise<BlogPostDTO | null> {
+export async function getPost(brand: Brand, slug: string): Promise<BlogPostDTO | null> {
+  const prisma = dbFor(brand)
   const row = await prisma.blogPost.findFirst({
       where: { slug, status: 'approved' },
       include: { category: true },
@@ -82,13 +84,15 @@ export async function getPost(slug: string): Promise<BlogPostDTO | null> {
 }
 
 /** Category chips — mirrors CATEGORY_META (name → color / tint). */
-export async function listCategories(): Promise<BlogCategoryDTO[]> {
+export async function listCategories(brand: Brand): Promise<BlogCategoryDTO[]> {
+  const prisma = dbFor(brand)
   const cats = await prisma.blogCategory.findMany({ orderBy: { name: 'asc' } })
   return cats.map((c) => ({ name: c.name, color: c.color, tint: c.tint }))
 }
 
 /** Up to `n` related posts: same category first, then most-recent others. */
-export async function relatedPosts(slug: string, n = 3): Promise<BlogPostDTO[]> {
+export async function relatedPosts(brand: Brand, slug: string, n = 3): Promise<BlogPostDTO[]> {
+  const prisma = dbFor(brand)
   const current = await prisma.blogPost.findFirst({
       where: { slug, status: 'approved' },
       select: { categoryId: true },

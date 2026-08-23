@@ -12,8 +12,8 @@ describe('cycle data encryption', () => {
       data: { phone: '9888877777', role: 'customer', cycleDataConsent: true },
     })
 
-    await logPeriod(user.id, '2026-07-01', 5)
-    await logSymptom(user.id, '2026-07-02', 'Cramps', 2)
+    await logPeriod('femi9', user.id, '2026-07-01', 5)
+    await logSymptom('femi9', user.id, '2026-07-02', 'Cramps', 2)
 
     const period = await prisma.periodLog.findFirstOrThrow({ where: { userId: user.id } })
     expect(period.startDate).toBeNull()
@@ -28,7 +28,7 @@ describe('cycle data encryption', () => {
     expect(symptom.encryptedData).toMatch(/^v1\./)
     expect(symptom.encryptedData).not.toContain('Cramps')
 
-    const data = await getCycleData(user.id)
+    const data = await getCycleData('femi9', user.id)
     // Entries also carry the row id (the dashboard needs it to delete a log),
     // so match on the decrypted fields rather than the whole object.
     expect(data.periods).toContainEqual(expect.objectContaining({ start: '2026-07-01', length: 5 }))
@@ -40,8 +40,8 @@ describe('cycle data encryption', () => {
       data: { phone: '9888877778', role: 'customer' },
     })
 
-    await expect(logPeriod(user.id, '2026-07-01', 5)).rejects.toBeInstanceOf(CycleConsentRequiredError)
-    await expect(logSymptom(user.id, '2026-07-02', 'Cramps', 2)).rejects.toBeInstanceOf(
+    await expect(logPeriod('femi9', user.id, '2026-07-01', 5)).rejects.toBeInstanceOf(CycleConsentRequiredError)
+    await expect(logSymptom('femi9', user.id, '2026-07-02', 'Cramps', 2)).rejects.toBeInstanceOf(
       CycleConsentRequiredError,
     )
 
@@ -57,14 +57,14 @@ describe('cycle data encryption', () => {
     // The landing tracker re-POSTs on every "Show Prediction", so this happened
     // constantly. Two rows on one day gave a gap of 0, an avgCycle of 0, and
     // "Period in NaN days" across the entire dashboard.
-    const first = await logPeriod(user.id, '2026-07-01', 5)
-    const second = await logPeriod(user.id, '2026-07-01', 6)
+    const first = await logPeriod('femi9', user.id, '2026-07-01', 5)
+    const second = await logPeriod('femi9', user.id, '2026-07-01', 6)
 
     expect(second.deduped).toBe(true)
     expect(second.id).toBe(first.id)
     expect(await prisma.periodLog.count({ where: { userId: user.id } })).toBe(1)
 
-    const data = await getCycleData(user.id)
+    const data = await getCycleData('femi9', user.id)
     expect(data.periods).toHaveLength(1)
     expect(data.periods[0]).toMatchObject({ start: '2026-07-01', length: 6 })
     // Whatever the history, the prediction must stay finite and in range.

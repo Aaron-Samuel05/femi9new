@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Storefront-facing review service — the write counterpart to getProduct()'s read
@@ -38,7 +38,8 @@ export class ProductNotFoundError extends Error {
  * override the schema default (`approved`) — shopper submissions must be moderated
  * before they appear on the product page.
  */
-export async function submitReview(productSlug: string, input: ReviewInput, userId?: string): Promise<void> {
+export async function submitReview(brand: Brand, productSlug: string, input: ReviewInput, userId?: string): Promise<void> {
+  const prisma = dbFor(brand)
   const product = await prisma.product.findUnique({
     where: { slug: productSlug },
     select: { id: true },
@@ -107,11 +108,12 @@ export class ReviewNotFoundError extends Error {
  * Only `approved` reviews are votable: a pending row is not visible on the
  * storefront, so a vote for one could only have come from a forged id.
  */
-export async function voteOnReview(
+export async function voteOnReview(brand: Brand, 
   reviewId: string,
   voterKey: string,
   helpful: boolean,
 ): Promise<{ helpfulUp: number; helpfulDown: number }> {
+  const prisma = dbFor(brand)
   const review = await prisma.review.findFirst({
     where: { id: reviewId, status: 'approved' },
     select: { id: true },
@@ -156,7 +158,8 @@ export interface FeaturedReview {
  * eligible: this is a testimonial rail, not the product's rating summary, which
  * lives on the PDP and shows everything.
  */
-export async function listFeaturedReviews(limit = 6): Promise<FeaturedReview[]> {
+export async function listFeaturedReviews(brand: Brand, limit = 6): Promise<FeaturedReview[]> {
+  const prisma = dbFor(brand)
   const rows = await prisma.review.findMany({
     where: { status: 'approved', rating: { gte: 4 } },
     orderBy: { createdAt: 'desc' },

@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
     try {
       // Refuse an address owned by another account before sending anything.
-      await assertIdentityFree(session.sub, 'email', email)
-      const { mock, devLink } = await requestAttachEmailLink(session.sub, email)
+      await assertIdentityFree('femi9', session.sub, 'email', email)
+      const { mock, devLink } = await requestAttachEmailLink('femi9', session.sub, email)
       return ok({ ok: true, mock, ...(devLink ? { devLink } : {}) })
     } catch (err) {
       if (err instanceof IdentityConflictError) {

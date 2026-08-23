@@ -8,7 +8,7 @@ import { ProductDetail } from '@/screens/ProductDetail'
 // gets a sensible fallback title (the page itself still renders notFound()).
 export async function generateMetadata(props: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const params = await props.params;
-  const data = await getProduct(params.id)
+  const data = await getProduct('femi9', params.id)
   if (!data) return { title: 'Product not found · Femi9' }
   const { product } = data
   const title = `${product.name} · Femi9`
@@ -25,7 +25,7 @@ export async function generateMetadata(props: { params: Promise<{ id: string }> 
 // Postgres on the server and hand it to the (client) detail screen as props.
 export default async function ProductPage(props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const [data, products] = await Promise.all([getProduct(params.id), listProducts()])
+  const [data, products] = await Promise.all([getProduct('femi9', params.id), listProducts('femi9')])
   if (!data) notFound()
   return <ProductDetail product={data.product} extra={data.extra} reviews={data.reviews} relatedProducts={products.filter((p) => p.id !== params.id).slice(0, 4)} />
 }

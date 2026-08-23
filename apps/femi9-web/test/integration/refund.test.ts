@@ -34,7 +34,7 @@ async function placeTestOrder(opts?: { price?: number; qty?: number; stock?: num
   const { variant } = await makeProduct({ price, stock })
   const token = `tok-${Math.random().toString(36).slice(2, 10)}`
   await cartWith(token, variant.id, qty)
-  const result = await placeOrder(token, CUSTOMER)
+  const result = await placeOrder('femi9', token, CUSTOMER)
   const order = await prisma.order.findUniqueOrThrow({ where: { orderNo: result.orderNo } })
   return { order, variant, qty, initialStock: stock }
 }
@@ -67,7 +67,7 @@ describe('refund', () => {
 
   it('refunds a paid order: status → refunded, stock restored, points reversed', async () => {
     const { order, variant, qty, initialStock } = await placeTestOrder()
-    await markOrderPaid(captureArgs(order.orderNo))
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
 
     const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS // 1600
     // Stock was decremented at checkout; points awarded at capture.
@@ -117,7 +117,7 @@ describe('refund', () => {
 
   it('refunding twice throws NotRefundableError on the second call (no double reversal)', async () => {
     const { order, variant, initialStock } = await placeTestOrder()
-    await markOrderPaid(captureArgs(order.orderNo))
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
     const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
 
     // First refund succeeds.

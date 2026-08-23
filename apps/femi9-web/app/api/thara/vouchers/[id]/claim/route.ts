@@ -15,7 +15,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     const { id } = await ctx.params
     try {
-      const v = await claimVoucher(id, session.sub)
+      const v = await claimVoucher('femi9', id, session.sub)
       return ok({ voucher: v })
     } catch (e) {
       if (e instanceof TharaVoucherNotClaimableError) return badRequest(e.message)

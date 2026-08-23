@@ -47,7 +47,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
     const session = await getSession()
     try {
-      const tallies = await voteOnReview(id, voterKey(req, session?.sub), parsed.data.helpful)
+      const tallies = await voteOnReview('femi9', id, voterKey(req, session?.sub), parsed.data.helpful)
       return ok(tallies)
     } catch (err) {
       if (err instanceof ReviewNotFoundError) return notFound('Review not found')

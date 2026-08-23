@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     const take = Math.min(100, Number(url.searchParams.get('take') ?? '25'))
     const skip = Math.max(0, Number(url.searchParams.get('skip') ?? '0'))
 
-    const { rows, total } = await listMemberships({ status, q, take, skip })
+    const { rows, total } = await listMemberships('femi9', { status, q, take, skip })
     return ok({ rows, total, take, skip })
   })
 }

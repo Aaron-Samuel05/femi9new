@@ -27,7 +27,7 @@ export async function GET() {
   const s = await requireAdmin()
   if (!s) return unauthorized()
 
-  return handle(async () => ok(await getEditableSettings()))
+  return handle(async () => ok(await getEditableSettings('femi9')))
 }
 
 export async function PATCH(req: NextRequest) {

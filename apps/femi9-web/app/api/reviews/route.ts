@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     const { productSlug, name, rating, body, place, title } = parsed.data
     try {
       const session = await getSession()
-      await submitReview(productSlug, { name, rating, body, place, title }, session?.sub)
+      await submitReview('femi9', productSlug, { name, rating, body, place, title }, session?.sub)
     } catch (err) {
       // A stale/invalid slug is a client problem, not a server fault.
       if (err instanceof ProductNotFoundError) return notFound('Product not found')

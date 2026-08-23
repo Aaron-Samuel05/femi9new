@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Settings service — the single source for editable business config, replacing
@@ -40,7 +40,8 @@ function coerce<T>(value: unknown, fallback: T): T {
 }
 
 /** All settings as a typed object, filling any missing key from DEFAULTS. */
-export async function getSettings(): Promise<Settings> {
+export async function getSettings(brand: Brand): Promise<Settings> {
+  const prisma = dbFor(brand)
   const rows = await prisma.setting.findMany()
   const byKey = new Map(rows.map((r) => [r.key, r.value as unknown]))
   return {
@@ -76,7 +77,8 @@ export interface PublicSettingsPayload extends Settings {
   shopLinks: ShopLink[]
 }
 
-export async function getPublicSettings(): Promise<PublicSettingsPayload> {
+export async function getPublicSettings(brand: Brand): Promise<PublicSettingsPayload> {
+  const prisma = dbFor(brand)
   // Imported lazily so this module stays free of the OAuth/feature-flag graph
   // for the many server callers that only want the business numbers.
   const [{ googleConfigured }, { isTharaEnabled }] = await Promise.all([
@@ -84,7 +86,7 @@ export async function getPublicSettings(): Promise<PublicSettingsPayload> {
     import('../thara/feature'),
   ])
   const [settings, products] = await Promise.all([
-    getSettings(),
+    getSettings(brand),
     prisma.product.findMany({
       where: { status: 'active' },
       orderBy: [{ basePrice: 'desc' }],
@@ -101,7 +103,8 @@ export async function getPublicSettings(): Promise<PublicSettingsPayload> {
 }
 
 /** Generic single-key getter — returns `fallback` when the row is missing or malformed. */
-export async function getSetting<T>(key: string, fallback: T): Promise<T> {
+export async function getSetting<T>(brand: Brand, key: string, fallback: T): Promise<T> {
+  const prisma = dbFor(brand)
   const row = await prisma.setting.findUnique({ where: { key } })
   return coerce(row?.value as unknown, fallback)
 }

@@ -32,7 +32,7 @@ describe('subscriptions (integration)', () => {
     const { variant } = await makeProduct({ stock: 20 })
     const user = await makeUser()
 
-    const view = await createSubscription(user.id, { variantId: variant.id, qty: 2, cadenceCode: '4w' })
+    const view = await createSubscription('femi9', user.id, { variantId: variant.id, qty: 2, cadenceCode: '4w' })
 
     expect(view.status).toBe('active')
     expect(view.qty).toBe(2)
@@ -49,13 +49,13 @@ describe('subscriptions (integration)', () => {
     await makeCadence('4w', 28)
     const { variant } = await makeProduct()
     const user = await makeUser()
-    const view = await createSubscription(user.id, { variantId: variant.id, qty: 1, cadenceCode: '4w' })
+    const view = await createSubscription('femi9', user.id, { variantId: variant.id, qty: 1, cadenceCode: '4w' })
 
-    const paused = await pause(view.id, user.id)
+    const paused = await pause('femi9', view.id, user.id)
     expect(paused?.status).toBe('paused')
     expect((await prisma.subscription.findUniqueOrThrow({ where: { id: view.id } })).status).toBe('paused')
 
-    const resumed = await resume(view.id, user.id)
+    const resumed = await resume('femi9', view.id, user.id)
     expect(resumed?.status).toBe('active')
     expect((await prisma.subscription.findUniqueOrThrow({ where: { id: view.id } })).status).toBe('active')
   })
@@ -64,7 +64,7 @@ describe('subscriptions (integration)', () => {
     await makeCadence('4w', 28)
     const { variant } = await makeProduct({ price: 200, stock: 20 })
     const user = await makeUser()
-    const view = await createSubscription(user.id, { variantId: variant.id, qty: 1, cadenceCode: '4w' })
+    const view = await createSubscription('femi9', user.id, { variantId: variant.id, qty: 1, cadenceCode: '4w' })
 
     // Make it due: push nextDeliveryAt into the recent past. Advancing by 28 days
     // will land it back in the future, so it can only ever be claimed once here.
@@ -74,7 +74,7 @@ describe('subscriptions (integration)', () => {
     })
 
     // First run: one due sub → exactly one pending renewal order.
-    const firstRun = await generateDueOrders()
+    const firstRun = await generateDueOrders('femi9')
     expect(firstRun).toBe(1)
     expect(await prisma.order.count()).toBe(1)
 
@@ -89,7 +89,7 @@ describe('subscriptions (integration)', () => {
     expect(advanced.nextDeliveryAt.getTime()).toBeGreaterThan(Date.now())
 
     // Second run immediately after: ZERO additional orders (idempotent claim).
-    const secondRun = await generateDueOrders()
+    const secondRun = await generateDueOrders('femi9')
     expect(secondRun).toBe(0)
     expect(await prisma.order.count()).toBe(1)
   })

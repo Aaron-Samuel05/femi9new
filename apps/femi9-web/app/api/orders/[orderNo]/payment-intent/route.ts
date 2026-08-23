@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest, handle, notFound, ok, serviceUnavailable } from '@femi9/core/api'
 import { getSession } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { verifyOrderToken } from '@femi9/core/order-token'
 import { clientIp, rateLimit, tooManyRequests } from '@femi9/core/rate-limit'
 import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
@@ -45,7 +45,7 @@ export async function POST(
     if (!authorized) return notFound()
 
     try {
-      return ok({ payment: await pendingPaymentIntent(orderNo) })
+      return ok({ payment: await pendingPaymentIntent('femi9', orderNo) })
     } catch (err) {
       if (err instanceof OrderNotFoundError) return notFound()
       if (

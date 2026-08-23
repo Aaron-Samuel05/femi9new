@@ -1,6 +1,6 @@
 import 'server-only'
 import type { Prisma } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Analytics write path. Deliberately fire-and-forget: telemetry is not part of
@@ -13,7 +13,8 @@ export interface LogEventInput {
   meta?: unknown
 }
 
-export async function logEvent({ type, userId, meta }: LogEventInput): Promise<void> {
+export async function logEvent(brand: Brand, { type, userId, meta }: LogEventInput): Promise<void> {
+  const prisma = dbFor(brand)
   try {
     await prisma.eventLog.create({
       data: {

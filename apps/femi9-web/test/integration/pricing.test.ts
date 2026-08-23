@@ -37,7 +37,7 @@ describe('regional pricing resolver (integration)', () => {
   it('resolves the TN zone by state and applies its 10% discount', async () => {
     const { tn } = await seedZones()
 
-    const zone = await resolveZone({ state: 'Tamil Nadu' })
+    const zone = await resolveZone('femi9', { state: 'Tamil Nadu' })
     expect(zone?.id).toBe(tn.id)
     expect(zone?.discountPct).toBe(10)
 
@@ -48,7 +48,7 @@ describe('regional pricing resolver (integration)', () => {
   it('falls back to the Default zone for an unmapped state', async () => {
     const { def } = await seedZones()
 
-    const zone = await resolveZone({ state: 'Karnataka' })
+    const zone = await resolveZone('femi9', { state: 'Karnataka' })
     expect(zone?.id).toBe(def.id)
     expect(zone?.discountPct).toBe(0)
     expect(applyZonePrice(225, zone)).toBe(225)
@@ -57,7 +57,7 @@ describe('regional pricing resolver (integration)', () => {
   it('falls back to the Default zone when there is no location signal', async () => {
     const { def } = await seedZones()
 
-    const zone = await resolveZone({})
+    const zone = await resolveZone('femi9', {})
     expect(zone?.id).toBe(def.id)
     expect(zone?.isDefault).toBe(true)
   })

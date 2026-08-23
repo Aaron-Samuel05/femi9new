@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from './pricing'
 import type { Product, ProductType } from '../types/catalog'
 import type { ProductExtra } from '../types/catalog'
@@ -60,7 +60,8 @@ export interface FullProduct {
 
 type Row = Awaited<ReturnType<typeof loadRows>>[number]
 
-function loadRows() {
+function loadRows(brand: Brand) {
+  const prisma = dbFor(brand)
   return prisma.product.findMany({
     where: { status: 'active' },
     orderBy: { createdAt: 'asc' },
@@ -124,13 +125,14 @@ function toExtra(row: Row): ProductExtra {
 }
 
 /** All active products, in the `Product` shape (catalog grid / cards). */
-export async function listProducts(): Promise<ProductWithVariants[]> {
-  const [rows, zone] = await Promise.all([loadRows(), resolveAmbientZone()])
+export async function listProducts(brand: Brand): Promise<ProductWithVariants[]> {
+  const [rows, zone] = await Promise.all([loadRows(brand), resolveAmbientZone(brand)])
   return rows.map((row) => toProduct(row, zone))
 }
 
 /** One product by slug, with detail extras and moderated reviews. */
-export async function getProduct(slug: string): Promise<FullProduct | null> {
+export async function getProduct(brand: Brand, slug: string): Promise<FullProduct | null> {
+  const prisma = dbFor(brand)
   const row = await prisma.product.findFirst({
       where: { slug, status: 'active' },
       include: {
@@ -178,7 +180,7 @@ export async function getProduct(slug: string): Promise<FullProduct | null> {
   }))
 
   return {
-      product: toProduct(row, await resolveAmbientZone()),
+      product: toProduct(row, await resolveAmbientZone(brand)),
       extra: toExtra(row),
       reviews,
   }

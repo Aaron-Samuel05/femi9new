@@ -85,12 +85,15 @@ import { requireAdmin }           from '@femi9/core/admin-auth'
 import { getOrders }              from '@femi9/core/services/admin/orders'
 ```
 
-**`@femi9/core/db` is scaffolding, not design.** It exports a Femi9-PINNED
-client so the service layer could move without changing signatures. Phase 1c
-threads `brand` through those signatures and deletes it. Anything new — and
-anything the admin console will run — must take `brand` and call `dbFor(brand)`.
-A second brand importing that `prisma` would read Femi9's database believing it
-was its own.
+**Every service in `@femi9/core` takes `brand` as its first parameter** and
+resolves its own client with `dbFor(brand)`. Core exports no client of its own,
+so there is nothing there for a second brand to import by accident.
+
+`src/lib/db.ts` is a Femi9-pinned lazy client for the ~18 route handlers and
+pages in THIS app that still query Prisma directly. Pinning a brand is fine for
+a single-brand app; it was only dangerous while it lived in the shared package.
+Those direct queries are debt — the architecture says they belong in a service.
+Each one moved into `packages/core` is one fewer file importing this.
 
 **Two cookies, two audiences, never crossed.**
 `femi9_session` (aud `femi9-customer`, 30d) and `femi9_admin` (aud `femi9-admin`,
@@ -193,3 +196,4 @@ Append one entry per task. Newest last.
 | 2026-08-23 | **Phase 0b — Next 16** | `package.json` · root `package.json` | Next 15.5.23 → **16.3.1** (exact, matching lumi9 — `next` now hoists to one copy). Builds on **Turbopack**; Sentry 10.70 is Turbopack-compatible, so no webpack conflict. `next lint` removed upstream → dead `lint` script dropped. Added `packageManager` to the root manifest (turbo could not resolve the workspace without it). **`middleware.ts` kept, not migrated to `proxy`** — open decision, see architecture doc. Zero `next/image` usage, so every image breaking change was moot. |
 | 2026-08-23 | **Phase 1a — `packages/db`** | `packages/db/*` (new) · `src/lib/db.ts` · `Dockerfile` · `ci.yml` · `next.config.mjs` | Schema + 13 migrations → `@femi9/db`; seeds stayed (brand-specific). `dbFor(brand)` builds one client per brand from one schema — isolation in the connection string. `src/lib/db.ts` became a lazy Proxy shim so all ~80 call sites kept working and the credential-free Docker build still passes. Verified: proxy forwards delegates, `dbFor` memoises, `isBrand` rejects case/traversal/undefined, and **lumi9 refuses to fall back to femi9's `DATABASE_URL`**. |
 | 2026-08-23 | **Phase 1b — `packages/core`** | 64 modules → `packages/core` · 211 files repointed | Server half of `src/lib` moved to `@femi9/core`; 9 client-side files stayed. Signatures UNCHANGED (move first, thread `brand` second) — services still use the pinned `core/db`. Catalog view-model types moved to `core/types/catalog`, re-exported from `src/data/*` so component imports were untouched. Subpath exports, no barrel. Verified: both packages typecheck, femi9 builds, no `@/` alias left in core, no unresolved `@femi9/*` require in the standalone bundle. |
+| 2026-08-23 | **Phase 1c — `brand` threaded** | 35 core services · ~120 app/test files | All **161** core service functions now take `brand: Brand` first and call `dbFor(brand)`. Core exports **no** client; the Femi9 pin moved back to `apps/femi9-web/src/lib/db.ts` where pinning is legitimate. Every call site passes `'femi9'`, so behaviour is unchanged. Codemod gotchas worth remembering: a generic return type (`Promise<{...}>`) supplies a brace before the body; multi-line destructured params do too; `function f<T>(` isn't matched by `function f(`; arrow consts wrapped in `cache()` need it by hand; defaults like `db: Db = prisma` live in the signature, not the body. |

@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { createHash, timingSafeEqual } from 'node:crypto'
 import { z } from 'zod'
 import { badRequest, handle, ok, unauthorized } from '@femi9/core/api'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { ADMIN_COOKIE, createSession } from '@femi9/core/admin-auth'
 import { rateLimit, clientIp, tooManyRequests } from '@femi9/core/rate-limit'
 

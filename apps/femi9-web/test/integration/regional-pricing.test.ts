@@ -69,7 +69,7 @@ describe('regional pricing reaches the money path', () => {
     const { variant } = await makeProduct({ price: 199, stock: 50 })
     const token = await cartWith('guest-zone-tn', variant.id, 2)
 
-    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const result = await placeOrder('femi9', token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({
       where: { orderNo: result.orderNo },
       include: { items: true },
@@ -88,12 +88,12 @@ describe('regional pricing reaches the money path', () => {
     const token = await cartWith('guest-agree', variant.id, 2)
 
     // What checkout renders for a Tamil Nadu delivery address...
-    const zone = await resolveZone({ state: 'Tamil Nadu' })
+    const zone = await resolveZone('femi9', { state: 'Tamil Nadu' })
     expect(zone?.id).toBe(tn.id)
-    const cart = await getCart(token, zone)
+    const cart = await getCart('femi9', token, zone)
 
     // ...and what placing that same order actually costs.
-    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const result = await placeOrder('femi9', token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
 
     expect(cart.subtotal).toBe(order!.subtotal)
@@ -108,14 +108,14 @@ describe('regional pricing reaches the money path', () => {
     const { variant } = await makeProduct({ price: 199, stock: 50 })
     const token = await cartWith('guest-ka', variant.id, 2)
 
-    const zone = await resolveZone({ state: 'Karnataka' }) // → Default, 0%
-    const cart = await getCart(token, zone)
+    const zone = await resolveZone('femi9', { state: 'Karnataka' }) // → Default, 0%
+    const cart = await getCart('femi9', token, zone)
     expect(cart.subtotal).toBe(398)
     expect(cart.baseSubtotal).toBe(398)
     // Nothing to announce when the price did not move.
     expect(cart.zone).toBeNull()
 
-    const result = await placeOrder(token, customer('Karnataka'))
+    const result = await placeOrder('femi9', token, customer('Karnataka'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
     expect(order!.subtotal).toBe(398)
   })
@@ -126,11 +126,11 @@ describe('regional pricing reaches the money path', () => {
     const { variant } = await makeProduct({ price: 225, stock: 10 })
     const token = await cartWith('guest-nozones', variant.id, 1)
 
-    expect(await resolveZone({ state: 'Tamil Nadu' })).toBeNull()
-    const cart = await getCart(token, null)
+    expect(await resolveZone('femi9', { state: 'Tamil Nadu' })).toBeNull()
+    const cart = await getCart('femi9', token, null)
     expect(cart.subtotal).toBe(225)
 
-    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const result = await placeOrder('femi9', token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
     expect(order!.subtotal).toBe(225)
   })
@@ -160,15 +160,15 @@ describe('per-zone custom prices', () => {
     })
     const token = await cartWith('guest-custom-tn', variant.id, 2)
 
-    const zone = await resolveZone({ state: 'Tamil Nadu' })
-    const cart = await getCart(token, zone)
+    const zone = await resolveZone('femi9', { state: 'Tamil Nadu' })
+    const cart = await getCart('femi9', token, zone)
     expect(cart.items[0]).toMatchObject({ unitPrice: 149, baseUnitPrice: 199 })
     expect(cart.subtotal).toBe(298)
     // The percentage is no longer what priced this cart, and the summary is told
     // so — printing "−10%" next to a ₹100 saving would be a lie.
     expect(cart.zone).toEqual({ name: 'Tamil Nadu', discountPct: 10, custom: true })
 
-    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const result = await placeOrder('femi9', token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({
       where: { orderNo: result.orderNo },
       include: { items: true },
@@ -185,14 +185,14 @@ describe('per-zone custom prices', () => {
     })
     const token = await cartWith('guest-custom-default', variant.id, 1)
 
-    const zone = await resolveZone({ state: 'Karnataka' }) // → Default
-    const cart = await getCart(token, zone)
+    const zone = await resolveZone('femi9', { state: 'Karnataka' }) // → Default
+    const cart = await getCart('femi9', token, zone)
     expect(cart.subtotal).toBe(199)
     expect(cart.baseSubtotal).toBe(225)
     // A 0% zone still moved the price, so the cart must not stay silent about it.
     expect(cart.zone).toEqual({ name: 'Default', discountPct: 0, custom: true })
 
-    const result = await placeOrder(token, customer('Karnataka'))
+    const result = await placeOrder('femi9', token, customer('Karnataka'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
     expect(order!.subtotal).toBe(199)
   })
@@ -208,7 +208,7 @@ describe('per-zone custom prices', () => {
     const token = await cartWith('guest-mixed', priced.variant.id, 1)
     await cartWith(token, other.variant.id, 1)
 
-    const cart = await getCart(token, await resolveZone({ state: 'Tamil Nadu' }))
+    const cart = await getCart('femi9', token, await resolveZone('femi9', { state: 'Tamil Nadu' }))
     const byVariant = Object.fromEntries(cart.items.map((i) => [i.variantId, i.unitPrice]))
     expect(byVariant[priced.variant.id]).toBe(149) // typed
     expect(byVariant[other.variant.id]).toBe(179) // 199 − 10%
@@ -224,13 +224,13 @@ describe('per-zone custom prices', () => {
     })
     const token = await cartWith('guest-above', variant.id, 1)
 
-    const cart = await getCart(token, await resolveZone({ state: 'Tamil Nadu' }))
+    const cart = await getCart('femi9', token, await resolveZone('femi9', { state: 'Tamil Nadu' }))
     expect(cart.subtotal).toBe(249)
     expect(cart.baseSubtotal).toBe(199)
     // The checkout summary only strikes through when baseSubtotal > subtotal.
     expect(cart.baseSubtotal - cart.subtotal).toBeLessThan(0)
 
-    const result = await placeOrder(token, customer('Tamil Nadu'))
+    const result = await placeOrder('femi9', token, customer('Tamil Nadu'))
     const order = await prisma.order.findUnique({ where: { orderNo: result.orderNo } })
     expect(order!.subtotal).toBe(249)
   })

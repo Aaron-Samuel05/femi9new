@@ -199,9 +199,9 @@ export async function approve(brand: Brand, id: string): Promise<AffiliateListIt
 
   // Send the email the /affiliate page promises three separate times ("we'll
   // email your personal Femi9 code the moment you're approved"). Until now
-  // approve(brand) only wrote the row, so that promise was never kept and the
+  // approve(brand, brand) only wrote the row, so that promise was never kept and the
   // creator had no way to learn her own code.
-  await sendApprovalEmail(id, current.user?.email ?? null, current.user?.name ?? null, promoCode)
+  await sendApprovalEmail(brand, id, current.user?.email ?? null, current.user?.name ?? null, promoCode)
 
   return listItem(brand, id)
 }
@@ -213,7 +213,7 @@ function shareUrl(promoCode: string): string {
   return `${origin}/a/${promoCode}`
 }
 
-async function sendApprovalEmail(
+async function sendApprovalEmail(brand: Brand, 
   affiliateId: string,
   email: string | null,
   name: string | null,
@@ -225,7 +225,7 @@ async function sendApprovalEmail(
   }
   const url = shareUrl(promoCode)
   const greeting = name?.trim().split(' ')[0] || 'there'
-  await sendEmailNotification({
+  await sendEmailNotification(brand, {
     to: email,
     subject: 'You are approved - here is your Femi9 creator code',
     text: `Hi ${greeting},

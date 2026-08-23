@@ -9,7 +9,7 @@ export async function GET() {
   return handle(async () => {
     const user = await requireUser()
     if (!user) return unauthorized()
-    const stats = await getForUser(user.sub)
+    const stats = await getForUser('femi9', user.sub)
     if (!stats) return notFound('No approved affiliate account was found.')
     return ok(stats)
   })

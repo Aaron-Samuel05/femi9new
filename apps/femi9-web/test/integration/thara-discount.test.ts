@@ -32,7 +32,7 @@ async function activateMemberByPhone(phone: string) {
     update: {},
     create: { phone, role: 'customer' },
   })
-  const { id } = await enrollUser(u.id, 'v1')
+  const { id } = await enrollUser('femi9', u.id, 'v1')
   await prisma.tharaMembership.update({
     where: { id },
     data: { status: 'active', activatedAt: new Date() },
@@ -58,7 +58,7 @@ describe('Thara personal discount (sub-project B)', () => {
     await cartWith(token, variant.id, 1) // subtotal = ₹3,000
     await activateMemberByPhone('9000000101')
 
-    const { orderNo } = await placeOrder(token, customer('9000000101'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000101'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.subtotal).toBe(300_000)
     expect(order?.discount).toBe(30_000) // 10% of 300 000
@@ -71,7 +71,7 @@ describe('Thara personal discount (sub-project B)', () => {
     await cartWith(token, variant.id, 1)
     await activateMemberByPhone('9000000102')
 
-    const { orderNo } = await placeOrder(token, customer('9000000102'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000102'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(90_000) // 15% of 600 000
   })
@@ -82,7 +82,7 @@ describe('Thara personal discount (sub-project B)', () => {
     await cartWith(token, variant.id, 1)
     await activateMemberByPhone('9000000103')
 
-    const { orderNo } = await placeOrder(token, customer('9000000103'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000103'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(180_000) // 20% of 900 000
   })
@@ -93,7 +93,7 @@ describe('Thara personal discount (sub-project B)', () => {
     await cartWith(token, variant.id, 1)
     await activateMemberByPhone('9000000104')
 
-    const { orderNo } = await placeOrder(token, customer('9000000104'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000104'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(0)
   })
@@ -108,9 +108,9 @@ describe('Thara personal discount (sub-project B)', () => {
       update: {},
       create: { phone: '9000000105', role: 'customer' },
     })
-    await enrollUser(u.id, 'v1')
+    await enrollUser('femi9', u.id, 'v1')
 
-    const { orderNo } = await placeOrder(token, customer('9000000105'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000105'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(0)
   })
@@ -120,7 +120,7 @@ describe('Thara personal discount (sub-project B)', () => {
     const token = 'guest-b-06'
     await cartWith(token, variant.id, 1)
 
-    const { orderNo } = await placeOrder(token, customer('9000000106'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000106'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(0)
   })
@@ -135,7 +135,7 @@ describe('Thara personal discount (sub-project B)', () => {
       data: { status: 'suspended', suspendedAt: new Date() },
     })
 
-    const { orderNo } = await placeOrder(token, customer('9000000107'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000107'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(0)
   })
@@ -148,14 +148,14 @@ describe('Thara personal discount (sub-project B)', () => {
 
     process.env.THARA_ENABLED = 'false'
 
-    const { orderNo } = await placeOrder(token, customer('9000000108'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000108'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     expect(order?.discount).toBe(0)
   })
 
   it('computeTharaDiscount picks the right slab at exact boundaries', async () => {
     const u = await prisma.user.create({ data: { email: 'boundary@t.local', role: 'customer' } })
-    const { id } = await enrollUser(u.id, 'v1')
+    const { id } = await enrollUser('femi9', u.id, 'v1')
     await prisma.tharaMembership.update({ where: { id }, data: { status: 'active', activatedAt: new Date() } })
 
     await prisma.$transaction(async (tx) => {

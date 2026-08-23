@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest, props: Ctx) {
     const parsed = QtySchema.safeParse(raw)
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
 
-    return ok(await setQty(token, params.variantId, parsed.data.qty))
+    return ok(await setQty('femi9', token, params.variantId, parsed.data.qty))
   })
 }
 
@@ -31,6 +31,6 @@ export async function DELETE(_req: NextRequest, props: Ctx) {
     const token = await getGuestToken()
     if (!token) return ok(EMPTY_CART)
 
-    return ok(await removeItem(token, params.variantId))
+    return ok(await removeItem('femi9', token, params.variantId))
   })
 }

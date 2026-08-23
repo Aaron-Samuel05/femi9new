@@ -32,7 +32,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ id: str
     const parsed = patchSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
 
-    const subscription = await ACTIONS[parsed.data.action](params.id, u.sub)
+    const subscription = await ACTIONS[parsed.data.action]('femi9', params.id, u.sub)
     if (!subscription) return notFound('Subscription not found')
     return ok({ subscription })
   })

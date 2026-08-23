@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     if (!phHit.ok) return tooManyRequests(phHit.retryAfterSec)
 
     try {
-      const { mock, devCode } = await requestOtp(phone)
+      const { mock, devCode } = await requestOtp('femi9', phone)
       return ok({ ok: true, mock, ...(devCode ? { devCode } : {}) })
     } catch (err) {
       if (err instanceof InvalidPhoneError) return badRequest(err.message)

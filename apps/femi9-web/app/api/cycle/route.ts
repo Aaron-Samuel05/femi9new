@@ -13,7 +13,7 @@ export async function GET() {
   return handle(async () => {
     const u = await requireUser()
     if (!u) return unauthorized()
-    return ok(await getCycleData(u.sub))
+    return ok(await getCycleData('femi9', u.sub))
   })
 }
 
@@ -23,7 +23,7 @@ export async function PATCH(req: Request) {
     if (!u) return unauthorized()
     const parsed = z.object({ consent: z.boolean() }).safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Invalid consent setting')
-    await setCycleConsent(u.sub, parsed.data.consent)
+    await setCycleConsent('femi9', u.sub, parsed.data.consent)
     return ok({ consent: parsed.data.consent })
   })
 }

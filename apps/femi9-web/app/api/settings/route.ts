@@ -12,5 +12,5 @@ import { getPublicSettings } from '@femi9/core/services/settings'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  return handle(async () => ok(await getPublicSettings()))
+  return handle(async () => ok(await getPublicSettings('femi9')))
 }

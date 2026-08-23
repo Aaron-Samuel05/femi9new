@@ -15,7 +15,7 @@ import {
   THARA_POINTS_PCT,
   TharaDiscountSlabs,
 } from '@femi9/core/services/thara'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 
 /**
  * Every number the explainer UI prints, sent from the server rather than
@@ -55,14 +55,14 @@ export async function GET() {
     // Promote a member whose qualifying order predates her enrolment before
     // reading her status, so the dashboard never reports "not unlocked yet" to
     // someone who has already paid for the unlock.
-    await syncTharaActivation(userId)
+    await syncTharaActivation('femi9', userId)
 
-    const m = await getMembership(userId)
+    const m = await getMembership('femi9', userId)
     if (!m) {
       // The join screen teaches the same programme with the same numbers, and
       // tells a shopper who has already qualified that joining unlocks her
       // immediately.
-      return ok({ enrolled: false, rules: RULES, unlock: await getUnlockProgress(userId) })
+      return ok({ enrolled: false, rules: RULES, unlock: await getUnlockProgress('femi9', userId) })
     }
 
     const base = process.env.NEXT_PUBLIC_SITE_URL ?? ''
@@ -78,7 +78,7 @@ export async function GET() {
       unlock,
     ] = await Promise.all([
       getTharaCreditBalance(prisma, userId),
-      currentOpenCycle(),
+      currentOpenCycle('femi9'),
       prisma.tharaCreditLedger.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -94,10 +94,10 @@ export async function GET() {
         where: { referredUserId: userId },
         include: { referrer: { select: { referralCode: true } } },
       }),
-      getUnlockProgress(userId),
+      getUnlockProgress('femi9', userId),
     ])
 
-    const currentCyclePoints = await getUserCyclePoints(userId, cycle.id)
+    const currentCyclePoints = await getUserCyclePoints('femi9', userId, cycle.id)
 
     return ok({
       enrolled: true,

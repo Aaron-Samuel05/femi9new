@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     if (!perIp.ok) return tooManyRequests(perIp.retryAfterSec)
 
     try {
-      const result = await sendTharaInvite(session.sub, parsed.data.email)
+      const result = await sendTharaInvite('femi9', session.sub, parsed.data.email)
       return ok({ sent: true, mock: result.mock })
     } catch (e) {
       if (e instanceof TharaInviteBadEmailError) return badRequest(e.message)

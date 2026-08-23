@@ -8,7 +8,7 @@ import { BlogPost } from '@/screens/BlogPost'
 // sensible fallback title (the page itself still renders notFound()).
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const params = await props.params;
-  const post = await getPost(params.slug)
+  const post = await getPost('femi9', params.slug)
   if (!post) return { title: 'Article not found · Femi9' }
   const title = `${post.title} · Femi9`
   const description = post.excerpt
@@ -24,8 +24,8 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
 // by slug, then hand them to the BlogPost screen as props.
 export default async function BlogPostPage(props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
-  const post = await getPost(params.slug)
+  const post = await getPost('femi9', params.slug)
   if (!post) notFound()
-  const related = await relatedPosts(params.slug, 3)
+  const related = await relatedPosts('femi9', params.slug, 3)
   return <BlogPost post={post} related={related} />
 }

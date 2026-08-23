@@ -25,14 +25,14 @@ export default async function DashboardPage() {
   // Cheap three-column probe before the expensive reads: an account that never
   // finished onboarding has no name to greet and no number to deliver to, so it
   // belongs on /welcome. Typing the URL does not bypass this.
-  const status = await getProfileStatus(s.sub)
+  const status = await getProfileStatus('femi9', s.sub)
   if (!status) redirect('/login')
   if (!status.complete) redirect('/welcome?next=/dashboard')
 
   const [account, cycle, rewardOptions] = await Promise.all([
-    getAccountData(s.sub),
-    getCycleData(s.sub),
-    listRewardOptions(),
+    getAccountData('femi9', s.sub),
+    getCycleData('femi9', s.sub),
+    listRewardOptions('femi9'),
   ])
   // The token can be valid while the row is gone (a deleted account with a live
   // cookie). Bounce rather than render a page with no identity.

@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
       // Written one row per symptom so each is independently deletable from the
       // dashboard list. The optional note rides along on every row of the day.
       for (const entry of entries) {
-        await logSymptom(u.sub, date, entry.symptom, entry.level, clientToday, note)
+        await logSymptom('femi9', u.sub, date, entry.symptom, entry.level, clientToday, note)
       }
       return created({ ok: true, count: entries.length })
     } catch (err) {
@@ -103,7 +103,7 @@ export async function PATCH(req: NextRequest) {
 
     try {
       const { id, clientToday, ...patch } = parsed.data
-      const updated = await updateSymptom(u.sub, id, patch, clientToday)
+      const updated = await updateSymptom('femi9', u.sub, id, patch, clientToday)
       return updated ? ok({ ok: true }) : notFound('That entry no longer exists.')
     } catch (err) {
       const mapped = mapError(err)
@@ -119,7 +119,7 @@ export async function DELETE(req: NextRequest) {
     if (!u) return unauthorized()
     const id = req.nextUrl.searchParams.get('id')?.trim()
     if (!id) return badRequest('Symptom id is required')
-    const deleted = await deleteSymptom(u.sub, id)
+    const deleted = await deleteSymptom('femi9', u.sub, id)
     return deleted ? ok({ ok: true }) : notFound('That entry no longer exists.')
   })
 }

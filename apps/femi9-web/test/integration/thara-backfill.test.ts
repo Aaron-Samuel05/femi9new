@@ -59,10 +59,10 @@ describe('Thara activation backfill', () => {
     const u = await makeUser()
     const past = await order(u.id, THARA_QUALIFYING_MIN_PAISE)
 
-    const result = await enrollUser(u.id, 'v1')
+    const result = await enrollUser('femi9', u.id, 'v1')
 
     expect(result.status).toBe('active')
-    const m = await getMembership(u.id)
+    const m = await getMembership('femi9', u.id)
     expect(m?.status).toBe('active')
     expect(m?.qualifyingOrderId).toBe(past.id)
     expect(m?.activatedAt).not.toBeNull()
@@ -78,9 +78,9 @@ describe('Thara activation backfill', () => {
       data: { placedAt: new Date(Date.now() + 60_000) },
     })
 
-    await enrollUser(u.id, 'v1')
+    await enrollUser('femi9', u.id, 'v1')
 
-    const m = await getMembership(u.id)
+    const m = await getMembership('femi9', u.id)
     expect(m?.qualifyingOrderId).toBe(first.id)
   })
 
@@ -90,31 +90,31 @@ describe('Thara activation backfill', () => {
     await order(u.id, 200_000)
     await order(u.id, 200_000)
 
-    const result = await enrollUser(u.id, 'v1')
+    const result = await enrollUser('femi9', u.id, 'v1')
 
     expect(result.status).toBe('purchase_pending')
-    expect((await getMembership(u.id))?.qualifyingOrderId).toBeNull()
+    expect((await getMembership('femi9', u.id))?.qualifyingOrderId).toBeNull()
   })
 
   it('ignores an unpaid order of qualifying size', async () => {
     const u = await makeUser()
     await order(u.id, 500_000, 'pending')
 
-    const result = await enrollUser(u.id, 'v1')
+    const result = await enrollUser('femi9', u.id, 'v1')
 
     expect(result.status).toBe('purchase_pending')
   })
 
   it('syncTharaActivation repairs a member already stuck in purchase_pending', async () => {
     const u = await makeUser()
-    const { id } = await enrollUser(u.id, 'v1')
-    expect((await getMembership(u.id))?.status).toBe('purchase_pending')
+    const { id } = await enrollUser('femi9', u.id, 'v1')
+    expect((await getMembership('femi9', u.id))?.status).toBe('purchase_pending')
 
     // The order arrives afterwards, but through a path that never ran the
     // activation hook (e.g. an order marked paid by hand in the admin panel).
     const past = await order(u.id, 750_000)
 
-    await syncTharaActivation(u.id)
+    await syncTharaActivation('femi9', u.id)
 
     const m = await prisma.tharaMembership.findUnique({ where: { id } })
     expect(m?.status).toBe('active')
@@ -124,43 +124,43 @@ describe('Thara activation backfill', () => {
   it('syncTharaActivation is a no-op for a non-member and for an active member', async () => {
     const stranger = await makeUser()
     await order(stranger.id, 900_000)
-    await expect(syncTharaActivation(stranger.id)).resolves.toBeUndefined()
-    expect(await getMembership(stranger.id)).toBeNull()
+    await expect(syncTharaActivation('femi9', stranger.id)).resolves.toBeUndefined()
+    expect(await getMembership('femi9', stranger.id)).toBeNull()
 
     const member = await makeUser()
     const qualifying = await order(member.id, 900_000)
-    await enrollUser(member.id, 'v1')
-    const before = await getMembership(member.id)
+    await enrollUser('femi9', member.id, 'v1')
+    const before = await getMembership('femi9', member.id)
 
     await order(member.id, 950_000)
-    await syncTharaActivation(member.id)
+    await syncTharaActivation('femi9', member.id)
 
-    const after = await getMembership(member.id)
+    const after = await getMembership('femi9', member.id)
     expect(after?.activatedAt?.getTime()).toBe(before?.activatedAt?.getTime())
     expect(after?.qualifyingOrderId).toBe(qualifying.id)
   })
 
   it('does not touch a suspended or deactivated membership', async () => {
     const u = await makeUser()
-    const { id } = await enrollUser(u.id, 'v1')
+    const { id } = await enrollUser('femi9', u.id, 'v1')
     await prisma.tharaMembership.update({ where: { id }, data: { status: 'suspended' } })
     await order(u.id, 900_000)
 
-    await syncTharaActivation(u.id)
+    await syncTharaActivation('femi9', u.id)
 
-    expect((await getMembership(u.id))?.status).toBe('suspended')
+    expect((await getMembership('femi9', u.id))?.status).toBe('suspended')
   })
 
   it('does nothing while the feature flag is off', async () => {
     process.env.THARA_ENABLED = 'false'
     const u = await makeUser()
-    const { id } = await enrollUser(u.id, 'v1')
+    const { id } = await enrollUser('femi9', u.id, 'v1')
     await prisma.tharaMembership.update({ where: { id }, data: { status: 'purchase_pending' } })
     await order(u.id, 900_000)
 
-    await syncTharaActivation(u.id)
+    await syncTharaActivation('femi9', u.id)
 
-    expect((await getMembership(u.id))?.status).toBe('purchase_pending')
+    expect((await getMembership('femi9', u.id))?.status).toBe('purchase_pending')
   })
 })
 
@@ -176,7 +176,7 @@ describe('getUnlockProgress', () => {
     await order(u.id, 180_000)
     await order(u.id, 250_000)
 
-    const p = await getUnlockProgress(u.id)
+    const p = await getUnlockProgress('femi9', u.id)
 
     expect(p.paidOrderCount).toBe(2)
     expect(p.bestOrderPaise).toBe(250_000)
@@ -188,7 +188,7 @@ describe('getUnlockProgress', () => {
     const u = await makeUser()
     const big = await order(u.id, 300_000)
 
-    const p = await getUnlockProgress(u.id)
+    const p = await getUnlockProgress('femi9', u.id)
 
     expect(p.qualified).toBe(true)
     expect(p.shortfallPaise).toBe(0)
@@ -197,7 +197,7 @@ describe('getUnlockProgress', () => {
 
   it('handles a shopper with no orders at all', async () => {
     const u = await makeUser()
-    const p = await getUnlockProgress(u.id)
+    const p = await getUnlockProgress('femi9', u.id)
     expect(p).toMatchObject({
       bestOrderPaise: 0,
       bestOrderNo: null,

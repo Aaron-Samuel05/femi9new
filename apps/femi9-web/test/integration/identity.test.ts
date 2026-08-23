@@ -110,11 +110,11 @@ describe('attachIdentity', () => {
     await prisma.user.create({ data: { phone: '9000000002', role: 'customer' } })
     const user = await prisma.user.create({ data: { email: 'c@d.co', role: 'customer' } })
 
-    await expect(assertIdentityFree(user.id, 'phone', '+91 90000 00002')).rejects.toBeInstanceOf(
+    await expect(assertIdentityFree('femi9', user.id, 'phone', '+91 90000 00002')).rejects.toBeInstanceOf(
       IdentityConflictError,
     )
     // Your own number is always free to re-verify.
-    await expect(assertIdentityFree(user.id, 'email', 'c@d.co')).resolves.toBeUndefined()
+    await expect(assertIdentityFree('femi9', user.id, 'email', 'c@d.co')).resolves.toBeUndefined()
   })
 })
 
@@ -141,8 +141,8 @@ describe('profile completeness', () => {
   it('getProfileStatus resolves from the DB and returns null for a stale session', async () => {
     const user = await prisma.user.create({ data: { phone: '9884230571', role: 'customer' } })
 
-    expect(await getProfileStatus(user.id)).toEqual({ complete: false, missing: ['name', 'email'] })
-    expect(await getProfileStatus('does-not-exist')).toBeNull()
+    expect(await getProfileStatus('femi9', user.id)).toEqual({ complete: false, missing: ['name', 'email'] })
+    expect(await getProfileStatus('femi9', 'does-not-exist')).toBeNull()
   })
 
   it('never renders a placeholder as if it were data', async () => {
@@ -181,11 +181,11 @@ describe('profile and address writes', () => {
       data: { name: 'Priya', email: 'p@n.co', phone: '9884230571', role: 'customer' },
     })
 
-    const changed = await updateProfile(user.id, { phone: '9000000009' })
+    const changed = await updateProfile('femi9', user.id, { phone: '9000000009' })
     expect(changed.status).toBe('phone-requires-verification')
 
     // The stored number is untouched; re-sending the SAME number is a no-op 200.
-    const same = await updateProfile(user.id, { phone: '+91 98842 30571' })
+    const same = await updateProfile('femi9', user.id, { phone: '+91 98842 30571' })
     expect(same.status).toBe('ok')
     const fresh = await prisma.user.findUniqueOrThrow({ where: { id: user.id } })
     expect(fresh.phone).toBe('9884230571')
@@ -209,13 +209,13 @@ describe('profile and address writes', () => {
       },
     })
 
-    expect(await deleteAddress(user.id, used.id)).toBe('archived')
+    expect(await deleteAddress('femi9', user.id, used.id)).toBe('archived')
     // The row survives for the order's FK but leaves the customer's address book.
     const row = await prisma.address.findUniqueOrThrow({ where: { id: used.id } })
     expect(row.archivedAt).not.toBeNull()
 
     // An address with no orders is genuinely removed.
-    expect(await deleteAddress(user.id, kept.id)).toBe('deleted')
+    expect(await deleteAddress('femi9', user.id, kept.id)).toBe('deleted')
     expect(await prisma.address.findUnique({ where: { id: kept.id } })).toBeNull()
   })
 })

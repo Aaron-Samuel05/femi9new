@@ -38,7 +38,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!user) return unauthorized()
     const parsed = PatchSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Check the address fields.', parsed.error.flatten())
-    const address = await updateAddress(user.sub, (await ctx.params).id, parsed.data)
+    const address = await updateAddress('femi9', user.sub, (await ctx.params).id, parsed.data)
     if (!address) return notFound('Address not found')
     return ok({ ok: true })
   })
@@ -56,7 +56,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
   return handle(async () => {
     const user = await requireUser()
     if (!user) return unauthorized()
-    const result = await deleteAddress(user.sub, (await ctx.params).id)
+    const result = await deleteAddress('femi9', user.sub, (await ctx.params).id)
     if (result === 'missing') return notFound('Address not found')
     return ok({ ok: true })
   })

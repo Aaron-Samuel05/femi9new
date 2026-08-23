@@ -1,6 +1,6 @@
 import 'server-only'
 import type { OrderStatus } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { getSettings } from './settings'
 import {
   attachIdentity,
@@ -57,9 +57,10 @@ export const isProfileComplete = (u: Parameters<typeof missingProfileFields>[0])
  * columns, no orders/points/subscription reads. Returns null when the id no
  * longer resolves to a user so the caller can bounce to /login.
  */
-export async function getProfileStatus(
+export async function getProfileStatus(brand: Brand, 
   userId: string,
 ): Promise<{ complete: boolean; missing: ProfileField[] } | null> {
+  const prisma = dbFor(brand)
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { name: true, email: true, phone: true },
@@ -305,7 +306,8 @@ export function toAccountUser(user: {
  * resolve to a user — the token can be valid yet the record gone — so the caller
  * can bounce to /login rather than render a half-empty page.
  */
-export async function getAccountData(userId: string): Promise<AccountData | null> {
+export async function getAccountData(brand: Brand, userId: string): Promise<AccountData | null> {
+  const prisma = dbFor(brand)
   const user = await prisma.user.findUnique({ where: { id: userId } })
   if (!user) return null
 
@@ -341,7 +343,7 @@ export async function getAccountData(userId: string): Promise<AccountData | null
         where: { userId, reason: { contains: 'welcome bonus' } },
         select: { id: true },
       }),
-      getSettings(),
+      getSettings(brand),
     ])
 
   const orders: AccountOrder[] = ordersRaw.map((o) => ({
@@ -457,10 +459,11 @@ export type UpdateProfileResult =
  * dispatched) — once checkout adopts the session user, email is no longer an
  * identity key for order attachment, and the 409 closes the collision hazard.
  */
-export async function updateProfile(
+export async function updateProfile(brand: Brand, 
   userId: string,
   input: ProfileInput,
 ): Promise<UpdateProfileResult> {
+  const prisma = dbFor(brand)
   const current = await prisma.user.findUnique({ where: { id: userId } })
   if (!current) return { status: 'not-found' }
 
@@ -481,7 +484,7 @@ export async function updateProfile(
     await attachIdentity(prisma, userId, { email, emailVerified: null })
     // Fire-and-forget: a Resend outage must not fail a profile save, and the
     // customer can re-request the link from /account.
-    dispatchEmailVerification(userId, email)
+    dispatchEmailVerification(brand, userId, email)
   }
 
   const fresh = await prisma.user.findUnique({ where: { id: userId } })
@@ -489,7 +492,8 @@ export async function updateProfile(
   return { status: 'ok', user: toAccountUser(fresh) }
 }
 
-export async function createAddress(userId: string, input: AddressInput) {
+export async function createAddress(brand: Brand, userId: string, input: AddressInput) {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const count = await tx.address.count({ where: { userId, archivedAt: null } })
     const makePrimary = input.isPrimary === true || count === 0
@@ -512,7 +516,8 @@ export async function createAddress(userId: string, input: AddressInput) {
   })
 }
 
-export async function updateAddress(userId: string, id: string, input: Partial<AddressInput>) {
+export async function updateAddress(brand: Brand, userId: string, id: string, input: Partial<AddressInput>) {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     // Archived rows are not editable — they only survive to keep an order's FK.
     const exists = await tx.address.findFirst({
@@ -544,7 +549,8 @@ export async function updateAddress(userId: string, id: string, input: Partial<A
  * ordered to was permanently undeletable. Rows with no orders are hard-deleted
  * so the table doesn't accumulate tombstones for typos.
  */
-export async function deleteAddress(userId: string, id: string): Promise<'deleted' | 'archived' | 'missing'> {
+export async function deleteAddress(brand: Brand, userId: string, id: string): Promise<'deleted' | 'archived' | 'missing'> {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const address = await tx.address.findFirst({
       where: { id, userId, archivedAt: null },

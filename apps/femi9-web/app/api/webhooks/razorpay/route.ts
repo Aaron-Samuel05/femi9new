@@ -65,9 +65,9 @@ export async function POST(req: NextRequest) {
       const method = paymentEntity?.method
 
       if (razorpayOrderId) {
-        const orderNo = await orderNoForRazorpayOrderId(razorpayOrderId)
+        const orderNo = await orderNoForRazorpayOrderId('femi9', razorpayOrderId)
         if (orderNo) {
-          await markOrderPaid({
+          await markOrderPaid('femi9', {
             orderNo,
             // Fall back to a deterministic id if the event omitted the payment id
             // (e.g. an order.paid without an entity), so the @unique column is set.

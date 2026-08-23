@@ -39,7 +39,7 @@ export default async function WelcomePage(props: {
   // Node runtime and covers a cookie that expired between the two.
   if (!session) redirect('/login?next=%2Fdashboard')
 
-  const status = await getProfileStatus(session.sub)
+  const status = await getProfileStatus('femi9', session.sub)
   if (!status) redirect('/login')
   // A completed customer can never see this screen again.
   if (status.complete) redirect(next ?? '/dashboard')

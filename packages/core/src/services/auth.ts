@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma, type User } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { generateCode, generateToken, hashCode, sendSms, sendMagicLink } from '../otp'
 import type { GoogleProfile } from '../google-oauth'
 import { rateLimit } from '../rate-limit'
@@ -100,7 +100,8 @@ export interface RequestOtpResult {
  * is globally @unique — folding the identifier into the hash keeps those rows
  * distinct so the second create can't collide.
  */
-export async function requestOtp(phone: string): Promise<RequestOtpResult> {
+export async function requestOtp(brand: Brand, phone: string): Promise<RequestOtpResult> {
+  const prisma = dbFor(brand)
   const normalized = normalizePhone(phone)
   if (normalized.length !== 10) throw new InvalidPhoneError()
 
@@ -136,10 +137,10 @@ export interface TharaAttributionCtx {
  * by design — attribution failure must never block sign-in. Dynamic import
  * breaks any potential circular boot-time dependency.
  */
-function maybeAttribute(user: User, ctx: TharaAttributionCtx | undefined) {
+function maybeAttribute(brand: Brand, user: User, ctx: TharaAttributionCtx | undefined) {
   if (!ctx) return
   void import('./thara')
-    .then(({ attributeReferralIfPresent }) => attributeReferralIfPresent(user, ctx))
+    .then(({ attributeReferralIfPresent }) => attributeReferralIfPresent(brand, user, ctx))
     .catch((err) => {
       // eslint-disable-next-line no-console
       console.error('attribute referral failed', err)
@@ -153,7 +154,8 @@ function maybeAttribute(user: User, ctx: TharaAttributionCtx | undefined) {
  * get the identical guess budget, expiry rule and replay protection.
  * Returns the normalised phone; throws InvalidPhoneError / InvalidOtpError.
  */
-async function consumePhoneChallenge(phone: string, code: string): Promise<string> {
+async function consumePhoneChallenge(brand: Brand, phone: string, code: string): Promise<string> {
+  const prisma = dbFor(brand)
   const normalized = normalizePhone(phone)
   if (normalized.length !== 10) throw new InvalidPhoneError()
 
@@ -186,12 +188,13 @@ async function consumePhoneChallenge(phone: string, code: string): Promise<strin
   return normalized
 }
 
-export async function verifyOtp(
+export async function verifyOtp(brand: Brand, 
   phone: string,
   code: string,
   attributionCtx?: TharaAttributionCtx,
 ): Promise<User> {
-  const normalized = await consumePhoneChallenge(phone, code)
+  const prisma = dbFor(brand)
+  const normalized = await consumePhoneChallenge(brand, phone, code)
 
   // Passing the challenge IS the verification, so stamp phoneVerified on both
   // branches — a returning shopper whose row predates this column gets it
@@ -203,7 +206,7 @@ export async function verifyOtp(
     create: { phone: normalized, phoneVerified: new Date(), role: 'customer' },
   })
 
-  maybeAttribute(user, attributionCtx)
+  maybeAttribute(brand, user, attributionCtx)
   return user
 }
 
@@ -214,8 +217,8 @@ export async function verifyOtp(
  * that orphans an email-signup shopper's orders. Returns the normalised phone
  * for the caller to hand to attachIdentity().
  */
-export async function verifyPhoneChallenge(phone: string, code: string): Promise<string> {
-  return consumePhoneChallenge(phone, code)
+export async function verifyPhoneChallenge(brand: Brand, phone: string, code: string): Promise<string> {
+  return consumePhoneChallenge(brand, phone, code)
 }
 
 export interface RequestMagicLinkResult {
@@ -235,7 +238,8 @@ export interface RequestMagicLinkResult {
  * responsible for having passed it through safeNextPath first; the verify route
  * re-validates on the way back in, since the link is user-visible and editable.
  */
-export async function requestMagicLink(email: string, next?: string): Promise<RequestMagicLinkResult> {
+export async function requestMagicLink(brand: Brand, email: string, next?: string): Promise<RequestMagicLinkResult> {
+  const prisma = dbFor(brand)
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized)) throw new InvalidEmailError()
 
@@ -263,11 +267,12 @@ export async function requestMagicLink(email: string, next?: string): Promise<Re
  * (stamping emailVerified), consume the challenge, and return the User for the
  * route to mint a session. Throws InvalidMagicLinkError on any bad/expired token.
  */
-export async function verifyMagicLink(
+export async function verifyMagicLink(brand: Brand, 
   email: string,
   token: string,
   attributionCtx?: TharaAttributionCtx,
 ): Promise<User> {
+  const prisma = dbFor(brand)
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized) || !token) throw new InvalidMagicLinkError()
 
@@ -286,7 +291,7 @@ export async function verifyMagicLink(
   })
 
   await prisma.verificationToken.deleteMany({ where: { identifier } })
-  maybeAttribute(user, attributionCtx)
+  maybeAttribute(brand, user, attributionCtx)
   return user
 }
 
@@ -299,10 +304,11 @@ export async function verifyMagicLink(
  * name, and backfill the avatar only when we don't already have one.
  * Throws UnverifiedGoogleEmailError if Google says the email isn't verified.
  */
-export async function signInWithGoogle(
+export async function signInWithGoogle(brand: Brand, 
   profile: GoogleProfile,
   attributionCtx?: TharaAttributionCtx,
 ): Promise<User> {
+  const prisma = dbFor(brand)
   const normalized = normalizeEmail(profile.email)
   if (!isValidEmail(normalized) || !profile.emailVerified) throw new UnverifiedGoogleEmailError()
 
@@ -326,7 +332,7 @@ export async function signInWithGoogle(
       ...(image ? { image } : {}),
     },
   })
-  maybeAttribute(user, attributionCtx)
+  maybeAttribute(brand, user, attributionCtx)
   return user
 }
 
@@ -381,11 +387,12 @@ async function identityOwnerId(
  * Call this BEFORE an irreversible side effect — notably before spending an SMS
  * on an OTP for a number we are going to refuse anyway.
  */
-export async function assertIdentityFree(
+export async function assertIdentityFree(brand: Brand, 
   userId: string,
   field: IdentityField,
   value: string,
 ): Promise<void> {
+  const prisma = dbFor(brand)
   const normalized = field === 'email' ? normalizeEmail(value) : normalizePhone(value)
   const owner = await identityOwnerId(prisma, field, normalized)
   if (owner && owner !== userId) throw new IdentityConflictError(field)
@@ -472,10 +479,11 @@ export async function attachIdentity(
  * can never be redeemed by the sign-in verifier to mint a session for a
  * different account.
  */
-export async function requestAttachEmailLink(
+export async function requestAttachEmailLink(brand: Brand, 
   userId: string,
   email: string,
 ): Promise<RequestMagicLinkResult> {
+  const prisma = dbFor(brand)
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized)) throw new InvalidEmailError()
 
@@ -501,11 +509,12 @@ export async function requestAttachEmailLink(
  * InvalidMagicLinkError for a wrong / expired / already-used token, or one
  * minted for a different user.
  */
-export async function verifyAttachEmailToken(
+export async function verifyAttachEmailToken(brand: Brand, 
   userId: string,
   email: string,
   token: string,
 ): Promise<string> {
+  const prisma = dbFor(brand)
   const normalized = normalizeEmail(email)
   if (!isValidEmail(normalized) || !token) throw new InvalidMagicLinkError()
 
@@ -527,8 +536,8 @@ export async function verifyAttachEmailToken(
  * write must not fail because Resend is down, and the customer can always
  * re-request from /account.
  */
-export function dispatchEmailVerification(userId: string, email: string): void {
-  void requestAttachEmailLink(userId, email).catch((err) => {
+export function dispatchEmailVerification(brand: Brand, userId: string, email: string): void {
+  void requestAttachEmailLink(brand, userId, email).catch((err) => {
     // eslint-disable-next-line no-console
     console.error('[auth] email verification dispatch failed', err)
   })

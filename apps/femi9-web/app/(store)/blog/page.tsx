@@ -15,6 +15,6 @@ export const dynamic = 'force-dynamic'
 // Server component: the journal list and its category chips are fetched from
 // Postgres and handed to the (client) Blog screen as props.
 export default async function BlogPage() {
-  const [posts, categories] = await Promise.all([listPosts(), listCategories()])
+  const [posts, categories] = await Promise.all([listPosts('femi9'), listCategories('femi9')])
   return <Blog posts={posts} categories={categories} />
 }

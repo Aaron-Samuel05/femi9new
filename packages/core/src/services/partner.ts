@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { sendEmailNotification } from './notifications'
 import { logger } from '../logger'
 
@@ -26,7 +26,8 @@ export interface CreateApplicationInput {
 }
 
 /** Persist a new partner lead. Status is left to the schema default (`new`). */
-export async function createApplication(input: CreateApplicationInput) {
+export async function createApplication(brand: Brand, input: CreateApplicationInput) {
+  const prisma = dbFor(brand)
   const application = await prisma.partnerApplication.create({
     data: {
       name: input.name,
@@ -39,7 +40,7 @@ export async function createApplication(input: CreateApplicationInput) {
   })
   const opsEmail = process.env.PARTNER_OPS_EMAIL?.trim()
   if (opsEmail) {
-    await sendEmailNotification({
+    await sendEmailNotification(brand, {
       to: opsEmail,
       subject: `New Femi9 partner lead: ${application.name}`,
       text: `${application.name} (${application.phone}) applied from ${application.city}.`,

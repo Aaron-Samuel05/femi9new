@@ -12,7 +12,7 @@ export async function POST() {
     if (!isTharaEnabled()) return notFound()
     const session = await getSession()
     if (!session) return unauthorized()
-    await optOutUser(session.sub)
+    await optOutUser('femi9', session.sub)
     return new NextResponse(null, { status: 204 })
   })
 }

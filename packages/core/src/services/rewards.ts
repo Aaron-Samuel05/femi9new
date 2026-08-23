@@ -1,7 +1,7 @@
 import 'server-only'
 import { randomBytes } from 'node:crypto'
 import type { CouponType } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { sendEmailNotification } from './notifications'
 import { sendTextSms } from '../otp'
 import { logger } from '../logger'
@@ -44,7 +44,8 @@ export interface RewardOptionView {
 }
 
 /** The active reward catalogue, in the admin-defined display order. */
-export async function listRewardOptions(): Promise<RewardOptionView[]> {
+export async function listRewardOptions(brand: Brand): Promise<RewardOptionView[]> {
+  const prisma = dbFor(brand)
   const opts = await prisma.rewardOption.findMany({
     where: { active: true },
     orderBy: [{ position: 'asc' }, { costPoints: 'asc' }],
@@ -83,7 +84,8 @@ export interface RedeemResult {
  * negative points debit, and issue the coupon — atomically. Throws
  * InsufficientPointsError when short, RewardOptionNotFoundError for a bad id.
  */
-export async function redeem(userId: string, rewardOptionId: string): Promise<RedeemResult> {
+export async function redeem(brand: Brand, userId: string, rewardOptionId: string): Promise<RedeemResult> {
+  const prisma = dbFor(brand)
   const result = await prisma.$transaction(async (tx) => {
     const option = await tx.rewardOption.findUnique({ where: { id: rewardOptionId } })
     if (!option || !option.active) throw new RewardOptionNotFoundError()
@@ -130,7 +132,7 @@ export async function redeem(userId: string, rewardOptionId: string): Promise<Re
   // the code was shown once and lost. The account page also lists owned coupons
   // now; these sends are the belt to that braces.
   if (result.email) {
-    await sendEmailNotification({
+    await sendEmailNotification(brand, {
       userId,
       to: result.email,
       subject: 'Your Femi9 Bloom reward code',

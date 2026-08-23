@@ -28,7 +28,7 @@ export async function POST(req: Request) {
       if (!admin) return unauthorized()
     }
 
-    const generated = await generateDueOrders()
+    const generated = await generateDueOrders('femi9')
     return ok({ generated })
   })
 }

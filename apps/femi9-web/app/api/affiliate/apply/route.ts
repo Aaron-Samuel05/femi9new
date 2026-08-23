@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
     const parsed = ApplySchema.safeParse(raw)
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
-    await apply(parsed.data)
+    await apply('femi9', parsed.data)
     return created({ ok: true })
   })
 }

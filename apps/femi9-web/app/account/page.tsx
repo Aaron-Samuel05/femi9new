@@ -20,7 +20,7 @@ export default async function AccountPage() {
   // dropping them on a generic landing after they sign in.
   if (!s) redirect('/login?next=/account')
 
-  const [data, rewardOptions] = await Promise.all([getAccountData(s.sub), listRewardOptions()])
+  const [data, rewardOptions] = await Promise.all([getAccountData('femi9', s.sub), listRewardOptions('femi9')])
   // A valid token whose user row is gone — bounce rather than render half a page.
   if (!data) redirect('/login')
   if (!data.user.profileComplete) redirect('/welcome')

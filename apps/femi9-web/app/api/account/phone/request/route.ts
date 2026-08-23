@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
 
     try {
       // Refuse a number owned by another account BEFORE spending an SMS on it.
-      await assertIdentityFree(session.sub, 'phone', phone)
-      const { mock, devCode } = await requestOtp(phone)
+      await assertIdentityFree('femi9', session.sub, 'phone', phone)
+      const { mock, devCode } = await requestOtp('femi9', phone)
       return ok({ ok: true, mock, ...(devCode ? { devCode } : {}) })
     } catch (err) {
       if (err instanceof IdentityConflictError) {

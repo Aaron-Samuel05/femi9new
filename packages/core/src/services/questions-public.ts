@@ -1,6 +1,6 @@
 import 'server-only'
 import { createHash } from 'node:crypto'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { sendEmailNotification } from './notifications'
 
 /**
@@ -54,10 +54,11 @@ function esc(s: string): string {
  * once the input is valid, because a shopper cannot act on our SMTP problems
  * and the attempt is durably logged regardless.
  */
-export async function submitQuestion(
+export async function submitQuestion(brand: Brand, 
   productSlug: string,
   input: QuestionInput,
 ): Promise<{ sent: boolean }> {
+  const prisma = dbFor(brand)
   const product = await prisma.product.findUnique({
     where: { slug: productSlug },
     select: { name: true },
@@ -92,7 +93,7 @@ export async function submitQuestion(
     `<p style="white-space:pre-wrap">${esc(input.question)}</p>`,
   ].join('')
 
-  const res = await sendEmailNotification({
+  const res = await sendEmailNotification(brand, {
     to,
     subject,
     html,

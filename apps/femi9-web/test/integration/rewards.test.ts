@@ -38,7 +38,7 @@ describe('rewards.redeem (integration)', () => {
       data: { title: 'Rs 50 off', costPoints: 200, couponType: 'flat', couponValue: 50 },
     })
 
-    const { couponCode } = await redeem(user.id, option.id)
+    const { couponCode } = await redeem('femi9', user.id, option.id)
 
     // The returned code is a real, persisted Coupon carrying the option's terms.
     const coupon = await prisma.coupon.findUnique({ where: { code: couponCode } })
@@ -67,7 +67,7 @@ describe('rewards.redeem (integration)', () => {
 
     const ledgerRowsBefore = await prisma.pointsLedger.count()
 
-    await expect(redeem(user.id, option.id)).rejects.toBeInstanceOf(InsufficientPointsError)
+    await expect(redeem('femi9', user.id, option.id)).rejects.toBeInstanceOf(InsufficientPointsError)
 
     // No coupon minted, no debit row appended, balance untouched — the transaction
     // rolled back atomically. A reverted balance check would fail every line here.

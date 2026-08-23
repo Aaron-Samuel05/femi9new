@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { getSession } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { getGuestToken } from '@/lib/session'
 import { EMPTY_CART, getCart } from '@femi9/core/services/cart'
 import { resolveZone } from '@femi9/core/services/pricing'
@@ -63,7 +63,7 @@ async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
 export default async function CheckoutPage() {
   const token = await getGuestToken()
   const [{ freeShipThreshold }, prefill] = await Promise.all([
-    getSettings().catch(() => ({ freeShipThreshold: 999 })),
+    getSettings('femi9').catch(() => ({ freeShipThreshold: 999 })),
     resolvePrefill().catch(() => undefined),
   ])
 
@@ -76,10 +76,10 @@ export default async function CheckoutPage() {
   // payment sheet then contradicted.
   const zone =
     prefill?.state || prefill?.pincode
-      ? await resolveZone({ state: prefill.state, pincode: prefill.pincode }).catch(() => null)
+      ? await resolveZone('femi9', { state: prefill.state, pincode: prefill.pincode }).catch(() => null)
       : undefined
 
-  const cart = token ? await getCart(token, zone).catch(() => EMPTY_CART) : EMPTY_CART
+  const cart = token ? await getCart('femi9', token, zone).catch(() => EMPTY_CART) : EMPTY_CART
 
   if (cart.items.length === 0) {
     return (

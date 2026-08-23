@@ -80,8 +80,8 @@ export async function GET(req: NextRequest) {
       ip: clientIp(req),
       ua: req.headers.get('user-agent') ?? null,
     }
-    const user = await signInWithGoogle(profile, attributionCtx)
-    await mergeGuestCartIntoUser(req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
+    const user = await signInWithGoogle('femi9', profile, attributionCtx)
+    await mergeGuestCartIntoUser('femi9', req.cookies.get(GUEST_COOKIE)?.value ?? null, user.id)
     const jwt = await createSession({
       sub: user.id,
       email: user.email ?? undefined,

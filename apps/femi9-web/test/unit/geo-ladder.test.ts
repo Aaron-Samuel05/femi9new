@@ -60,14 +60,14 @@ describe('the mobile-carrier gate', () => {
       'cloudfront-viewer-country-region-name': 'Maharashtra',
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.signal).toEqual({})
     expect(reading.detail.rejected).toBe('mobile-carrier-cgnat')
     expect(reading.detail.carrier).toBe('mobile')
     // Not usable ⇒ the price resolver falls back to the default zone, i.e. the
     // standard price. Being wrong here can now OVERCHARGE, since a zone may set
     // an exact price above standard.
-    expect(await detectGeoSignal()).toEqual({})
+    expect(await detectGeoSignal('femi9')).toEqual({})
   })
 
   it('leaves fixed-line viewers exactly as they were before', async () => {
@@ -81,10 +81,10 @@ describe('the mobile-carrier gate', () => {
       'cloudfront-viewer-postal-code': '641001',
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.source).toBe('edge-header')
     expect(reading.signal).toEqual({ state: 'Tamil Nadu', pincode: '641001' })
-    expect(await detectGeoSignal()).toEqual({ state: 'Tamil Nadu', pincode: '641001' })
+    expect(await detectGeoSignal('femi9')).toEqual({ state: 'Tamil Nadu', pincode: '641001' })
   })
 
   it('stays open when nothing identifies the network', async () => {
@@ -95,7 +95,7 @@ describe('the mobile-carrier gate', () => {
       'cloudfront-viewer-country': 'IN',
       'cloudfront-viewer-country-region': 'KL',
     })
-    expect((await detectGeoReading()).signal).toEqual({ state: 'Kerala', pincode: undefined })
+    expect((await detectGeoReading('femi9')).signal).toEqual({ state: 'Kerala', pincode: undefined })
   })
 
   it('reads the ASN from the CloudFront header when the database is absent', async () => {
@@ -105,7 +105,7 @@ describe('the mobile-carrier gate', () => {
       'cloudfront-viewer-address': '49.207.200.10',
       'cloudfront-viewer-country-region': 'MH',
     })
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.detail.asn).toBe(55836)
     expect(reading.detail.rejected).toBe('mobile-carrier-cgnat')
   })
@@ -128,7 +128,7 @@ describe('the IPv6 tiers — what actually fixes mobile data', () => {
       'cloudfront-viewer-country-region': 'MH', // the CGNAT lie, outranked
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.source).toBe('ipv6-circle')
     expect(reading.confidence).toBe('high')
     expect(reading.signal).toEqual({ state: 'Karnataka' })
@@ -154,7 +154,7 @@ describe('the IPv6 tiers — what actually fixes mobile data', () => {
       'cloudfront-viewer-address': '2405:201:1234::1',
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.source).toBe('ipv6-city')
     expect(reading.signal.state).toBe('Telangana')
     expect(reading.detail.circle).toBe('andhra-pradesh')
@@ -172,7 +172,7 @@ describe('the IPv6 tiers — what actually fixes mobile data', () => {
       'cloudfront-viewer-country-region': 'MH',
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.signal).toEqual({})
     // The v6 tier is refused for being coarse, then the gate rejects the v4
     // fallback — the carrier reason is the one that ends the ladder.
@@ -182,7 +182,7 @@ describe('the IPv6 tiers — what actually fixes mobile data', () => {
 
   it('ignores a private v6 address', async () => {
     request({ 'cloudfront-viewer-country': 'IN', 'cloudfront-viewer-address': '[fd00::1]:443' })
-    await detectGeoReading()
+    await detectGeoReading('femi9')
     expect(lookupCircle).not.toHaveBeenCalled()
     expect(lookupAsn).not.toHaveBeenCalled()
   })
@@ -197,7 +197,7 @@ describe('the language veto', () => {
       'accept-language': 'en-IN,ta;q=0.9,en;q=0.8',
     })
 
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.signal).toEqual({})
     expect(reading.detail.rejected).toBe('language-contradiction')
     expect(reading.detail.language).toBe('ta')
@@ -217,7 +217,7 @@ describe('the language veto', () => {
       'cloudfront-viewer-address': '2405:201:1::1',
       'accept-language': 'ta-IN,ta;q=0.9',
     })
-    expect((await detectGeoReading()).signal).toEqual({ state: 'Maharashtra' })
+    expect((await detectGeoReading('femi9')).signal).toEqual({ state: 'Maharashtra' })
   })
 
   it('stays quiet for a language that spans many states', async () => {
@@ -227,14 +227,14 @@ describe('the language veto', () => {
       'cloudfront-viewer-country-region': 'MH',
       'accept-language': 'hi-IN,hi;q=0.9,en;q=0.8',
     })
-    expect((await detectGeoReading()).signal).toEqual({ state: 'Maharashtra', pincode: undefined })
+    expect((await detectGeoReading('femi9')).signal).toEqual({ state: 'Maharashtra', pincode: undefined })
   })
 })
 
 describe('country scoping and overrides', () => {
   it('refuses a viewer the edge places outside India', async () => {
     request({ 'cloudfront-viewer-country': 'US', 'cloudfront-viewer-country-region': 'CA' })
-    expect((await detectGeoReading()).detail.rejected).toBe('outside-india')
+    expect((await detectGeoReading('femi9')).detail.rejected).toBe('outside-india')
   })
 
   it('lets the offline database veto the country when the CDN header is missing', async () => {
@@ -242,12 +242,12 @@ describe('country scoping and overrides', () => {
     // drifted. Without this the region below would be read as an Indian state.
     lookupCity.mockResolvedValue({ country: 'SG', regionCode: 'TN', accuracyRadiusKm: 10 })
     request({ 'cloudfront-viewer-address': '203.0.113.9', 'cloudfront-viewer-country-region': 'TN' })
-    expect((await detectGeoReading()).detail.rejected).toBe('outside-india')
+    expect((await detectGeoReading('femi9')).detail.rejected).toBe('outside-india')
   })
 
   it('honours the dev override outside production', async () => {
     request({ 'x-femi9-geo-state': 'Kerala', 'x-femi9-geo-pincode': '682001' })
-    const reading = await detectGeoReading()
+    const reading = await detectGeoReading('femi9')
     expect(reading.source).toBe('dev-header')
     expect(reading.signal).toEqual({ state: 'Kerala', pincode: '682001' })
   })

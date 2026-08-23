@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { getOrderByNo } from '@femi9/core/services/checkout'
 import { verifyOrderToken } from '@femi9/core/order-token'
 import { getSession } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { rupees } from '@/data/products'
 import { getSettings } from '@femi9/core/services/settings'
 import { RetryPaymentButton } from './RetryPaymentButton'
@@ -31,7 +31,7 @@ export default async function OrderConfirmationPage(
 ) {
   const searchParams = await props.searchParams;
   const params = await props.params;
-  const [order, settings] = await Promise.all([getOrderByNo(params.orderNo), getSettings()])
+  const [order, settings] = await Promise.all([getOrderByNo('femi9', params.orderNo), getSettings('femi9')])
   if (!order) notFound()
 
   // The page exposes customer PII (name/address/phone) and orderNo is guessable,

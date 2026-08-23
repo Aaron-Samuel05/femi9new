@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { handle, ok, forbidden, notFound, badRequest } from '@femi9/core/api'
 import { getAdminSession } from '@femi9/core/admin-auth'
 import { isTharaEnabled } from '@femi9/core/thara/feature'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     try {
       const { startDate, lengthDays, clientToday } = parsed.data
-      const result = await logPeriod(u.sub, startDate, lengthDays, clientToday)
+      const result = await logPeriod('femi9', u.sub, startDate, lengthDays, clientToday)
       // A repeat submission of the same day corrects the existing row rather
       // than adding a second one, so it is a 200, not a 201.
       return result.deduped ? ok({ ok: true, id: result.id, deduped: true }) : created({ ok: true, id: result.id })
@@ -76,7 +76,7 @@ export async function PATCH(req: NextRequest) {
 
     try {
       const { id, startDate, lengthDays, clientToday } = parsed.data
-      const updated = await updatePeriod(u.sub, id, startDate, lengthDays, clientToday)
+      const updated = await updatePeriod('femi9', u.sub, id, startDate, lengthDays, clientToday)
       return updated ? ok({ ok: true }) : notFound('That logged period no longer exists.')
     } catch (err) {
       const mapped = mapError(err)
@@ -92,7 +92,7 @@ export async function DELETE(req: NextRequest) {
     if (!u) return unauthorized()
     const id = req.nextUrl.searchParams.get('id')?.trim()
     if (!id) return badRequest('Period id is required')
-    const deleted = await deletePeriod(u.sub, id)
+    const deleted = await deletePeriod('femi9', u.sub, id)
     return deleted ? ok({ ok: true }) : notFound('That logged period no longer exists.')
   })
 }

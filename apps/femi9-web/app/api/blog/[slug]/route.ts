@@ -5,7 +5,7 @@ import { getPost } from '@femi9/core/services/blog'
 export async function GET(_req: Request, props: { params: Promise<{ slug: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const post = await getPost(params.slug)
+    const post = await getPost('femi9', params.slug)
     if (!post) return notFound()
     return ok(post)
   })

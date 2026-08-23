@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 
 /**
  * Community Wall service — the seam between the database and the storefront
@@ -80,7 +80,8 @@ function toDTO(row: WallPostWithProduct): WallPostDTO {
 // ─────────────────────────────── Reads ────────────────────────────────────
 
 /** Approved posts only, newest first — the public wall feed. */
-export async function listApprovedPosts(): Promise<WallPostDTO[]> {
+export async function listApprovedPosts(brand: Brand): Promise<WallPostDTO[]> {
+  const prisma = dbFor(brand)
   const rows = await prisma.wallPost.findMany({
     where: { status: 'approved' },
     orderBy: { createdAt: 'desc' },
@@ -96,7 +97,8 @@ export async function listApprovedPosts(): Promise<WallPostDTO[]> {
  * a moderator approves it. Returns the stored (pending) row as a DTO so the
  * route can acknowledge without a second read.
  */
-export async function createPost(input: CreatePostInput): Promise<WallPostDTO> {
+export async function createPost(brand: Brand, input: CreatePostInput): Promise<WallPostDTO> {
+  const prisma = dbFor(brand)
   // Only honour a productId that actually resolves; guests send free-text
   // labels, not ids, so this is null for storefront posts.
   let productId: string | null = null
@@ -143,7 +145,8 @@ export async function createPost(input: CreatePostInput): Promise<WallPostDTO> {
  * or not approved (→ 404 upstream). `guestToken` is accepted for signature/
  * forward-compat but isn't durable enough to dedupe against.
  */
-export async function likePost(postId: string, userId: string): Promise<{ likeCount: number; liked: boolean } | null> {
+export async function likePost(brand: Brand, postId: string, userId: string): Promise<{ likeCount: number; liked: boolean } | null> {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const post = await tx.wallPost.findUnique({ where: { id: postId }, select: { status: true } })
     if (!post || post.status !== 'approved') return null

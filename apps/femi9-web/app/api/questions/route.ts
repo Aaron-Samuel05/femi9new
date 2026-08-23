@@ -31,7 +31,7 @@ export async function POST(req: Request) {
 
     const { productSlug, name, email, question } = parsed.data
     try {
-      const { sent } = await submitQuestion(productSlug, { name, email, question })
+      const { sent } = await submitQuestion('femi9', productSlug, { name, email, question })
       // `sent: false` means our mail provider or support address is
       // misconfigured — the attempt is logged in NotificationLog either way, and
       // the client shows the same acknowledgement. Surfacing an error here would

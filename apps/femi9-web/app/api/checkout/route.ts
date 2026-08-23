@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
       // service identified the buyer by the phone typed into the form, so a
       // magic-link or Google customer got a second User row per order and her
       // order history stayed empty forever.
-      const result = await placeOrder(token, parsed.data, session?.sub)
+      const result = await placeOrder('femi9', token, parsed.data, session?.sub)
       // Hand back an unguessable capability token so the confirmation page can
       // authorize a guest (no session) without exposing PII to orderNo guessing.
       return created({ ...result, token: orderToken(result.orderNo) })

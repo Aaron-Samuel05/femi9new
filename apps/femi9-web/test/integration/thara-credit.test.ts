@@ -34,7 +34,7 @@ async function activeMemberByPhone(phone: string) {
     update: {},
     create: { phone, role: 'customer' },
   })
-  const { id } = await enrollUser(u.id, 'v1')
+  const { id } = await enrollUser('femi9', u.id, 'v1')
   await prisma.tharaMembership.update({
     where: { id },
     data: { status: 'active', activatedAt: new Date() },
@@ -107,7 +107,7 @@ describe('Thara wallet credit (sub-project C)', () => {
 
   it('does not accrue when the referrer is not active (still purchase_pending)', async () => {
     const referrerUser = await prisma.user.create({ data: { email: 'pp@t.local', role: 'customer' } })
-    const { id: refMemId } = await enrollUser(referrerUser.id, 'v1') // stays purchase_pending
+    const { id: refMemId } = await enrollUser('femi9', referrerUser.id, 'v1') // stays purchase_pending
     const referredUser = await prisma.user.create({ data: { email: 'ref-d@t.local', role: 'customer' } })
     await prisma.tharaReferral.create({
       data: { referrerId: refMemId, referredUserId: referredUser.id, lockedAt: new Date() },
@@ -172,7 +172,7 @@ describe('Thara wallet credit (sub-project C)', () => {
     const token = 'guest-c-01'
     await cartWith(token, variant.id, 1)
 
-    const { orderNo } = await placeOrder(token, customer('9000000210'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000210'))
     const order = await prisma.order.findUnique({ where: { orderNo } })
     // Subtotal ₹1,000 = 100 000 paise, below discount slab so no personal discount,
     // credit of ₹200 should apply.

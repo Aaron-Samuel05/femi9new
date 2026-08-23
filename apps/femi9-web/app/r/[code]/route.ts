@@ -6,7 +6,7 @@ import {
   signTharaRefCookie,
 } from '@femi9/core/thara/cookies'
 import { isTharaEnabled } from '@femi9/core/thara/feature'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 
 /**
  * GET /r/[code] — referral link entry point.

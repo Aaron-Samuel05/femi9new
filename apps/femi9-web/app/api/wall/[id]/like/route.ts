@@ -15,7 +15,7 @@ export async function POST(_req: NextRequest, props: { params: Promise<{ id: str
   return handle(async () => {
     const user = await requireUser()
     if (!user) return unauthorized()
-    const result = await likePost(params.id, user.sub)
+    const result = await likePost('femi9', params.id, user.sub)
     // null → post missing or not approved (can't like a pending/hidden story).
     if (result === null) return notFound('Post not found')
     return ok(result)

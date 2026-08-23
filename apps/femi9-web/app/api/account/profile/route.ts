@@ -46,7 +46,7 @@ export async function PATCH(req: Request) {
     if (!parsed.success) return badRequest('Check the details you entered.', parsed.error.flatten())
 
     try {
-      const result = await updateProfile(session.sub, parsed.data)
+      const result = await updateProfile('femi9', session.sub, parsed.data)
       if (result.status === 'not-found') return notFound('User not found')
       if (result.status === 'phone-requires-verification') {
         // A contact channel that reaches a customer's orders is never settable

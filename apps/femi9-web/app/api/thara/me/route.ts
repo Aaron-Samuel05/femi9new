@@ -2,7 +2,7 @@ import { handle, ok, unauthorized, notFound } from '@femi9/core/api'
 import { getSession } from '@femi9/core/auth'
 import { getMembership, syncTharaActivation } from '@femi9/core/services/thara'
 import { isTharaEnabled } from '@femi9/core/thara/feature'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,9 +16,9 @@ export async function GET() {
 
     // Same self-heal as /summary: a membership whose qualifying order predates
     // enrolment is promoted before we report its status.
-    await syncTharaActivation(session.sub)
+    await syncTharaActivation('femi9', session.sub)
 
-    const m = await getMembership(session.sub)
+    const m = await getMembership('femi9', session.sub)
     if (!m) return ok({ enrolled: false })
 
     const incomingRef = await prisma.tharaReferral.findUnique({

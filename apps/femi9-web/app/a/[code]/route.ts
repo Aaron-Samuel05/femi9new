@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
 
   // Fire-and-await, but never let a logging failure cost the visitor her
   // redirect — she came here to reach the shop.
-  await logClick(code).catch(() => {})
+  await logClick('femi9', code).catch(() => {})
 
   const res = NextResponse.redirect(home)
   res.cookies.set(REF_COOKIE, code, {

@@ -2,7 +2,7 @@ import { handle, ok, notFound, forbidden } from '@femi9/core/api'
 import { getAdminSession } from '@femi9/core/admin-auth'
 import { getMembershipById } from '@femi9/core/services/thara'
 import { isTharaEnabled } from '@femi9/core/thara/feature'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,7 +14,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     if (!admin) return forbidden()
 
     const { id } = await ctx.params
-    const m = await getMembershipById(id)
+    const m = await getMembershipById('femi9', id)
     if (!m) return notFound()
 
     const referrals = await prisma.tharaReferral.findMany({

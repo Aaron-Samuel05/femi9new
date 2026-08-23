@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       if (!admin) return unauthorized()
     }
 
-    const expired = await expireStaleVouchers()
+    const expired = await expireStaleVouchers('femi9')
     return ok({ expired })
   })
 }

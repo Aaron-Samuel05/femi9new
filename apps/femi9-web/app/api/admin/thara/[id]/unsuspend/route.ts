@@ -14,7 +14,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     const { id } = await ctx.params
     try {
-      const row = await unsuspendMembership(id)
+      const row = await unsuspendMembership('femi9', id)
       return ok({ membership: row })
     } catch (e) {
       if (e instanceof TharaNotFoundError) return notFound()

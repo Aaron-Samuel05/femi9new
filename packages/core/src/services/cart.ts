@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import {
   applyZonePrice,
   resolveAmbientZone,
@@ -70,7 +70,8 @@ export class UnknownVariantError extends Error {
 
 /** Find the guest's cart, creating it on first write. Upsert keeps this safe
  *  against two concurrent add-to-cart requests racing to create the same row. */
-export async function getOrCreateCart(token: string) {
+export async function getOrCreateCart(brand: Brand, token: string) {
+  const prisma = dbFor(brand)
   return prisma.cart.upsert({
     where: { guestToken: token },
     update: {},
@@ -85,8 +86,9 @@ export async function getOrCreateCart(token: string) {
  * → default). Checkout passes it explicitly, because there the delivery address
  * being typed into the form is a stronger signal than anything we can infer.
  */
-export async function getCart(token: string, zone?: ResolvedZone | null): Promise<CartDTO> {
-  const appliedZone = zone === undefined ? await resolveAmbientZone() : zone
+export async function getCart(brand: Brand, token: string, zone?: ResolvedZone | null): Promise<CartDTO> {
+  const prisma = dbFor(brand)
+  const appliedZone = zone === undefined ? await resolveAmbientZone(brand) : zone
   const cart = await prisma.cart.findUnique({
     where: { guestToken: token },
     include: {
@@ -143,24 +145,26 @@ export async function getCart(token: string, zone?: ResolvedZone | null): Promis
 }
 
 /** Add (or top up) a line. Adding a variant already in the cart increments it. */
-export async function addItem(token: string, variantId: string, qty: number): Promise<CartDTO> {
+export async function addItem(brand: Brand, token: string, variantId: string, qty: number): Promise<CartDTO> {
+  const prisma = dbFor(brand)
   const variant = await prisma.productVariant.findUnique({ where: { id: variantId } })
   if (!variant || !variant.active) throw new UnknownVariantError(variantId)
 
   const quantity = Math.max(1, Math.floor(qty))
-  const cart = await getOrCreateCart(token)
+  const cart = await getOrCreateCart(brand, token)
   await prisma.cartItem.upsert({
     where: { cartId_variantId: { cartId: cart.id, variantId } },
     update: { qty: { increment: quantity } },
     create: { cartId: cart.id, variantId, qty: quantity },
   })
-  return getCart(token)
+  return getCart(brand, token)
 }
 
 /** Set an exact quantity for a line; qty <= 0 removes it. Never creates a new
  *  line — a PATCH only touches something already in the cart. */
-export async function setQty(token: string, variantId: string, qty: number): Promise<CartDTO> {
-  const cart = await getOrCreateCart(token)
+export async function setQty(brand: Brand, token: string, variantId: string, qty: number): Promise<CartDTO> {
+  const prisma = dbFor(brand)
+  const cart = await getOrCreateCart(brand, token)
   if (qty <= 0) {
     await prisma.cartItem.deleteMany({ where: { cartId: cart.id, variantId } })
   } else {
@@ -169,14 +173,15 @@ export async function setQty(token: string, variantId: string, qty: number): Pro
       data: { qty: Math.floor(qty) },
     })
   }
-  return getCart(token)
+  return getCart(brand, token)
 }
 
 /** Remove a line outright. */
-export async function removeItem(token: string, variantId: string): Promise<CartDTO> {
-  const cart = await getOrCreateCart(token)
+export async function removeItem(brand: Brand, token: string, variantId: string): Promise<CartDTO> {
+  const prisma = dbFor(brand)
+  const cart = await getOrCreateCart(brand, token)
   await prisma.cartItem.deleteMany({ where: { cartId: cart.id, variantId } })
-  return getCart(token)
+  return getCart(brand, token)
 }
 
 /**
@@ -186,7 +191,8 @@ export async function removeItem(token: string, variantId: string): Promise<Cart
  * cart UI continues to work immediately after login while `userId` makes the
  * cart durable across future authenticated sessions.
  */
-export async function mergeGuestCartIntoUser(token: string | null, userId: string): Promise<void> {
+export async function mergeGuestCartIntoUser(brand: Brand, token: string | null, userId: string): Promise<void> {
+  const prisma = dbFor(brand)
   if (!token) return
 
   await prisma.$transaction(async (tx) => {

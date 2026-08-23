@@ -256,7 +256,7 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
     }
     if (status === 'shipped') {
       const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } })
-      if (order) await sendOrderStatusEmail(order.orderNo, 'shipped')
+      if (order) await sendOrderStatusEmail(brand, order.orderNo, 'shipped')
     }
     return getOrder(brand, id)
   }

@@ -27,7 +27,7 @@ const CreateSchema = z.object({
 
 /** GET /api/wall — approved posts for the storefront feed. */
 export async function GET() {
-  return handle(async () => ok(await listApprovedPosts()))
+  return handle(async () => ok(await listApprovedPosts('femi9')))
 }
 
 /** POST /api/wall — submit a story (moderated: created as `pending`). */
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     const parsed = CreateSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
 
-    await createPost(parsed.data)
+    await createPost('femi9', parsed.data)
     // Deliberately don't echo the post back — it's pending review, not live.
     return created({ ok: true, status: 'pending' })
   })

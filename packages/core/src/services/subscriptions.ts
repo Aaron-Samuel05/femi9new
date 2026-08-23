@@ -1,7 +1,7 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import type { SubscriptionStatus } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { applyZonePrice, resolveZone } from './pricing'
 import { getSettings } from './settings'
 
@@ -13,7 +13,7 @@ import { getSettings } from './settings'
  * customer-facing reads/writes here are all OWNERSHIP-CHECKED — every mutation is
  * scoped by { id, userId } so one shopper can never touch another's plan.
  *
- * Renewals are driven by generateDueOrders(), which the cron endpoint calls: it
+ * Renewals are driven by generateDueOrders(brand), which the cron endpoint calls: it
  * turns each due subscription into a real pending Order (mirroring checkout's
  * order-creation shape) with the subscribe discount applied. Payment for renewals
  * is pay-later/pending per the roadmap, so no gateway/loyalty side-effects run
@@ -117,10 +117,11 @@ export interface CreateSubscriptionInput {
  * accrues as renewals are generated. Rejects an unknown cadence/variant with a
  * typed error the route maps to a 400.
  */
-export async function createSubscription(
+export async function createSubscription(brand: Brand, 
   userId: string,
   input: CreateSubscriptionInput,
 ): Promise<SubscriptionView> {
+  const prisma = dbFor(brand)
   const cadence = await prisma.cadence.findUnique({ where: { code: input.cadenceCode } })
   if (!cadence) throw new CadenceNotFoundError(input.cadenceCode)
 
@@ -145,7 +146,8 @@ export async function createSubscription(
 }
 
 /** Every subscription for the signed-in customer, newest first. */
-export async function listForUser(userId: string): Promise<SubscriptionView[]> {
+export async function listForUser(brand: Brand, userId: string): Promise<SubscriptionView[]> {
+  const prisma = dbFor(brand)
   const subs = await prisma.subscription.findMany({
     where: { userId },
     orderBy: { createdAt: 'desc' },
@@ -155,7 +157,8 @@ export async function listForUser(userId: string): Promise<SubscriptionView[]> {
 }
 
 /** Re-read a subscription scoped to its owner → view, or null (not owned/gone). */
-async function ownedView(id: string, userId: string): Promise<SubscriptionView | null> {
+async function ownedView(brand: Brand, id: string, userId: string): Promise<SubscriptionView | null> {
+  const prisma = dbFor(brand)
   const sub = await prisma.subscription.findFirst({ where: { id, userId }, include: subInclude })
   return sub ? toView(sub) : null
 }
@@ -165,26 +168,27 @@ async function ownedView(id: string, userId: string): Promise<SubscriptionView |
  * (count 0 ⇒ not the owner or gone ⇒ null ⇒ 404 at the route) so we never leak the
  * existence of another user's subscription.
  */
-async function setStatus(
+async function setStatus(brand: Brand, 
   id: string,
   userId: string,
   status: SubscriptionStatus,
 ): Promise<SubscriptionView | null> {
+  const prisma = dbFor(brand)
   const res = await prisma.subscription.updateMany({ where: { id, userId }, data: { status } })
   if (res.count === 0) return null
-  return ownedView(id, userId)
+  return ownedView(brand, id, userId)
 }
 
-export function pause(id: string, userId: string): Promise<SubscriptionView | null> {
-  return setStatus(id, userId, 'paused')
+export function pause(brand: Brand, id: string, userId: string): Promise<SubscriptionView | null> {
+  return setStatus(brand, id, userId, 'paused')
 }
 
-export function resume(id: string, userId: string): Promise<SubscriptionView | null> {
-  return setStatus(id, userId, 'active')
+export function resume(brand: Brand, id: string, userId: string): Promise<SubscriptionView | null> {
+  return setStatus(brand, id, userId, 'active')
 }
 
-export function cancel(id: string, userId: string): Promise<SubscriptionView | null> {
-  return setStatus(id, userId, 'cancelled')
+export function cancel(brand: Brand, id: string, userId: string): Promise<SubscriptionView | null> {
+  return setStatus(brand, id, userId, 'cancelled')
 }
 
 /**
@@ -192,7 +196,8 @@ export function cancel(id: string, userId: string): Promise<SubscriptionView | n
  * the sub scoped to its owner first (so we have the current date + cadence.days),
  * then advances — returns null when it isn't the caller's subscription.
  */
-export async function skipNext(id: string, userId: string): Promise<SubscriptionView | null> {
+export async function skipNext(brand: Brand, id: string, userId: string): Promise<SubscriptionView | null> {
+  const prisma = dbFor(brand)
   const sub = await prisma.subscription.findFirst({
     where: { id, userId },
     include: { cadence: true },
@@ -202,7 +207,7 @@ export async function skipNext(id: string, userId: string): Promise<Subscription
     where: { id: sub.id },
     data: { nextDeliveryAt: addDays(sub.nextDeliveryAt, sub.cadence.days) },
   })
-  return ownedView(id, userId)
+  return ownedView(brand, id, userId)
 }
 
 // ── Renewals (cron) ─────────────────────────────────────────────────────────────
@@ -234,7 +239,7 @@ async function nextOrderNo(tx: Prisma.TransactionClient): Promise<string> {
  * can't cover the qty, which leaves the subscription untouched (still due) to retry
  * on a later run once restocked.
  */
-async function createRenewalOrder(
+async function createRenewalOrder(brand: Brand, 
   sub: SubRow,
   subscribeSavePct: number,
   freeShipThreshold: number,
@@ -247,7 +252,7 @@ async function createRenewalOrder(
   const MAX_ATTEMPTS = 5
   for (let attempt = 1; ; attempt++) {
     try {
-      await runRenewalTxn(sub, subscribeSavePct, freeShipThreshold)
+      await runRenewalTxn(brand, sub, subscribeSavePct, freeShipThreshold)
       return
     } catch (err) {
       if (isUniqueViolation(err) && attempt < MAX_ATTEMPTS) continue
@@ -256,11 +261,12 @@ async function createRenewalOrder(
   }
 }
 
-async function runRenewalTxn(
+async function runRenewalTxn(brand: Brand, 
   sub: SubRow,
   subscribeSavePct: number,
   freeShipThreshold: number,
 ): Promise<void> {
+  const prisma = dbFor(brand)
   await prisma.$transaction(async (tx) => {
     // ── CLAIM ──────────────────────────────────────────────────────────────
     // Atomically claim this due subscription before generating anything. This
@@ -297,7 +303,7 @@ async function runRenewalTxn(
       select: { id: true, state: true, pincode: true },
     })
     const zone = address
-      ? await resolveZone({ state: address.state, pincode: address.pincode }, tx)
+      ? await resolveZone(brand, { state: address.state, pincode: address.pincode }, tx)
       : null
 
     // The subscribe discount is applied per unit (mirrors data/products.subPrice),
@@ -373,9 +379,10 @@ async function runRenewalTxn(
  *
  * In production this is invoked by AWS EventBridge Scheduler via the cron route.
  */
-export async function generateDueOrders(): Promise<number> {
+export async function generateDueOrders(brand: Brand): Promise<number> {
+  const prisma = dbFor(brand)
   const now = new Date()
-  const { subscribeSavePct, freeShipThreshold } = await getSettings()
+  const { subscribeSavePct, freeShipThreshold } = await getSettings(brand)
 
   const due = await prisma.subscription.findMany({
     where: { status: 'active', nextDeliveryAt: { lte: now } },
@@ -385,7 +392,7 @@ export async function generateDueOrders(): Promise<number> {
   let generated = 0
   for (const sub of due) {
     try {
-      await createRenewalOrder(sub, subscribeSavePct, freeShipThreshold)
+      await createRenewalOrder(brand, sub, subscribeSavePct, freeShipThreshold)
       generated += 1
     } catch (err) {
       // Isolate per-subscription failures — the batch continues; the sub stays due.

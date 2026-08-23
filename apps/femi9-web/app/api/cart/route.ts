@@ -18,7 +18,7 @@ export async function GET() {
   return handle(async () => {
     const token = await getGuestToken()
     if (!token) return ok(EMPTY_CART)
-    return ok(await getCart(token))
+    return ok(await getCart('femi9', token))
   })
 }
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     const token = existing ?? newGuestToken()
 
     try {
-      const cart = await addItem(token, parsed.data.variantId, parsed.data.qty)
+      const cart = await addItem('femi9', token, parsed.data.variantId, parsed.data.qty)
       const res = ok(cart)
       if (!existing) {
         res.cookies.set(GUEST_COOKIE, token, {

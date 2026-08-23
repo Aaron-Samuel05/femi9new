@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function ShopPage() {
-  const products = await listProducts().catch(() => [])
+  const products = await listProducts('femi9').catch(() => [])
 
   return (
     <main className="wrap section shop-page">

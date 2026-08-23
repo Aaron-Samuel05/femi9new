@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     if (!addrHit.ok) return tooManyRequests(addrHit.retryAfterSec)
 
     try {
-      const { mock, devLink } = await requestMagicLink(email, next)
+      const { mock, devLink } = await requestMagicLink('femi9', email, next)
       return ok({ ok: true, mock, ...(devLink ? { devLink } : {}) })
     } catch (err) {
       if (err instanceof InvalidEmailError) return badRequest(err.message)

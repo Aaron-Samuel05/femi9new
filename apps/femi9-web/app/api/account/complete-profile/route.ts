@@ -2,7 +2,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest, conflict, handle, notFound, ok, serviceUnavailable, unauthorized } from '@femi9/core/api'
 import { requireUser } from '@femi9/core/auth'
-import { prisma } from '@femi9/core/db'
+import { prisma } from '@/lib/db'
 import { rateLimit, tooManyRequests } from '@femi9/core/rate-limit'
 import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 import {
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
       //    clean 409 rather than a P2002 500.
       if (email && !current.email) {
         await attachIdentity(prisma, session.sub, { email, emailVerified: null })
-        dispatchEmailVerification(session.sub, email)
+        dispatchEmailVerification('femi9', session.sub, email)
       }
 
       // 3. Phone — NOT written here. An unverified number on User is worse than
@@ -85,8 +85,8 @@ export async function POST(req: NextRequest) {
       let phoneVerificationRequired = false
       let otp: { mock: boolean; devCode?: string } | null = null
       if (phone && !current.phone) {
-        await assertIdentityFree(session.sub, 'phone', phone)
-        otp = await requestOtp(phone)
+        await assertIdentityFree('femi9', session.sub, 'phone', phone)
+        otp = await requestOtp('femi9', phone)
         phoneVerificationRequired = true
       }
 

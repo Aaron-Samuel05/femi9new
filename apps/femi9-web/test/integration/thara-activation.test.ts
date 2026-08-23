@@ -37,7 +37,7 @@ describe('activateAndLockIfEligible', () => {
 
   it('promotes purchase_pending -> active on ≥ ₹3,000 order', async () => {
     const u = await makeUser()
-    const { id: memId } = await enrollUser(u.id, 'v1')
+    const { id: memId } = await enrollUser('femi9', u.id, 'v1')
     const order = await paidOrder(u.id, 300_000)
 
     await prisma.$transaction((tx) => activateAndLockIfEligible(tx, order.id))
@@ -50,7 +50,7 @@ describe('activateAndLockIfEligible', () => {
 
   it('does not activate on an order below ₹3,000', async () => {
     const u = await makeUser()
-    const { id: memId } = await enrollUser(u.id, 'v1')
+    const { id: memId } = await enrollUser('femi9', u.id, 'v1')
     const order = await paidOrder(u.id, 299_900)
 
     await prisma.$transaction((tx) => activateAndLockIfEligible(tx, order.id))
@@ -62,7 +62,7 @@ describe('activateAndLockIfEligible', () => {
 
   it("locks the incoming referral on the referred user's first ≥ ₹3,000 order", async () => {
     const referrerUser = await makeUser()
-    const { id: refMemId } = await enrollUser(referrerUser.id, 'v1')
+    const { id: refMemId } = await enrollUser('femi9', referrerUser.id, 'v1')
     const referredUser = await makeUser()
     await prisma.tharaReferral.create({
       data: { referrerId: refMemId, referredUserId: referredUser.id },

@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     if (!rewardOptionId) return badRequest('Choose a reward to redeem.')
 
     try {
-      const { couponCode } = await redeem(user.sub, rewardOptionId)
+      const { couponCode } = await redeem('femi9', user.sub, rewardOptionId)
       return ok({ couponCode })
     } catch (err) {
       // Both are expected client-side conditions, not server faults.

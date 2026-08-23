@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { v6Groups, v6PrefixKeys } from './ip'
 import type { IndiaState } from './india-states'
 
@@ -115,7 +115,8 @@ const MIN_OBSERVATIONS = Number(process.env.GEOIP_CIRCLE_MIN_OBSERVATIONS ?? 12)
  * dropping to raw SQL. Returns null for IPv4, malformed input, an empty table,
  * or a row that has not yet cleared `MIN_OBSERVATIONS`.
  */
-export async function lookupCircle(address: string): Promise<CircleMatch | null> {
+export async function lookupCircle(brand: Brand, address: string): Promise<CircleMatch | null> {
+  const prisma = dbFor(brand)
   const groups = v6Groups(address)
   if (!groups) return null
 

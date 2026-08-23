@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { configuredEnv, mockProvidersAllowed } from '../runtime-mode'
 
 export interface EmailNotification {
@@ -13,7 +13,8 @@ export interface EmailNotification {
 }
 
 /** Idempotent, audited email delivery. Provider failures do not lose the log. */
-export async function sendEmailNotification(input: EmailNotification): Promise<{ sent: boolean; duplicate?: boolean }> {
+export async function sendEmailNotification(brand: Brand, input: EmailNotification): Promise<{ sent: boolean; duplicate?: boolean }> {
+  const prisma = dbFor(brand)
   const existing = await prisma.notificationLog.findUnique({ where: { dedupeKey: input.dedupeKey } })
   if (existing?.status === 'sent' || existing?.status === 'mocked') return { sent: true, duplicate: true }
 

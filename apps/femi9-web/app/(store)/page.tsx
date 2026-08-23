@@ -24,6 +24,6 @@ export default async function HomePage() {
   // Testimonials are no longer fetched here: the landing rail plays the customer
   // video clips (see VideoTestimonials), and the moderated Review table is read
   // by the product page, where the written reviews are shown.
-  const [products, posts] = await Promise.all([listProducts(), listPosts()])
+  const [products, posts] = await Promise.all([listProducts('femi9'), listPosts('femi9')])
   return <Home products={products} posts={posts} />
 }

@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     if (!user) return unauthorized()
     const parsed = AddressSchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Check the address fields.', parsed.error.flatten())
-    const address = await createAddress(user.sub, parsed.data)
+    const address = await createAddress('femi9', user.sub, parsed.data)
     return created({ id: address.id })
   })
 }

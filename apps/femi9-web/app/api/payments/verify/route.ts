@@ -65,12 +65,12 @@ export async function POST(req: NextRequest) {
       // swap to a cheaper/other order to claim it paid. The submitted orderNo is
       // only honoured when it matches the order the signed payment actually
       // references.
-      const resolvedOrderNo = await orderNoForRazorpayOrderId(razorpay_order_id)
+      const resolvedOrderNo = await orderNoForRazorpayOrderId('femi9', razorpay_order_id)
       if (!resolvedOrderNo) return badRequest('Payment does not match any known order')
       if (resolvedOrderNo !== orderNo) return badRequest('Payment does not match the submitted order')
 
       try {
-        const result = await markOrderPaid({
+        const result = await markOrderPaid('femi9', {
           orderNo: resolvedOrderNo,
           razorpayPaymentId: razorpay_payment_id,
           razorpayOrderId: razorpay_order_id,
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return badRequest('Invalid payment payload', parsed.error.flatten())
 
     try {
-      const result = await markOrderPaid({
+      const result = await markOrderPaid('femi9', {
         orderNo: parsed.data.orderNo,
         razorpayPaymentId: `mockpay_${parsed.data.orderNo}`,
         signatureVerified: false,

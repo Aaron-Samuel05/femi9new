@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
 import { sendEmailNotification } from './notifications'
 
@@ -43,7 +43,8 @@ export type OrderMailStatus = keyof typeof COPY
  * or block an admin's status change. Failures are logged and the NotificationLog
  * row records them for a retry.
  */
-export async function sendOrderStatusEmail(orderNo: string, status: OrderMailStatus): Promise<void> {
+export async function sendOrderStatusEmail(brand: Brand, orderNo: string, status: OrderMailStatus): Promise<void> {
+  const prisma = dbFor(brand)
   try {
     const order = await prisma.order.findUnique({
       where: { orderNo },
@@ -106,7 +107,7 @@ export async function sendOrderStatusEmail(orderNo: string, status: OrderMailSta
 ${addr ? `<p>Shipping to: ${escapeHtml(addr)}</p>` : ''}
 <p>Femi9 &middot; organic period care</p>`
 
-    await sendEmailNotification({
+    await sendEmailNotification(brand, {
       userId: order.userId ?? undefined,
       to,
       subject: copy.subject(orderNo),

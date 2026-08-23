@@ -1,6 +1,6 @@
 import 'server-only'
 import { cache } from 'react'
-import { prisma } from '../db'
+import { dbFor, type Brand, type PrismaClient } from '@femi9/db'
 
 /**
  * Regional-pricing resolver (read side).
@@ -28,7 +28,7 @@ import { prisma } from '../db'
  *
  *   resolveZone(signal)   — explicit. `placeOrder` passes the DELIVERY ADDRESS,
  *                           which is the only signal that decides real money.
- *   resolveAmbientZone()  — best guess for a browsing visitor: her saved
+ *   resolveAmbientZone(brand)  — best guess for a browsing visitor: her saved
  *                           address, else CloudFront edge geo, else default.
  *                           Request-cached, so a page that renders a grid, a
  *                           cart and a summary resolves it once.
@@ -86,10 +86,10 @@ export const NO_OVERRIDES: ZoneOverrides = { products: {}, variants: {} }
  * `$transaction` pass `tx` so this read joins their transaction instead of
  * borrowing a second pooled connection while the first is held.
  */
-type Db = Pick<typeof prisma, 'zoneRegion' | 'priceZone' | 'zoneProductPrice' | 'zoneVariantPrice'>
+type Db = Pick<PrismaClient, 'zoneRegion' | 'priceZone' | 'zoneProductPrice' | 'zoneVariantPrice'>
 
 /** Resolve the applicable zone for a location, or the default zone, or null. */
-export async function resolveZone(signal: LocationSignal, db: Db = prisma): Promise<ResolvedZone | null> {
+export async function resolveZone(brand: Brand, signal: LocationSignal, db: Db = dbFor(brand)): Promise<ResolvedZone | null> {
   // Strongest signal first. Pincode is matched by its leading-3 prefix, since a
   // ZoneRegion of kind 'pincode' stores a prefix (e.g. "641" for the Coimbatore area).
   const candidates: { kind: 'pincode' | 'district' | 'state'; value: string }[] = []
@@ -215,26 +215,27 @@ export function applyZonePrice(
  * Never throws: any failure (no request scope, a DB blip, no session) degrades
  * to the default zone, i.e. the standard price.
  */
-export const resolveAmbientZone = cache(async (): Promise<ResolvedZone | null> => {
+export const resolveAmbientZone = cache(async (brand: Brand): Promise<ResolvedZone | null> => {
   try {
-    const saved = await savedAddressSignal()
+    const saved = await savedAddressSignal(brand)
     if (saved) {
-      const zone = await resolveZone(saved)
+      const zone = await resolveZone(brand, saved)
       if (zone) return zone
     }
 
     // Imported lazily: this module is also loaded by cron/CLI paths that have no
     // request scope, and `next/headers` need not be dragged in for them.
     const { detectGeoSignal } = await import('../geo/detect')
-    const geo = await detectGeoSignal()
-    return await resolveZone(geo)
+    const geo = await detectGeoSignal(brand)
+    return await resolveZone(brand, geo)
   } catch {
     return null
   }
 })
 
 /** The signed-in shopper's primary delivery address, as a location signal. */
-async function savedAddressSignal(): Promise<LocationSignal | null> {
+async function savedAddressSignal(brand: Brand): Promise<LocationSignal | null> {
+  const prisma = dbFor(brand)
   const { getSession } = await import('../auth')
   const session = await getSession()
   if (!session) return null

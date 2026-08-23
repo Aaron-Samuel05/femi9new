@@ -1,5 +1,5 @@
 import 'server-only'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
 import {
   cycleCryptoConfigured,
@@ -248,7 +248,8 @@ function referenceDay(clientToday?: string): { today: string; latestAllowed: str
   return { today: serverToday, latestAllowed: addDaysKey(serverToday, 1) }
 }
 
-async function requireConsent(userId: string): Promise<void> {
+async function requireConsent(brand: Brand, userId: string): Promise<void> {
+  const prisma = dbFor(brand)
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { cycleDataConsent: true },
@@ -257,7 +258,8 @@ async function requireConsent(userId: string): Promise<void> {
 }
 
 /** The most recent product the user actually bought, for the reorder surfaces. */
-async function readLastOrderedProduct(userId: string): Promise<LastOrderedProduct | null> {
+async function readLastOrderedProduct(brand: Brand, userId: string): Promise<LastOrderedProduct | null> {
+  const prisma = dbFor(brand)
   const item = await prisma.orderItem.findFirst({
     where: { order: { userId, status: { in: ['paid', 'processing', 'shipped', 'delivered'] } } },
     orderBy: { order: { placedAt: 'desc' } },
@@ -290,7 +292,8 @@ async function readLastOrderedProduct(userId: string): Promise<LastOrderedProduc
 
 // ── Read model ───────────────────────────────────────────────────────────────
 
-export async function getCycleData(userId: string): Promise<CycleData> {
+export async function getCycleData(brand: Brand, userId: string): Promise<CycleData> {
+  const prisma = dbFor(brand)
   const [periodRows, user, symptomRows, lastOrderedProduct] = await Promise.all([
     prisma.periodLog.findMany({
       where: { userId },
@@ -301,7 +304,7 @@ export async function getCycleData(userId: string): Promise<CycleData> {
       where: { userId },
       select: { id: true, date: true, symptom: true, level: true, encryptedData: true },
     }),
-    readLastOrderedProduct(userId),
+    readLastOrderedProduct(brand, userId),
   ])
 
   const todayKey = dayKeyInZone(STORE_TIMEZONE)
@@ -590,13 +593,14 @@ export async function getCycleData(userId: string): Promise<CycleData> {
  * Returns `deduped: true` when an existing row was updated rather than created,
  * so the route can answer 200 instead of 201.
  */
-export async function logPeriod(
+export async function logPeriod(brand: Brand, 
   userId: string,
   startDate: string,
   lengthDays: number,
   clientToday?: string,
 ): Promise<{ id: string; deduped: boolean }> {
-  await requireConsent(userId)
+  const prisma = dbFor(brand)
+  await requireConsent(brand, userId)
   const { latestAllowed } = referenceDay(clientToday)
   if (!isDayKey(startDate) || startDate > latestAllowed) throw new FutureDateError()
 
@@ -621,14 +625,15 @@ export async function logPeriod(
 /** Correct an already-logged period. Re-encrypts the payload and re-keys the
  *  day hash, so moving a start onto a day that already exists is refused by the
  *  unique index rather than creating a duplicate. */
-export async function updatePeriod(
+export async function updatePeriod(brand: Brand, 
   userId: string,
   id: string,
   startDate: string,
   lengthDays: number,
   clientToday?: string,
 ): Promise<boolean> {
-  await requireConsent(userId)
+  const prisma = dbFor(brand)
+  await requireConsent(brand, userId)
   const { latestAllowed } = referenceDay(clientToday)
   if (!isDayKey(startDate) || startDate > latestAllowed) throw new FutureDateError()
 
@@ -654,7 +659,7 @@ export async function updatePeriod(
 
 /** Log a symptom intensity (0-3) for a given day, with an optional free-text
  *  note that rides inside the encrypted payload (never a plaintext column). */
-export async function logSymptom(
+export async function logSymptom(brand: Brand, 
   userId: string,
   date: string,
   symptom: string,
@@ -662,7 +667,8 @@ export async function logSymptom(
   clientToday?: string,
   note?: string,
 ): Promise<void> {
-  await requireConsent(userId)
+  const prisma = dbFor(brand)
+  await requireConsent(brand, userId)
   const { latestAllowed } = referenceDay(clientToday)
   if (!isDayKey(date) || date > latestAllowed) throw new FutureDateError()
 
@@ -681,13 +687,14 @@ export async function logSymptom(
 }
 
 /** Correct an already-logged symptom (re-encrypts the payload). */
-export async function updateSymptom(
+export async function updateSymptom(brand: Brand, 
   userId: string,
   id: string,
   patch: { date?: string; symptom?: string; level?: number },
   clientToday?: string,
 ): Promise<boolean> {
-  await requireConsent(userId)
+  const prisma = dbFor(brand)
+  await requireConsent(brand, userId)
   const row = await prisma.symptomLog.findFirst({
     where: { id, userId },
     select: { id: true, encryptedData: true, date: true, symptom: true, level: true },
@@ -714,12 +721,14 @@ export async function updateSymptom(
   return true
 }
 
-export async function deletePeriod(userId: string, id: string): Promise<boolean> {
+export async function deletePeriod(brand: Brand, userId: string, id: string): Promise<boolean> {
+  const prisma = dbFor(brand)
   const result = await prisma.periodLog.deleteMany({ where: { id, userId } })
   return result.count === 1
 }
 
-export async function deleteSymptom(userId: string, id: string): Promise<boolean> {
+export async function deleteSymptom(brand: Brand, userId: string, id: string): Promise<boolean> {
+  const prisma = dbFor(brand)
   const result = await prisma.symptomLog.deleteMany({ where: { id, userId } })
   return result.count === 1
 }
@@ -731,7 +740,8 @@ export async function deleteSymptom(userId: string, id: string): Promise<boolean
  * my menstrual data" means the rows too, and the UI copy says so explicitly
  * before she confirms.
  */
-export async function setCycleConsent(userId: string, consent: boolean): Promise<boolean> {
+export async function setCycleConsent(brand: Brand, userId: string, consent: boolean): Promise<boolean> {
+  const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {
     const result = await tx.user.updateMany({ where: { id: userId }, data: { cycleDataConsent: consent } })
     if (result.count !== 1) return false

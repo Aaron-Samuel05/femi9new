@@ -47,7 +47,7 @@ async function placeTestOrder(opts?: { price?: number; qty?: number; stock?: num
   const { variant } = await makeProduct({ price, stock })
   const token = `tok-${Math.random().toString(36).slice(2, 10)}`
   await cartWith(token, variant.id, qty)
-  const result = await placeOrder(token, CUSTOMER)
+  const result = await placeOrder('femi9', token, CUSTOMER)
   const order = await prisma.order.findUniqueOrThrow({ where: { orderNo: result.orderNo } })
   return { result, order, variant, qty }
 }
@@ -93,17 +93,17 @@ describe('payment capture', () => {
 
   it('reuses the pending gateway intent for a safe payment retry', async () => {
     const { result, order } = await placeTestOrder()
-    await expect(pendingPaymentIntent(order.orderNo)).resolves.toEqual(result.payment)
+    await expect(pendingPaymentIntent('femi9', order.orderNo)).resolves.toEqual(result.payment)
 
-    await markOrderPaid(captureArgs(order.orderNo))
-    await expect(pendingPaymentIntent(order.orderNo)).rejects.toBeInstanceOf(OrderNotPayableError)
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await expect(pendingPaymentIntent('femi9', order.orderNo)).rejects.toBeInstanceOf(OrderNotPayableError)
   })
 
   it('markOrderPaid flips the order to paid and awards points exactly once (idempotent)', async () => {
     const { order } = await placeTestOrder()
     const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS // 1500 + 100
 
-    const first = await markOrderPaid(captureArgs(order.orderNo))
+    const first = await markOrderPaid('femi9', captureArgs(order.orderNo))
     expect(first).toMatchObject({ ok: true, status: 'paid', alreadyPaid: false })
 
     const paid = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
@@ -120,7 +120,7 @@ describe('payment capture', () => {
     expect(await prisma.pointsLedger.count()).toBe(1)
 
     // Re-delivered webhook / double submit: same order, already paid → no re-write.
-    const second = await markOrderPaid(captureArgs(order.orderNo))
+    const second = await markOrderPaid('femi9', captureArgs(order.orderNo))
     expect(second).toMatchObject({ ok: true, status: 'paid', alreadyPaid: true })
 
     const stillPaid = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
@@ -135,8 +135,8 @@ describe('payment capture', () => {
     const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
 
     const results = await Promise.all([
-      markOrderPaid(captureArgs(order.orderNo)),
-      markOrderPaid(captureArgs(order.orderNo)),
+      markOrderPaid('femi9', captureArgs(order.orderNo)),
+      markOrderPaid('femi9', captureArgs(order.orderNo)),
     ])
 
     expect(results.filter((result) => result.alreadyPaid === false)).toHaveLength(1)
@@ -155,7 +155,7 @@ describe('payment capture', () => {
     const payment = await prisma.payment.findFirstOrThrow({ where: { orderId: order.id } })
     await prisma.payment.update({ where: { id: payment.id }, data: { amount: order.total + 1 } })
 
-    await expect(markOrderPaid(captureArgs(order.orderNo))).rejects.toBeInstanceOf(
+    await expect(markOrderPaid('femi9', captureArgs(order.orderNo))).rejects.toBeInstanceOf(
       PaymentAmountMismatchError,
     )
 
@@ -174,7 +174,7 @@ describe('payment capture', () => {
     // Remove the intent entirely — a capture must never fabricate one.
     await prisma.payment.deleteMany({ where: { orderId: order.id } })
 
-    await expect(markOrderPaid(captureArgs(order.orderNo))).rejects.toBeInstanceOf(
+    await expect(markOrderPaid('femi9', captureArgs(order.orderNo))).rejects.toBeInstanceOf(
       PaymentIntentMissingError,
     )
 

@@ -1,6 +1,6 @@
 import 'server-only'
 import { cookies } from 'next/headers'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
 import { PAID_ORDER_STATUSES } from '../order-status'
 import { IdentityConflictError, attachIdentity } from './auth'
@@ -129,7 +129,8 @@ export interface PlaceOrderResult {
  * the gateway can safely retry without creating a second order or reserving
  * stock again.
  */
-export async function pendingPaymentIntent(orderNo: string): Promise<PaymentIntent> {
+export async function pendingPaymentIntent(brand: Brand, orderNo: string): Promise<PaymentIntent> {
+  const prisma = dbFor(brand)
   const order = await prisma.order.findUnique({
     where: { orderNo },
     select: {
@@ -185,16 +186,17 @@ function isOrderNoUniqueViolation(err: unknown): boolean {
  * restores stock and removes the pending order while preserving the shopper's
  * cart for a retry.
  */
-export async function placeOrder(
+export async function placeOrder(brand: Brand, 
   token: string,
   customer: CheckoutCustomer,
   sessionUserId?: string,
 ): Promise<PlaceOrderResult> {
+  const prisma = dbFor(brand)
   // Settings are a read of business config, not part of the atomic order write —
   // fetch them before opening the transaction to keep it short. (Loyalty points
   // are no longer awarded here; they are granted on capture in markOrderPaid.)
-  const { freeShipThreshold } = await getSettings()
-  const zone = await resolveZone({ state: customer.state, pincode: customer.pincode })
+  const { freeShipThreshold } = await getSettings(brand)
+  const zone = await resolveZone(brand, { state: customer.state, pincode: customer.pincode })
 
   // Referral attribution rides in an httpOnly cookie dropped by /r/[code]. Read
   // it here (request scope) so the transaction can stamp the order's affiliate.
@@ -477,7 +479,7 @@ export async function placeOrder(
     // same transaction) and returns the affiliate id to stamp on the order; it's
     // a no-op for an unknown/pending/suspended code.
     if (refCode) {
-      const affiliateId = await attributeOrder(refCode, order.id, subtotal, tx)
+      const affiliateId = await attributeOrder(brand, refCode, order.id, subtotal, tx)
       if (affiliateId) {
         await tx.order.update({ where: { id: order.id }, data: { affiliateId } })
       }
@@ -581,7 +583,7 @@ export async function placeOrder(
  *    capture), set the order to 'paid', and award loyalty points, all in one
  *    transaction. Points are granted here (on capture) exactly once.
  */
-export async function markOrderPaid({
+export async function markOrderPaid(brand: Brand, {
   orderNo,
   razorpayPaymentId,
   razorpayOrderId,
@@ -594,9 +596,10 @@ export async function markOrderPaid({
   signatureVerified: boolean
   method?: string
 }): Promise<{ ok: true; status: 'paid'; alreadyPaid: boolean }> {
+  const prisma = dbFor(brand)
   // Loyalty rate/bonus for the on-capture award. A plain config read — kept
   // outside the transaction to keep it short.
-  const { pointsPerRupee, firstOrderBonusPoints } = await getSettings()
+  const { pointsPerRupee, firstOrderBonusPoints } = await getSettings(brand)
 
   const result = await prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -700,7 +703,7 @@ export async function markOrderPaid({
 
     // Thara: 1% reward points to the referrer's current-cycle ledger. Same
     // eligibility as commission; empties into an Amazon voucher at cycle close.
-    await accrueTharaPoints(tx, order.id)
+    await accrueTharaPoints(brand, tx, order.id)
 
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })
@@ -708,7 +711,7 @@ export async function markOrderPaid({
   // Outside the transaction: a mail provider round-trip has no business holding
   // a payment-capture lock open, and sendOrderStatusEmail is idempotent on its
   // own dedupeKey so the webhook/verify/cron race cannot triple-send.
-  if (!result.alreadyPaid) await sendOrderStatusEmail(orderNo, 'paid')
+  if (!result.alreadyPaid) await sendOrderStatusEmail(brand, orderNo, 'paid')
   return result
 }
 
@@ -717,7 +720,8 @@ export async function markOrderPaid({
  * orders with no capture after the expiry window are cancelled and release the
  * stock/coupon reservation exactly once.
  */
-export async function reconcilePendingOrders(olderThanMinutes = 60): Promise<{ paid: number; cancelled: number }> {
+export async function reconcilePendingOrders(brand: Brand, olderThanMinutes = 60): Promise<{ paid: number; cancelled: number }> {
+  const prisma = dbFor(brand)
   const cutoff = new Date(Date.now() - Math.max(15, olderThanMinutes) * 60_000)
   const orders = await prisma.order.findMany({
     where: { status: 'pending', placedAt: { lt: cutoff } },
@@ -738,7 +742,7 @@ export async function reconcilePendingOrders(olderThanMinutes = 60): Promise<{ p
       capture = payments.find((p) => p.status === 'captured' && p.amount === order.total * 100)
     }
     if (capture && intent?.razorpayOrderId) {
-      await markOrderPaid({
+      await markOrderPaid(brand, {
         orderNo: order.orderNo,
         razorpayPaymentId: capture.id,
         razorpayOrderId: intent.razorpayOrderId,
@@ -771,7 +775,8 @@ export async function reconcilePendingOrders(olderThanMinutes = 60): Promise<{ p
  * stamped at checkout. The webhook only carries gateway ids, so this is how it
  * finds which of our orders to mark paid. Returns null when nothing references it.
  */
-export async function orderNoForRazorpayOrderId(razorpayOrderId: string): Promise<string | null> {
+export async function orderNoForRazorpayOrderId(brand: Brand, razorpayOrderId: string): Promise<string | null> {
+  const prisma = dbFor(brand)
   const payment = await prisma.payment.findFirst({
     where: { razorpayOrderId },
     orderBy: { createdAt: 'desc' },
@@ -810,7 +815,8 @@ export interface OrderConfirmation {
 }
 
 /** Load an order by its public order number for the confirmation page, or null. */
-export async function getOrderByNo(orderNo: string): Promise<OrderConfirmation | null> {
+export async function getOrderByNo(brand: Brand, orderNo: string): Promise<OrderConfirmation | null> {
+  const prisma = dbFor(brand)
   const order = await prisma.order.findUnique({
     where: { orderNo },
     include: {

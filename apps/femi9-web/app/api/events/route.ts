@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       return badRequest('Invalid event payload', parsed.error.flatten())
     }
 
-    await logEvent({ type: parsed.data.type, meta: parsed.data.meta })
+    await logEvent('femi9', { type: parsed.data.type, meta: parsed.data.meta })
     return ok({ ok: true })
   })
 }

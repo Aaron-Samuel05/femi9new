@@ -15,7 +15,7 @@ import { ManualIssuer } from '@femi9/core/thara/voucher-issuer'
 
 async function activeMember(email: string) {
   const u = await prisma.user.create({ data: { email, role: 'customer' } })
-  const { id } = await enrollUser(u.id, 'v1')
+  const { id } = await enrollUser('femi9', u.id, 'v1')
   await prisma.tharaMembership.update({
     where: { id },
     data: { status: 'active', activatedAt: new Date() },
@@ -58,8 +58,8 @@ describe('Thara reward points + voucher (sub-project D)', () => {
   })
 
   it('currentOpenCycle returns the same open cycle across calls', async () => {
-    const a = await currentOpenCycle()
-    const b = await currentOpenCycle()
+    const a = await currentOpenCycle('femi9')
+    const b = await currentOpenCycle('femi9')
     expect(b.id).toBe(a.id)
   })
 
@@ -69,12 +69,12 @@ describe('Thara reward points + voucher (sub-project D)', () => {
     await prisma.tharaReferral.create({
       data: { referrerId: referrer.membershipId, referredUserId: referredUser.id, lockedAt: new Date() },
     })
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const order = await paidOrderForUser(referredUser.id, 300_000) // ₹3,000 = 30 points expected
 
-    await prisma.$transaction((tx) => accrueTharaPoints(tx, order.id))
+    await prisma.$transaction((tx) => accrueTharaPoints('femi9', tx, order.id))
 
-    expect(await getUserCyclePoints(referrer.userId, cycle.id)).toBe(30)
+    expect(await getUserCyclePoints('femi9', referrer.userId, cycle.id)).toBe(30)
   })
 
   it('does not accrue points on an unlocked referral', async () => {
@@ -83,10 +83,10 @@ describe('Thara reward points + voucher (sub-project D)', () => {
     await prisma.tharaReferral.create({
       data: { referrerId: referrer.membershipId, referredUserId: referredUser.id, lockedAt: null },
     })
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const order = await paidOrderForUser(referredUser.id, 500_000)
-    await prisma.$transaction((tx) => accrueTharaPoints(tx, order.id))
-    expect(await getUserCyclePoints(referrer.userId, cycle.id)).toBe(0)
+    await prisma.$transaction((tx) => accrueTharaPoints('femi9', tx, order.id))
+    expect(await getUserCyclePoints('femi9', referrer.userId, cycle.id)).toBe(0)
   })
 
   it('reverseTharaPointsForRefund writes a mirror-signed row per accrual', async () => {
@@ -95,17 +95,17 @@ describe('Thara reward points + voucher (sub-project D)', () => {
     await prisma.tharaReferral.create({
       data: { referrerId: referrer.membershipId, referredUserId: referredUser.id, lockedAt: new Date() },
     })
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const order = await paidOrderForUser(referredUser.id, 800_000) // 80 points
-    await prisma.$transaction((tx) => accrueTharaPoints(tx, order.id))
-    expect(await getUserCyclePoints(referrer.userId, cycle.id)).toBe(80)
+    await prisma.$transaction((tx) => accrueTharaPoints('femi9', tx, order.id))
+    expect(await getUserCyclePoints('femi9', referrer.userId, cycle.id)).toBe(80)
 
     await prisma.$transaction((tx) => reverseTharaPointsForRefund(tx, order.id))
-    expect(await getUserCyclePoints(referrer.userId, cycle.id)).toBe(0)
+    expect(await getUserCyclePoints('femi9', referrer.userId, cycle.id)).toBe(0)
   })
 
   it('closeCycle issues one voucher per user with points, using ManualIssuer (no code)', async () => {
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const a = await prisma.user.create({ data: { email: 'a@t.local', role: 'customer' } })
     const b = await prisma.user.create({ data: { email: 'b@t.local', role: 'customer' } })
     const c = await prisma.user.create({ data: { email: 'c@t.local', role: 'customer' } })
@@ -118,7 +118,7 @@ describe('Thara reward points + voucher (sub-project D)', () => {
       ],
     })
 
-    const result = await closeCycle(cycle.id, new ManualIssuer())
+    const result = await closeCycle('femi9', cycle.id, new ManualIssuer())
     expect(result.vouchersIssued).toBe(2)
 
     const vA = await prisma.tharaVoucher.findFirst({ where: { userId: a.id, cycleId: cycle.id } })
@@ -136,13 +136,13 @@ describe('Thara reward points + voucher (sub-project D)', () => {
   })
 
   it('closeCycle is idempotent on a closed cycle', async () => {
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const a = await prisma.user.create({ data: { email: 'idem-a@t.local', role: 'customer' } })
     await prisma.tharaRewardPointsLedger.create({
       data: { userId: a.id, cycleId: cycle.id, delta: 10, reason: 'referral-points' },
     })
-    await closeCycle(cycle.id, new ManualIssuer())
-    const second = await closeCycle(cycle.id, new ManualIssuer())
+    await closeCycle('femi9', cycle.id, new ManualIssuer())
+    const second = await closeCycle('femi9', cycle.id, new ManualIssuer())
     expect(second.vouchersIssued).toBe(0)
     // Still exactly one voucher for a.
     const count = await prisma.tharaVoucher.count({ where: { userId: a.id, cycleId: cycle.id } })
@@ -150,7 +150,7 @@ describe('Thara reward points + voucher (sub-project D)', () => {
   })
 
   it('claimVoucher marks available -> claimed and stamps claimedAt', async () => {
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const u = await prisma.user.create({ data: { email: 'claim@t.local', role: 'customer' } })
     const v = await prisma.tharaVoucher.create({
       data: {
@@ -162,13 +162,13 @@ describe('Thara reward points + voucher (sub-project D)', () => {
         claimDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     })
-    const after = await claimVoucher(v.id, u.id)
+    const after = await claimVoucher('femi9', v.id, u.id)
     expect(after.status).toBe('claimed')
     expect(after.claimedAt).not.toBeNull()
   })
 
   it('claimVoucher refuses to claim someone else\'s voucher', async () => {
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const owner = await prisma.user.create({ data: { email: 'own@t.local', role: 'customer' } })
     const other = await prisma.user.create({ data: { email: 'other@t.local', role: 'customer' } })
     const v = await prisma.tharaVoucher.create({
@@ -181,11 +181,11 @@ describe('Thara reward points + voucher (sub-project D)', () => {
         claimDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       },
     })
-    await expect(claimVoucher(v.id, other.id)).rejects.toBeInstanceOf(TharaVoucherNotClaimableError)
+    await expect(claimVoucher('femi9', v.id, other.id)).rejects.toBeInstanceOf(TharaVoucherNotClaimableError)
   })
 
   it('expireStaleVouchers flips past-deadline vouchers to expired', async () => {
-    const cycle = await currentOpenCycle()
+    const cycle = await currentOpenCycle('femi9')
     const u = await prisma.user.create({ data: { email: 'exp@t.local', role: 'customer' } })
     await prisma.tharaVoucher.create({
       data: {
@@ -197,7 +197,7 @@ describe('Thara reward points + voucher (sub-project D)', () => {
         claimDeadline: new Date(Date.now() - 60 * 1000), // already past
       },
     })
-    const n = await expireStaleVouchers()
+    const n = await expireStaleVouchers('femi9')
     expect(n).toBe(1)
     const v = await prisma.tharaVoucher.findFirst({ where: { userId: u.id } })
     expect(v?.status).toBe('expired')

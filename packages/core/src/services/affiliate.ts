@@ -1,6 +1,6 @@
 import 'server-only'
 import { Prisma, type AffiliateStatus } from '@prisma/client'
-import { prisma } from '../db'
+import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
 import { sendEmailNotification } from './notifications'
 
@@ -73,7 +73,8 @@ export interface AffiliateApplication {
  * so an already-approved creator can never be demoted or lose their live code by
  * resubmitting the form.
  */
-export async function apply(input: AffiliateApplication): Promise<void> {
+export async function apply(brand: Brand, input: AffiliateApplication): Promise<void> {
+  const prisma = dbFor(brand)
   const email = input.email.trim()
   const handle = input.handle.replace(/^@+/, '').trim()
   const platform = input.platform?.trim() || null
@@ -111,7 +112,7 @@ export async function apply(input: AffiliateApplication): Promise<void> {
     return
   }
   try {
-    await sendEmailNotification({
+    await sendEmailNotification(brand, {
       to: opsEmail,
       subject: `New Femi9 creator application: @${handle}`,
       text: `${input.name} (@${handle}${platform ? `, ${platform}` : ''}${followerBand ? `, ${followerBand}` : ''}) applied. Review in the admin console.`,
@@ -138,7 +139,8 @@ export interface AffiliateStats {
  * lookup is uppercased, placeholder (mixed-case) codes never resolve here, so a
  * pending application's internal code can't be probed.
  */
-export async function getByCode(promoCode: string): Promise<AffiliateStats | null> {
+export async function getByCode(brand: Brand, promoCode: string): Promise<AffiliateStats | null> {
+  const prisma = dbFor(brand)
   const code = normalizeCode(promoCode)
   const affiliate = await prisma.affiliate.findUnique({
     where: { promoCode: code },
@@ -165,7 +167,8 @@ export async function getByCode(promoCode: string): Promise<AffiliateStats | nul
 }
 
 /** Owner-scoped affiliate dashboard. Promo codes are public; earnings are not. */
-export async function getForUser(userId: string): Promise<AffiliateStats | null> {
+export async function getForUser(brand: Brand, userId: string): Promise<AffiliateStats | null> {
+  const prisma = dbFor(brand)
   const affiliate = await prisma.affiliate.findUnique({
     where: { userId },
     select: { id: true, status: true, promoCode: true },
@@ -192,7 +195,8 @@ export async function getForUser(userId: string): Promise<AffiliateStats | null>
  * Record a click for an approved code — called by the /a/[code] redirect.
  * Silently ignores unknown/pending/suspended codes so a bad link is harmless.
  */
-export async function logClick(promoCode: string): Promise<void> {
+export async function logClick(brand: Brand, promoCode: string): Promise<void> {
+  const prisma = dbFor(brand)
   const code = normalizeCode(promoCode)
   const affiliate = await prisma.affiliate.findUnique({
     where: { promoCode: code },
@@ -215,10 +219,11 @@ export async function logClick(promoCode: string): Promise<void> {
  * would otherwise reference an order not yet visible to a separate connection.
  */
 export async function attributeOrder(
+  brand: Brand,
   promoCode: string,
   orderId: string,
   subtotal: number,
-  db: Db = prisma,
+  db: Db = dbFor(brand),
 ): Promise<string | null> {
   const code = normalizeCode(promoCode)
   const affiliate = await db.affiliate.findUnique({

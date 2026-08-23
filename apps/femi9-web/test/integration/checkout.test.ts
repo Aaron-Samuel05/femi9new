@@ -38,7 +38,7 @@ describe('checkout.placeOrder (integration)', () => {
     const { product, variant } = await makeProduct({ price: 199, stock: 50 })
     const token = await cartWith('guest-A', variant.id, 2)
 
-    const result = await placeOrder(token, customer('9000000001'))
+    const result = await placeOrder('femi9', token, customer('9000000001'))
     expect(result.orderNo).toMatch(/^FM-\d{5}$/)
 
     const order = await prisma.order.findUnique({
@@ -76,7 +76,7 @@ describe('checkout.placeOrder (integration)', () => {
     const { variant } = await makeProduct({ price: 500, stock: 10 })
     const token = await cartWith('guest-free', variant.id, 2)
 
-    const { orderNo } = await placeOrder(token, customer('9000000009'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000009'))
     const order = await prisma.order.findUniqueOrThrow({ where: { orderNo } })
     expect(order.subtotal).toBe(1000)
     expect(order.shipping).toBe(0)
@@ -90,8 +90,8 @@ describe('checkout.placeOrder (integration)', () => {
     const tokenB = await cartWith('guest-oversell-B', variant.id, 1)
 
     const results = await Promise.allSettled([
-      placeOrder(tokenA, customer('9000000011')),
-      placeOrder(tokenB, customer('9000000012')),
+      placeOrder('femi9', tokenA, customer('9000000011')),
+      placeOrder('femi9', tokenB, customer('9000000012')),
     ])
 
     const fulfilled = results.filter((r) => r.status === 'fulfilled')
@@ -116,7 +116,7 @@ describe('checkout.placeOrder (integration)', () => {
     const { variant } = await makeProduct({ price: 199, stock: 5 })
     const token = await cartWith('guest-points', variant.id, 1)
 
-    const { orderNo } = await placeOrder(token, customer('9000000021'))
+    const { orderNo } = await placeOrder('femi9', token, customer('9000000021'))
     const order = await prisma.order.findUniqueOrThrow({ where: { orderNo } })
     expect(order.status).toBe('pending')
 
@@ -135,10 +135,10 @@ describe('checkout.placeOrder (integration)', () => {
     const { variant } = await makeProduct({ price: 199, stock: 10 })
 
     const t1 = await cartWith('guest-seq-1', variant.id, 1)
-    const first = await placeOrder(t1, customer('9000000031'))
+    const first = await placeOrder('femi9', t1, customer('9000000031'))
 
     const t2 = await cartWith('guest-seq-2', variant.id, 1)
-    const second = await placeOrder(t2, customer('9000000031')) // same repeat buyer
+    const second = await placeOrder('femi9', t2, customer('9000000031')) // same repeat buyer
 
     expect(first.orderNo).not.toBe(second.orderNo)
     // Sequential allocation continues past the current max.
@@ -153,7 +153,7 @@ describe('checkout.placeOrder (integration)', () => {
       .spyOn(razorpay, 'createOrder')
       .mockRejectedValueOnce(new Error('simulated gateway outage'))
 
-    await expect(placeOrder(token, customer('9000000041'))).rejects.toThrow(
+    await expect(placeOrder('femi9', token, customer('9000000041'))).rejects.toThrow(
       'simulated gateway outage',
     )
 
