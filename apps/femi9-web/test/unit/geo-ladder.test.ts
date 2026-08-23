@@ -23,12 +23,12 @@ const lookupAsn = vi.fn()
 const lookupCity = vi.fn()
 const lookupCircle = vi.fn()
 
-vi.mock('@/lib/geo/mmdb', () => ({
+vi.mock('@femi9/core/geo/mmdb', () => ({
   lookupAsn: (...args: unknown[]) => lookupAsn(...args),
   lookupCity: (...args: unknown[]) => lookupCity(...args),
 }))
 // Mocked so the circle table never reaches Prisma from a unit test.
-vi.mock('@/lib/geo/circles', () => ({
+vi.mock('@femi9/core/geo/circles', () => ({
   lookupCircle: (...args: unknown[]) => lookupCircle(...args),
 }))
 

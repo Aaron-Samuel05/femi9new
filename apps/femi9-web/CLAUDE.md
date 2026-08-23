@@ -149,9 +149,22 @@ exactly `"true"`. Keep new Thara work behind it.
 `src/styles/base.css` / `app.css`; the `craft-*.css` family is the current design
 system; `admin.css` and `f9dash.css` own the console.
 
-**⚠️ `npm test` truncates every table.** It is safe only against a throwaway
-database. Never run it with a `.env` that points at staging or production —
-point `TEST_DATABASE_URL` at a scratch DB first.
+**⚠️ `npm test` truncates every table.** `test/setup.ts` refuses to run unless
+`DATABASE_URL` names a `*_test` database, and shell env beats `.env`, so point
+`TEST_DATABASE_URL` at a scratch database and it cannot touch anything else:
+
+```bash
+createdb femi9_test                 # once
+TEST_DATABASE_URL="postgresql://USER:PASS@127.0.0.1:5432/femi9_test?schema=public" npx vitest run
+```
+
+Push the schema in first with `npm run db:push`, pointing the same URL at
+`DATABASE_URL`/`DIRECT_URL`. Full suite: 37 files, 247 tests, ~75s.
+
+**Mock specifiers are strings, and TypeScript does not check them.** When a
+module moves, `vi.mock('@/lib/x')` keeps compiling and silently stops mocking
+anything — the test then exercises the real collaborator and can still "pass"
+for the wrong reason. Grep `vi.mock(` after any move.
 
 ## 4. Commands
 
@@ -197,3 +210,4 @@ Append one entry per task. Newest last.
 | 2026-08-23 | **Phase 1a — `packages/db`** | `packages/db/*` (new) · `src/lib/db.ts` · `Dockerfile` · `ci.yml` · `next.config.mjs` | Schema + 13 migrations → `@femi9/db`; seeds stayed (brand-specific). `dbFor(brand)` builds one client per brand from one schema — isolation in the connection string. `src/lib/db.ts` became a lazy Proxy shim so all ~80 call sites kept working and the credential-free Docker build still passes. Verified: proxy forwards delegates, `dbFor` memoises, `isBrand` rejects case/traversal/undefined, and **lumi9 refuses to fall back to femi9's `DATABASE_URL`**. |
 | 2026-08-23 | **Phase 1b — `packages/core`** | 64 modules → `packages/core` · 211 files repointed | Server half of `src/lib` moved to `@femi9/core`; 9 client-side files stayed. Signatures UNCHANGED (move first, thread `brand` second) — services still use the pinned `core/db`. Catalog view-model types moved to `core/types/catalog`, re-exported from `src/data/*` so component imports were untouched. Subpath exports, no barrel. Verified: both packages typecheck, femi9 builds, no `@/` alias left in core, no unresolved `@femi9/*` require in the standalone bundle. |
 | 2026-08-23 | **Phase 1c — `brand` threaded** | 35 core services · ~120 app/test files | All **161** core service functions now take `brand: Brand` first and call `dbFor(brand)`. Core exports **no** client; the Femi9 pin moved back to `apps/femi9-web/src/lib/db.ts` where pinning is legitimate. Every call site passes `'femi9'`, so behaviour is unchanged. Codemod gotchas worth remembering: a generic return type (`Promise<{...}>`) supplies a brace before the body; multi-line destructured params do too; `function f<T>(` isn't matched by `function f(`; arrow consts wrapped in `cache()` need it by hand; defaults like `db: Db = prisma` live in the signature, not the body. |
+| 2026-08-23 | **Phase 1 verified end-to-end** | `test/unit/geo-ladder.test.ts` | Ran the full suite against a LOCAL scratch `femi9_test`: **37 files / 247 tests pass**. Found a Phase 1b regression typecheck could not see — `vi.mock('@/lib/geo/mmdb'…)` still named the pre-move path, so the mocks were inert and 6 geo tests were exercising real lookups. Specifiers repointed at `@femi9/core/geo/*`. |
