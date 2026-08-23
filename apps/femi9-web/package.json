@@ -16,7 +16,7 @@
     "geoip:fetch": "node scripts/fetch-geoip.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e:seed-product": "node --env-file=.env scripts/seed-e2e-product.mjs",
+    "e2e:seed-product": "tsx scripts/seed-e2e-product.ts",
     "test:e2e": "node --env-file=.env scripts/e2e-http.mjs",
     "test:ui": "playwright test"
   },

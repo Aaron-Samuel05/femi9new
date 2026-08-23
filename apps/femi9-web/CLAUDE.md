@@ -41,10 +41,10 @@ same exact Next version as `lumi9-web`.
 app/
   (store)/            storefront: home, shop, product/[id], checkout, blog, thara, …
   account/ dashboard/ welcome/    signed-in customer surface
-  admin/login         env-credential sign-in
-  admin/(panel)/      ops console — 15 sections, _nav.tsx / _shell.tsx / _charts.tsx
-  api/                88 route handlers (33 under api/admin)
+  api/                route handlers (customer + webhooks + cron)
   a/[code] r/[code]   affiliate + Thara referral short links
+
+There is NO admin here any more — see below.
 src/
   lib/                CLIENT-side only now — 9 files: router-compat, track,
                       use-add-pulse, use-public-settings, sticky-nav,
@@ -95,12 +95,25 @@ a single-brand app; it was only dangerous while it lived in the shared package.
 Those direct queries are debt — the architecture says they belong in a service.
 Each one moved into `packages/core` is one fewer file importing this.
 
+**The ops console is not in this app.** It lives in `apps/admin`, serves both
+brands, and has its own per-brand cookies. `/admin` here redirects there when
+`ADMIN_CONSOLE_URL` is set, and 404s otherwise. Do not add admin pages or
+`/api/admin/*` routes back — the storefront's own E2E asserts that surface is
+gone.
+
+**⚠️ The cron routes' admin fallback is now inert.** `/api/cron/*` accept either
+a matching `x-cron-secret` OR a signed-in admin. This app no longer mints an
+admin cookie, so that second path can never succeed — **`CRON_SECRET` must be
+set**, or subscription renewals and Thara cycle closing have no way in. The
+routes were left otherwise untouched on purpose: they move money.
+
 **Two cookies, two audiences, never crossed.**
-`femi9_session` (aud `femi9-customer`, 30d) and `femi9_admin` (aud `femi9-admin`,
-7d). `middleware.ts` re-implements verification inline with Web Crypto because it
-runs on the edge; `@femi9/core/auth` and `@femi9/core/admin-auth` are the
-Node-side counterparts. **Change one and you must change the other** — they are the same
-check written twice on purpose.
+`femi9_session` (aud `femi9-customer`, 30d) is this app's only session now.
+`middleware.ts` re-implements verification inline with Web Crypto because it runs
+on the edge; `@femi9/core/auth` is the Node-side counterpart. **Change one and
+you must change the other** — the same check written twice, which is the cost of
+the edge runtime. (The admin console avoids this: it uses `proxy.ts` on Node and
+calls the shared verifier once.)
 
 **This app uses `middleware.ts`, not `proxy.ts`, on purpose.** Next 16 renamed
 the convention and every build warns about it. We have NOT migrated because
@@ -210,4 +223,5 @@ Append one entry per task. Newest last.
 | 2026-08-23 | **Phase 1a — `packages/db`** | `packages/db/*` (new) · `src/lib/db.ts` · `Dockerfile` · `ci.yml` · `next.config.mjs` | Schema + 13 migrations → `@femi9/db`; seeds stayed (brand-specific). `dbFor(brand)` builds one client per brand from one schema — isolation in the connection string. `src/lib/db.ts` became a lazy Proxy shim so all ~80 call sites kept working and the credential-free Docker build still passes. Verified: proxy forwards delegates, `dbFor` memoises, `isBrand` rejects case/traversal/undefined, and **lumi9 refuses to fall back to femi9's `DATABASE_URL`**. |
 | 2026-08-23 | **Phase 1b — `packages/core`** | 64 modules → `packages/core` · 211 files repointed | Server half of `src/lib` moved to `@femi9/core`; 9 client-side files stayed. Signatures UNCHANGED (move first, thread `brand` second) — services still use the pinned `core/db`. Catalog view-model types moved to `core/types/catalog`, re-exported from `src/data/*` so component imports were untouched. Subpath exports, no barrel. Verified: both packages typecheck, femi9 builds, no `@/` alias left in core, no unresolved `@femi9/*` require in the standalone bundle. |
 | 2026-08-23 | **Phase 1c — `brand` threaded** | 35 core services · ~120 app/test files | All **161** core service functions now take `brand: Brand` first and call `dbFor(brand)`. Core exports **no** client; the Femi9 pin moved back to `apps/femi9-web/src/lib/db.ts` where pinning is legitimate. Every call site passes `'femi9'`, so behaviour is unchanged. Codemod gotchas worth remembering: a generic return type (`Promise<{...}>`) supplies a brace before the body; multi-line destructured params do too; `function f<T>(` isn't matched by `function f(`; arrow consts wrapped in `cache()` need it by hand; defaults like `db: Db = prisma` live in the signature, not the body. |
+| 2026-08-23 | **Phase 2 — console moved out** | 15 pages + 31 routes → `apps/admin` | Every ops page and API left this app. Brand now comes from the SESSION (`requireConsole` / `requireConsoleApi`), never the URL segment. `/admin` redirects to `ADMIN_CONSOLE_URL` or 404s; `middleware.ts` no longer guards an admin surface. Storefront E2E rewritten: the seed script calls the services directly instead of the departed admin API, and both suites now assert the surface is **gone**. ⚠️ cron routes' admin fallback is inert — `CRON_SECRET` is required. |
 | 2026-08-23 | **Phase 1 verified end-to-end** | `test/unit/geo-ladder.test.ts` | Ran the full suite against a LOCAL scratch `femi9_test`: **37 files / 247 tests pass**. Found a Phase 1b regression typecheck could not see — `vi.mock('@/lib/geo/mmdb'…)` still named the pre-move path, so the mocks were inert and 6 geo tests were exercising real lookups. Specifiers repointed at `@femi9/core/geo/*`. |

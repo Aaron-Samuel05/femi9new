@@ -39,12 +39,19 @@ proxy.ts                      route guard (Node runtime — see below)
 app/
   login/                      page.tsx + LoginCard.tsx (the brand toggle)
   api/auth/login|logout/      sign in / sign out, per brand
-  [brand]/(panel)/            the console: layout.tsx renders nav from modules
+  [brand]/(panel)/            15 console sections, moved from the storefront
+  [brand]/api/                31 route handlers, moved from /api/admin
 src/lib/
   guard.ts                    requireConsole(brand, module?) — call it in EVERY page
+  api-guard.ts                requireConsoleApi(brand)      — call it in EVERY route
   safe-next.ts                validates ?next= before it reaches a Location header
-test/unit/                    identity + redirect safety
+src/charts/ src/components/ src/styles/   moved with the pages
+test/unit/                    identity · redirect safety · module gating
 ```
+
+Client components get the brand from `useParams()`, and call
+`` `/${brand}/api/…` `` — never a bare `/api/admin/…`, which no longer exists
+anywhere.
 
 ## Why `proxy.ts` and not `middleware.ts`
 

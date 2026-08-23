@@ -4,7 +4,7 @@
  * Femi9 black-box E2E test.
  *
  * This script drives the running Next.js application only through HTTP. It uses
- * real cookies and the same public/admin APIs used by the React UI. Run it
+ * real cookies and the same public APIs used by the React UI. Run it
  * against an isolated, seeded local database with Razorpay/MSG91 disabled.
  *
  *   E2E_BASE_URL=http://127.0.0.1:3100 npm run test:e2e
@@ -19,9 +19,6 @@ if (!isLocal && process.env.ALLOW_E2E_MUTATIONS !== 'true') {
   throw new Error(`Refusing E2E mutations against non-local URL ${baseUrl}.`)
 }
 
-const adminEmail = process.env.ADMIN_EMAIL
-const adminPassword = process.env.ADMIN_PASSWORD
-if (!adminEmail || !adminPassword) throw new Error('ADMIN_EMAIL and ADMIN_PASSWORD must be set.')
 
 const PRODUCT_SLUG = 'e2e-test-pad'
 const PRODUCT_NAME = 'Femi9 E2E Test Pad'
@@ -54,7 +51,6 @@ class CookieJar {
 const anonymous = new CookieJar()
 const shopper = new CookieJar()
 const customer = new CookieJar()
-const admin = new CookieJar()
 const checks = []
 
 async function request(path, { jar = anonymous, json, ...init } = {}) {
@@ -131,8 +127,11 @@ async function main() {
   status('Community wall renders', wallPage, 200)
 
   // Protected-route behavior before authentication.
-  const protectedAdmin = await request('/api/admin/orders')
-  status('Admin API rejects anonymous access', protectedAdmin, 401)
+  // The ops console moved to apps/admin, so the storefront must no longer serve
+  // an admin API at all. Its ABSENCE is the invariant now — a 401 here would
+  // mean the old surface came back.
+  const goneAdmin = await request('/api/admin/orders')
+  check('Storefront no longer serves the admin API', goneAdmin.response.status === 404)
   const protectedAccount = await request('/account')
   status('Account redirects anonymous visitors', protectedAccount, 307)
   // The redirect now carries the requested path so sign-in can return the
@@ -149,42 +148,6 @@ async function main() {
     'Account redirect preserves the destination',
     accountRedirectUrl?.searchParams.get('next') === '/account',
   )
-
-  // Admin authentication + catalog visibility.
-  const adminLogin = await request('/api/admin/login', {
-    jar: admin,
-    method: 'POST',
-    json: { email: adminEmail, password: adminPassword },
-  })
-  status('Admin login succeeds', adminLogin, 200)
-
-  const adminProducts = await request('/api/admin/products', { jar: admin })
-  status('Admin product API responds', adminProducts, 200)
-  check(
-    'Admin product API includes seeded product',
-    Array.isArray(adminProducts.body) &&
-      adminProducts.body.some((item) => item.slug === PRODUCT_SLUG),
-  )
-
-  for (const route of [
-    '/admin',
-    '/admin/orders',
-    '/admin/products',
-    '/admin/inventory',
-    '/admin/customers',
-    '/admin/coupons',
-    '/admin/subscriptions',
-    '/admin/affiliates',
-    '/admin/partners',
-    '/admin/community',
-    '/admin/reviews',
-    '/admin/content/blog',
-    '/admin/pricing',
-    '/admin/settings',
-  ]) {
-    const page = await request(route, { jar: admin })
-    status(`Admin page ${route} renders`, page, 200)
-  }
 
   // Guest cart -> checkout -> mock Razorpay capture -> confirmation.
   const add = await request('/api/cart', {

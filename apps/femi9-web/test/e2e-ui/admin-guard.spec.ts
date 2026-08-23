@@ -16,7 +16,9 @@ import {
  * sidebar. The link is gone, but a link is a one-line regression: any track can
  * reintroduce one with a stray `<Link to="/admin">`. This spec is the standing
  * check that no customer-reachable page — signed out or signed in — offers a
- * route into /admin, /api/admin or /admin/login.
+ * route into /admin or /api/admin. The console itself lives in apps/admin
+ * and has its own tests; what matters here is that the STOREFRONT never links
+ * to it and no longer serves it.
  *
  * It also asserts the other half of the rule: a shopper who types the URL is
  * sent to her own account, not to a staff sign-in form she can never satisfy.
@@ -77,23 +79,31 @@ test.describe('the ops console is invisible to customers', () => {
     expectNoNativeDialogs(page)
   })
 
-  test('a signed-in customer who types /admin is sent to her own account', async ({ page, clientIp }) => {
+  test('the storefront no longer serves the ops console at all', async ({ page, clientIp }) => {
     await installDialogGuard(page)
     await signUpViaApi(page, clientIp, { name: 'Lakshmi Venkat', email: uniqueEmail('guard-url') })
 
-    for (const path of ['/admin', '/admin/orders', '/admin/settings']) {
-      await page.goto(path)
-      // Not /admin/login: the ops cookie is a different name with a different
-      // audience, so that form is a dead end for a shopper.
-      await expect(page).toHaveURL(/\/account$/)
-      await expect(page.locator('.m-identity__name')).toHaveText('Lakshmi Venkat')
+    // The console moved to its own app with its own per-brand cookies. This used
+    // to assert a redirect to /account; now the surface is simply gone, and its
+    // ABSENCE is the invariant — anything other than a 404 means it came back.
+    // (With ADMIN_CONSOLE_URL set, /admin redirects off-site instead; the check
+    //  below accepts that, because either way the storefront is not serving it.)
+    for (const path of ['/admin', '/admin/orders', '/api/admin/orders']) {
+      const response = await page.request.get(path, {
+        headers: { 'x-forwarded-for': clientIp },
+        maxRedirects: 0,
+      })
+      const status = response.status()
+      expect(
+        status === 404 || status === 307 || status === 308,
+        `${path} should be gone from the storefront, got ${status}`,
+      ).toBe(true)
+      // If it redirects, it must be leaving for the console — never to a
+      // storefront page pretending the console is still here.
+      if (status !== 404) {
+        expect(response.headers()['location'] ?? '').not.toMatch(/^\/(?!admin)/)
+      }
     }
-
-    // And her customer session buys her nothing from the admin API.
-    const response = await page.request.get('/api/admin/orders', {
-      headers: { 'x-forwarded-for': clientIp },
-    })
-    expect(response.status()).toBe(401)
 
     expectNoNativeDialogs(page)
   })

@@ -2,20 +2,18 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * Edge guard for the two authenticated surfaces: the admin console and the
- * customer account area. Both verify an HS256 session cookie with Web Crypto
- * (no Node/server-only imports) so this stays edge-compatible. Guarded server
- * layouts and route handlers verify again in the Node runtime.
+ * Edge guard for this app's authenticated surface: the customer account area.
+ * It verifies an HS256 session cookie with Web Crypto (no Node/server-only
+ * imports) so it stays edge-compatible. Guarded server layouts and route
+ * handlers verify again in the Node runtime.
  *
- * The two cookies are distinct on purpose — an admin session never satisfies the
- * customer guard and vice-versa.
+ * The ops console USED to live here. It now has its own app (apps/admin), its
+ * own per-brand cookies, and a `proxy.ts` guard on the Node runtime — which is
+ * why that one can call the shared verifier instead of re-implementing it the
+ * way this file still has to.
  */
 
-const ADMIN_COOKIE = 'femi9_admin'
 const SESSION_COOKIE = 'femi9_session'
-
-// Reachable without an admin session: the login screen and the auth endpoints.
-const ADMIN_PUBLIC_PATHS = new Set(['/admin/login', '/api/admin/login', '/api/admin/logout'])
 
 export const config = {
   // Customer /api/auth/* is intentionally NOT matched here — those endpoints must
@@ -27,7 +25,7 @@ export const config = {
   //
   // Nothing outside these four prefixes is matched, so static assets, /_next
   // and every storefront route stay untouched.
-  matcher: ['/admin/:path*', '/api/admin/:path*', '/account/:path*', '/dashboard/:path*', '/welcome/:path*'],
+  matcher: ['/account/:path*', '/dashboard/:path*', '/welcome/:path*'],
 }
 
 /** Verify a session JWT against AUTH_SECRET, bound to the given audience so a
@@ -93,36 +91,6 @@ function base64urlBytes(value: string): Uint8Array<ArrayBuffer> {
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl
-
-  // ── Admin surface ───────────────────────────────────────────────────────────
-  if (pathname.startsWith('/admin') || pathname.startsWith('/api/admin')) {
-    if (ADMIN_PUBLIC_PATHS.has(pathname)) return NextResponse.next()
-
-    if (await isValidToken(req.cookies.get(ADMIN_COOKIE)?.value, 'femi9-admin')) {
-      return NextResponse.next()
-    }
-
-    // Unauthenticated: APIs get a JSON 401; pages bounce to the login screen.
-    if (pathname.startsWith('/api/admin')) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    // A shopper who followed a stray /admin link is not staff and never will be
-    // — the admin cookie is a different name with a different audience, so the
-    // ops sign-in form is a dead end for her. Send her to her own account
-    // instead of showing her a staff login screen.
-    if (await isValidToken(req.cookies.get(SESSION_COOKIE)?.value, 'femi9-customer')) {
-      const accountUrl = req.nextUrl.clone()
-      accountUrl.pathname = '/account'
-      accountUrl.search = ''
-      return NextResponse.redirect(accountUrl)
-    }
-
-    const loginUrl = req.nextUrl.clone()
-    loginUrl.pathname = '/admin/login'
-    loginUrl.search = ''
-    return NextResponse.redirect(loginUrl)
-  }
 
   // ── Customer surface (/account, /dashboard, /welcome) ───────────────────────
   if (await isValidToken(req.cookies.get(SESSION_COOKIE)?.value, 'femi9-customer')) {

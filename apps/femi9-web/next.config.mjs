@@ -32,6 +32,19 @@ const nextConfig = {
   // needs transpiling too — there is no build step in front of it.
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei', '@femi9/db', '@femi9/core'],
 
+  // The ops console moved to its own app. Old bookmarks and any stray /admin
+  // link should land there rather than 404. Only wired when the console's URL
+  // is configured, so a deploy without it simply has no /admin route at all
+  // rather than redirecting into nowhere.
+  async redirects() {
+    const consoleUrl = process.env.ADMIN_CONSOLE_URL
+    if (!consoleUrl) return []
+    return [
+      { source: '/admin', destination: `${consoleUrl}/femi9`, permanent: false },
+      { source: '/admin/:path*', destination: `${consoleUrl}/femi9/:path*`, permanent: false },
+    ]
+  },
+
   async headers() {
     return [
       {

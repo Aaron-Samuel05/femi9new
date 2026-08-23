@@ -310,3 +310,77 @@ jobs:
 
       - name: Build (production)
         run: npm run build
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Admin console — the shared back office for both brands.
+  #
+  # Its database is the PLATFORM one (admin identity), which is separate from
+  # either brand's data by design, so it gets its own throwaway Postgres rather
+  # than sharing the storefront job's.
+  # ───────────────────────────────────────────────────────────────────────────
+  admin:
+    name: Admin — Typecheck · Test · Build
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: femi9_platform_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      DATABASE_URL_PLATFORM: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=public
+      TEST_PLATFORM_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/femi9_platform_test?schema=public
+      # Never a real key: the console mints session tokens with it in tests.
+      ADMIN_AUTH_SECRET: ci-admin-secret-0123456789abcdef0123456789abcdef
+
+    defaults:
+      run:
+        working-directory: apps/admin
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        working-directory: .
+        run: npm ci
+
+      # TWO generators, two output paths — the brand client owns the default
+      # location and the platform client writes to its own. Both are needed:
+      # the console reads brand data AND admin identity.
+      - name: Generate Prisma clients
+        working-directory: .
+        run: |
+          npm run generate --workspace @femi9/db-platform
+          npm run db:generate --workspace femi9-web
+
+      - name: Push the platform schema
+        working-directory: .
+        run: npm run push --workspace @femi9/db-platform
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
+
+      - name: Build (production)
+        run: npm run build

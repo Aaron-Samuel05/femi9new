@@ -13,6 +13,7 @@ apps/
                 Frontend only: no backend, no database, cart in localStorage.
   admin/        ONE console, both brands. :3002. Has its own CLAUDE.md.
                 Brand comes from the SESSION, never the URL segment.
+                Holds ALL the ops pages and APIs — femi9-web has none.
 packages/
   db/           @femi9/db — the shared Prisma schema and `dbFor(brand)`.
                 One schema, one client per brand. Seeds are NOT here: seed data
