@@ -14,7 +14,7 @@ import {
 /**
  * POST /api/payments/verify — the SYNCHRONOUS return path from Razorpay Checkout.
  *
- * Two mutually-exclusive modes, chosen by isConfigured('femi9') (never by the client):
+ * Two mutually-exclusive modes, chosen by isConfigured('lumi9') (never by the client):
  *
  *  CONFIGURED (live keys): the browser hands back the three Razorpay handles +
  *  the signature. We recompute HMAC(order_id|payment_id) and only mark the order
@@ -22,7 +22,7 @@ import {
  *
  *  MOCK (keys absent, dev/test): there is no gateway and nothing to sign, so we
  *  accept an explicit { mock:true } and capture with a synthetic payment id and
- *  signatureVerified:false. This branch is gated on isConfigured('femi9')===false, so
+ *  signatureVerified:false. This branch is gated on isConfigured('lumi9')===false, so
  *  once real keys exist a { mock:true } body fails the live schema and is
  *  REJECTED (400) — the mock path can never bypass real payment in production.
  *
@@ -48,12 +48,12 @@ export async function POST(req: NextRequest) {
   return handle(async () => {
     const raw = await req.json().catch(() => null)
 
-    if (isConfigured('femi9')) {
+    if (isConfigured('lumi9')) {
       const parsed = LiveSchema.safeParse(raw)
       if (!parsed.success) return badRequest('Invalid payment payload', parsed.error.flatten())
       const { orderNo, razorpay_order_id, razorpay_payment_id, razorpay_signature } = parsed.data
 
-      const valid = verifyPaymentSignature('femi9', {
+      const valid = verifyPaymentSignature('lumi9', {
         orderId: razorpay_order_id,
         paymentId: razorpay_payment_id,
         signature: razorpay_signature,
@@ -65,12 +65,12 @@ export async function POST(req: NextRequest) {
       // swap to a cheaper/other order to claim it paid. The submitted orderNo is
       // only honoured when it matches the order the signed payment actually
       // references.
-      const resolvedOrderNo = await orderNoForRazorpayOrderId('femi9', razorpay_order_id)
+      const resolvedOrderNo = await orderNoForRazorpayOrderId('lumi9', razorpay_order_id)
       if (!resolvedOrderNo) return badRequest('Payment does not match any known order')
       if (resolvedOrderNo !== orderNo) return badRequest('Payment does not match the submitted order')
 
       try {
-        const result = await markOrderPaid('femi9', {
+        const result = await markOrderPaid('lumi9', {
           orderNo: resolvedOrderNo,
           razorpayPaymentId: razorpay_payment_id,
           razorpayOrderId: razorpay_order_id,
@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     if (!parsed.success) return badRequest('Invalid payment payload', parsed.error.flatten())
 
     try {
-      const result = await markOrderPaid('femi9', {
+      const result = await markOrderPaid('lumi9', {
         orderNo: parsed.data.orderNo,
         razorpayPaymentId: `mockpay_${parsed.data.orderNo}`,
         signatureVerified: false,

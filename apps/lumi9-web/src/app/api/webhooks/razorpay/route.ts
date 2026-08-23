@@ -4,7 +4,14 @@ import { webhookConfigured, verifyWebhookSignature } from '@femi9/core/razorpay'
 import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/checkout'
 
 /**
- * POST /api/webhooks/razorpay — the ASYNCHRONOUS capture path.
+ * POST /api/webhooks/razorpay — the ASYNCHRONOUS capture path, for LUMI9.
+ *
+ * Each brand has its OWN webhook endpoint, and that is not tidiness. Razorpay
+ * signs an event with the secret of the account that raised the charge, so once
+ * the brands are on separate merchant accounts a Lumi9 payment verified against
+ * Femi9's secret fails its signature check here — the order is never marked
+ * paid, money has been taken, nothing ships, and nobody sees an error. Point
+ * each brand's Razorpay dashboard at its own URL.
  *
  * Razorpay POSTs signed events here. We authenticate with
  * HMAC_SHA256(rawBody, RAZORPAY_WEBHOOK_SECRET) against the x-razorpay-signature
@@ -37,7 +44,7 @@ export async function POST(req: NextRequest) {
 
     // No keys → no genuine webhook and nothing to verify against. Acknowledge so
     // any stray/probe call isn't treated as an error.
-    if (!webhookConfigured('femi9')) {
+    if (!webhookConfigured('lumi9')) {
       if (process.env.NODE_ENV === 'production') {
         return serviceUnavailable('Payment webhook is not configured.')
       }
@@ -45,7 +52,7 @@ export async function POST(req: NextRequest) {
     }
 
     const signature = req.headers.get('x-razorpay-signature')
-    if (!verifyWebhookSignature('femi9', rawBody, signature)) {
+    if (!verifyWebhookSignature('lumi9', rawBody, signature)) {
       return badRequest('Invalid webhook signature')
     }
 
@@ -65,9 +72,9 @@ export async function POST(req: NextRequest) {
       const method = paymentEntity?.method
 
       if (razorpayOrderId) {
-        const orderNo = await orderNoForRazorpayOrderId('femi9', razorpayOrderId)
+        const orderNo = await orderNoForRazorpayOrderId('lumi9', razorpayOrderId)
         if (orderNo) {
-          await markOrderPaid('femi9', {
+          await markOrderPaid('lumi9', {
             orderNo,
             // Fall back to a deterministic id if the event omitted the payment id
             // (e.g. an order.paid without an entity), so the @unique column is set.

@@ -1,4 +1,5 @@
 import 'server-only'
+import { orderPrefix } from '../brands'
 import { cookies } from 'next/headers'
 import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
@@ -154,8 +155,8 @@ export async function pendingPaymentIntent(brand: Brand, orderNo: string): Promi
   return {
     razorpayOrderId: payment.razorpayOrderId,
     amount: order.total,
-    keyId: razorpay.publicKeyId(),
-    configured: razorpay.isConfigured(),
+    keyId: razorpay.publicKeyId(brand),
+    configured: razorpay.isConfigured(brand),
   }
 }
 
@@ -408,14 +409,20 @@ export async function placeOrder(brand: Brand,
 
     // Human-friendly, sequential order number continuing past the current max.
     // Zero-padded to a fixed width so lexical desc ordering == numeric ordering.
+    //
+    // The prefix is the BRAND's. It is customer-facing — read back to support,
+    // quoted in email — so a Lumi9 order must not arrive numbered FM-. The two
+    // sequences are independent anyway, living in different schemas, and the
+    // `startsWith` below is what keeps each counting its own.
+    const prefix = orderPrefix(brand) + '-'
     const last = await tx.order.findFirst({
-      where: { orderNo: { startsWith: 'FM-' } },
+      where: { orderNo: { startsWith: prefix } },
       orderBy: { orderNo: 'desc' },
       select: { orderNo: true },
     })
-    const lastNum = last ? Number.parseInt(last.orderNo.slice(3), 10) : 0
+    const lastNum = last ? Number.parseInt(last.orderNo.slice(prefix.length), 10) : 0
     const nextNum = (Number.isFinite(lastNum) ? lastNum : 0) + 1
-    const orderNo = 'FM-' + String(nextNum).padStart(5, '0')
+    const orderNo = prefix + String(nextNum).padStart(5, '0')
 
     const order = await tx.order.create({
       data: {
@@ -505,7 +512,7 @@ export async function placeOrder(brand: Brand,
   try {
     // Open the gateway order for the exact server-computed total, using our
     // orderNo as the receipt so callbacks can tie it back to our order.
-    gatewayOrder = await razorpay.createOrder({ amountRupees: total, receipt: orderNo })
+    gatewayOrder = await razorpay.createOrder(brand, { amountRupees: total, receipt: orderNo })
 
     // Persist the payment intent and consume the cart atomically. If either
     // write fails, the transaction rolls back and the compensation below
@@ -562,8 +569,8 @@ export async function placeOrder(brand: Brand,
     payment: {
       razorpayOrderId: gatewayOrder.id,
       amount: total,
-      keyId: razorpay.publicKeyId(),
-      configured: razorpay.isConfigured(),
+      keyId: razorpay.publicKeyId(brand),
+      configured: razorpay.isConfigured(brand),
     },
   }
 }
@@ -738,7 +745,7 @@ export async function reconcilePendingOrders(brand: Brand, olderThanMinutes = 60
     const intent = order.payments[0]
     let capture: Awaited<ReturnType<typeof razorpay.listOrderPayments>>[number] | undefined
     if (intent?.razorpayOrderId && !intent.razorpayOrderId.startsWith('mock_')) {
-      const payments = await razorpay.listOrderPayments(intent.razorpayOrderId)
+      const payments = await razorpay.listOrderPayments(brand, intent.razorpayOrderId)
       capture = payments.find((p) => p.status === 'captured' && p.amount === order.total * 100)
     }
     if (capture && intent?.razorpayOrderId) {

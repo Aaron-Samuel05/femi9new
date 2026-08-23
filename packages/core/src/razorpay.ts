@@ -1,4 +1,13 @@
 import 'server-only'
+import type { Brand } from '@femi9/db'
+import {
+  keyIdFor,
+  keySecretFor,
+  paymentsConfigured,
+  publicKeyIdFor,
+  webhookConfiguredFor,
+  webhookSecretFor,
+} from './payment-identity'
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import {
   configuredEnv,
@@ -26,25 +35,25 @@ const ORDERS_URL = 'https://api.razorpay.com/v1/orders'
 
 /** Live only when BOTH halves of the API credential are present. A half-set
  *  config (one env var) would fail every real call, so we treat it as unset. */
-export function isConfigured(): boolean {
-  return configuredEnv('RAZORPAY_KEY_ID') && configuredEnv('RAZORPAY_KEY_SECRET')
+export function isConfigured(brand: Brand): boolean {
+  return paymentsConfigured(brand)
 }
 
-export function webhookConfigured(): boolean {
-  return isConfigured() && configuredEnv('RAZORPAY_WEBHOOK_SECRET')
+export function webhookConfigured(brand: Brand): boolean {
+  return webhookConfiguredFor(brand)
 }
 
 /** The publishable key the browser Checkout widget needs. Public by design
  *  (NEXT_PUBLIC_*); empty string in mock mode so the client can branch on it. */
-export function publicKeyId(): string {
-  return process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || ''
+export function publicKeyId(brand: Brand): string {
+  return publicKeyIdFor(brand)
 }
 
 /** HTTP Basic header for the private API (key_id:key_secret, base64). Only ever
  *  called on the configured path, so the env vars are guaranteed present. */
-function basicAuthHeader(): string {
-  const keyId = process.env.RAZORPAY_KEY_ID ?? ''
-  const keySecret = process.env.RAZORPAY_KEY_SECRET ?? ''
+function basicAuthHeader(brand: Brand): string {
+  const keyId = keyIdFor(brand) ?? ''
+  const keySecret = keySecretFor(brand) ?? ''
   return 'Basic ' + Buffer.from(`${keyId}:${keySecret}`).toString('base64')
 }
 
@@ -71,7 +80,7 @@ export interface GatewayOrder {
  * so a retry maps to the same mock order, with NO network call. Production fails
  * closed when credentials are absent.
  */
-export async function createOrder({
+export async function createOrder(brand: Brand, {
   amountRupees,
   receipt,
 }: {
@@ -80,14 +89,14 @@ export async function createOrder({
 }): Promise<GatewayOrder> {
   const amountPaise = Math.round(amountRupees * 100)
 
-  if (!isConfigured()) {
+  if (!isConfigured(brand)) {
     if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
     return { id: `mock_${receipt}`, amount: amountPaise, mock: true }
   }
 
   const res = await fetch(ORDERS_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: basicAuthHeader() },
+    headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
     body: JSON.stringify({ amount: amountPaise, currency: 'INR', receipt }),
   })
   if (!res.ok) {
@@ -105,16 +114,19 @@ export async function createOrder({
  * sign with, so a "valid" result would be meaningless (the mock flow does not
  * route through here).
  */
-export function verifyPaymentSignature({
-  orderId,
-  paymentId,
-  signature,
-}: {
-  orderId: string
-  paymentId: string
-  signature: string
-}): boolean {
-  const secret = process.env.RAZORPAY_KEY_SECRET
+export function verifyPaymentSignature(
+  brand: Brand,
+  {
+    orderId,
+    paymentId,
+    signature,
+  }: {
+    orderId: string
+    paymentId: string
+    signature: string
+  },
+): boolean {
+  const secret = keySecretFor(brand)
   if (!secret) return false
   const expected = createHmac('sha256', secret).update(`${orderId}|${paymentId}`).digest('hex')
   return safeEqual(expected, signature)
@@ -126,8 +138,16 @@ export function verifyPaymentSignature({
  * request bytes (not a re-serialized JSON), so callers pass the untouched body
  * text. Returns false if the webhook secret is unset or the header is missing.
  */
-export function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET
+export function verifyWebhookSignature(
+  brand: Brand,
+  rawBody: string,
+  signature: string | null,
+): boolean {
+  // The secret of the account that RAISED the charge. Once the brands have
+  // separate accounts, verifying a Lumi9 webhook against Femi9's secret fails
+  // here and the order is silently never marked paid — which is why each brand
+  // gets its own webhook endpoint.
+  const secret = webhookSecretFor(brand)
   if (!secret || !signature) return false
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex')
   return safeEqual(expected, signature)
@@ -147,13 +167,13 @@ export interface GatewayPayment {
 }
 
 /** Read gateway payments for reconciliation. Amount is returned in paise. */
-export async function listOrderPayments(orderId: string): Promise<GatewayPayment[]> {
-  if (!isConfigured()) {
+export async function listOrderPayments(brand: Brand, orderId: string): Promise<GatewayPayment[]> {
+  if (!isConfigured(brand)) {
     if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
     return []
   }
   const res = await fetch(`${ORDERS_URL}/${encodeURIComponent(orderId)}/payments`, {
-    headers: { authorization: basicAuthHeader() },
+    headers: { authorization: basicAuthHeader(brand) },
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
@@ -175,15 +195,15 @@ export async function listOrderPayments(orderId: string): Promise<GatewayPayment
  * Refund a captured payment (full, or partial when `amountRupees` is given).
  * Configured → real Refunds API; mock → a synthetic refund id, no network call.
  */
-export async function refundPayment(paymentId: string, amountRupees?: number): Promise<GatewayRefund> {
-  if (!isConfigured()) {
+export async function refundPayment(brand: Brand, paymentId: string, amountRupees?: number): Promise<GatewayRefund> {
+  if (!isConfigured(brand)) {
     if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
     return { id: `mock_refund_${paymentId}`, mock: true }
   }
 
   const res = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', authorization: basicAuthHeader() },
+    headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
     // Omit the body for a full refund; Razorpay refunds the full amount when no
     // amount is supplied. Partial refunds pass the amount in paise.
     body: amountRupees != null ? JSON.stringify({ amount: Math.round(amountRupees * 100) }) : undefined,

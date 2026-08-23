@@ -2,6 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import {
+  loadRazorpayScript,
+  postVerify,
+  type PaymentIntent,
+} from "@/lib/razorpay-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
@@ -16,19 +21,7 @@ const DELIVERY_OPTIONS: { key: Delivery; name: string; eta: string; fee: number 
 
 const PAYMENT_METHODS = ["Card", "UPI", "Cash on delivery"] as const;
 
-/** ETA copy for the confirmation screen — 7–9 days out, matching the design's window. */
-function estimatedDelivery(delivery: Delivery) {
-  const start = new Date();
-  const end = new Date();
-  start.setDate(start.getDate() + (delivery === "express" ? 1 : 3));
-  end.setDate(end.getDate() + (delivery === "express" ? 2 : 5));
-  const fmt = (date: Date) => date.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
-  return `${fmt(start)}–${fmt(end)} ${end.getFullYear()}`;
-}
 
-function orderNumber() {
-  return `#LM-${20000 + Math.floor(Math.random() * 9999)}`;
-}
 
 function Fieldset({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
   return (
@@ -43,27 +36,113 @@ function Fieldset({ step, title, children }: { step: number; title: string; chil
 
 export function CheckoutForm() {
   const router = useRouter();
-  const { lines, subtotal, ready, placeOrder } = useCart();
+  const { lines, subtotal, ready } = useCart();
   const [delivery, setDelivery] = useState<Delivery>("standard");
   const [payment, setPayment] = useState<(typeof PAYMENT_METHODS)[number]>("Card");
   const [firstName, setFirstName] = useState("");
   const [city, setCity] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
 
   const shipping = delivery === "express" ? EXPRESS_SHIPPING_FEE : standardShipping(subtotal);
   const total = subtotal + shipping;
   const isEmpty = ready && lines.length === 0;
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  /**
+   * Place the order, then take payment.
+   *
+   * The server recomputes every total from the database, so nothing here sends
+   * a price. Whatever happens to the payment, the shopper ends up on the order
+   * page, which reads the true status — a verify hiccup shows "pending" rather
+   * than a lie, and the webhook can still finalise it.
+   */
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isEmpty) return;
-    placeOrder({
-      id: orderNumber(),
-      delivery,
-      eta: estimatedDelivery(delivery),
-      shipTo: city.trim() || "Thindal, Erode",
-      firstName: firstName.trim() || "there",
-    });
-    router.push("/confirmation");
+    if (isEmpty || submitting) return;
+
+    const data = new FormData(event.currentTarget);
+    const get = (k: string) => String(data.get(k) ?? "").trim();
+    const line2 = get("line2");
+
+    setSubmitting(true);
+    setFormError(null);
+    setNote(null);
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: [get("firstName"), get("lastName")].filter(Boolean).join(" "),
+          phone: get("phone"),
+          email: get("email") || undefined,
+          line: line2 ? `${get("line")}, ${line2}` : get("line"),
+          city: get("city"),
+          state: get("state") || undefined,
+          pincode: get("pincode") || undefined,
+        }),
+      });
+
+      const body = (await res.json().catch(() => null)) as
+        | { orderNo?: string; token?: string; payment?: PaymentIntent; error?: string }
+        | null;
+
+      if (!res.ok || !body?.orderNo || !body.token) {
+        setFormError(body?.error ?? "We could not place your order. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      const { orderNo, token, payment } = body;
+      const done = () => router.push(`/confirmation?order=${orderNo}&t=${token}`);
+
+      // No live keys → no gateway to open. Simulate the capture and be honest
+      // on screen that it is a test.
+      if (!payment?.configured || !payment.razorpayOrderId) {
+        setNote("Test mode — simulating payment…");
+        await postVerify({ orderNo, mock: true });
+        done();
+        return;
+      }
+
+      const ready = await loadRazorpayScript();
+      if (!ready || !window.Razorpay) {
+        setFormError("We could not load the payment window. Check your connection and try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      const rzp = new window.Razorpay({
+        key: payment.keyId,
+        amount: payment.amount * 100, // rupees → paise
+        currency: "INR",
+        name: "Lumi9",
+        order_id: payment.razorpayOrderId,
+        prefill: {
+          name: [get("firstName"), get("lastName")].filter(Boolean).join(" "),
+          email: get("email") || undefined,
+          contact: get("phone"),
+        },
+        handler: (r) => {
+          void postVerify({
+            razorpay_order_id: r.razorpay_order_id,
+            razorpay_payment_id: r.razorpay_payment_id,
+            razorpay_signature: r.razorpay_signature,
+            orderNo,
+          }).finally(done);
+        },
+        modal: {
+          // The cart was consumed when the pending order was created, so leaving
+          // her on checkout would give her no valid retry path.
+          ondismiss: done,
+        },
+      });
+      rzp.open();
+    } catch {
+      setFormError("We could not reach the server. Please try again.");
+      setSubmitting(false);
+    }
   }
 
   if (isEmpty) {
@@ -96,7 +175,7 @@ export function CheckoutForm() {
         <Fieldset step={2} title="Shipping address">
           <div className="grid grid-cols-1 gap-[clamp(10px,1.4vw,14px)] min-[420px]:grid-cols-2">
             <input
-              aria-label="First name"
+              name="firstName" aria-label="First name"
               placeholder="First name"
               required
               autoComplete="given-name"
@@ -104,22 +183,22 @@ export function CheckoutForm() {
               onChange={(event) => setFirstName(event.target.value)}
               className="field"
             />
-            <input aria-label="Last name" placeholder="Last name" required autoComplete="family-name" className="field" />
+            <input name="lastName" aria-label="Last name" placeholder="Last name" required autoComplete="family-name" className="field" />
             <input
-              aria-label="Address"
+              name="line" aria-label="Address"
               placeholder="Address"
               required
               autoComplete="address-line1"
               className="field min-[420px]:col-span-2"
             />
             <input
-              aria-label="Apartment, suite (optional)"
+              name="line2" aria-label="Apartment, suite (optional)"
               placeholder="Apartment, suite (optional)"
               autoComplete="address-line2"
               className="field min-[420px]:col-span-2"
             />
             <input
-              aria-label="City"
+              name="city" aria-label="City"
               placeholder="City"
               required
               autoComplete="address-level2"
@@ -127,16 +206,16 @@ export function CheckoutForm() {
               onChange={(event) => setCity(event.target.value)}
               className="field"
             />
-            <input aria-label="State" placeholder="State" required autoComplete="address-level1" className="field" />
+            <input name="state" aria-label="State" placeholder="State" required autoComplete="address-level1" className="field" />
             <input
-              aria-label="PIN code"
+              name="pincode" aria-label="PIN code"
               placeholder="PIN code"
               required
               inputMode="numeric"
               autoComplete="postal-code"
               className="field"
             />
-            <input aria-label="Phone" placeholder="Phone" required inputMode="tel" autoComplete="tel" className="field" />
+            <input name="phone" aria-label="Phone" placeholder="Phone" required inputMode="tel" autoComplete="tel" className="field" />
           </div>
         </Fieldset>
 
@@ -261,8 +340,19 @@ export function CheckoutForm() {
           <span className="font-display text-[clamp(23px,2.6vw,28px)] text-midnight">{inr(total)}</span>
         </div>
 
-        <button type="submit" className="btn btn-dark w-full font-bold">
-          Place order · {inr(total)}
+        {formError && (
+          <p className="m-0 mb-3 text-sm text-[#b4232c]" role="alert" aria-live="polite">
+            {formError}
+          </p>
+        )}
+        {note && (
+          <p className="m-0 mb-3 text-sm text-muted" aria-live="polite">
+            {note}
+          </p>
+        )}
+
+        <button type="submit" className="btn btn-dark w-full font-bold" disabled={submitting}>
+          {submitting ? "Placing order…" : `Place order · ${inr(total)}`}
         </button>
         <p className="m-0 mt-3.5 text-center text-xs leading-[1.5] text-muted">
           By placing your order you agree to Lumi9&apos;s{" "}

@@ -1,10 +1,15 @@
-"use client";
-
-import Image from "next/image";
 import Link from "next/link";
-import { resolveLine, useCart } from "@/lib/cart";
-import { useCatalogData } from "@/lib/catalog-context";
+import type { OrderConfirmation } from "@femi9/core/services/checkout";
 import { inr, shippingLabel } from "@/lib/catalog";
+
+/**
+ * The confirmation, rendered from the ORDER as the database has it.
+ *
+ * It used to read a copy the browser kept in localStorage, which meant the
+ * screen could disagree with what was actually bought — and showed nothing at
+ * all on another device. This is a server component now: no cart, no
+ * catalogue, no "ready" flicker.
+ */
 
 const TIMELINE = [
   { dot: "#6E7E3E", title: "Order confirmed", body: "Just now · we’ve received your order." },
@@ -12,29 +17,12 @@ const TIMELINE = [
   { dot: "#c7cdb4", title: "Out for delivery", body: "We’ll text you tracking as soon as it moves." },
 ];
 
-export function ConfirmationView() {
-  const catalog = useCatalogData();
-  const { lastOrder, ready } = useCart();
-
-  if (!ready) {
-    return <div className="mx-auto my-25 h-40 max-w-[760px] animate-pulse rounded-3xl bg-canvas" aria-hidden />;
-  }
-
-  if (!lastOrder) {
-    return (
-      <section className="px-safe mx-auto max-w-[760px] py-section text-center">
-        <h1 className="m-0 mb-3 font-display text-[clamp(27px,7vw,54px)] font-normal">No recent order</h1>
-        <p className="m-0 mb-7 text-lg text-muted">
-          Once you place an order, your confirmation and tracking will appear here.
-        </p>
-        <Link href="/shop" className="btn btn-dark font-bold">
-          Shop Cloud Soft
-        </Link>
-      </section>
-    );
-  }
-
-  const lines = lastOrder.lines.map((line) => resolveLine(catalog, line));
+export function ConfirmationView({ order }: { order: OrderConfirmation }) {
+  // The greeting uses the first word of the name on the order.
+  const firstName = order.customerName.trim().split(/\s+/)[0] || "there";
+  const shipTo = order.address
+    ? [order.address.city, order.address.state].filter(Boolean).join(", ")
+    : "your address";
 
   return (
     <section className="px-safe mx-auto max-w-[760px] pt-[clamp(40px,6vw,70px)] pb-section">
@@ -44,7 +32,7 @@ export function ConfirmationView() {
         </div>
         <div className="eyebrow mb-3.5">Order confirmed</div>
         <h1 className="m-0 mb-3.5 font-display text-[clamp(27px,7.6vw,54px)] font-normal leading-[1.04] md:text-[clamp(32px,4.4vw,54px)]">
-          Thank you, {lastOrder.firstName}! 🥑
+          Thank you, {firstName}! 🥑
         </h1>
         <p className="m-0 text-lg text-muted">
           Your Cloud Soft order is on its way. A confirmation is in your inbox.
@@ -55,32 +43,37 @@ export function ConfirmationView() {
         <dl className="mb-5.5 grid grid-cols-2 gap-4 border-b border-moss-tint pb-5.5 sm:flex sm:flex-wrap sm:justify-between">
           <div>
             <dt className="mb-1 text-xs text-muted">Order number</dt>
-            <dd className="m-0 text-base font-bold">{lastOrder.id}</dd>
+            <dd className="m-0 text-base font-bold">{order.orderNo}</dd>
           </div>
           <div>
-            <dt className="mb-1 text-xs text-muted">Estimated delivery</dt>
-            <dd className="m-0 text-base font-bold">{lastOrder.eta}</dd>
+            <dt className="mb-1 text-xs text-muted">Placed</dt>
+            <dd className="m-0 text-base font-bold">
+              {new Date(order.placedAt).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })}
+            </dd>
           </div>
           <div>
             <dt className="mb-1 text-xs text-muted">Ship to</dt>
-            <dd className="m-0 text-base font-bold">{lastOrder.shipTo}</dd>
+            <dd className="m-0 text-base font-bold">{shipTo}</dd>
           </div>
         </dl>
 
         <div className="mb-5.5 flex flex-col gap-4">
-          {lines.map((line) => (
-            <div key={line.key} className="flex items-center gap-3.5">
-              <div className="relative size-[clamp(52px,5vw,60px)] shrink-0 overflow-hidden rounded-chip bg-shell">
-                <Image src={line.image} alt="" fill sizes="60px" className="object-cover" />
-                <span className="absolute -top-1.5 -right-1.5 flex size-5.5 items-center justify-center rounded-full bg-midnight text-xs font-bold text-butter">
-                  {line.qty}
-                </span>
+          {/* Names and prices are the ones snapshotted at purchase, so this
+              still reads correctly after the catalogue changes. */}
+          {order.items.map((item, index) => (
+            <div key={`${item.productName}-${index}`} className="flex items-center gap-3.5">
+              <div className="flex size-[clamp(52px,5vw,60px)] shrink-0 items-center justify-center rounded-chip bg-shell text-sm font-bold text-muted">
+                ×{item.qty}
               </div>
               <div className="flex-1">
-                <div className="text-[15px] font-bold">Cloud Soft — {line.name}</div>
-                <div className="text-[13px] text-muted">{line.count} pants</div>
+                <div className="text-[15px] font-bold">{item.productName}</div>
+                <div className="text-[13px] text-muted">{item.variantLabel}</div>
               </div>
-              <div className="text-[15px] font-bold">{inr(line.lineTotal)}</div>
+              <div className="text-[15px] font-bold">{inr(item.lineTotal)}</div>
             </div>
           ))}
         </div>
@@ -88,15 +81,15 @@ export function ConfirmationView() {
         <div className="flex flex-col gap-2.5 border-t border-moss-tint pt-5 text-sm">
           <div className="flex justify-between">
             <span className="text-muted">Subtotal</span>
-            <span className="font-semibold">{inr(lastOrder.subtotal)}</span>
+            <span className="font-semibold">{inr(order.subtotal)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted">Delivery</span>
-            <span className="font-semibold text-moss-deep">{shippingLabel(lastOrder.shipping)}</span>
+            <span className="font-semibold text-moss-deep">{shippingLabel(order.shipping)}</span>
           </div>
           <div className="mt-1.5 flex justify-between border-t border-moss-tint pt-3">
             <span className="text-base font-bold">Total paid</span>
-            <span className="font-display text-[clamp(20px,2.2vw,24px)]">{inr(lastOrder.total)}</span>
+            <span className="font-display text-[clamp(20px,2.2vw,24px)]">{inr(order.total)}</span>
           </div>
         </div>
       </div>

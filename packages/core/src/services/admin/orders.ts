@@ -360,7 +360,7 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     // order always does.
     const payment = order.payments.find((p) => p.razorpayPaymentId) ?? order.payments[0] ?? null
     if (payment?.razorpayPaymentId) {
-      await razorpay.refundPayment(payment.razorpayPaymentId, order.total)
+      await razorpay.refundPayment(brand, payment.razorpayPaymentId, order.total)
     }
 
     // Order + payment(s) → refunded. updateMany covers the (normal) single

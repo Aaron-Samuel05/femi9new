@@ -46,6 +46,12 @@ export interface BrandConfig {
   accentInk: string
   modules: readonly AdminModule[]
   /**
+   * Prefix for customer-facing order numbers. Brand-specific because the
+   * shopper reads it back to support, and because the two brands' sequences
+   * live in different schemas and must not look interchangeable.
+   */
+  orderPrefix: string
+  /**
    * What this brand actually sells. The console's product form renders its
    * options from here, and the routes reject anything outside it — a Lumi9
    * admin has no business creating a sanitary pad, and the shared enum would
@@ -62,6 +68,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     host: 'femi9.in',
     accent: '#352D78',
     accentInk: '#ffffff',
+    orderPrefix: 'FM',
     productTypes: ['pad', 'panty'],
     modules: [
       'dashboard',
@@ -88,6 +95,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     host: 'lumi9.in',
     accent: '#4F6F52',
     accentInk: '#ffffff',
+    orderPrefix: 'LM',
     productTypes: ['diaper'],
     // No community, affiliates, partners or thara: those are Femi9 programmes,
     // and the Lumi9 database has no rows for them.
@@ -125,4 +133,9 @@ export function hasModule(brand: Brand, moduleName: AdminModule): boolean {
  */
 export function allowsProductType(brand: Brand, type: string): type is ProductTypeValue {
   return (BRAND_CONFIG[brand].productTypes as readonly string[]).includes(type)
+}
+
+/** The `FM-00001` / `LM-00001` prefix for this brand's order numbers. */
+export function orderPrefix(brand: Brand): string {
+  return BRAND_CONFIG[brand].orderPrefix
 }
