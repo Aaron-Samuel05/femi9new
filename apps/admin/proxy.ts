@@ -31,7 +31,16 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  // Every console path is /<brand>/…  — the brand is the first segment.
+  // The group view is the ONE path that is not brand-scoped. It decides for
+  // itself which brands the visitor may see (the intersection of what they are
+  // signed into and what they hold a role in), so it only needs to get past
+  // this guard — which is why it is allowed through rather than matched to a
+  // brand that does not exist.
+  if (pathname === '/group' || pathname.startsWith('/group/')) {
+    return NextResponse.next()
+  }
+
+  // Every other console path is /<brand>/…  — the brand is the first segment.
   const [, brandSegment, ...rest] = pathname.split('/')
 
   // An unknown first segment is not a brand and never will be. 404 rather than

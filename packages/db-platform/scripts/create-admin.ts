@@ -12,7 +12,8 @@
  * and adds the brand role, so it is safe to use to grant a second brand.
  */
 import { platformDb, disconnectPlatform } from '../src/index'
-import { hashPassword } from '../../core/src/admin-password'
+// The pure module, not the server-only re-export: this is a CLI.
+import { hashPassword } from '../../core/src/password-hash'
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`)

@@ -88,6 +88,9 @@ export default async function PanelLayout({
                   Switch to {brandConfig(b).shortName}
                 </Link>
               ))}
+            {/* Only offered when this person holds more than one brand —
+                there is nothing to compare otherwise. */}
+            {mine.length > 1 && <Link href="/group">Group</Link>}
             <SignOut brand={session.brand} />
           </div>
         </div>
