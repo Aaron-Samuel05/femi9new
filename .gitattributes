@@ -1,0 +1,37 @@
+# =============================================================================
+# Line endings for files that go INTO a container image.
+#
+# ── Why this file exists ────────────────────────────────────────────────────
+# Every entrypoint here is committed with LF, so CI on Linux has always been
+# fine. A Windows clone is not: with core.autocrlf=true (the default from Git
+# for Windows' installer) the working copy gets CRLF, `docker build` copies that
+# byte-for-byte, and the kernel then looks for an interpreter literally named
+# "/bin/sh\r". The container dies at once with
+#
+#     exec ./docker-entrypoint.sh: no such file or directory
+#
+# — a message that names the script, which is present, rather than the
+# interpreter, which is not. It cost a real debugging round to place.
+#
+# `eol=lf` pins the WORKING COPY, not just the blob, so a Windows developer's
+# `docker build` produces the same image CI does.
+# =============================================================================
+
+# Shell scripts are executed by their shebang. Always LF.
+*.sh text eol=lf
+
+# The entrypoints by name too, in case one ever loses its extension.
+docker-entrypoint.sh text eol=lf
+
+# Dockerfiles: a trailing `\` before a CRLF continues the line with a stray CR
+# attached, which silently corrupts multi-line RUN commands.
+Dockerfile      text eol=lf
+Dockerfile.*    text eol=lf
+*.dockerignore  text eol=lf
+.dockerignore   text eol=lf
+
+# SQL applied by `prisma migrate deploy`. Postgres tolerates CRLF, but a
+# migration's CHECKSUM is over its bytes: a file that changes line endings
+# between machines reads as a modified migration and `migrate deploy` refuses
+# to run at all.
+*.sql text eol=lf

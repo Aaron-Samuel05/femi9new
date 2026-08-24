@@ -1,5 +1,17 @@
-bucket       = "replace-with-globally-unique-femi9-state-bucket"
-key          = "femi9/prod/terraform.tfstate"
-region       = "ap-south-1"
-encrypt      = true
+# Copy to backend.hcl (gitignored) and run:
+#   terraform init -backend-config=backend.hcl
+#
+# The BUCKET may be shared with the single-app stack — one state bucket per
+# account is enough, and apps/femi9-web/infra/terraform/state-bootstrap/ creates
+# one. The KEY must not be: two stacks writing the same key would overwrite each
+# other's state, and this one holds an entire second environment.
+bucket = "replace-with-globally-unique-femi9-state-bucket"
+key    = "platform/staging/terraform.tfstate"
+region = "ap-south-1"
+
+# State embeds the generated Aurora password and every connection string built
+# from it, so encryption is not optional here.
+encrypt = true
+
+# S3 native locking. Replaces the DynamoDB lock table, which is deprecated.
 use_lockfile = true

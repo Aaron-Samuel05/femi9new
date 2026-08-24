@@ -172,7 +172,19 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/src/data ./src/data
 # referenced has to be copied explicitly — same reason `public/` is copied above.
 # Paths are relative to the working directory, which is where server.js runs.
 COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/data ./data
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/src/lib/cycle-crypto.ts ./src/lib/cycle-crypto.ts
+
+# The workspace packages. Two reasons, and the first is why this build failed:
+#
+#  - cycle-crypto.ts MOVED to packages/core in phase 1b, and the line here that
+#    copied it from src/lib was never updated. `docker build` has failed on
+#    "not found" ever since, which means the staging deploy workflow has been
+#    failing at the image step. The entrypoint's cycle-encryption script now
+#    imports it as `@femi9/core/cycle-crypto`, so what it needs is the package.
+#
+#  - npm links every workspace into node_modules as a SYMLINK
+#    (node_modules/@femi9/core -> ../../packages/core) and the overlay above
+#    copies those links verbatim. Without their targets each one dangles.
+COPY --from=build --chown=nextjs:nodejs /app/packages ./packages
 
 # Recreate the `.bin/prisma` shim so `npx prisma ...` resolves the locally-copied
 # CLI instead of trying to download it (COPY does not reliably preserve the

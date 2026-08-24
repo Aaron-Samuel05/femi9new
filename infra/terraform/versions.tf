@@ -33,8 +33,12 @@ terraform {
   # live in an encrypted, access-controlled, locked backend — never local disk
   # committed to git.
   #
-  # Bootstrap the bucket in state-bootstrap/, copy backend.hcl.example to the
-  # ignored backend.hcl, then run:
+  # There is no state-bootstrap/ in THIS directory: the bucket is an account-level
+  # thing and one is enough for both stacks. Create it with
+  # apps/femi9-web/infra/terraform/state-bootstrap/ if it does not exist yet,
+  # then give this stack its own KEY in that bucket — sharing a key would have
+  # the two stacks overwrite each other's state. Copy backend.hcl.example to the
+  # ignored backend.hcl and run:
   #   terraform init -migrate-state -backend-config=backend.hcl
   # S3 lockfiles replace the deprecated DynamoDB locking mechanism.
   # ───────────────────────────────────────────────────────────────────────────
