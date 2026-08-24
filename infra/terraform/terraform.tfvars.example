@@ -1,0 +1,98 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# terraform.tfvars.example — copy to terraform.tfvars and fill in.
+#
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# terraform.tfvars is gitignored. Nothing secret belongs in it even so: every
+# credential in this stack lives in Secrets Manager, and the values here are
+# only identifiers, sizes and hostnames.
+# ─────────────────────────────────────────────────────────────────────────────
+
+aws_region  = "ap-south-1"
+project     = "femi9plat"
+environment = "staging"
+
+# ── Bring-up: leave the domains empty on the first apply ────────────────────
+# With no hostnames set, each app is still reachable on its own CloudFront URL
+# (`terraform output services`), because each distribution routes to its app by
+# the X-Platform-App header rather than by hostname. Fill these in once DNS is
+# ready and re-apply; nothing else has to change.
+#
+# femi9_host = "shop.femi9.in"
+# lumi9_host = "shop.lumi9.in"
+# admin_host = "console.femi9.in"
+
+# Requests that match no rule — anyone hitting the ALB's own DNS name.
+# Constrained to a storefront; the console must never be the default.
+alb_default_app = "femi9"
+
+# ── Certificates ────────────────────────────────────────────────────────────
+# TWO different certificates, in two different regions, and mixing them up is
+# the classic first mistake:
+#   acm_certificate_arn        — ap-south-1 (or wherever this stack runs), on
+#                                the ALB's :443 listener.
+#   cloudfront_certificate_arn — US-EAST-1 ALWAYS, whatever aws_region says.
+#                                CloudFront reads certificates only from there.
+#
+# acm_certificate_arn        = "arn:aws:acm:ap-south-1:111122223333:certificate/…"
+# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+# additional_certificate_arns = []
+
+# Encrypt the edge-to-origin hop as well, once the ALB has a certificate.
+# alb_origin_protocol_policy = "https-only"
+
+# Alias records for every configured host, created automatically.
+# route53_zone_id = "Z0123456789ABCDEFGHIJ"
+
+# ── The console ─────────────────────────────────────────────────────────────
+# THE HIGHEST-VALUE LINE IN THIS FILE. It defaults to the whole internet so a
+# first apply cannot lock a team out of their own back office — and that default
+# has no business surviving on a console that can issue refunds. Narrow it to
+# the office and the VPN. Both the hostname AND the console's CloudFront URL are
+# guarded by it; neither is a way around the other.
+#
+# admin_allowed_cidrs = ["203.0.113.0/24", "198.51.100.7/32"]
+
+# ── Sizing ──────────────────────────────────────────────────────────────────
+# Defaults run two tasks per service. For a staging environment where a minute
+# of downtime during a deploy costs nothing, one of each is roughly half the
+# Fargate bill:
+#
+# desired_count       = 1
+# min_capacity        = 1
+# admin_desired_count = 1
+
+# Aurora. deletion_protection defaults to true — turn it off ONLY in a scratch
+# environment you intend to destroy, and turn it back on before real orders land.
+# db_deletion_protection = false
+# db_skip_final_snapshot = true
+# db_max_acu             = 4
+
+# No NAT gateway (no spare Elastic IP): tasks run in the public subnets with a
+# public IP for egress. Inbound is still ALB-only via the security group.
+# enable_nat = false
+
+# ── Brand identity ──────────────────────────────────────────────────────────
+# Razorpay publishable key ids — publishable, not secret. The SECRET halves are
+# in Secrets Manager; see `terraform output placeholder_secrets_to_fill`.
+#
+# Leave lumi9's empty while both brands transact on Femi9's merchant account —
+# that is the fallback the code is written for. When you split the accounts,
+# fill this in AND set RAZORPAY_WEBHOOK_SECRET_LUMI9, because Razorpay signs a
+# webhook with the account that took the charge and a mismatch marks nothing
+# paid while the money still moves.
+femi9_public_razorpay_key_id = ""
+# lumi9_public_razorpay_key_id = ""
+
+# Verified transactional senders. Lumi9's empty means its sign-in links go out
+# under Femi9's name — which reads as phishing to a parent who has never heard
+# of Femi9. Set it before Lumi9 takes real customers.
+# femi9_email_from = "Femi9 <login@femi9.in>"
+# lumi9_email_from = "Lumi9 <hello@lumi9.in>"
+
+# Femi9 only. Lumi9's brand config does not include the module, so the console
+# 404s it there whatever this says.
+# thara_enabled     = true
+# msg91_template_id = ""
+
+# next_public_sentry_dsn = ""

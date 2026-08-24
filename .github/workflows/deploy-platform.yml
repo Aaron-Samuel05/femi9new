@@ -1,0 +1,239 @@
+name: Deploy platform
+
+# Builds and deploys the three-service platform stack (infra/terraform):
+# femi9-web, lumi9-web and the admin console.
+#
+# This does NOT replace deploy-staging.yml. That workflow owns the single-app
+# stack that is running today (apps/femi9-web/infra/terraform) and keeps owning
+# it until the cutover happens. The two target different clusters, different
+# ECR repositories and different IAM statements, so they cannot interfere —
+# which is the point: the new stack can be brought up and exercised while the
+# old one keeps serving.
+
+on:
+  workflow_dispatch:
+    inputs:
+      apps:
+        description: 'Which services to build and deploy (space-separated: femi9 lumi9 admin)'
+        required: false
+        default: 'femi9 lumi9 admin'
+  push:
+    branches: [lumi9]
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'infra/terraform/**'
+      - '.github/workflows/deploy-platform.yml'
+
+permissions:
+  contents: read
+  # Required to mint the OIDC token exchanged for AWS credentials.
+  id-token: write
+
+concurrency:
+  group: platform-deploy
+  # Never cancel a deployment already in flight. A second push waits in the same
+  # group and deploys its own commit afterwards — cancelling mid-rollout can
+  # leave a service half-updated across two task definitions.
+  cancel-in-progress: false
+
+env:
+  # The stack's name prefix. Every resource is "<project>-<environment>-…", so
+  # these two values derive every repo, service and cluster name below — no
+  # separate repository variable per resource to drift out of step.
+  PROJECT: ${{ vars.PLATFORM_PROJECT || 'femi9plat' }}
+  ENVIRONMENT: ${{ vars.PLATFORM_ENVIRONMENT || 'staging' }}
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+
+jobs:
+  # ── Decide what to build ───────────────────────────────────────────────────
+  # A push touching only Lumi9's source has no business rebuilding Femi9 and
+  # restarting its tasks. Shared code (packages/, the lockfile) rebuilds
+  # everything, because it can change any of them.
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.pick.outputs.apps }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # Two commits, so a push can be diffed against its predecessor.
+          fetch-depth: 2
+
+      - id: pick
+        run: |
+          set -euo pipefail
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            SELECTED="${{ github.event.inputs.apps }}"
+          else
+            # `before` is all-zeroes for a branch's first push; fall back to
+            # HEAD~1, and to "build everything" if even that does not exist.
+            BEFORE="${{ github.event.before }}"
+            if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+              BEFORE="$(git rev-parse HEAD~1 2>/dev/null || true)"
+            fi
+
+            if [ -z "$BEFORE" ]; then
+              SELECTED="femi9 lumi9 admin"
+            else
+              CHANGED="$(git diff --name-only "$BEFORE" HEAD)"
+              echo "Changed files:"; echo "$CHANGED"
+
+              # Anything shared rebuilds all three.
+              if echo "$CHANGED" | grep -qE '^(packages/|package(-lock)?\.json|infra/terraform/|\.github/workflows/deploy-platform\.yml)'; then
+                SELECTED="femi9 lumi9 admin"
+              else
+                SELECTED=""
+                echo "$CHANGED" | grep -q '^apps/femi9-web/' && SELECTED="$SELECTED femi9"
+                echo "$CHANGED" | grep -q '^apps/lumi9-web/' && SELECTED="$SELECTED lumi9"
+                echo "$CHANGED" | grep -q '^apps/admin/'     && SELECTED="$SELECTED admin"
+              fi
+            fi
+          fi
+
+          # Normalise to a JSON array for the matrix. An empty selection must
+          # produce [] and not [""], which would start a job for an app that
+          # does not exist.
+          JSON="$(printf '%s' "$SELECTED" | tr ' ' '\n' | grep -v '^$' | sort -u | jq -R . | jq -sc .)"
+          echo "Selected: $JSON"
+          echo "apps=$JSON" >> "$GITHUB_OUTPUT"
+
+  # ── Build, push, deploy — one job per service, in parallel ─────────────────
+  deploy:
+    needs: select
+    if: needs.select.outputs.apps != '[]'
+    runs-on: ubuntu-latest
+
+    strategy:
+      # One brand's failure must not cancel the other's rollout: they are
+      # independent services with independent customers.
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.select.outputs.apps) }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Resolve names for this service
+        id: names
+        run: |
+          set -euo pipefail
+          PREFIX="${PROJECT}-${ENVIRONMENT}"
+          echo "repository=${PREFIX}-${{ matrix.app }}" >> "$GITHUB_OUTPUT"
+          echo "cluster=${PREFIX}-cluster"              >> "$GITHUB_OUTPUT"
+          echo "service=${PREFIX}-${{ matrix.app }}"    >> "$GITHUB_OUTPUT"
+          # apps/<dir> is not always apps/<app>: the console's key is "admin"
+          # and its directory is "admin", but the storefronts carry a -web
+          # suffix. Map explicitly rather than guessing with string surgery.
+          #
+          # site_url is resolved here rather than inline in the build args,
+          # because `a && b || c` in a GitHub expression falls through to `c`
+          # whenever `b` is FALSY — so an unset LUMI9_SITE_URL would silently
+          # hand Lumi9 Femi9's site URL, and every Lumi9 payment callback and
+          # sign-in link would point at the wrong brand. A case statement has
+          # no such trap: unset stays unset.
+          case "${{ matrix.app }}" in
+            femi9)
+              echo "dir=apps/femi9-web" >> "$GITHUB_OUTPUT"
+              echo "site_url=${{ vars.FEMI9_SITE_URL }}" >> "$GITHUB_OUTPUT"
+              ;;
+            lumi9)
+              echo "dir=apps/lumi9-web" >> "$GITHUB_OUTPUT"
+              echo "site_url=${{ vars.LUMI9_SITE_URL }}" >> "$GITHUB_OUTPUT"
+              ;;
+            admin)
+              echo "dir=apps/admin" >> "$GITHUB_OUTPUT"
+              # The console has no NEXT_PUBLIC_* values at all — nothing about
+              # it is configured at build time, so its image is identical for
+              # every environment and carries no environment's identity.
+              echo "site_url=" >> "$GITHUB_OUTPUT"
+              ;;
+            *) echo "Unknown app '${{ matrix.app }}'" >&2; exit 1 ;;
+          esac
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          # OIDC: GitHub presents a signed token and AWS returns credentials
+          # that expire with the job. Nothing long-lived is stored here.
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      # buildx, for the registry-backed layer cache. Without it every run
+      # reinstalls the whole workspace from scratch — about two minutes per
+      # service, three services, every push.
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ steps.names.outputs.dir }}/Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:${{ github.sha }}
+          # Cached per service, so Femi9's layers never evict Lumi9's.
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+          # NEXT_PUBLIC_* are inlined into the CLIENT bundle at build time — they
+          # are NOT read from the container at runtime, so they have to be here
+          # AND in the task definition's environment (Terraform sets that). The
+          # two must agree; they are the same values from the same source.
+          #
+          # A build arg an image does not declare is ignored, so one list serves
+          # all three: the console declares none of these and simply drops them.
+          build-args: |
+            NEXT_PUBLIC_SITE_URL=${{ steps.names.outputs.site_url }}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID=${{ vars.FEMI9_RAZORPAY_KEY_ID }}
+            NEXT_PUBLIC_RAZORPAY_KEY_ID_LUMI9=${{ vars.LUMI9_RAZORPAY_KEY_ID }}
+            NEXT_PUBLIC_SENTRY_DSN=${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+
+      # Read the task definition the service is CURRENTLY running and change
+      # only the image. Terraform owns everything else in it — environment,
+      # secrets, sizing — so rendering a fresh one here would silently revert
+      # whatever was applied since the last deploy.
+      - name: Fetch the running task definition
+        id: taskdef
+        run: |
+          set -euo pipefail
+          TASK_DEF=$(aws ecs describe-services \
+            --cluster "${{ steps.names.outputs.cluster }}" \
+            --services "${{ steps.names.outputs.service }}" \
+            --query 'services[0].taskDefinition' --output text)
+
+          if [ -z "$TASK_DEF" ] || [ "$TASK_DEF" = "None" ]; then
+            echo "::error::No task definition for ${{ steps.names.outputs.service }}. Has terraform apply run for this stack?"
+            exit 1
+          fi
+
+          aws ecs describe-task-definition --task-definition "$TASK_DEF" \
+            --query taskDefinition > taskdef.json
+          # These fields are read-only output from describe; RegisterTaskDefinition
+          # rejects them on the way back in.
+          jq 'del(.taskDefinitionArn,.revision,.status,.requiresAttributes,.compatibilities,.registeredAt,.registeredBy)' \
+            taskdef.json > taskdef-clean.json
+
+      - uses: aws-actions/amazon-ecs-render-task-definition@v1
+        id: render
+        with:
+          task-definition: taskdef-clean.json
+          # All three images name their container "app", which is what lets one
+          # workflow deploy any of them.
+          container-name: app
+          image: ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:${{ github.sha }}
+
+      - uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render.outputs.task-definition }}
+          cluster: ${{ steps.names.outputs.cluster }}
+          service: ${{ steps.names.outputs.service }}
+          # Wait, so a rollout that never goes healthy fails the workflow
+          # instead of reporting success while ECS quietly rolls back. Every
+          # image runs `prisma migrate deploy` before serving and every
+          # /api/health fails closed, so an unreachable database shows up here.
+          wait-for-service-stability: true

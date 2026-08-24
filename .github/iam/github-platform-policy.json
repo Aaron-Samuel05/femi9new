@@ -1,0 +1,77 @@
+{
+  "Comment": "Permissions for .github/workflows/deploy-platform.yml. Attach to the role named by the AWS_ROLE_ARN repository variable, alongside github-staging-policy.json — this one covers the three-service platform stack, that one covers the single-app staging stack, and neither grants the other's resources. Replace 851725383246 and femi9plat-staging if your account id or name prefix differs.",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PushPlatformImages",
+      "Comment": "One repo per service. Named explicitly rather than with a wildcard so this role cannot push into the single-app stack's repository, or any other repo that appears in the account later.",
+      "Effect": "Allow",
+      "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:CompleteLayerUpload",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart",
+        "ecr:BatchGetImage"
+      ],
+      "Resource": [
+        "arn:aws:ecr:ap-south-1:851725383246:repository/femi9plat-staging-femi9",
+        "arn:aws:ecr:ap-south-1:851725383246:repository/femi9plat-staging-lumi9",
+        "arn:aws:ecr:ap-south-1:851725383246:repository/femi9plat-staging-admin"
+      ]
+    },
+    {
+      "Sid": "EcrLogin",
+      "Comment": "GetAuthorizationToken has no resource to scope to — it is account-wide by design. The push permissions above are what actually bound this.",
+      "Effect": "Allow",
+      "Action": "ecr:GetAuthorizationToken",
+      "Resource": "*"
+    },
+    {
+      "Sid": "DeployPlatformServices",
+      "Comment": "RegisterTaskDefinition cannot be scoped to a family by IAM, so the region condition is the only available bound. UpdateService IS scoped, below.",
+      "Effect": "Allow",
+      "Action": [
+        "ecs:DescribeServices",
+        "ecs:DescribeTaskDefinition",
+        "ecs:RegisterTaskDefinition"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:RequestedRegion": "ap-south-1"
+        }
+      }
+    },
+    {
+      "Sid": "UpdateOnlyPlatformServices",
+      "Comment": "Scoped to this cluster's three services. Without this, a role that can RegisterTaskDefinition could point ANY service in the account at an arbitrary image.",
+      "Effect": "Allow",
+      "Action": "ecs:UpdateService",
+      "Resource": [
+        "arn:aws:ecs:ap-south-1:851725383246:service/femi9plat-staging-cluster/femi9plat-staging-femi9",
+        "arn:aws:ecs:ap-south-1:851725383246:service/femi9plat-staging-cluster/femi9plat-staging-lumi9",
+        "arn:aws:ecs:ap-south-1:851725383246:service/femi9plat-staging-cluster/femi9plat-staging-admin"
+      ]
+    },
+    {
+      "Sid": "PassOnlyPlatformTaskRoles",
+      "Comment": "RegisterTaskDefinition needs PassRole for the roles the definition names. Listing exactly the six this stack creates is what stops a compromised workflow from registering a task that assumes something more privileged.",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": [
+        "arn:aws:iam::851725383246:role/femi9plat-staging-femi9-task",
+        "arn:aws:iam::851725383246:role/femi9plat-staging-femi9-exec",
+        "arn:aws:iam::851725383246:role/femi9plat-staging-lumi9-task",
+        "arn:aws:iam::851725383246:role/femi9plat-staging-lumi9-exec",
+        "arn:aws:iam::851725383246:role/femi9plat-staging-admin-task",
+        "arn:aws:iam::851725383246:role/femi9plat-staging-admin-exec"
+      ],
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "ecs-tasks.amazonaws.com"
+        }
+      }
+    }
+  ]
+}

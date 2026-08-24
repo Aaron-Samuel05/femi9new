@@ -16,3 +16,17 @@ out/
 # Logs and OS cruft
 *.log
 .DS_Store
+
+# ── Platform Terraform stack (infra/terraform) ───────────────────────────────
+# State embeds the GENERATED Aurora password and every connection string built
+# from it, and tfvars carries account-specific values. Neither belongs in git;
+# state lives in the encrypted, locked S3 backend (see infra/terraform/README.md).
+# `.terraform.lock.hcl` is deliberately NOT ignored — pinning provider hashes is
+# the point of it.
+/infra/terraform/.terraform/
+/infra/terraform/*.tfstate
+/infra/terraform/*.tfstate.*
+/infra/terraform/*.tfvars
+!/infra/terraform/*.tfvars.example
+/infra/terraform/*.plan
+/infra/terraform/backend.hcl

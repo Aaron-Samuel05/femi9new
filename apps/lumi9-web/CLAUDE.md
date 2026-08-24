@@ -64,6 +64,34 @@ are stable, so reruns update in place rather than duplicating.
 That module is the seed's **input** only — the storefront reads the database.
 Editing it changes what a fresh seed writes and nothing that is already live.
 
+## Deploying
+
+`Dockerfile` here, built from the WORKSPACE ROOT:
+
+```bash
+docker build -f apps/lumi9-web/Dockerfile -t lumi9-web .
+```
+
+`Dockerfile.dockerignore` beside it governs that build — BuildKit prefers it
+over the context root's, which is necessary because the root file excludes
+`apps/lumi9-web/**` and would otherwise produce an image with no app in it.
+
+`docker-entrypoint.sh` creates the `lumi9` schema if it is missing, applies the
+shared migration history to it, then starts the server. It sets `DATABASE_URL`
+for the migrate command ALONE and never exports it: `dbFor('femi9')` accepts a
+bare `DATABASE_URL` as Femi9's transitional fallback, so exporting it inside
+this image would let a stray Femi9 read quietly succeed against Lumi9's data.
+
+The image carries the seed scripts under `./seed/` but does NOT run them. They
+are launched as a one-off ECS task with the command overridden — see
+`infra/terraform/README.md`.
+
+`/api/health` fails closed: 503 when the `lumi9` schema is unreachable or
+`AUTH_SECRET` is missing, 200 with a `warnings` array when only a feature is
+switched off. That distinction is in `@femi9/core/brand-readiness`, and it
+matters — a missing webhook secret must not pull the task out of the load
+balancer and turn a degraded feature into an outage.
+
 ## Things that will bite
 
 **`Product.flow` is Femi9's word.** It means "Heavy · Night + Day" over there;
@@ -85,3 +113,9 @@ the casts in `src/components/three/` stop compiling.
 warns you to turn it off; that warning is stale. Leave it off — the cart screens
 are reviewable by adding an item, and a basket pre-filled with phantom lines is
 worse than an empty one now that the prices beside them are real.
+
+**Nothing here may import a package this app does not declare.** `@femi9/core`
+is shared source, not a built artifact, so its imports become this app's
+imports. The image build is where that surfaces: `npm ci --workspace lumi9-web`
+installs only this workspace's closure, unlike the root `npm install` that
+makes everything look fine locally.

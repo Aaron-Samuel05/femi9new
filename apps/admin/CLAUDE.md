@@ -121,6 +121,28 @@ TEST_PLATFORM_DATABASE_URL=... TEST_FEMI9_DATABASE_URL=... TEST_LUMI9_DATABASE_U
 
 CI does exactly this — see the `admin` job.
 
+## Deploying
+
+`Dockerfile` here, built from the WORKSPACE ROOT. It is the only image that runs
+`prisma generate` TWICE — the brand client to the default node_modules path, the
+platform client to `packages/db-platform/generated/`, because two generators
+aimed at the default path overwrite each other.
+
+The runner stage copies `packages/` as well as `node_modules`. That is required,
+not merely tidy: npm links each workspace into node_modules as a SYMLINK, and
+the platform Prisma client is only reachable through
+`node_modules/@femi9/db-platform` -> `packages/db-platform/generated/`. Without
+it the console starts and then 500s on the first login attempt.
+
+`docker-entrypoint.sh` migrates ONLY the `platform` schema. It reads both
+brands' data but must not migrate their schemas — two services applying the same
+history to the same schema race, and the winner depends on task start order.
+
+It also does NOT seed a bootstrap admin, deliberately: seeding one from
+environment variables would put a working credential in the task definition and
+in CloudWatch's environment dump. The first account is made with a one-off task
+running `create-admin` — see above.
+
 ## Things that will bite
 
 **The platform Prisma client has a custom output path** (`generated/`, gitignored).
@@ -141,6 +163,17 @@ so expect to find more of it.
 **This app must build with no database credentials.** The Docker build stage has
 none — they arrive at deploy time from Secrets Manager. `platformDb()` is called
 inside request handlers, never at module scope, and it must stay that way.
+
+**`/api/health` is excluded from the matcher in `proxy.ts`.** It has to be: the
+guard reads the first path segment as a brand, `api` is not one, and the probe
+would 404 — pulling every task out of the target group. It returns whether a
+connection opened and nothing else: no admin names, no brand totals, no secret
+values.
+
+**This app imports `@aws-sdk/client-s3` and must declare it.** It did not, and
+the image build stopped there. Shared source in `@femi9/core` becomes this app's
+imports too — the root `npm install` hides that, and `npm ci --workspace
+admin-web` in the image does not.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

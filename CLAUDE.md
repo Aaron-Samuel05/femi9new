@@ -82,10 +82,35 @@ npm run typecheck
 **Docker builds from THIS directory**, not from the app:
 ```bash
 docker build -f apps/femi9-web/Dockerfile -t femi9-web .
+docker build -f apps/lumi9-web/Dockerfile -t lumi9-web .
+docker build -f apps/admin/Dockerfile     -t admin-web .
 ```
 The context must be the workspace root because `npm ci` needs the hoisted
 lockfile. `.dockerignore` here is load-bearing — it is what keeps `.env`, the
 legacy prototypes and the other brand's source out of the image.
+
+**Each app brings its OWN ignore file.** BuildKit prefers
+`<dockerfile>.dockerignore` over the context root's, so
+`apps/lumi9-web/Dockerfile.dockerignore` and `apps/admin/Dockerfile.dockerignore`
+govern those builds. They have to: the root file excludes `apps/lumi9-web/**`,
+and a Lumi9 build under it produces an image with no application in it. femi9-web
+has no such file and still reads the root one — deliberately, so its context is
+unchanged. Add a new app, add its ignore file.
+
+**`packages/core` declares what it IMPORTS.** It used to declare only `jose` and
+let everything else resolve out of femi9-web's hoisted tree, which is invisible
+at this root — one `npm install` here satisfies everyone. `npm ci --workspace
+lumi9-web` installs only that workspace's closure, and the Lumi9 image build died
+on `@aws-sdk/client-dynamodb` and `maxmind`. If you import something new in
+`core`, add it to `packages/core/package.json`.
+
+**`@sentry/nextjs` is an OPTIONAL peer of core, imported dynamically.** Only
+femi9-web ships it. Making it a hard dependency put Sentry's
+`require-in-the-middle` instrumentation into every image, Turbopack externalised
+it under a generated name the standalone bundle could not resolve, and **every
+route in the Lumi9 image answered 500** — a failure that appears only when you
+RUN the container, never when you build it. Same shape as `maxmind` in
+`geo/mmdb.ts`: dynamic import, degrade quietly when absent.
 
 **`three` must stay single-versioned across the workspace.** Two copies gives
 `@react-three/fiber` one `PerspectiveCamera` type and an app another, and casts
@@ -124,3 +149,27 @@ never uses the other's enum values.
 **The `public` → `femi9` schema rename has NOT been run** against the live
 database. Femi9 still reads `DATABASE_URL`. See
 `apps/femi9-web/docs/TWO-BRAND-ARCHITECTURE.md` and `docs/rename-public-to-femi9.sql`.
+
+## Deploying
+
+Two Terraform stacks, and they do not overlap:
+
+| | |
+| --- | --- |
+| `apps/femi9-web/infra/terraform` | The single-app stack **running today**. One service. Deployed by `.github/workflows/deploy-staging.yml`. Untouched by the platform work. |
+| `infra/terraform` | The **platform** stack: all three services, one Aurora cluster, three schemas. Deployed by `.github/workflows/deploy-platform.yml` on a push to `lumi9`. |
+
+Read `infra/terraform/README.md` before applying anything. It has the ordering
+constraints (repos before images before services before seeds), the two-region
+certificate trap, and what is deliberately absent.
+
+**Each app migrates exactly the schema it fronts**, from its own entrypoint:
+femi9-web owns `femi9`, lumi9-web owns `lumi9`, admin owns `platform`. One
+writer per schema. Letting the console migrate the brand schemas too would race
+two services applying the same history, and which won would depend on task start
+order.
+
+**Every app now serves `/api/health`, and all three fail closed** (503 when the
+database is unreachable). That is what makes a bad rollout stall with the old
+tasks still serving. The console's is excluded from the guard in `proxy.ts`,
+because a load balancer has no session and never will.
