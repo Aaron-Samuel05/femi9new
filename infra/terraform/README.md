@@ -48,8 +48,8 @@ cp backend.hcl.example      backend.hcl        # bucket / key / region
 terraform init -backend-config=backend.hcl
 ```
 
-Leave the three `*_host` variables empty on a first apply. Every app is still
-reachable, on its own CloudFront URL — see *How each app is reachable* below.
+Leave `sites` empty on a first apply. Every app is still reachable, on its own
+CloudFront URL — see *How each app is reachable* below.
 
 ### 2. Create the image repositories, and only those
 
@@ -170,21 +170,41 @@ admin_allowed_cidrs = ["203.0.113.0/24"]   # office + VPN
 Both the console's hostname **and** its CloudFront URL are guarded by this.
 Neither is a way around the other — see the rule pairs in `alb.tf`.
 
-## How each app is reachable
+## Sites, apps, and how a request finds its service
 
-Two independent signals route to the same target group:
+An **app** is an ECS service. A **site** is one public hostname. They are not
+one-to-one, and the console is why:
 
-- **The Host header**, once DNS points a hostname at the ALB.
-- **`X-Platform-App`**, injected by that app's CloudFront distribution.
+| site | app | who it is for |
+| --- | --- | --- |
+| `shop.femi9.in` | femi9 | Femi9 shoppers |
+| `shop.lumi9.in` | lumi9 | Lumi9 shoppers |
+| `admin.femi9.in` | admin | Femi9 staff |
+| `admin.lumi9.in` | admin | Lumi9 staff |
+
+Four hostnames, **three** ECS services. The console answers on both brands'
+domains so neither brand's staff has to learn the other's, and it is still one
+service, one image, one deployment — the brand a session belongs to is decided
+by `AdminBrandRole`, never by which hostname was typed.
+
+Each site gets its own CloudFront distribution. It has to: a distribution
+carries one certificate, and the two console hostnames sit on different
+registrable domains.
+
+Two independent signals then route to the target group:
+
+- **The Host header**, once DNS points a hostname at CloudFront.
+- **`X-Platform-App`**, injected by the distribution onto the ALB origin. It
+  names the APP, so both console distributions send `admin`.
 
 The second exists because the first is unavailable before DNS. A viewer on
-`d1234.cloudfront.net` sends a Host matching no rule, so without the header all
-three CDNs would fall through to `alb_default_app` and every brand's CDN would
-serve Femi9. With it, each app is testable on its own CloudFront URL from the
-moment it is created:
+`d1234.cloudfront.net` sends a Host matching no rule, so without the header
+every distribution would fall through to `alb_default_app` and all of them
+would serve Femi9. With it, each site is testable on its own CloudFront URL
+from the moment it is created:
 
 ```bash
-terraform output -json services | jq -r '.[] | .cloudfront_url'
+terraform output -json sites | jq -r 'to_entries[] | "\(.key)\t\(.value.app)\t\(.value.cloudfront_url)"'
 ```
 
 Straight against the ALB, with no CloudFront and no DNS:
@@ -198,6 +218,22 @@ is an app that is already public. Locking the ALB down to CloudFront alone —
 a shared secret header plus a listener rule, or the CloudFront managed prefix
 list on the security group — is a separate hardening step worth doing before
 launch.
+
+**Point DNS at the site's CloudFront domain, never at `alb_dns_name`.** A record
+aimed at the load balancer bypasses the CDN, and with it the certificate, the
+cached static assets, and the `/uploads/*` behaviour that makes product images
+resolve at all. `terraform output sites` gives the target for each CNAME.
+
+### The console's allowlist covers every front door
+
+`admin_allowed_cidrs` is enforced on **all** of the console's hostnames and on
+its CloudFront URLs, as one rule pair each — an ALB `host_header` condition ORs
+its values, so adding a third console hostname cannot quietly escape the
+allowlist. Guarding one door and not the others would look enforced and not be.
+
+```bash
+terraform output admin_hosts
+```
 
 ## Deploying a change
 
@@ -276,11 +312,14 @@ self-contained path.
 
 ## Things that will bite
 
-**Two certificates, two regions.** `acm_certificate_arn` is regional and goes on
-the ALB. `cloudfront_certificate_arn` must be in **us-east-1**, always,
-whatever `aws_region` says — CloudFront reads certificates from there and
-nowhere else. Getting these the wrong way round produces a confusing
-`InvalidViewerCertificate` on apply.
+**Certificates are per site, and always us-east-1.** Each entry in `sites` has
+its own `certificate_arn`, and it must be in **us-east-1** whatever
+`aws_region` says — CloudFront reads certificates from there and nowhere else.
+A regional ARN here produces a confusing `InvalidViewerCertificate` on apply.
+
+`acm_certificate_arn` is a different thing: the ALB's own listener certificate,
+regional, and usually unnecessary because CloudFront terminates TLS for the
+viewer. Set it only if DNS will point straight at the load balancer.
 
 **All three images run from `/app/apps/<app>`, not `/app`.** They keep the
 nested layout `next build` produced instead of flattening it, and that is not a

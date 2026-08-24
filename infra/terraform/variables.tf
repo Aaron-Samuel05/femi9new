@@ -246,7 +246,7 @@ variable "platform_schema" {
 # ── TLS / DNS ────────────────────────────────────────────────────────────────
 
 variable "acm_certificate_arn" {
-  description = "ACM certificate ARN in THIS region for the HTTPS listener. Empty = HTTP:80 only, which is fine for a first smoke test and NOT fine for anything real. TODO(operator): request a cert covering every host below, or one per host."
+  description = "ACM certificate ARN in THIS region for the ALB's own HTTPS listener. USUALLY UNNECESSARY: every site is fronted by CloudFront, which terminates TLS for the viewer, so the ALB is an origin rather than something a browser talks to. Set it only if you intend to point DNS straight at the load balancer — and if you do, the certificate has to cover every host at once, which the per-site CloudFront certificates do not. Leaving it empty gives the ALB an HTTP:80 listener; set alb_origin_protocol_policy to https-only once it has one."
   type        = string
   default     = ""
 }
@@ -257,22 +257,84 @@ variable "additional_certificate_arns" {
   default     = []
 }
 
-variable "femi9_host" {
-  description = "Host header routed to femi9-web (e.g. shop.femi9.in). Empty = no rule; reach it via alb_default_app. TODO(operator)."
-  type        = string
-  default     = ""
-}
+# ── Public hostnames ─────────────────────────────────────────────────────────
+#
+# A SITE is one public hostname pointed at one app. It is deliberately not the
+# same thing as an app, because the mapping is not one-to-one: the console
+# answers on admin.femi9.in AND admin.lumi9.in, so that each brand's staff reach
+# their back office on their own domain and neither has to learn the other's.
+# One app, two sites, one ECS service.
+#
+# Each site gets its own CloudFront distribution. It has to: the two console
+# hostnames sit on different registrable domains and therefore need different
+# certificates, and a distribution carries one certificate.
+#
+#   sites = {
+#     femi9       = { app = "femi9", host = "shop.femi9.in",  canonical = true, certificate_arn = "arn:aws:acm:us-east-1:...:certificate/..." }
+#     lumi9       = { app = "lumi9", host = "shop.lumi9.in",  canonical = true, certificate_arn = "arn:aws:acm:us-east-1:...:certificate/..." }
+#     admin_femi9 = { app = "admin", host = "admin.femi9.in",                   certificate_arn = "arn:aws:acm:us-east-1:...:certificate/..." }
+#     admin_lumi9 = { app = "admin", host = "admin.lumi9.in",                   certificate_arn = "arn:aws:acm:us-east-1:...:certificate/..." }
+#   }
+#
+# Leave it EMPTY for a first apply. One distribution per app is synthesised, each
+# on its free *.cloudfront.net name, and each still routes to the right app —
+# see the X-Platform-App header in cloudfront.tf. Nothing needs DNS to be tested.
 
-variable "lumi9_host" {
-  description = "Host header routed to lumi9-web (e.g. shop.lumi9.in). Empty = no rule. TODO(operator)."
-  type        = string
-  default     = ""
-}
+variable "sites" {
+  description = "Public hostnames, keyed by an arbitrary name. `app` must be femi9, lumi9 or admin; several sites may share one app (the console does). `certificate_arn` MUST be in us-east-1 whatever aws_region says — CloudFront reads certificates from there only; empty means serve on the free *.cloudfront.net name. `canonical` marks the host an app advertises in its own URLs; storefronts need exactly one, the console needs none."
+  type = map(object({
+    app             = string
+    host            = string
+    certificate_arn = optional(string, "")
+    canonical       = optional(bool, false)
+  }))
+  default = {}
 
-variable "admin_host" {
-  description = "Host header routed to the console (e.g. console.femi9.in). Empty = no rule. TODO(operator)."
-  type        = string
-  default     = ""
+  validation {
+    # The app keys are fixed in main.tf's local.apps; a variable's validation
+    # cannot read a local, so the list is repeated here. Adding a fourth brand
+    # means editing both.
+    condition     = alltrue([for s in var.sites : contains(["femi9", "lumi9", "admin"], s.app)])
+    error_message = "Every site's `app` must be one of: femi9, lumi9, admin."
+  }
+
+  validation {
+    condition     = alltrue([for s in var.sites : s.host != ""])
+    error_message = "A site with an empty `host` routes nothing. Remove the entry instead."
+  }
+
+  validation {
+    # Two sites on the same hostname would produce two ALB rules matching the
+    # same Host header, and the lower-priority one would never fire.
+    condition     = length(distinct([for s in var.sites : s.host])) == length(var.sites)
+    error_message = "Two sites share a hostname. Each host must appear once."
+  }
+
+  validation {
+    # More than one canonical host for an app means its own URLs are ambiguous —
+    # and those URLs are payment callbacks and OAuth redirects.
+    condition = alltrue([
+      for app in ["femi9", "lumi9", "admin"] :
+      length([for s in var.sites : s if s.app == app && s.canonical]) <= 1
+    ])
+    error_message = "An app has more than one canonical site. At most one host per app may be canonical."
+  }
+
+  validation {
+    # Once ANY site is configured, the synthesised per-app fallback is gone --
+    # so a storefront left out of the map would deploy with an empty
+    # NEXT_PUBLIC_SITE_URL and a Google redirect URI of
+    # "/api/auth/google/callback". Both fail at the worst possible moment, in a
+    # payment callback or a sign-in, and neither shows up in a plan. Fail here.
+    #
+    # The console is exempt: not exposing it publicly at first is a legitimate
+    # choice, and it advertises no URLs of its own.
+    condition = length(var.sites) == 0 || alltrue([
+      for app in ["femi9", "lumi9"] :
+      length([for s in var.sites : s if s.app == app]) > 0
+    ])
+    error_message = "Both storefronts need a site once `sites` is non-empty: each advertises its own hostname in payment callbacks and sign-in links. Add one for femi9 and one for lumi9, or leave `sites` empty to use the per-app CloudFront defaults."
+  }
 }
 
 variable "alb_default_app" {
@@ -287,7 +349,7 @@ variable "alb_default_app" {
 }
 
 variable "admin_allowed_cidrs" {
-  description = "Source CIDRs permitted to reach the console. The default is open, because locking a team out of their own back office on first apply is worse than the exposure — but this console can refund money, and an office/VPN allowlist here is the single highest-value change to make after bring-up. TODO(operator)."
+  description = "Source CIDRs permitted to reach the console — on EVERY hostname it answers on, and on its CloudFront URLs too. The default is open, because locking a team out of their own back office on first apply is worse than the exposure; but this console can refund money, and narrowing this is the single highest-value change to make after bring-up. TODO(operator)."
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
@@ -361,12 +423,6 @@ variable "next_public_sentry_dsn" {
 }
 
 # ── CloudFront ───────────────────────────────────────────────────────────────
-
-variable "cloudfront_certificate_arn" {
-  description = "ACM certificate ARN in US-EAST-1 — CloudFront reads certificates from that region only, whatever region the rest of this stack runs in. Supplying it is what lets each distribution carry its brand's hostname as an alias; without it every distribution serves on its free *.cloudfront.net name, which is still HTTPS and still usable. TODO(operator)."
-  type        = string
-  default     = ""
-}
 
 variable "alb_origin_protocol_policy" {
   description = "How CloudFront talks to the ALB. \"http-only\" is correct while the ALB has no certificate (acm_certificate_arn empty) — the edge still terminates TLS for the viewer. Set \"https-only\" once the ALB has one, so the edge-to-origin hop is encrypted as well."

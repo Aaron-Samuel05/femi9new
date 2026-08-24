@@ -1,23 +1,32 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # cloudfront.tf — one distribution per app, in front of the shared ALB.
 #
-# ── Why one per app rather than one shared ──────────────────────────────────
-# Two reasons, and the second is the one that forces it.
+# ── One distribution per SITE, not per app ──────────────────────────────────
+# A site is one public hostname. The console has two of them —
+# admin.femi9.in and admin.lumi9.in, so each brand's staff reach their back
+# office on their own domain — and it gets a distribution for each, both
+# pointing at the same ECS service.
 #
-#  1. Each brand needs its own aliases and its own certificate.
+# It has to work this way for two independent reasons:
+#
+#  1. A distribution carries ONE certificate, and those two hostnames sit on
+#     different registrable domains. No single alias set covers them.
 #  2. `/uploads/*` has to be a same-origin path. The console's upload route
-#     returns a SITE-RELATIVE url ("/uploads/1712...-front.jpg"), so the origin
-#     that serves the page must also serve the image. That is a per-distribution
-#     cache behaviour, and it means a distribution per hostname.
+#     returns a SITE-RELATIVE url ("/uploads/1712...-front.jpg"), so whatever
+#     origin serves the page must also serve the image. That is a
+#     per-distribution cache behaviour.
 #
 # ── How a distribution finds its app ────────────────────────────────────────
-# Each one injects `X-Platform-App: <key>` on the ALB origin, and the ALB has a
+# Each one injects `X-Platform-App: <app>` on the ALB origin, and the ALB has a
 # listener rule matching that header (alb.tf, priority band 150). Host-based
 # rules alone would not do: before DNS exists a viewer arrives at
 # `dxxxx.cloudfront.net`, that Host matches no rule, and every brand's CDN would
 # fall through to the default app. The header makes routing independent of what
-# the viewer typed — which also means each brand is testable on its CloudFront
+# the viewer typed — which also means each site is testable on its CloudFront
 # URL the moment it is created, with no DNS at all.
+#
+# Note the header names the APP, not the site: both console distributions send
+# `admin`, because they are two front doors to one service.
 #
 # It is a routing signal, not a secret. Anyone may send that header to the ALB
 # directly; all they achieve is reaching an app that is already public. Locking
@@ -75,19 +84,19 @@ resource "aws_cloudfront_origin_request_policy" "app" {
   }
 }
 
-resource "aws_cloudfront_distribution" "app" {
-  for_each = local.apps
+resource "aws_cloudfront_distribution" "site" {
+  for_each = local.effective_sites
 
   enabled         = true
   is_ipv6_enabled = true
-  comment         = "${local.name_prefix} — ${each.key}"
+  comment         = "${local.name_prefix} — ${each.key} (${each.value.app})"
 
-  # An alias may only be attached alongside a matching certificate, and
-  # CloudFront reads its certificates from us-east-1 specifically. Until
-  # cloudfront_certificate_arn is supplied this serves on the free
-  # *.cloudfront.net name, which is enough for HTTPS, for Google OAuth (which
-  # refuses plain HTTP), and for a shareable preview link.
-  aliases = local.cf_has_cert && each.value.host != "" ? [each.value.host] : []
+  # An alias may only be attached alongside a certificate that covers it, and
+  # CloudFront reads certificates from us-east-1 specifically — whatever region
+  # the rest of this stack runs in. With no certificate the distribution serves
+  # on its free *.cloudfront.net name, which is still HTTPS, still enough for
+  # Google OAuth (which refuses plain HTTP), and still a shareable preview link.
+  aliases = each.value.certificate_arn != "" && each.value.host != "" ? [each.value.host] : []
 
   origin {
     domain_name = aws_lb.this.dns_name
@@ -104,10 +113,11 @@ resource "aws_cloudfront_distribution" "app" {
       origin_ssl_protocols   = ["TLSv1.2"]
     }
 
-    # The routing signal. See the header comment.
+    # The routing signal. See the header comment. It names the APP, so both
+    # console distributions send the same value.
     custom_header {
       name  = "X-Platform-App"
-      value = each.key
+      value = each.value.app
     }
   }
 
@@ -156,26 +166,22 @@ resource "aws_cloudfront_distribution" "app" {
     }
   }
 
-  # Dynamic: the free default certificate until a us-east-1 ACM cert is given.
+  # Per site: its own us-east-1 certificate if it has one, else the free default.
   dynamic "viewer_certificate" {
-    for_each = local.cf_has_cert ? [1] : []
+    for_each = each.value.certificate_arn != "" ? [each.value.certificate_arn] : []
     content {
-      acm_certificate_arn      = var.cloudfront_certificate_arn
+      acm_certificate_arn      = viewer_certificate.value
       ssl_support_method       = "sni-only"
       minimum_protocol_version = "TLSv1.2_2021"
     }
   }
 
   dynamic "viewer_certificate" {
-    for_each = local.cf_has_cert ? [] : [1]
+    for_each = each.value.certificate_arn != "" ? [] : [1]
     content {
       cloudfront_default_certificate = true
     }
   }
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-${each.key}-cdn" })
-}
-
-locals {
-  cf_has_cert = var.cloudfront_certificate_arn != ""
 }

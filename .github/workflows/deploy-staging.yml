@@ -1,14 +1,29 @@
-name: Deploy staging
+name: Deploy staging (single-app stack — superseded)
+
+# ── THIS NO LONGER RUNS ON A PUSH ───────────────────────────────────────────
+# It deploys the OLD single-app stack (apps/femi9-web/infra/terraform): Femi9
+# alone, its own cluster, its own database. The platform stack now hosts all
+# three services — both storefronts and the console — and deploys from the
+# `lumi9` branch via deploy-platform.yml.
+#
+# The push trigger is removed rather than repointed, deliberately. It fired on
+# `master`, which is now many commits behind; leaving it armed meant any
+# incidental commit to master would redeploy a stale Femi9 over the top of
+# whatever the platform stack had just shipped, from a different image, against
+# a different database. Nothing warns you when that happens — both deployments
+# report success.
+#
+# It is kept, and kept working, as the rollback path: until the platform stack
+# has taken real traffic, being able to put the old one back with one click is
+# worth more than the tidiness of deleting the file. Run it from the Actions tab
+# and pick the branch you mean.
+#
+# DELETE THIS FILE once the cutover is done and the single-app stack is
+# destroyed. A workflow that can deploy a decommissioned environment is a trap
+# for whoever finds it next.
 
 on:
   workflow_dispatch:
-  push:
-    branches: [master, staging]
-    paths:
-      - "apps/femi9-web/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/deploy-staging.yml"
 
 permissions:
   contents: read

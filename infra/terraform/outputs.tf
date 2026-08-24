@@ -6,16 +6,38 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 output "services" {
-  description = "Per-app deploy coordinates: ECR repo, ECS service, log group, CloudFront URL. This is the map the deploy workflow reads."
+  description = "Per-app deploy coordinates: ECR repo, ECS service, log group, and the canonical public URL. This is the map the deploy workflow reads."
   value = {
     for key, app in local.apps : key => {
       ecr_repository_url = aws_ecr_repository.app[key].repository_url
       ecs_service        = aws_ecs_service.app[key].name
       log_group          = aws_cloudwatch_log_group.app[key].name
-      cloudfront_url     = "https://${aws_cloudfront_distribution.app[key].domain_name}"
       public_url         = local.app_urls[key]
+      sites              = local.app_site_keys[key]
     }
   }
+}
+
+output "sites" {
+  description = "Every public hostname, with the app behind it and the CloudFront distribution in front. The cloudfront_url works immediately, with no DNS and no certificate — use it to smoke-test each service before pointing a domain at anything."
+  value = {
+    for key, site in local.effective_sites : key => {
+      app            = site.app
+      host           = site.host
+      cloudfront_url = "https://${aws_cloudfront_distribution.site[key].domain_name}"
+      # What a CNAME/ALIAS for `host` should point at.
+      cloudfront_domain = aws_cloudfront_distribution.site[key].domain_name
+      distribution_id   = aws_cloudfront_distribution.site[key].id
+      # Empty until a us-east-1 certificate is supplied; without one the
+      # distribution cannot carry the hostname as an alias.
+      aliases = aws_cloudfront_distribution.site[key].aliases
+    }
+  }
+}
+
+output "admin_hosts" {
+  description = "Every hostname the console answers on. admin_allowed_cidrs guards all of them — and its CloudFront URLs too — or none."
+  value       = local.admin_hosts
 }
 
 output "ecs_cluster_name" {
@@ -24,7 +46,7 @@ output "ecs_cluster_name" {
 }
 
 output "alb_dns_name" {
-  description = "Load balancer hostname. Point each brand's CNAME here, or use it with an explicit Host header to test a service before DNS exists."
+  description = "Load balancer hostname. This is an ORIGIN, not somewhere to point DNS — a record aimed here bypasses CloudFront, and with it the free HTTPS certificate and the /uploads/* behaviour that makes product images resolve. Useful for `curl -H \"X-Platform-App: lumi9\"` when debugging which service a request lands on."
   value       = aws_lb.this.dns_name
 }
 
@@ -92,6 +114,8 @@ output "next_steps" {
        sign-up and there should not be.
     5. Narrow admin_allowed_cidrs. It defaults to the whole internet so a first
        apply cannot lock the team out of their own back office; that default is
-       not one to keep on a console that can refund money.
+       not one to keep on a console that can refund money. It covers EVERY
+       console hostname at once — see `terraform output admin_hosts`.
+    6. Point DNS at each site's cloudfront_domain, NOT at alb_dns_name.
   EOT
 }

@@ -24,15 +24,21 @@
 locals {
   has_cert = var.acm_certificate_arn != ""
 
-  # Only apps that were actually given a hostname get a routing rule. Everything
-  # else is reachable through the default action, which is what makes a first
-  # apply useful before any DNS exists.
-  routed_apps = { for key, app in local.apps : key => app if app.host != "" }
+  # Sites with a real hostname get a Host rule. A site without one is still
+  # reachable — through its own CloudFront distribution, by header — which is
+  # what makes a first apply useful before any DNS exists.
+  #
+  # The console's sites are excluded here and handled by the guarded rules
+  # below, so its hostnames are never routed by an unguarded rule.
+  routed_sites = {
+    for key, site in local.effective_sites :
+    key => site if site.host != "" && site.app != "admin"
+  }
 
   # Deterministic priorities. `for_each` over a map iterates in sorted key
   # order, so index() over sorted keys gives every rule a stable number — and a
   # rule that never renumbers is a rule that never causes a spurious diff.
-  routed_keys = sort(keys(local.routed_apps))
+  routed_keys = sort(keys(local.routed_sites))
 
   # The console's allowlist is meaningful only if it is not the default.
   admin_is_restricted = !contains(var.admin_allowed_cidrs, "0.0.0.0/0")
@@ -180,9 +186,15 @@ locals {
 locals {
   # Each entry becomes one allow rule and one deny rule for the console.
   # Present only when the operator has actually narrowed admin_allowed_cidrs.
+  #
+  # The `host` entry carries EVERY hostname the console answers on, because a
+  # single host_header condition takes a list and ORs it. That is what keeps
+  # admin.femi9.in and admin.lumi9.in under one pair of rules rather than a
+  # pair each — and, more importantly, keeps it impossible to add a third
+  # console hostname that quietly escapes the allowlist.
   admin_signals = local.admin_is_restricted ? merge(
-    var.admin_host != "" ? { host = var.admin_host } : {},
-    { header = "admin" },
+    length(local.admin_hosts) > 0 ? { host = local.admin_hosts } : {},
+    { header = ["admin"] },
   ) : {}
 
   # Offsets so each signal's allow and deny keep a fixed, non-colliding number.
@@ -201,11 +213,13 @@ resource "aws_lb_listener_rule" "admin_allow" {
   }
 
   # Conditions are ANDed: the right signal AND an allowed source address.
+  # Within one condition the values are ORed, which is how every console
+  # hostname is covered by this single rule.
   dynamic "condition" {
     for_each = each.key == "host" ? [each.value] : []
     content {
       host_header {
-        values = [condition.value]
+        values = condition.value
       }
     }
   }
@@ -215,7 +229,7 @@ resource "aws_lb_listener_rule" "admin_allow" {
     content {
       http_header {
         http_header_name = "X-Platform-App"
-        values           = [condition.value]
+        values           = condition.value
       }
     }
   }
@@ -255,7 +269,7 @@ resource "aws_lb_listener_rule" "admin_deny" {
     for_each = each.key == "host" ? [each.value] : []
     content {
       host_header {
-        values = [condition.value]
+        values = condition.value
       }
     }
   }
@@ -265,7 +279,7 @@ resource "aws_lb_listener_rule" "admin_deny" {
     content {
       http_header {
         http_header_name = "X-Platform-App"
-        values           = [condition.value]
+        values           = condition.value
       }
     }
   }
@@ -301,19 +315,18 @@ resource "aws_lb_listener_rule" "cdn" {
 }
 
 # ── Host forwards ───────────────────────────────────────────────────────────
-# One per configured hostname, same omission for the guarded console.
+# One per configured storefront hostname. The console's hostnames are NOT here:
+# when its allowlist is in force they belong to the guarded pair above, and when
+# it is not, the rule below covers them.
 resource "aws_lb_listener_rule" "host" {
-  for_each = {
-    for key, app in local.routed_apps :
-    key => app if !(key == "admin" && local.admin_is_restricted)
-  }
+  for_each = local.routed_sites
 
   listener_arn = local.primary_listener_arn
   priority     = 200 + index(local.routed_keys, each.key)
 
   action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.app[each.key].arn
+    target_group_arn = aws_lb_target_group.app[each.value.app].arn
   }
 
   condition {
@@ -325,18 +338,54 @@ resource "aws_lb_listener_rule" "host" {
   tags = local.tags
 }
 
+# The console's hostnames when NO allowlist is set — one rule covering all of
+# them, since a host_header condition ORs its values. Once admin_allowed_cidrs
+# is narrowed this disappears and the guarded pair above takes over, which is
+# the only way the two can never both match.
+resource "aws_lb_listener_rule" "admin_host_open" {
+  count = !local.admin_is_restricted && length(local.admin_hosts) > 0 ? 1 : 0
+
+  listener_arn = local.primary_listener_arn
+  priority     = 190
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app["admin"].arn
+  }
+
+  condition {
+    host_header {
+      values = local.admin_hosts
+    }
+  }
+
+  tags = local.tags
+}
+
 # ── Optional DNS ─────────────────────────────────────────────────────────────
-# An alias record per configured host, created only when a hosted zone is given.
-resource "aws_route53_record" "app" {
-  for_each = var.route53_zone_id != "" ? local.routed_apps : {}
+# An alias record per site with a hostname, pointing at that site's CLOUDFRONT
+# distribution rather than at the ALB. That is the correction that matters: an
+# alias straight to the load balancer bypasses the CDN, and with it the free
+# HTTPS certificate, the cached static assets, and the /uploads/* behaviour that
+# makes product images resolve at all.
+#
+# Only useful when every host sits in ONE hosted zone. Two brands on two
+# registrable domains means two zones, so most setups will manage these records
+# themselves — hence a single optional variable rather than a required one.
+resource "aws_route53_record" "site" {
+  for_each = var.route53_zone_id != "" ? {
+    for key, site in local.effective_sites : key => site if site.host != ""
+  } : {}
 
   zone_id = var.route53_zone_id
   name    = each.value.host
   type    = "A"
 
   alias {
-    name                   = aws_lb.this.dns_name
-    zone_id                = aws_lb.this.zone_id
-    evaluate_target_health = true
+    name    = aws_cloudfront_distribution.site[each.key].domain_name
+    zone_id = aws_cloudfront_distribution.site[each.key].hosted_zone_id
+    # CloudFront reports health per edge, not per origin; there is nothing
+    # useful for Route53 to evaluate here.
+    evaluate_target_health = false
   }
 }

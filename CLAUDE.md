@@ -174,6 +174,19 @@ Two Terraform stacks, and they do not overlap:
 | `apps/femi9-web/infra/terraform` | The single-app stack **running today**. One service. Deployed by `.github/workflows/deploy-staging.yml`. Untouched by the platform work. |
 | `infra/terraform` | The **platform** stack: all three services, one Aurora cluster, three schemas. Deployed by `.github/workflows/deploy-platform.yml` on a push to `lumi9`. |
 
+**`lumi9` is the deploy branch, not `master`.** `deploy-staging.yml` used to fire
+on master and is now manual-only — master is many commits behind, and leaving it
+armed meant any incidental commit there would redeploy a stale Femi9 over the
+top of whatever the platform had just shipped, from a different image against a
+different database, with both runs reporting success. CI gates `lumi9` too.
+
+**A SITE is a hostname; an APP is an ECS service, and they are not
+one-to-one.** The console answers on `admin.femi9.in` AND `admin.lumi9.in`, so
+each brand's staff sign in on their own domain — four hostnames, three services.
+`var.sites` in the platform stack maps one to the other, and each site gets its
+own CloudFront distribution because a distribution carries one certificate and
+those two hostnames are on different registrable domains.
+
 Read `infra/terraform/README.md` before applying anything. It has the ordering
 constraints (repos before images before services before seeds), the two-region
 certificate trap, and what is deliberately absent.

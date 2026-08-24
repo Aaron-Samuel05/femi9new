@@ -43,7 +43,10 @@ name: CI
 
 on:
   push:
-    branches: [master, main]
+    # `lumi9` is the branch the platform deploys from, so it has to be gated
+    # here — without it, deploy-platform.yml would build and ship images from a
+    # commit no test had ever seen.
+    branches: [master, main, lumi9]
     paths:
       - "apps/**"
       - "packages/**"

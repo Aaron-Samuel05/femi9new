@@ -3,12 +3,14 @@ name: Deploy platform
 # Builds and deploys the three-service platform stack (infra/terraform):
 # femi9-web, lumi9-web and the admin console.
 #
-# This does NOT replace deploy-staging.yml. That workflow owns the single-app
-# stack that is running today (apps/femi9-web/infra/terraform) and keeps owning
-# it until the cutover happens. The two target different clusters, different
-# ECR repositories and different IAM statements, so they cannot interfere —
-# which is the point: the new stack can be brought up and exercised while the
-# old one keeps serving.
+# ── `lumi9` IS THE DEPLOY BRANCH ────────────────────────────────────────────
+# Not master. Master is many commits behind and deploys nothing any more —
+# deploy-staging.yml, which used to fire on it, is now manual-only. That is the
+# whole cutover in two lines: this workflow deploys everything, from this
+# branch, and the old one waits in the Actions tab as a rollback path.
+#
+# The two still target different clusters, ECR repositories and IAM statements,
+# so they cannot interfere even if both are run.
 
 on:
   workflow_dispatch:

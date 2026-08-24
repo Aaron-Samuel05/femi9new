@@ -71,11 +71,10 @@ resource "aws_cloudfront_origin_access_control" "uploads" {
   signing_protocol                  = "sigv4"
 }
 
-# Read access for EVERY distribution in this stack — one per app, because each
-# brand's images are served from its own hostname under its own `/uploads/*`
-# path. The SourceArn condition is what keeps this from being "any CloudFront
-# distribution in any AWS account", which is what a bare service principal would
-# mean.
+# Read access for EVERY distribution in this stack — one per SITE, because each
+# hostname serves images under its own `/uploads/*` path. The SourceArn
+# condition is what keeps this from being "any CloudFront distribution in any
+# AWS account", which is what a bare service principal would mean.
 data "aws_iam_policy_document" "uploads_cloudfront_read" {
   statement {
     sid       = "AllowCloudFrontRead"
@@ -90,7 +89,7 @@ data "aws_iam_policy_document" "uploads_cloudfront_read" {
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
-      values   = [for d in aws_cloudfront_distribution.app : d.arn]
+      values   = [for d in aws_cloudfront_distribution.site : d.arn]
     }
   }
 }

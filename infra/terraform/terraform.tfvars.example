@@ -12,36 +12,66 @@ aws_region  = "ap-south-1"
 project     = "femi9plat"
 environment = "staging"
 
-# ── Bring-up: leave the domains empty on the first apply ────────────────────
-# With no hostnames set, each app is still reachable on its own CloudFront URL
-# (`terraform output services`), because each distribution routes to its app by
-# the X-Platform-App header rather than by hostname. Fill these in once DNS is
-# ready and re-apply; nothing else has to change.
+# ── Sites: which hostname serves which app ──────────────────────────────────
 #
-# femi9_host = "shop.femi9.in"
-# lumi9_host = "shop.lumi9.in"
-# admin_host = "console.femi9.in"
+# LEAVE THIS EMPTY FOR A FIRST APPLY. One CloudFront distribution per app is
+# synthesised on its free *.cloudfront.net name, and each routes to the right
+# app by header rather than by hostname — so all three are testable before any
+# DNS or certificate exists. `terraform output sites` prints the URLs.
+#
+# Fill it in when DNS is ready. Note the console appears TWICE: it is one ECS
+# service reachable on both brands' domains, so each brand's staff sign in on
+# their own. `canonical` marks the hostname an app puts in its own URLs —
+# payment callbacks, OAuth redirects, emailed links — so a storefront needs
+# exactly one and the console needs none.
+#
+# certificate_arn is US-EAST-1 ALWAYS, whatever aws_region says: CloudFront
+# reads certificates only from there. Without one the distribution keeps its
+# *.cloudfront.net name and ignores `host`, which is a perfectly good staging
+# posture.
+#
+# sites = {
+#   femi9 = {
+#     app             = "femi9"
+#     host            = "shop.femi9.in"
+#     canonical       = true
+#     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+#   }
+#   lumi9 = {
+#     app             = "lumi9"
+#     host            = "shop.lumi9.in"
+#     canonical       = true
+#     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+#   }
+#   admin_femi9 = {
+#     app             = "admin"
+#     host            = "admin.femi9.in"
+#     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+#   }
+#   admin_lumi9 = {
+#     app             = "admin"
+#     host            = "admin.lumi9.in"
+#     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+#   }
+# }
 
 # Requests that match no rule — anyone hitting the ALB's own DNS name.
 # Constrained to a storefront; the console must never be the default.
 alb_default_app = "femi9"
 
-# ── Certificates ────────────────────────────────────────────────────────────
-# TWO different certificates, in two different regions, and mixing them up is
-# the classic first mistake:
-#   acm_certificate_arn        — ap-south-1 (or wherever this stack runs), on
-#                                the ALB's :443 listener.
-#   cloudfront_certificate_arn — US-EAST-1 ALWAYS, whatever aws_region says.
-#                                CloudFront reads certificates only from there.
+# ── The ALB's own certificate: usually leave this alone ─────────────────────
+# Every site is fronted by CloudFront, which terminates TLS for the viewer, so
+# the ALB is an origin rather than something a browser talks to. Set this only
+# if you intend to point DNS straight at the load balancer — and then it must
+# cover every hostname at once, which the per-site certificates above do not.
 #
-# acm_certificate_arn        = "arn:aws:acm:ap-south-1:111122223333:certificate/…"
-# cloudfront_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
+# acm_certificate_arn         = "arn:aws:acm:ap-south-1:111122223333:certificate/…"
 # additional_certificate_arns = []
+# alb_origin_protocol_policy  = "https-only"   # once the ALB has one
 
-# Encrypt the edge-to-origin hop as well, once the ALB has a certificate.
-# alb_origin_protocol_policy = "https-only"
-
-# Alias records for every configured host, created automatically.
+# Alias records for every site, pointed at its CloudFront distribution. Only
+# useful when every hostname lives in ONE hosted zone — two brands on two
+# registrable domains means two zones, so most setups manage DNS themselves.
 # route53_zone_id = "Z0123456789ABCDEFGHIJ"
 
 # ── The console ─────────────────────────────────────────────────────────────
@@ -52,6 +82,9 @@ alb_default_app = "femi9"
 # guarded by it; neither is a way around the other.
 #
 # admin_allowed_cidrs = ["203.0.113.0/24", "198.51.100.7/32"]
+#
+# It covers EVERY console hostname and every console CloudFront URL at once, so
+# there is no way to add a third front door that quietly escapes it.
 
 # ── Sizing ──────────────────────────────────────────────────────────────────
 # Defaults run two tasks per service. For a staging environment where a minute
