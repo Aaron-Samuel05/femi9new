@@ -12,6 +12,9 @@ on:
 
 permissions:
   contents: read
+  # Required to mint the OIDC token that `configure-aws-credentials` exchanges
+  # for short-lived AWS credentials. Without it the role assumption fails.
+  id-token: write
 
 concurrency:
   group: femi9-staging-deploy
@@ -28,8 +31,12 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # OIDC, not stored access keys: GitHub presents a signed token and AWS
+          # hands back credentials that expire with the job. Nothing long-lived
+          # is kept in this repository. The role's trust policy in
+          # .github/iam/github-staging-trust.json decides which branches may
+          # assume it.
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
           allowed-account-ids: "851725383246"
 
