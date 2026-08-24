@@ -1,13 +1,17 @@
-import Link from 'next/link'
 import { requireConsole } from '@/lib/guard'
 import { brandConfig, type AdminModule } from '@femi9/core/brands'
 import { brandsFor } from '@femi9/core/admin-identity'
-import { SignOut } from './SignOut'
+import { AdminShell, type NavGroup } from './_shell'
 
 /**
- * The console shell. Its nav is rendered FROM the brand's module list, so a
- * brand that does not have a module never sees a link to it — and the route
- * itself 404s regardless, because a hidden link is decoration.
+ * The console shell's server half. It resolves the session, works out which
+ * sections this brand actually has, and hands a plain description of the nav to
+ * `<AdminShell>` — which is a client component only because the mobile drawer
+ * needs a piece of state.
+ *
+ * The nav is built FROM the brand's module list, so a brand that does not have
+ * a module never sees a link to it — and the route itself 404s regardless,
+ * because a hidden link is decoration.
  */
 
 const LABELS: Record<AdminModule, string> = {
@@ -19,7 +23,7 @@ const LABELS: Record<AdminModule, string> = {
   coupons: 'Coupons',
   pricing: 'Pricing',
   subscriptions: 'Subscriptions',
-  content: 'Content',
+  content: 'Blog',
   reviews: 'Reviews',
   community: 'Community',
   affiliates: 'Affiliates',
@@ -37,7 +41,8 @@ const HREF: Record<AdminModule, string> = {
   coupons: '/coupons',
   pricing: '/pricing',
   subscriptions: '/subscriptions',
-  content: '/content',
+  // The content module's only page is the blog index; there is no /content.
+  content: '/content/blog',
   reviews: '/reviews',
   community: '/community',
   affiliates: '/affiliates',
@@ -45,6 +50,21 @@ const HREF: Record<AdminModule, string> = {
   thara: '/thara',
   settings: '/settings',
 }
+
+/**
+ * The sidebar's eyebrow headings, in order. Every module belongs to exactly one
+ * group; a group whose modules this brand does not have is dropped whole, so
+ * Lumi9 never renders an empty "Growth" heading.
+ */
+const GROUPS: { eyebrow: string; modules: AdminModule[] }[] = [
+  { eyebrow: 'Overview', modules: ['dashboard'] },
+  { eyebrow: 'Catalog', modules: ['catalog', 'inventory'] },
+  { eyebrow: 'Sales', modules: ['orders', 'subscriptions', 'customers', 'coupons'] },
+  { eyebrow: 'Growth', modules: ['affiliates', 'partners'] },
+  { eyebrow: 'Programs', modules: ['thara'] },
+  { eyebrow: 'Content', modules: ['content', 'reviews', 'community'] },
+  { eyebrow: 'Configure', modules: ['settings', 'pricing'] },
+]
 
 export default async function PanelLayout({
   children,
@@ -59,43 +79,35 @@ export default async function PanelLayout({
   // Only offer a switch to brands this person actually holds a role in.
   const mine = await brandsFor(session.sub)
 
-  return (
-    <div className="shell" style={{ ['--accent' as string]: config.accent }}>
-      <aside className="side">
-        <div className="sideHead">
-          <span className="dot" />
-          <span className="sideName">{config.name}</span>
-        </div>
-        <nav className="nav">
-          {config.modules.map((m) => (
-            <Link key={m} href={`/${session.brand}${HREF[m]}`}>
-              {LABELS[m]}
-            </Link>
-          ))}
-        </nav>
-      </aside>
+  const has = new Set(config.modules)
+  const groups: NavGroup[] = GROUPS.map((group) => ({
+    eyebrow: group.eyebrow,
+    items: group.modules
+      .filter((m) => has.has(m))
+      .map((m) => ({
+        module: m,
+        label: LABELS[m],
+        href: `/${session.brand}${HREF[m]}`,
+        // The dashboard's href IS the brand root, so a prefix match would leave
+        // it lit on every other page.
+        exact: m === 'dashboard',
+      })),
+  })).filter((group) => group.items.length > 0)
 
-      <div className="main">
-        <div className="topbar">
-          <span className="who">
-            {session.name} · {session.role}
-          </span>
-          <div className="switcher">
-            {mine
-              .filter((b) => b !== session.brand)
-              .map((b) => (
-                <Link key={b} href={`/${b}`}>
-                  Switch to {brandConfig(b).shortName}
-                </Link>
-              ))}
-            {/* Only offered when this person holds more than one brand —
-                there is nothing to compare otherwise. */}
-            {mine.length > 1 && <Link href="/group">Group</Link>}
-            <SignOut brand={session.brand} />
-          </div>
-        </div>
-        {children}
-      </div>
-    </div>
+  return (
+    <AdminShell
+      brand={session.brand}
+      brandName={config.name}
+      host={config.host}
+      accent={config.accent}
+      groups={groups}
+      who={{ name: session.name, role: session.role }}
+      switches={mine
+        .filter((b) => b !== session.brand)
+        .map((b) => ({ brand: b, shortName: brandConfig(b).shortName }))}
+      showGroupLink={mine.length > 1}
+    >
+      {children}
+    </AdminShell>
   )
 }

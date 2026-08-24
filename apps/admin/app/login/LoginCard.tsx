@@ -9,7 +9,8 @@ import { BRAND_CONFIG, BRANDS, type Brand } from '@femi9/core/brands'
  *
  * Brand is a segmented toggle at the top of the form, above the fields, so
  * staff can see which console they are entering before they type. The card
- * re-themes on selection.
+ * re-themes on selection — `data-brand` on `.adm-auth` re-points the sheet's
+ * accent ramp, so the whole screen follows, not just one button.
  *
  * The toggle is a convenience, never an authorisation — the server checks the
  * admin's membership in the chosen brand and answers identically whichever way
@@ -66,62 +67,96 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
   }
 
   return (
-    <form className="card" onSubmit={submit} style={{ ['--accent' as string]: config.accent }}>
-      <div className="brandRow" role="group" aria-label="Choose a brand">
-        {BRANDS.map((key) => {
-          const selected = key === brand
-          return (
-            <button
-              key={key}
-              type="button"
-              className={selected ? 'brandBtn isOn' : 'brandBtn'}
-              aria-pressed={selected}
-              onClick={() => chooseBrand(key)}
-              style={selected ? { background: BRAND_CONFIG[key].accent } : undefined}
+    <main className="adm-auth" data-brand={brand} style={{ ['--accent' as string]: config.accent }}>
+      <form className="adm-auth-card" onSubmit={submit}>
+        <div className="adm-auth-brand">
+          <svg
+            className="adm-auth-mark"
+            viewBox="0 0 24 24"
+            width="24"
+            height="24"
+            aria-hidden="true"
+          >
+            <rect width="24" height="24" rx="7" fill={config.accent} />
+            <text
+              x="12"
+              y="12"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fontSize="12"
+              fontWeight="700"
+              fill="#fff"
+              fontFamily="inherit"
             >
-              {BRAND_CONFIG[key].shortName}
-            </button>
-          )
-        })}
-      </div>
+              {config.name.charAt(0)}
+            </text>
+          </svg>
+          <span className="adm-auth-eyebrow">Ops</span>
+        </div>
 
-      <h1 className="title">{config.name} admin</h1>
-      <p className="sub">Sign in to continue.</p>
+        <div className="adm-chip-group" role="group" aria-label="Choose a brand">
+          {BRANDS.map((key) => {
+            const selected = key === brand
+            return (
+              <button
+                key={key}
+                type="button"
+                className={selected ? 'adm-chip is-active' : 'adm-chip'}
+                aria-pressed={selected}
+                onClick={() => chooseBrand(key)}
+              >
+                {BRAND_CONFIG[key].shortName}
+              </button>
+            )
+          })}
+        </div>
 
-      <label className="field">
-        <span>Email</span>
-        <input
-          type="email"
-          name="email"
-          autoComplete="username"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={busy}
-        />
-      </label>
+        <h1 className="adm-auth-title">{config.name} admin</h1>
+        <p className="adm-auth-sub">Sign in to continue.</p>
 
-      <label className="field">
-        <span>Password</span>
-        <input
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={busy}
-        />
-      </label>
+        <label className="adm-field">
+          <span className="adm-label">Email</span>
+          <input
+            className="adm-input"
+            type="email"
+            name="email"
+            autoComplete="username"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={busy}
+          />
+        </label>
 
-      {/* aria-live so the failure is announced, not just drawn. */}
-      <p className="error" role="alert" aria-live="polite">
-        {error ?? ' '}
-      </p>
+        <label className="adm-field">
+          <span className="adm-label">Password</span>
+          <input
+            className="adm-input"
+            type="password"
+            name="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            disabled={busy}
+          />
+        </label>
 
-      <button className="submit" type="submit" disabled={busy}>
-        {busy ? 'Signing in…' : `Sign in to ${config.shortName}`}
-      </button>
-    </form>
+        {/* aria-live so the failure is announced, not just drawn. The wrapper is
+            always in the tree — only its painted shell is conditional — so the
+            live region exists before the message arrives. */}
+        <div aria-live="polite" role="alert">
+          {error && (
+            <div className="adm-auth-error">
+              <span className="adm-error">{error}</span>
+            </div>
+          )}
+        </div>
+
+        <button className="adm-btn adm-btn--primary adm-auth-submit" type="submit" disabled={busy}>
+          {busy ? 'Signing in…' : `Sign in to ${config.shortName}`}
+        </button>
+      </form>
+    </main>
   )
 }

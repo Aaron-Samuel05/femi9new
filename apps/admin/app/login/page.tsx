@@ -11,6 +11,9 @@ export const metadata: Metadata = {
  * `?brand=` preselects the toggle — used by the route guard when it bounces an
  * expired session, and by bookmarks. Unvalidated input never reaches the form:
  * anything that is not a brand falls back to Femi9.
+ *
+ * The card, not this page, carries `.adm-auth`: the wash behind it re-themes
+ * with the toggle, and the toggle is client state.
  */
 export default async function LoginPage({
   searchParams,
@@ -23,9 +26,5 @@ export default async function LoginPage({
   // here only preselects the destination.
   const next = typeof params.next === 'string' && params.next.startsWith('/') ? params.next : null
 
-  return (
-    <main className="loginShell">
-      <LoginCard initialBrand={brand} next={next} />
-    </main>
-  )
+  return <LoginCard initialBrand={brand} next={next} />
 }

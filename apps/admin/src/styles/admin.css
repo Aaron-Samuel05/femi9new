@@ -15,6 +15,9 @@
   /* Brand palette (organic period-care — warm plum + forest/gold accents). */
   --plum: #5a4b8a;
   --plum2: #7a68b8;
+  /* The pressed/hover step below --plum. A token rather than a literal because
+     the other brand re-points the whole ramp — see the data-brand block. */
+  --plum-deep: #4d4078;
   --forest: #3f6b4f;
   --gold: #c79a3a;
   --ink: #241d33;
@@ -39,6 +42,18 @@
 
   --sans: "Urbanist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --serif: "Newsreader", Georgia, "Times New Roman", serif;
+}
+
+/* One console, two brands. Everything below the tokens draws in --plum, so a
+   brand is re-skinned by re-pointing the ramp and nothing else. The attribute
+   comes from the SESSION brand on the shell (and from the toggle on the login
+   card, which is a preview and never an authorisation). */
+.adm[data-brand="lumi9"],
+.adm-auth[data-brand="lumi9"] {
+  --plum: #4f6f52;
+  --plum2: #6e8f71;
+  --plum-deep: #3f5942;
+  --plum-tint: #e9f0ea;
 }
 
 /* Local reset — the console owns its own box model / typographic baseline so it
@@ -132,6 +147,16 @@ body:has(.adm) {
   height: 22px;
   width: auto;
   display: block;
+}
+
+/* Which console you are in, spelled out. Two brands share this shell and the
+   accent tile alone is not an answer at a glance. */
+.adm-brand-name {
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
 }
 
 /* "Ops" pill sits beside the wordmark so the console reads as a distinct
@@ -233,7 +258,7 @@ body:has(.adm) {
 }
 
 .adm-nav-link:hover {
-  background: #f2edf8;
+  background: var(--plum-tint);
   color: var(--plum);
   transform: translateX(2px);
 }
@@ -307,6 +332,18 @@ body:has(.adm) {
   gap: 8px;
 }
 
+/* Cross-brand moves, above the identity block: offered only to an admin who
+   holds a role in more than this brand, so it is usually absent. */
+.adm-foot-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px 8px;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+
 .adm-foot-link {
   font-size: 12px;
   font-weight: 500;
@@ -315,6 +352,15 @@ body:has(.adm) {
   border-radius: 6px;
   padding: 4px 6px;
   transition: color 0.15s ease;
+}
+
+/* Sign out is a button, not a link, and has to sit in the same row as one.
+   Same pattern as button.adm-chip below. */
+button.adm-foot-link {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
 }
 
 .adm-foot-link:hover {
@@ -682,8 +728,8 @@ body:has(.adm) {
 }
 
 .adm-btn--primary:hover:not(:disabled) {
-  background: #4d4078;
-  border-color: #4d4078;
+  background: var(--plum-deep);
+  border-color: var(--plum-deep);
 }
 
 .adm-btn--secondary {

@@ -8,7 +8,9 @@ export function SignOut({ brand }: { brand: Brand }) {
   const router = useRouter()
   return (
     <button
-      className="signout"
+      // Not `.adm-btn`: the mobile block gives every button that class
+      // `width: 100%`, which would squeeze its sibling out of the foot row.
+      className="adm-foot-link"
       type="button"
       onClick={async () => {
         await fetch(`/api/auth/logout?brand=${brand}`, { method: 'POST' })

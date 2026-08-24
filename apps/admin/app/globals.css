@@ -1,6 +1,8 @@
-/* The console's own styling. Deliberately independent of either storefront:
-   this is an internal tool, and it should not inherit a brand's marketing CSS.
-   Brand identity here is one accent colour, set per request. */
+/* The page under the console. Everything with an `.adm-*` class is styled by
+   `src/styles/admin.css` — the console's design system, imported alongside this
+   file in the root layout. What is left here is the bare document plus the one
+   screen that sits outside the console shell: the group view, which crosses the
+   brand boundary and so belongs to neither brand's accent. */
 
 :root {
   --bg: #f6f6f8;
@@ -23,116 +25,15 @@ body {
   font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
-/* ── Login ───────────────────────────────────────────────────────────────── */
-
-.loginShell {
-  min-height: 100dvh;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-}
-
-.card {
-  width: min(100%, 420px);
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 28px;
-  box-shadow: 0 12px 40px rgb(22 21 29 / 8%);
-}
-
-.brandRow {
-  display: grid;
-  grid-auto-flow: column;
-  gap: 6px;
-  padding: 4px;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  margin-bottom: 22px;
-}
-
-.brandBtn {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-weight: 600;
-  /* >=44px hit area on touch, per the same rule the storefronts follow. */
-  min-height: 40px;
-  padding: 8px 16px;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background 140ms ease, color 140ms ease;
-}
-
-.brandBtn.isOn { color: #fff; }
-.brandBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-
-.title { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
-.sub { margin: 0 0 22px; color: var(--muted); font-size: 14px; }
-
-.field { display: block; margin-bottom: 16px; }
-.field > span { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
-
-.field input {
-  width: 100%;
-  /* 16px so iOS Safari does not zoom the page on focus. */
-  font: 16px/1.4 inherit;
-  padding: 11px 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--ink);
-}
-
-.field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
-
-/* Reserves its line even when empty, so the form does not jump on error. */
-.error { min-height: 20px; margin: 0 0 12px; color: var(--danger); font-size: 13px; }
-
-.submit {
-  width: 100%;
-  min-height: 44px;
-  border: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  color: #fff;
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.submit[disabled] { opacity: 0.6; cursor: default; }
-
-/* ── Console shell ───────────────────────────────────────────────────────── */
-
-.shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100dvh; }
-@media (max-width: 860px) { .shell { grid-template-columns: 1fr; } }
-
-.side { background: var(--panel); border-right: 1px solid var(--line); padding: 18px 14px; }
-.sideHead { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
-.sideName { font-weight: 700; }
-
-.nav { display: grid; gap: 2px; }
-.nav a {
-  display: block;
-  padding: 9px 10px;
-  border-radius: 8px;
-  color: var(--ink);
-  text-decoration: none;
-  font-size: 14px;
-}
-.nav a:hover { background: var(--bg); }
-.nav a[aria-current='page'] { background: var(--accent); color: #fff; font-weight: 600; }
+/* ── Group view ──────────────────────────────────────────────────────────────
+   Both brands side by side. It has no sidebar and no session brand, so it does
+   not enter `.adm` — that class is the two-column console shell. */
 
 .main { padding: 24px; }
 .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .who { color: var(--muted); font-size: 13px; }
 .switcher { display: flex; gap: 6px; }
-.switcher a, .signout {
+.switcher a {
   font-size: 13px; padding: 6px 10px; border-radius: 999px;
   border: 1px solid var(--line); background: #fff; color: var(--ink);
   text-decoration: none; cursor: pointer; font-family: inherit;

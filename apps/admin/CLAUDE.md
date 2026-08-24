@@ -5,9 +5,39 @@ One console, two brands. Read this before touching it.
 ## What it is
 
 The shared back office for Femi9 and Lumi9. Next 16 · React 19 · its own plain
-CSS (`app/globals.css`). It is an internal tool and deliberately inherits
-nothing from either storefront's design system — brand identity here is one
-accent colour, set per request.
+CSS. It is an internal tool and deliberately inherits nothing from either
+storefront's design system — brand identity here is one accent colour, set per
+request.
+
+## The stylesheets
+
+Three global sheets, all imported by `app/layout.tsx`, in this order:
+
+```
+app/globals.css        the bare document, plus /group — the one screen outside
+                       the console shell.
+src/styles/admin.css   THE design system. `.adm` (console) and `.adm-auth`
+                       (login) scope every `.adm-*` class the fifteen sections
+                       compose. Feature modules COMPOSE these; they never author
+                       new component CSS.
+src/charts/charts.css  the primitives the dashboard's three charts draw into.
+```
+
+**All three must stay imported in the root layout.** `admin.css` arrived with
+the pages when the console left the storefront, and for a while nothing
+imported it — every section still carried its `.adm-*` classes and every one of
+them rendered as unstyled HTML. Nothing fails at build time when that sheet is
+orphaned, and typecheck has no opinion either; the only signal is the console
+looking like a 1994 form.
+
+Brand skinning is one CSS variable ramp. `--plum` / `--plum2` / `--plum-deep` /
+`--plum-tint` are what the whole sheet draws in, and `data-brand` on `.adm` /
+`.adm-auth` re-points them. Add a brand, add a `data-brand` block — do not add a
+second copy of the sheet.
+
+Urbanist and Newsreader (`--sans` / `--serif`) load from a `<link>` in the root
+layout, not `next/font`: the Docker build stage has no reason to need the
+network, and every font token declares a system fallback.
 
 Runs on `:3002` (`npm run dev:admin` from the repo root).
 
@@ -37,9 +67,15 @@ add a friendlier message.
 ```
 proxy.ts                      route guard (Node runtime — see below)
 app/
+  layout.tsx                  imports ALL THREE global sheets — see above
   login/                      page.tsx + LoginCard.tsx (the brand toggle)
   api/auth/login|logout/      sign in / sign out, per brand
   [brand]/(panel)/            15 console sections, moved from the storefront
+    layout.tsx                server half: guard + nav built from the brand's
+                              module list
+    _shell.tsx                the `.adm` markup; client only for the mobile
+                              drawer's open bit
+    _nav.tsx                  active-route link + one icon per module
   [brand]/api/                31 route handlers, moved from /api/admin
 src/lib/
   guard.ts                    requireConsole(brand, module?) — call it in EVERY page
