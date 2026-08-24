@@ -210,6 +210,20 @@ new var there** with a comment.
 docker build -f apps/femi9-web/Dockerfile -t femi9-web .
 ```
 
+**This image had not built since phase 1b.** It copied
+`src/lib/cycle-crypto.ts`, which moved to `packages/core` in that phase — the
+211 files importing it were repointed, the Dockerfile was not, and a Dockerfile
+is not something typecheck or the suite reads. `deploy-staging.yml` was failing
+at the image step the whole time.
+
+**The runtime layout changed: the image now runs from `/app/apps/femi9-web`.**
+It used to flatten the standalone bundle to `/app/server.js`, which was right
+before Next 16. Turbopack writes externalised server packages into
+`.next/node_modules` as relative symlinks counted from the nested depth, so
+flattening dangles all of them and the container dies loading its
+instrumentation hook. Anything with a relative path — a `docker run` command, an
+ECS `--overrides` — is relative to the app directory now.
+
 ## 5. Task log
 
 Append one entry per task. Newest last.

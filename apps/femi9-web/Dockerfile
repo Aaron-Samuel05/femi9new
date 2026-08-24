@@ -12,14 +12,29 @@
 #   docker build --secret id=maxmind_license_key,env=MAXMIND_LICENSE_KEY \
 #                -f apps/femi9-web/Dockerfile -t femi9-web .
 #
-# ── THE RUNTIME LAYOUT IS DELIBERATELY FLAT ─────────────────────────────────
-# `output: 'standalone'` traced from the workspace root emits a NESTED bundle:
-#   .next/standalone/apps/femi9-web/server.js   + .next/standalone/node_modules
-# The runner stage flattens that back to /app/server.js with /app/node_modules,
-# which is byte-for-byte the layout this image had before the monorepo move.
-# That is on purpose: the entrypoint, HEALTHCHECK, CMD and the ECS task
-# definition all keep working with no change. `server.js` is entirely
-# __dirname-relative, so relocating it is safe.
+# ── THE RUNTIME LAYOUT IS THE ONE NEXT PRODUCED ─────────────────────────────
+# This image USED to flatten the standalone bundle back to /app/server.js, which
+# was byte-for-byte the layout it had before the monorepo move. That stopped
+# being safe when the app moved to Next 16 and Turbopack.
+#
+# Turbopack externalises server packages into apps/femi9-web/.next/node_modules
+# under a content-hashed name, written as a RELATIVE symlink:
+#
+#   require-in-the-middle-2ca7b9c2766f317e
+#     -> ../../../../../node_modules/require-in-the-middle
+#
+# Five levels up, counted from that exact depth. Flattening moved every one of
+# them two levels up, so each resolved to /node_modules/... and dangled. The
+# image built, started, and died on its instrumentation hook:
+#
+#   Failed to load external module require-in-the-middle-2ca7b9c2766f317e
+#
+# So the bundle now keeps the layout Next emitted, and the working directory is
+# /app/apps/femi9-web. `server.js` is entirely __dirname-relative either way;
+# what is NOT relocatable is everything around it.
+#
+# CONSEQUENCE FOR OPS: any `docker run` or ECS `--overrides` command with a
+# relative path is relative to /app/apps/femi9-web now, not /app.
 # =============================================================================
 
 FROM node:22-alpine AS base
@@ -139,13 +154,14 @@ RUN addgroup --system --gid 1001 nodejs \
 # NOTE: the standalone server does NOT bundle `public/` or `.next/static/`
 # automatically — we copy them explicitly here so the app can serve its static
 # assets and images.
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/public       ./public
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/static ./.next/static
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/public       ./apps/femi9-web/public
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/static ./apps/femi9-web/.next/static
 
-# The standalone bundle, FLATTENED. The trailing `/.` copies the *contents* of
-# the nested app directory, so /app ends up with server.js and .next/ directly —
-# the pre-monorepo layout that CMD and the entrypoint expect.
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/standalone/apps/femi9-web/. ./
+# The standalone bundle, WITH ITS NESTED LAYOUT INTACT — see the header for what
+# flattening it broke. This lands server.js at /app/apps/femi9-web/server.js and
+# the traced dependencies at /app/node_modules, which is the relationship every
+# symlink inside .next/node_modules was written against.
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/standalone/ ./
 
 # --- Prisma at runtime -----------------------------------------------------
 # The entrypoint runs `prisma migrate deploy` on boot, but the Prisma CLI is a
@@ -159,19 +175,24 @@ COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/.next/standalone/app
 # (Trade-off: a larger image; a later optimization can trace just the CLI closure.)
 COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# The Prisma schema + migration history — required by `prisma migrate deploy`.
-# It lives in packages/db now (one schema, both brands) but is copied to the same
-# /app/prisma the entrypoint has always used, so that script is unchanged.
-COPY --from=build --chown=nextjs:nodejs /app/packages/db/prisma ./prisma
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/scripts ./scripts
-# Keep the static catalog available to the idempotent Prisma seed task.
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/src/data ./src/data
+# The entrypoint's own scripts, at their workspace path. NOTHING here is
+# relocated any more: moving a script rewrites its relative imports, and the
+# failure surfaces on a one-off task long after the image deployed and went
+# healthy. The shared Prisma schema is reached where it actually lives, under
+# packages/db, which the COPY below puts in place.
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/scripts ./apps/femi9-web/scripts
+
+# The static catalog, for the idempotent Prisma seed task.
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/src/data ./apps/femi9-web/src/data
+
+# Femi9's own seed data (its prisma/ holds seeds, not the schema).
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/prisma ./apps/femi9-web/prisma
 
 # The GeoLite2 databases (or an empty directory, if the build had no licence key).
 # Next's standalone tracer only follows JS imports, so a data file it never sees
 # referenced has to be copied explicitly — same reason `public/` is copied above.
 # Paths are relative to the working directory, which is where server.js runs.
-COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/data ./data
+COPY --from=build --chown=nextjs:nodejs /app/apps/femi9-web/data ./apps/femi9-web/data
 
 # The workspace packages. Two reasons, and the first is why this build failed:
 #
@@ -192,6 +213,9 @@ COPY --from=build --chown=nextjs:nodejs /app/packages ./packages
 RUN mkdir -p node_modules/.bin \
  && ln -sf ../prisma/build/index.js node_modules/.bin/prisma \
  && chmod +x node_modules/prisma/build/index.js
+
+# Everything from here runs from the app directory, where server.js lives.
+WORKDIR /app/apps/femi9-web
 
 # Next's runtime writes cached artifacts (e.g. ISR) under .next/cache — make sure
 # the non-root user owns a writable cache dir.

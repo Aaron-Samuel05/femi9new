@@ -282,15 +282,18 @@ whatever `aws_region` says — CloudFront reads certificates from there and
 nowhere else. Getting these the wrong way round produces a confusing
 `InvalidViewerCertificate` on apply.
 
-**The two new images do NOT have Femi9's flat layout.** Femi9's runner flattens
-the standalone bundle to `/app/server.js`; Lumi9's and the console's keep the
-nested one Next produced and run from `/app/apps/<app>`. That is not a style
-choice — Turbopack writes its externalised server packages into
-`.next/node_modules` as relative symlinks counted from that exact depth, and
-flattening dangles every one of them. The image then builds, starts, and answers
-500 on every route. Any `--overrides` command you write for a one-off task is
-relative to `/app/apps/<app>` — which is why the seed above is `./prisma/seed.ts`
-and create-admin reaches up to `../../packages/db-platform/scripts/`.
+**All three images run from `/app/apps/<app>`, not `/app`.** They keep the
+nested layout `next build` produced instead of flattening it, and that is not a
+style choice: Turbopack writes its externalised server packages into
+`.next/node_modules` as relative symlinks counted from that exact depth, so
+flattening dangles every one of them. The image then builds, starts, and fails —
+500 on every route, or a dead instrumentation hook. Any `--overrides` command
+for a one-off task is therefore relative to `/app/apps/<app>` — which is why the
+seed above is `./prisma/seed.ts` and create-admin reaches up to
+`../../packages/db-platform/scripts/`.
+
+Femi9's image flattened until this change, which was correct before it moved to
+Next 16 and Turbopack and silently stopped being so.
 
 **Nothing in those images is relocated.** Every script sits at its workspace
 path, because moving one silently rewrites its relative imports: `create-admin`

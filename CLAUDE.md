@@ -97,6 +97,21 @@ and a Lumi9 build under it produces an image with no application in it. femi9-we
 has no such file and still reads the root one — deliberately, so its context is
 unchanged. Add a new app, add its ignore file.
 
+**Never flatten the standalone bundle.** All three images run from
+`/app/apps/<app>`, keeping the layout `next build` emitted. Turbopack writes its
+externalised server packages into `<app>/.next/node_modules` as RELATIVE
+symlinks counted from that exact depth — `@prisma/client-<hash> ->
+../../../../../node_modules/@prisma/client`. Move the bundle and every one of
+them dangles: the image builds, starts, and then 500s on every route, or dies on
+its instrumentation hook. Nothing in the build says so. Femi9's image flattened
+for years, correctly, until Next 16 and Turbopack made it wrong.
+
+**Nothing in an image is relocated to a tidier path either.** `create-admin.ts`
+imports the package it lives in as `../src/index`, and `seed.ts` reads
+`../src/lib/catalog`. Both broke when copied somewhere neater, and both failures
+land on a one-off task — after the image has deployed and passed every health
+check. `packages/` is in each image at its workspace path; reach scripts there.
+
 **`packages/core` declares what it IMPORTS.** It used to declare only `jose` and
 let everything else resolve out of femi9-web's hoisted tree, which is invisible
 at this root — one `npm install` here satisfies everyone. `npm ci --workspace

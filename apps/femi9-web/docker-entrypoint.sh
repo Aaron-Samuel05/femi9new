@@ -26,14 +26,20 @@ set -e  # abort (and fail the container) if a migration fails
 : "${DATABASE_URL:?DATABASE_URL is not set — inject it from AWS Secrets Manager}"
 : "${CYCLE_DATA_ENCRYPTION_KEY:?CYCLE_DATA_ENCRYPTION_KEY is not set — inject it from AWS Secrets Manager}"
 
-if [ -d ./prisma/migrations ]; then
+# The schema lives in packages/db now — one definition, one migration history,
+# a Postgres schema per brand — and is reached at its real workspace path rather
+# than copied next to server.js. ../.. is /app, because this script runs from
+# /app/apps/femi9-web.
+SCHEMA=../../packages/db/prisma/schema.prisma
+
+if [ -d ../../packages/db/prisma/migrations ]; then
   echo "[entrypoint] Applying database migrations (prisma migrate deploy)…"
-  npx prisma migrate deploy --schema=./prisma/schema.prisma
+  npx prisma migrate deploy --schema="$SCHEMA"
 else
   # This repository predates Prisma migration history. db push applies additive
   # schema changes and refuses destructive changes unless explicitly authorised.
   echo "[entrypoint] Synchronising legacy schema (prisma db push)…"
-  npx prisma db push --schema=./prisma/schema.prisma --skip-generate
+  npx prisma db push --schema="$SCHEMA" --skip-generate
 fi
 echo "[entrypoint] Migrations up to date."
 
