@@ -31,8 +31,6 @@ on:
 
 permissions:
   contents: read
-  # Required to mint the OIDC token exchanged for AWS credentials.
-  id-token: write
 
 concurrency:
   group: platform-deploy
@@ -158,10 +156,29 @@ jobs:
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:
-          # OIDC: GitHub presents a signed token and AWS returns credentials
-          # that expire with the job. Nothing long-lived is stored here.
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          # ── WHY KEYS AND NOT OIDC ──────────────────────────────────────────
+          # There IS an OIDC role — femi9-github-staging-deploy, created
+          # 2026-08-06 — and its trust policy, the provider's client id list and
+          # the repository's casing all check out. It has still never worked:
+          # `aws iam get-role` reports RoleLastUsed as empty, so not one
+          # assumption has ever succeeded, and every deploy this repository has
+          # made used the keys below. The three `ci:` commits on main are
+          # somebody working the same problem and not finishing it.
+          #
+          # Switching this workflow to OIDC therefore replaced auth that worked
+          # with auth that never had. These keys belong to aravind-bot-dev,
+          # which holds the ECR/ECS/IAM permissions this deploy needs.
+          #
+          # Moving back to OIDC is worth doing — short-lived credentials, nothing
+          # stored in the repository — but it is a debugging session against a
+          # live AWS console, not a line in a YAML file, and it should not be
+          # what stands between a finished branch and a deployed one.
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+          # Refuses to run if the credentials resolve to a different account
+          # than the one this stack's IAM policies name.
+          allowed-account-ids: "851725383246"
 
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr

@@ -1,4 +1,20 @@
 {
+  "_comment": [
+    "NOT IN USE. The role this describes (femi9-github-staging-deploy) has never",
+    "been successfully assumed: `aws iam get-role --role-name femi9-github-staging-deploy`",
+    "reports RoleLastUsed as {}. Both deploy workflows use repository access-key",
+    "secrets instead, which is what every successful deploy has used.",
+    "",
+    "What has been ruled out, so the next person does not redo it: the OIDC",
+    "provider exists with ClientIDList ['sts.amazonaws.com']; the LIVE trust",
+    "policy is broader than this file (sub is `repo:Mohammed-farook-28/femi9:*`);",
+    "the repository's owner/name casing matches the sub claim exactly; and the",
+    "account is its own AWS Organizations management account, so no SCP applies.",
+    "STS returns AccessDenied on a token it does receive.",
+    "",
+    "Worth finishing - short-lived credentials beat stored keys - but it needs a",
+    "live console session, not another edit to this file."
+  ],
   "Version": "2012-10-17",
   "Statement": [
     {
