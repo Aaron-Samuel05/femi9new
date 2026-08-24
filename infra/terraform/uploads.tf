@@ -13,14 +13,41 @@
 # Access Control, and only under `uploads/`.
 # ─────────────────────────────────────────────────────────────────────────────
 
+locals {
+  create_uploads = var.existing_uploads_bucket == null
+
+  uploads_bucket_name = local.create_uploads ? aws_s3_bucket.uploads[0].bucket : var.existing_uploads_bucket.bucket
+  uploads_bucket_arn  = local.create_uploads ? aws_s3_bucket.uploads[0].arn : "arn:${data.aws_partition.current.partition}:s3:::${var.existing_uploads_bucket.bucket}"
+
+  uploads_bucket_domain = local.create_uploads ? aws_s3_bucket.uploads[0].bucket_regional_domain_name : data.aws_s3_bucket.existing_uploads[0].bucket_regional_domain_name
+
+  # Every distribution that must be able to READ this bucket: this stack's, plus
+  # any the operator named. An S3 bucket has exactly ONE policy, so reusing a
+  # bucket means REWRITING the policy that already governs it — and a
+  # distribution left out of this list stops serving images the moment we apply.
+  uploads_reader_arns = concat(
+    [for d in aws_cloudfront_distribution.site : d.arn],
+    local.create_uploads ? [] : var.existing_uploads_bucket.keep_distribution_arns,
+  )
+}
+
+data "aws_s3_bucket" "existing_uploads" {
+  count  = local.create_uploads ? 0 : 1
+  bucket = var.existing_uploads_bucket.bucket
+}
+
 resource "aws_s3_bucket" "uploads" {
+  count = local.create_uploads ? 1 : 0
+
   bucket        = "${local.name_prefix}-uploads-${data.aws_caller_identity.current.account_id}"
   force_destroy = false
   tags          = merge(local.tags, { Name = "${local.name_prefix}-uploads" })
 }
 
 resource "aws_s3_bucket_public_access_block" "uploads" {
-  bucket                  = aws_s3_bucket.uploads.id
+  count = local.create_uploads ? 1 : 0
+
+  bucket                  = aws_s3_bucket.uploads[0].id
   block_public_acls       = true
   block_public_policy     = true
   ignore_public_acls      = true
@@ -28,14 +55,18 @@ resource "aws_s3_bucket_public_access_block" "uploads" {
 }
 
 resource "aws_s3_bucket_ownership_controls" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  count = local.create_uploads ? 1 : 0
+
+  bucket = aws_s3_bucket.uploads[0].id
   rule {
     object_ownership = "BucketOwnerEnforced"
   }
 }
 
 resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  count = local.create_uploads ? 1 : 0
+
+  bucket = aws_s3_bucket.uploads[0].id
   rule {
     apply_server_side_encryption_by_default {
       sse_algorithm = "AES256"
@@ -45,14 +76,18 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "uploads" {
 
 # Versioning is the undo button for "the intern replaced the hero image".
 resource "aws_s3_bucket_versioning" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  count = local.create_uploads ? 1 : 0
+
+  bucket = aws_s3_bucket.uploads[0].id
   versioning_configuration {
     status = "Enabled"
   }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  count = local.create_uploads ? 1 : 0
+
+  bucket = aws_s3_bucket.uploads[0].id
   rule {
     id     = "expire-old-noncurrent-versions"
     status = "Enabled"
@@ -79,7 +114,7 @@ data "aws_iam_policy_document" "uploads_cloudfront_read" {
   statement {
     sid       = "AllowCloudFrontRead"
     actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.uploads.arn}/uploads/*"]
+    resources = ["${local.uploads_bucket_arn}/uploads/*"]
 
     principals {
       type        = "Service"
@@ -89,13 +124,13 @@ data "aws_iam_policy_document" "uploads_cloudfront_read" {
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
-      values   = [for d in aws_cloudfront_distribution.site : d.arn]
+      values   = local.uploads_reader_arns
     }
   }
 }
 
 resource "aws_s3_bucket_policy" "uploads" {
-  bucket = aws_s3_bucket.uploads.id
+  bucket = local.uploads_bucket_name
   policy = data.aws_iam_policy_document.uploads_cloudfront_read.json
 }
 
@@ -108,7 +143,7 @@ data "aws_iam_policy_document" "task_uploads" {
   statement {
     sid       = "WriteProductImages"
     actions   = ["s3:PutObject"]
-    resources = ["${aws_s3_bucket.uploads.arn}/uploads/*"]
+    resources = ["${local.uploads_bucket_arn}/uploads/*"]
   }
 }
 

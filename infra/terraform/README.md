@@ -417,6 +417,24 @@ routine apply pointed all three services at a tag that did not exist. The
 symptom is `CannotPullContainerError ... manifest not found`, and it appears
 minutes later on a service that was healthy before the apply.
 
+**Sharing the database means sharing the uploads bucket.** Not a preference —
+a requirement. Product rows store a SITE-RELATIVE image path
+(`/uploads/1786949614838-1.webp`), and each site's CloudFront serves `/uploads/*`
+from whatever bucket this stack points it at. Reuse the database with a fresh
+bucket of your own and every product image 403s: the rows are right, the files
+are simply somewhere else. Set `existing_uploads_bucket` alongside
+`existing_database`, always.
+
+It also has to stay shared afterwards. An image uploaded through one console
+lands in one bucket, and the row referencing it is visible to both — so a split
+bucket means an image that renders in one storefront and is broken in the other.
+
+`keep_distribution_arns` is the sharp edge. An S3 bucket has exactly ONE policy,
+so pointing this stack at an existing bucket REWRITES the policy already
+governing it. Any distribution not named there loses read access the moment you
+apply — which, for a bucket shared with a running environment, means that
+environment's images go dark.
+
 **A schema name lives in two places.** `femi9_schema` / `lumi9_schema` /
 `platform_schema` go into the connection strings *and* into each container's
 `BRAND_DB_SCHEMA` / `PLATFORM_DB_SCHEMA`. Change one without the other and a

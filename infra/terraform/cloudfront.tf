@@ -122,7 +122,7 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   origin {
-    domain_name              = aws_s3_bucket.uploads.bucket_regional_domain_name
+    domain_name              = local.uploads_bucket_domain
     origin_id                = "uploads"
     origin_access_control_id = aws_cloudfront_origin_access_control.uploads.id
   }

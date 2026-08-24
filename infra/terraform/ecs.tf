@@ -170,7 +170,7 @@ locals {
       # laptop's .env says, every /api/thara route 404s, and the storefront
       # hides the programme. It has to be stated explicitly.
       { name = "THARA_ENABLED", value = var.thara_enabled ? "true" : "false" },
-      { name = "UPLOADS_BUCKET", value = aws_s3_bucket.uploads.bucket },
+      { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     ])
 
@@ -187,7 +187,7 @@ locals {
       # The schema this brand's entrypoint migrates. It MUST agree with the
       # `?schema=` in DATABASE_URL_LUMI9 — see secrets.tf.
       { name = "BRAND_DB_SCHEMA", value = var.lumi9_schema },
-      { name = "UPLOADS_BUCKET", value = aws_s3_bucket.uploads.bucket },
+      { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     ])
 
@@ -197,7 +197,7 @@ locals {
       # refunds against both gateways, so it carries both identities.
       { name = "EMAIL_FROM", value = var.femi9_email_from },
       { name = "EMAIL_FROM_LUMI9", value = var.lumi9_email_from },
-      { name = "UPLOADS_BUCKET", value = aws_s3_bucket.uploads.bucket },
+      { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     ])
   }

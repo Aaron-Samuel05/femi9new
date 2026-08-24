@@ -74,7 +74,7 @@ output "db_schemas" {
 
 output "uploads_bucket_name" {
   description = "Private S3 bucket the console writes product images to."
-  value       = aws_s3_bucket.uploads.bucket
+  value       = local.uploads_bucket_name
 }
 
 output "rate_limit_table_name" {

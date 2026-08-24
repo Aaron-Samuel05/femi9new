@@ -489,3 +489,17 @@ variable "femi9_schema_is_public" {
   type        = bool
   default     = false
 }
+
+variable "existing_uploads_bucket" {
+  description = "Reuse an existing product-image bucket instead of creating one. REQUIRED WHENEVER existing_database IS SET: product rows store a site-relative path like /uploads/1786949614838-1.webp, so a shared database and a private bucket of your own means every product image 403s. `keep_distribution_arns` lists distributions that must KEEP read access - an S3 bucket has exactly one policy, so this stack rewrites it and anything omitted loses access."
+  type = object({
+    bucket                 = string
+    keep_distribution_arns = optional(list(string), [])
+  })
+  default = null
+
+  validation {
+    condition     = var.existing_uploads_bucket == null || !can(regex("(?i)prod", var.existing_uploads_bucket.bucket))
+    error_message = "Refusing a bucket whose name contains \"prod\". This stack rewrites the bucket policy of whatever it is given."
+  }
+}
