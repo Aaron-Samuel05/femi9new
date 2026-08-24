@@ -219,7 +219,17 @@ aws ecs run-task … --task-definition femi9plat-staging-admin \
 Re-running for the same email grants an additional brand and does **not** reset
 the password.
 
-### 8. Narrow the console's allowlist
+### 8. Narrow the console's allowlist — DEFERRED for staging
+
+**Current state, deliberately:** `admin_allowed_cidrs` is unset on the
+femi9plat-staging environment, so the console is reachable from anywhere. That
+was a considered call for a staging environment, not an oversight — do not
+"fix" it without asking.
+
+It becomes a real decision again before this pattern carries production
+traffic, because the same console issues refunds there. The machinery below is
+built and tested; it is switched off, not missing.
+
 
 `admin_allowed_cidrs` defaults to the whole internet, because a first apply that
 locks a team out of their own back office is worse than the exposure. That
