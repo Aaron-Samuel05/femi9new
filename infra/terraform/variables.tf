@@ -434,3 +434,58 @@ variable "alb_origin_protocol_policy" {
     error_message = "alb_origin_protocol_policy must be http-only, https-only or match-viewer."
   }
 }
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Reusing what already exists
+#
+# The platform stack can stand up its own VPC and its own Aurora cluster, which
+# is what you want for a fresh environment. It can also be pointed at ones that
+# already exist, which is what you want when "one backend" means literally one
+# database — the two storefronts and the console sharing the cluster Femi9's
+# staging environment already runs on.
+#
+# THESE TWO GO TOGETHER. An Aurora cluster is only reachable from inside its own
+# VPC, so reusing the database without reusing the network gives you three ECS
+# services that cannot open a connection. Set both, or neither.
+# ─────────────────────────────────────────────────────────────────────────────
+
+variable "existing_network" {
+  description = "Reuse an existing VPC instead of creating one. MUST be the VPC the existing database lives in — Aurora is not reachable across a VPC boundary without peering. Null creates a fresh VPC from vpc_cidr."
+  type = object({
+    vpc_id             = string
+    public_subnet_ids  = list(string)
+    private_subnet_ids = list(string)
+  })
+  default = null
+
+  validation {
+    condition     = var.existing_network == null || length(try(var.existing_network.public_subnet_ids, [])) >= 2
+    error_message = "An ALB needs subnets in at least two availability zones."
+  }
+}
+
+variable "existing_database" {
+  description = "Reuse an existing Aurora cluster instead of creating one. `credentials_secret` is the Secrets Manager name holding {username, password} — Terraform reads it to compose the per-schema connection strings, so that value lands in THIS stack's state and the state must stay in the encrypted backend. `security_group_id` is the cluster's own group; an ingress rule is added to it for this stack's tasks, which is the one existing resource this stack modifies."
+  type = object({
+    cluster_identifier = string
+    database_name      = string
+    credentials_secret = string
+    security_group_id  = string
+  })
+  default = null
+
+  validation {
+    # Encoding the instruction rather than trusting it. Every brand's data, the
+    # admin identity table and the migrations all point at whatever this names;
+    # a production cluster is not something to discover you have pointed three
+    # new services and a `prisma migrate deploy` at.
+    condition     = var.existing_database == null || !can(regex("(?i)prod", var.existing_database.cluster_identifier))
+    error_message = "Refusing a cluster whose identifier contains \"prod\". This stack runs migrations and seeds against whatever it is given. If you genuinely mean to target a production cluster, that is a deliberate change to make here, in daylight."
+  }
+}
+
+variable "femi9_schema_is_public" {
+  description = "Femi9's staging data lives in `public`, not `femi9` — the rename in docs/RENAME-RUNBOOK.md has never been run. Set true to point Femi9 at `public` where it already is, and leave the rename as a separate, human-run exercise. Lumi9 and the platform get their own schemas either way, so the brands are still isolated by connection string."
+  type        = bool
+  default     = false
+}

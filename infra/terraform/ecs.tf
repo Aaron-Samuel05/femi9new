@@ -291,9 +291,9 @@ resource "aws_ecs_service" "app" {
     # Without NAT (no spare EIP): tasks run in PUBLIC subnets with a public IP
     # for egress. Inbound is still ALB-only via aws_security_group.app, so
     # nothing but the load balancer can reach a container either way.
-    subnets          = var.enable_nat ? aws_subnet.private[*].id : aws_subnet.public[*].id
+    subnets          = local.tasks_in_private ? local.private_subnet_ids : local.public_subnet_ids
     security_groups  = [aws_security_group.app.id]
-    assign_public_ip = var.enable_nat ? false : true
+    assign_public_ip = local.tasks_in_private ? false : true
   }
 
   load_balancer {

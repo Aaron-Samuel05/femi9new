@@ -1,70 +1,109 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# network.tf
-# The VPC and its plumbing:
-#   • 2 public subnets  (ALB + NAT gateway) across 2 AZs
-#   • 2 private subnets (Fargate tasks, Aurora, RDS Proxy) across the same AZs
-#   • Internet Gateway for public ingress/egress
-#   • NAT Gateway(s) so private tasks can reach Razorpay / Resend / MSG91 / SES
-#   • Route tables wiring it all together
-#   • Security groups: alb_sg → app_sg → (rds_proxy_sg) → db_sg
+# network.tf — the VPC this stack runs in, and the least-privilege chain of
+# security groups: internet → ALB → app → proxy → db.
+#
+# ── TWO MODES ───────────────────────────────────────────────────────────────
+# CREATE (var.existing_network = null): a fresh VPC, two public and two private
+# subnets across two AZs, and optionally a NAT gateway.
+#
+# REUSE (var.existing_network set): no VPC is created; the ALB and the tasks go
+# into subnets that already exist. This is not a convenience — an Aurora cluster
+# is only reachable from inside its own VPC, so reusing an existing database
+# means running in the VPC that database lives in. Reusing the network without
+# reusing the database, or the reverse, is the one combination that does not
+# work; the variables' descriptions say so and this comment says so twice.
+#
+# The SECURITY GROUPS are created in both modes. They belong to this stack: they
+# describe what THESE services may talk to, and adopting somebody else's groups
+# would mean this stack's blast radius included theirs.
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ── VPC ──────────────────────────────────────────────────────────────────────
+locals {
+  create_network  = var.existing_network == null
+  create_database = var.existing_database == null
 
+  # Everything downstream reads these three rather than the resources, so a
+  # reference does not have to know which mode it is in.
+  vpc_id = local.create_network ? aws_vpc.this[0].id : var.existing_network.vpc_id
+
+  public_subnet_ids = local.create_network ? aws_subnet.public[*].id : var.existing_network.public_subnet_ids
+
+  private_subnet_ids = local.create_network ? aws_subnet.private[*].id : var.existing_network.private_subnet_ids
+
+  # Where the Fargate tasks run.
+  #
+  # Private subnets only have outbound internet through a NAT gateway, and a
+  # task with no egress cannot reach Razorpay, Resend, ECR or Secrets Manager —
+  # it fails to start, with a pull error rather than anything about networking.
+  # In CREATE mode that is decided by whether this stack built a NAT. In REUSE
+  # mode this stack did not build the VPC's egress and must be TOLD whether the
+  # private subnets have any: `enable_nat` means "they do". Set it false for a
+  # VPC with no NAT gateway, and the tasks run in the public subnets with a
+  # public IP instead — still ALB-only inbound, because the security group says
+  # so and a public subnet is not a public service.
+  tasks_in_private = local.create_network ? local.nat_gateway_count > 0 : var.enable_nat
+
+  # The group Aurora accepts connections on — this stack's own when it built the
+  # cluster, the existing cluster's when it did not.
+  db_security_group_id = local.create_database ? aws_security_group.db[0].id : var.existing_database.security_group_id
+}
+
+# ── VPC ──────────────────────────────────────────────────────────────────────
 resource "aws_vpc" "this" {
+  count = local.create_network ? 1 : 0
+
   cidr_block           = var.vpc_cidr
-  enable_dns_support   = true # required for RDS Proxy / Aurora endpoint resolution
+  enable_dns_support   = true
   enable_dns_hostnames = true
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-vpc" })
 }
 
-# ── Internet Gateway (public egress/ingress) ─────────────────────────────────
-
 resource "aws_internet_gateway" "this" {
-  vpc_id = aws_vpc.this.id
+  count = local.create_network ? 1 : 0
+
+  vpc_id = aws_vpc.this[0].id
   tags   = merge(local.tags, { Name = "${local.name_prefix}-igw" })
 }
 
 # ── Subnets ──────────────────────────────────────────────────────────────────
-# Two of each type, one per AZ. `count` walks the CIDR lists in lockstep with
-# the AZ list from main.tf.
-
+# Public: the ALB, and the NAT gateway when one exists.
 resource "aws_subnet" "public" {
-  count                   = length(var.public_subnet_cidrs)
-  vpc_id                  = aws_vpc.this.id
+  count = local.create_network ? length(var.public_subnet_cidrs) : 0
+
+  vpc_id                  = aws_vpc.this[0].id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = local.azs[count.index]
-  map_public_ip_on_launch = true # ALB nodes / NAT live here and need public IPs
+  map_public_ip_on_launch = true
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-public-${local.azs[count.index]}"
-    Tier = "public"
-  })
+  tags = merge(local.tags, { Name = "${local.name_prefix}-public-${local.azs[count.index]}" })
 }
 
+# Private: Aurora and the RDS Proxy, plus the Fargate tasks when NAT is on.
 resource "aws_subnet" "private" {
-  count             = length(var.private_subnet_cidrs)
-  vpc_id            = aws_vpc.this.id
+  count = local.create_network ? length(var.private_subnet_cidrs) : 0
+
+  vpc_id            = aws_vpc.this[0].id
   cidr_block        = var.private_subnet_cidrs[count.index]
   availability_zone = local.azs[count.index]
-  # No public IPs: tasks and DB are unreachable from the internet directly.
 
-  tags = merge(local.tags, {
-    Name = "${local.name_prefix}-private-${local.azs[count.index]}"
-    Tier = "private"
-  })
+  tags = merge(local.tags, { Name = "${local.name_prefix}-private-${local.azs[count.index]}" })
 }
 
-# ── NAT Gateway(s) ───────────────────────────────────────────────────────────
+# ── NAT ──────────────────────────────────────────────────────────────────────
 # Private subnets have no route to the IGW, so outbound calls to third-party
-# APIs (Razorpay, MSG91, Resend/SES) egress through a NAT GW in a public subnet.
-# single_nat_gateway=true keeps one shared NAT (cheaper); false gives one per AZ.
+# APIs (Razorpay, MSG91, Resend) egress through a NAT gateway in a public
+# subnet. single_nat_gateway keeps one shared (cheaper) rather than one per AZ.
 
 locals {
-  # 0 when NAT is disabled → no EIP, no NAT GW created (tasks egress via a public
-  # IP in a public subnet instead; see ecs.tf network_configuration).
-  nat_gateway_count = var.enable_nat ? (var.single_nat_gateway ? 1 : length(var.public_subnet_cidrs)) : 0
+  # 0 when NAT is disabled, or when the network is somebody else's — reusing a
+  # VPC means reusing whatever egress path it already has, and quietly adding a
+  # second NAT gateway to it would be both surprising and billable.
+  nat_gateway_count = (
+    local.create_network && var.enable_nat
+    ? (var.single_nat_gateway ? 1 : length(var.public_subnet_cidrs))
+    : 0
+  )
 }
 
 resource "aws_eip" "nat" {
@@ -86,42 +125,47 @@ resource "aws_nat_gateway" "this" {
 }
 
 # ── Route tables ─────────────────────────────────────────────────────────────
+# Only in CREATE mode. An existing VPC brings its own routing, and rewriting it
+# is exactly the kind of change that takes an unrelated service down.
 
-# Public: default route to the Internet Gateway.
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.this.id
+  count = local.create_network ? 1 : 0
+
+  vpc_id = aws_vpc.this[0].id
   tags   = merge(local.tags, { Name = "${local.name_prefix}-public-rt" })
 }
 
 resource "aws_route" "public_internet" {
-  route_table_id         = aws_route_table.public.id
+  count = local.create_network ? 1 : 0
+
+  route_table_id         = aws_route_table.public[0].id
   destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.this.id
+  gateway_id             = aws_internet_gateway.this[0].id
 }
 
 resource "aws_route_table_association" "public" {
   count          = length(aws_subnet.public)
   subnet_id      = aws_subnet.public[count.index].id
-  route_table_id = aws_route_table.public.id
+  route_table_id = aws_route_table.public[0].id
 }
 
-# Private: one route table per subnet so each AZ can point at its own NAT when
-# single_nat_gateway=false. When shared, they all point at NAT #0.
+# One private table per subnet, so each AZ can point at its own NAT when
+# single_nat_gateway is false. When shared, they all point at NAT #0.
 resource "aws_route_table" "private" {
-  count  = length(aws_subnet.private)
-  vpc_id = aws_vpc.this.id
+  count = length(aws_subnet.private)
+
+  vpc_id = aws_vpc.this[0].id
   tags   = merge(local.tags, { Name = "${local.name_prefix}-private-rt-${count.index}" })
 }
 
 resource "aws_route" "private_nat" {
-  # No NAT → no default route out of the private subnets. That's fine: only Aurora
-  # and the RDS Proxy live there, and neither needs internet egress. The app tasks
-  # move to public subnets (ecs.tf) when NAT is disabled.
-  count                  = var.enable_nat ? length(aws_route_table.private) : 0
+  # No NAT → no default route out of the private subnets. That is fine: only
+  # Aurora and the proxy live there, and neither needs internet egress. The
+  # tasks move to public subnets (ecs.tf) when NAT is off.
+  count                  = local.nat_gateway_count > 0 ? length(aws_route_table.private) : 0
   route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  # Shared NAT → index 0; per-AZ NAT → matching index.
-  nat_gateway_id = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
+  nat_gateway_id         = var.single_nat_gateway ? aws_nat_gateway.this[0].id : aws_nat_gateway.this[count.index].id
 }
 
 resource "aws_route_table_association" "private" {
@@ -131,14 +175,14 @@ resource "aws_route_table_association" "private" {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Security groups — least-privilege chain: internet → ALB → app → proxy → db
+# Security groups
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ALB: accepts 80/443 from the internet, talks to the app on the container port.
+# ALB: accepts 80/443 from the internet, talks to the tasks on the app port.
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb-sg"
   description = "ALB: allow HTTP/HTTPS from the internet"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-alb-sg" })
 }
 
@@ -169,13 +213,13 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
   referenced_security_group_id = aws_security_group.app.id
 }
 
-# App (Fargate tasks): only the ALB may reach the container port; unrestricted
-# egress so tasks can reach the DB/proxy, Secrets Manager, ECR, and the internet
-# (via NAT) for Razorpay/MSG91/Resend.
+# App (Fargate tasks): only the ALB may reach the container port. Egress is
+# unrestricted so tasks can reach the database, Secrets Manager, ECR and the
+# third-party APIs.
 resource "aws_security_group" "app" {
   name        = "${local.name_prefix}-app-sg"
-  description = "App tasks: ingress only from the ALB"
-  vpc_id      = aws_vpc.this.id
+  description = "Platform app tasks: ingress only from this stack's ALB"
+  vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-app-sg" })
 }
 
@@ -190,22 +234,47 @@ resource "aws_vpc_security_group_ingress_rule" "app_from_alb" {
 
 resource "aws_vpc_security_group_egress_rule" "app_all" {
   security_group_id = aws_security_group.app.id
-  description       = "All egress (DB, proxy, Secrets Manager, ECR, third-party APIs via NAT)"
+  description       = "All egress (database, Secrets Manager, ECR, third-party APIs)"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-# RDS Proxy: sits between the app and Aurora. Accepts 5432 from the app, egresses
-# 5432 to the DB security group.
+# ── Reaching an EXISTING database ───────────────────────────────────────────
+# THE ONE RESOURCE THIS STACK MODIFIES THAT IT DID NOT CREATE.
+#
+# The existing cluster's security group admits its own app tier and nothing
+# else, so without this rule the new tasks resolve the endpoint, open a socket,
+# and hang until the connection times out. It is purely additive — one ingress
+# rule referencing this stack's app group — and removing this stack removes it
+# again. Nothing else about that group, that cluster, or its current tenant is
+# touched.
+resource "aws_vpc_security_group_ingress_rule" "existing_db_from_app" {
+  count = local.create_database ? 0 : 1
+
+  security_group_id            = var.existing_database.security_group_id
+  description                  = "Postgres from ${local.name_prefix} tasks"
+  ip_protocol                  = "tcp"
+  from_port                    = 5432
+  to_port                      = 5432
+  referenced_security_group_id = aws_security_group.app.id
+}
+
+# ── Groups that exist only when this stack builds the database ──────────────
+
+# RDS Proxy: between the app and Aurora.
 resource "aws_security_group" "rds_proxy" {
+  count = local.create_database ? 1 : 0
+
   name        = "${local.name_prefix}-rds-proxy-sg"
   description = "RDS Proxy: 5432 from app tasks, 5432 to Aurora"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-rds-proxy-sg" })
 }
 
 resource "aws_vpc_security_group_ingress_rule" "proxy_from_app" {
-  security_group_id            = aws_security_group.rds_proxy.id
+  count = local.create_database ? 1 : 0
+
+  security_group_id            = aws_security_group.rds_proxy[0].id
   description                  = "Postgres from app tasks"
   ip_protocol                  = "tcp"
   from_port                    = 5432
@@ -214,35 +283,43 @@ resource "aws_vpc_security_group_ingress_rule" "proxy_from_app" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "proxy_to_db" {
-  security_group_id            = aws_security_group.rds_proxy.id
+  count = local.create_database ? 1 : 0
+
+  security_group_id            = aws_security_group.rds_proxy[0].id
   description                  = "Postgres to the Aurora cluster"
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
-  referenced_security_group_id = aws_security_group.db.id
+  referenced_security_group_id = aws_security_group.db[0].id
 }
 
-# DB (Aurora): accepts 5432 from the RDS Proxy (pooled app traffic) and directly
-# from the app tasks (Prisma migrations use DIRECT_URL, which bypasses the proxy).
+# DB (Aurora): accepts 5432 from the proxy (pooled) and directly from the tasks
+# (migrations use DIRECT_URL, which bypasses the proxy).
 resource "aws_security_group" "db" {
+  count = local.create_database ? 1 : 0
+
   name        = "${local.name_prefix}-db-sg"
   description = "Aurora: 5432 from RDS Proxy and app tasks only"
-  vpc_id      = aws_vpc.this.id
+  vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-db-sg" })
 }
 
 resource "aws_vpc_security_group_ingress_rule" "db_from_proxy" {
-  security_group_id            = aws_security_group.db.id
+  count = local.create_database ? 1 : 0
+
+  security_group_id            = aws_security_group.db[0].id
   description                  = "Postgres from RDS Proxy (pooled)"
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
-  referenced_security_group_id = aws_security_group.rds_proxy.id
+  referenced_security_group_id = aws_security_group.rds_proxy[0].id
 }
 
 resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
-  security_group_id            = aws_security_group.db.id
-  description                  = "Postgres direct from app tasks (Prisma migrate deploy via DIRECT_URL)"
+  count = local.create_database ? 1 : 0
+
+  security_group_id            = aws_security_group.db[0].id
+  description                  = "Postgres direct from app tasks (prisma migrate deploy via DIRECT_URL)"
   ip_protocol                  = "tcp"
   from_port                    = 5432
   to_port                      = 5432
@@ -250,7 +327,9 @@ resource "aws_vpc_security_group_ingress_rule" "db_from_app" {
 }
 
 resource "aws_vpc_security_group_egress_rule" "db_all" {
-  security_group_id = aws_security_group.db.id
+  count = local.create_database ? 1 : 0
+
+  security_group_id = aws_security_group.db[0].id
   description       = "Default egress"
   ip_protocol       = "-1"
   cidr_ipv4         = "0.0.0.0/0"

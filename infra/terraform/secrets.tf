@@ -38,6 +38,8 @@ locals {
 # DB credentials JSON — consumed by RDS Proxy (database.tf), not by any app.
 # Must be the {"username","password"} shape the proxy expects.
 resource "aws_secretsmanager_secret" "db_credentials" {
+  count = local.create_database ? 1 : 0
+
   name                    = "${local.name_prefix}/db-credentials"
   description             = "Aurora master username/password for RDS Proxy"
   recovery_window_in_days = local.secret_recovery_window_days
@@ -45,39 +47,53 @@ resource "aws_secretsmanager_secret" "db_credentials" {
 }
 
 resource "aws_secretsmanager_secret_version" "db_credentials" {
-  secret_id = aws_secretsmanager_secret.db_credentials.id
+  count = local.create_database ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.db_credentials[0].id
   secret_string = jsonencode({
     username = var.db_master_username
-    password = random_password.db.result
+    password = random_password.db[0].result
   })
 }
 
 locals {
-  # One database, three schemas. Everything below is the same host and the same
+  # One database, three schemas. Every URL below is the same host and the same
   # credentials with a different `?schema=` — which is precisely the point:
   # isolation is a property of the connection, not of a column somebody has to
   # remember to filter on.
+  #
+  # FEMI9 IS A SPECIAL CASE WHEN REUSING AN EXISTING CLUSTER. Femi9's data is in
+  # `public`; the rename to `femi9` is written, rehearsed, and has never been
+  # run against anything live (docs/RENAME-RUNBOOK.md). Pointing this stack at
+  # `femi9` would give it an empty schema and a storefront with no products,
+  # while the real rows sat untouched a schema away. So femi9_schema_is_public
+  # points it where the data actually is, and the rename stays a separate,
+  # deliberate exercise. Lumi9 and the platform get their own schemas either
+  # way, so the brands are still isolated by connection string.
   db_schemas = {
-    FEMI9    = var.femi9_schema
+    FEMI9    = var.femi9_schema_is_public ? "public" : var.femi9_schema
     LUMI9    = var.lumi9_schema
     PLATFORM = var.platform_schema
   }
 
-  # Pooled, through RDS Proxy. Fargate scales out and Prisma opens a pool per
-  # task; the proxy multiplexes those so a scale event cannot exhaust Aurora.
+  # Pooled. When this stack builds the cluster that means through RDS Proxy —
+  # Fargate scales out, Prisma opens a pool per task, and the proxy multiplexes
+  # so a scale event cannot exhaust Aurora. When reusing somebody else's
+  # cluster there is no proxy (see database.tf) and this is the writer endpoint,
+  # which makes the connection ceiling something to watch.
   #
   # NOTE: if Prisma reports prepared-statement errors under proxy pinning,
   # append "&pgbouncer=true" here to turn prepared statements off.
   pooled_url = {
     for key, schema in local.db_schemas :
-    key => "postgresql://${var.db_master_username}:${random_password.db.result}@${aws_db_proxy.this.endpoint}:5432/${var.db_name}?schema=${schema}&sslmode=require"
+    key => "postgresql://${local.db_username}:${local.db_password}@${local.db_pooled_endpoint}:5432/${local.db_name}?schema=${schema}&sslmode=require"
   }
 
-  # Direct to the Aurora writer, bypassing the proxy. Migrations need this: DDL
+  # Direct to the writer, bypassing any pooler. Migrations need this: DDL
   # through a pooler can pin a connection or be rejected outright.
   direct_url = {
     for key, schema in local.db_schemas :
-    key => "postgresql://${var.db_master_username}:${random_password.db.result}@${aws_rds_cluster.this.endpoint}:5432/${var.db_name}?schema=${schema}&sslmode=require"
+    key => "postgresql://${local.db_username}:${local.db_password}@${local.db_direct_endpoint}:5432/${local.db_name}?schema=${schema}&sslmode=require"
   }
 
   # Flattened into one map so the secrets below are a single for_each rather

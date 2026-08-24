@@ -55,19 +55,16 @@ output "alb_zone_id" {
   value       = aws_lb.this.zone_id
 }
 
-output "aurora_cluster_endpoint" {
-  description = "Aurora writer endpoint. Migrations and any psql session go here."
-  value       = aws_rds_cluster.this.endpoint
-}
-
-output "aurora_reader_endpoint" {
-  description = "Aurora reader endpoint."
-  value       = aws_rds_cluster.this.reader_endpoint
-}
-
-output "rds_proxy_endpoint" {
-  description = "RDS Proxy endpoint — the pooled path the applications use."
-  value       = aws_db_proxy.this.endpoint
+output "database" {
+  description = "Which cluster the three services actually run on, and whether this stack owns it. `owned = false` means an existing cluster is being reused — destroying this stack will NOT destroy it, and must not."
+  value = {
+    owned           = local.create_database
+    writer_endpoint = local.db_direct_endpoint
+    pooled_endpoint = local.db_pooled_endpoint
+    database_name   = local.db_name
+    reader_endpoint = local.create_database ? aws_rds_cluster.this[0].reader_endpoint : null
+    proxied         = local.create_database
+  }
 }
 
 output "db_schemas" {

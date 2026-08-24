@@ -51,6 +51,68 @@ terraform init -backend-config=backend.hcl
 Leave `sites` empty on a first apply. Every app is still reachable, on its own
 CloudFront URL — see *How each app is reachable* below.
 
+### 1b. Reusing the existing staging network and database
+
+"One backend" can mean literally one database. This stack can build its own
+Aurora cluster and VPC, or run on ones that already exist — and for the Femi9
+staging environment the second is the point: Femi9's data is already there, and
+a second cluster would mean migrating it and paying twice.
+
+**The two go together.** An Aurora cluster is only reachable from inside its own
+VPC, so reusing the database means running in that VPC. Reusing one without the
+other gives you three services that cannot open a connection.
+
+The values for `femi9-staging`, discovered with `aws ec2 describe-subnets` and
+`aws rds describe-db-clusters`:
+
+```hcl
+existing_network = {
+  vpc_id             = "vpc-0f4837446df9ce512"          # femi9-staging-vpc, 10.20.0.0/16
+  public_subnet_ids  = ["subnet-03842c9fecb63c708", "subnet-0ee4b6c0bea511056"]
+  private_subnet_ids = ["subnet-06dc8b8c25ca50c51", "subnet-0affaca2589e9354a"]
+}
+
+# That VPC has NO NAT gateway - the existing service runs its tasks in the
+# public subnets, and so must ours. Inbound is still ALB-only, by security
+# group; a public subnet is not a public service.
+enable_nat = false
+
+existing_database = {
+  cluster_identifier = "femi9-staging-aurora"
+  database_name      = "femi9"
+  credentials_secret = "femi9-staging/db-credentials"
+  security_group_id  = "sg-0859aa3ef90161256"
+}
+
+# Femi9's rows are in `public`; the rename has never been run.
+femi9_schema_is_public = true
+```
+
+Three things worth understanding before running this:
+
+**One security group rule is added to a resource this stack does not own** — an
+ingress rule on the cluster's group, admitting this stack's tasks on 5432.
+Without it the tasks resolve the endpoint and then hang until the connection
+times out. It is additive, and destroying this stack removes it again.
+
+**There is no RDS Proxy in reuse mode.** The created path puts one in front of
+Aurora because Fargate scales out and Prisma opens a pool per task. Attaching a
+proxy to somebody else's cluster changes how the EXISTING tenant's connections
+are handled, which is not this stack's call. Tasks connect directly, so the
+connection ceiling is something to watch — `femi9-staging-aurora` runs at
+0.5-1.0 ACU, and three more services on it will want that maximum raised.
+
+**Femi9 shares `public` with the service already running there.** That is the
+"single backend" you asked for, and it means the new Femi9 task will run
+`prisma migrate deploy` against the same schema the existing staging service
+uses. The migrations are additive, and both apps come from the same repository —
+but it is a live schema, and worth knowing before the first boot rather than
+after.
+
+A production cluster is refused outright: `existing_database.cluster_identifier`
+is validated against `prod`, because this stack runs migrations and seeds
+against whatever it is handed.
+
 ### 2. Create the image repositories, and only those
 
 **This is the first ordering constraint.** An ECS service cannot start until its
