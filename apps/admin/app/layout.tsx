@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: { default: 'Console', template: '%s · Console' },
+  title: { default: 'Admin', template: '%s · Admin' },
   robots: { index: false, follow: false },
 }
 

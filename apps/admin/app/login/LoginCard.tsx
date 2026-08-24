@@ -67,7 +67,7 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
 
   return (
     <form className="card" onSubmit={submit} style={{ ['--accent' as string]: config.accent }}>
-      <div className="brandRow" role="group" aria-label="Choose a console">
+      <div className="brandRow" role="group" aria-label="Choose a brand">
         {BRANDS.map((key) => {
           const selected = key === brand
           return (
@@ -85,7 +85,7 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
         })}
       </div>
 
-      <h1 className="title">{config.name} console</h1>
+      <h1 className="title">{config.name} admin</h1>
       <p className="sub">Sign in to continue.</p>
 
       <label className="field">

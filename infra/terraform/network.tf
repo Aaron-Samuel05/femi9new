@@ -217,8 +217,13 @@ resource "aws_vpc_security_group_egress_rule" "alb_to_app" {
 # unrestricted so tasks can reach the database, Secrets Manager, ECR and the
 # third-party APIs.
 resource "aws_security_group" "app" {
-  name        = "${local.name_prefix}-app-sg"
-  description = "Platform app tasks: ingress only from this stack's ALB"
+  name = "${local.name_prefix}-app-sg"
+  # NO APOSTROPHE. EC2 rejects a security group description containing one --
+  # the valid set is a-zA-Z0-9. _-:/()#,@[]+=&;{}!$* and nothing else. It fails
+  # at CreateSecurityGroup with InvalidParameterValue, and because the tasks and
+  # the database ingress rule both reference this group, the whole compute layer
+  # goes with it. Cosmetic-looking text, load-bearing effect.
+  description = "Platform app tasks: ingress only from this stack ALB"
   vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-app-sg" })
 }

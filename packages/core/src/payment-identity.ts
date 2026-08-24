@@ -24,10 +24,25 @@ import type { Brand } from '@femi9/db'
  */
 
 function perBrand(name: string, brand: Brand): string | undefined {
+  // `usable` is applied to the PER-BRAND value here, not by the callers below,
+  // and that placement is the whole point.
+  //
+  // It used to read `if (specific) return specific`, which looks equivalent and
+  // is not: Terraform seeds each per-brand secret with a "TODO-..." placeholder,
+  // and a placeholder is a non-empty string. So the specific value was returned,
+  // the shared fallback was never consulted, and the caller then rejected the
+  // TODO and got undefined. The placeholder SHADOWED the working shared key
+  // rather than deferring to it — the exact opposite of what it is for.
+  //
+  // Deployed, that meant Lumi9's health check reported
+  // "RAZORPAY_KEY_ID_LUMI9 / RAZORPAY_KEY_SECRET_LUMI9" missing while a
+  // perfectly good shared RAZORPAY_KEY_ID sat one line below, and the task
+  // never passed its ALB health check.
   const specific = process.env[`${name}_${brand.toUpperCase()}`]?.trim()
-  if (specific) return specific
+  if (usable(specific)) return specific
+
   const shared = process.env[name]?.trim()
-  return shared || undefined
+  return usable(shared) ? shared : undefined
 }
 
 /** Treat Terraform's initial TODO values exactly like missing configuration. */
