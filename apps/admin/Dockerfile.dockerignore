@@ -1,0 +1,106 @@
+# =============================================================================
+# Build context for apps/admin/Dockerfile.
+#
+# BuildKit looks for `<dockerfile-path>.dockerignore` before falling back to the
+# context root's .dockerignore, so this file — not the root one — governs a
+# `docker build -f apps/admin/Dockerfile .`.
+#
+# The console imports @femi9/db, @femi9/db-platform and @femi9/core, and NEITHER
+# storefront. So both storefronts' source is excluded here — which drops 100MB
+# of product photography, the Lumi9 mascot GLB, and Femi9's testimonial video
+# out of the build context of an app that renders no images at all.
+# =============================================================================
+
+# Dependencies & build output — reinstalled/rebuilt inside the image.
+**/node_modules
+**/.next
+**/.turbo
+out
+dist
+build
+
+# Version control & CI metadata.
+.git
+.gitignore
+.github
+
+# Local env / secrets — MUST NOT leak into an image layer.
+# `next build` traces .env into the standalone bundle when it is present, so
+# this exclusion is what keeps developer credentials out of the image.
+**/.env
+**/.env.*
+
+# Terraform state and variable files.
+**/infra/terraform/.terraform
+**/infra/terraform/*.tfstate
+**/infra/terraform/*.tfstate.*
+**/infra/terraform/*.tfvars
+**/infra/terraform/*.plan
+**/infra/terraform/backend.hcl
+**/infra/terraform/state-bootstrap/.terraform
+**/infra/terraform/state-bootstrap/*.tfstate
+**/infra/terraform/state-bootstrap/*.tfstate.*
+
+# Tests, coverage, and TS build cache — not needed to run the app.
+**/test
+**/tests
+**/__tests__
+**/coverage
+**/*.tsbuildinfo
+**/vitest.config.ts
+**/playwright.config.ts
+**/playwright-report
+**/test-results
+
+# Local SQLite / Prisma dev artifacts. The schema and migrations ARE kept — the
+# entrypoint runs `prisma migrate deploy` against them on boot.
+**/prisma/*.db
+**/prisma/*.db-journal
+
+# Docs & markdown.
+**/*.md
+**/docs
+*.pdf
+
+# Docker files themselves — not needed inside the image.
+**/Dockerfile
+**/*.dockerignore
+**/docker-compose.yml
+**/docker-compose*.yml
+
+# ── Legacy prototypes at the repo root ───────────────────────────────────────
+# Superseded by apps/femi9-web. Dead code, and none of it belongs in an image.
+femi9-app
+femi9-react
+femi9-scrool
+femi9-lavender
+femi9-scrool.zip
+assets
+Images
+index.html
+app.js
+styles.css
+
+# ── Both storefronts ─────────────────────────────────────────────────────────
+# Each is a separate image. Their SOURCE is excluded, but their package.json is
+# re-included: `npm ci` reconciles the root lockfile against every workspace
+# manifest and fails on one it cannot find. Excluding a directory's *contents*
+# (`/**`) rather than the directory itself is what makes the negation work.
+apps/femi9-web/**
+!apps/femi9-web/package.json
+apps/lumi9-web/**
+!apps/lumi9-web/package.json
+
+# NOTE: packages/ is NOT excluded here, unlike in the storefront ignore files.
+# This image needs db, db-platform AND core — db-platform especially, since its
+# prisma/ is what the entrypoint migrates and its generated/ client is what the
+# login form reads.
+
+# Editor / OS cruft.
+**/.vscode
+**/.idea
+**/.DS_Store
+**/*.pem
+**/npm-debug.log*
+**/yarn-error.log*
+**/*.log

@@ -19,8 +19,13 @@ import { adminCookieName, verifyAdminSession } from '@femi9/core/admin-session'
  */
 
 export const config = {
-  // Everything except the login screen, the auth endpoints, and static assets.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|login|api/auth).*)'],
+  // Everything except the login screen, the auth endpoints, the load balancer's
+  // health probe, and static assets.
+  //
+  // /api/health has to be out here rather than handled below, because the guard
+  // reads the first path segment as a brand: "api" is not one, so the probe
+  // would 404 and every task would be pulled out of the target group.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|login|api/auth|api/health).*)'],
 }
 
 export async function proxy(req: NextRequest) {

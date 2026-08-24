@@ -1,5 +1,4 @@
 import 'server-only'
-import * as Sentry from '@sentry/nextjs'
 
 /**
  * Tiny structured logger — a single seam for all server-side logging so that
@@ -41,8 +40,35 @@ function emit(level: Level, event: string, meta?: Meta) {
   }
 
   if (level === 'error' && process.env.SENTRY_DSN) {
-    Sentry.captureMessage(event, { level: 'error', extra: meta })
+    forwardToSentry(event, meta)
   }
+}
+
+/**
+ * Secondary sink, loaded ONLY if an app actually ships Sentry.
+ *
+ * The import is dynamic and the dependency is an OPTIONAL peer, for the same
+ * reason `maxmind` is loaded this way in geo/mmdb.ts: this package is shared by
+ * three apps and only one of them has Sentry installed. A static import made
+ * `@sentry/nextjs` a hard dependency of every app that touches the logger — and
+ * since the logger is in the import graph of essentially everything, that meant
+ * all of them. It also broke at runtime rather than at build: Sentry's
+ * instrumentation pulls `require-in-the-middle`, which Turbopack externalises
+ * under a generated name that the standalone bundle could not resolve, so every
+ * route in the Lumi9 image answered 500 with a module-not-found.
+ *
+ * Failure here is swallowed on purpose. This is the error path already; a
+ * logger that throws while reporting an error turns a handled failure into an
+ * unhandled one, and buries the original.
+ */
+function forwardToSentry(event: string, meta?: Meta): void {
+  void import('@sentry/nextjs')
+    .then((Sentry) => {
+      Sentry.captureMessage(event, { level: 'error', extra: meta })
+    })
+    .catch(() => {
+      // No Sentry in this app's dependency tree. stdout above already has it.
+    })
 }
 
 export const logger = {
