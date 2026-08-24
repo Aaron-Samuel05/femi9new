@@ -5,6 +5,9 @@ import '../styles/craft-product.css'
 import '../styles/pdp-key-benefits.css'
 import '../styles/pdp-reviews.css'
 import '../styles/pdp-motion.css'
+// Last of the PDP sheets: the buy block's Lumi9 layout has to outrank both
+// app.css and craft-product.css, and does it on scope rather than !important.
+import '../styles/pdp-buybox.css'
 import { useEffect, useState, type CSSProperties, type FormEvent } from 'react'
 import { Link, useRouter } from '@/lib/router-compat'
 import { rupees, CADENCES } from '../data/products'
@@ -12,13 +15,13 @@ import { useCart } from '../store/cart'
 import { PantyArt } from '../components/PantyArt'
 import { Bag, Drop, Leaf, ShieldCheck, Check, Close, Facebook, Whatsapp } from '../components/Icons'
 import { ICopy, IStar } from '../components/AppIcons'
-import { OptImg } from '@/components/OptImg'
 import { KeyBenefits } from '@/components/KeyBenefits'
 import { ProductReviews } from '@/components/ProductReviews'
 import { VideoTestimonials } from '@/components/VideoTestimonials'
 import type { OptImageBase } from '@/lib/opt-images'
 import type { ProductWithVariants, ProductReview } from '@femi9/core/services/products'
 import type { ProductExtra } from '@/data/productDetail'
+import type { SizeOption } from '@/lib/size-run'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { useAddPulse } from '@/lib/use-add-pulse'
 import { track } from '@/lib/track'
@@ -28,6 +31,10 @@ interface Props {
   extra: ProductExtra
   reviews: ProductReview[]
   relatedProducts: ProductWithVariants[]
+  /** Every pad length on offer, shortest first. Empty when there is only one. */
+  sizeOptions: SizeOption[]
+  /** `?size=` off the URL — period underwear only; pads carry size in the path. */
+  initialSize?: string
 }
 
 const featIcons = [Drop, Leaf, ShieldCheck]
@@ -91,19 +98,23 @@ function deliveryDate(daysAhead: number): string {
   return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-export function ProductDetail({ product, extra, reviews, relatedProducts }: Props) {
+export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOptions, initialSize }: Props) {
   const { subscribeSavePct } = usePublicSettings()
   const [imgIdx, setImgIdx] = useState(0)
   const [qty, setQty] = useState(1)
   const [packIdx, setPackIdx] = useState<number>((product.packs?.length ?? 1) - 1)
-  const [sizeIdx, setSizeIdx] = useState(1)
+  /* Period underwear reads its size from `?size=`, resolved on the SERVER so a
+     shared link renders on the right size instead of correcting itself after
+     hydration. An unrecognised value falls back to the second size rather than
+     to none — an unknown query string must not leave the picker unselected. */
+  const sizeFromUrl = product.sizes?.findIndex((s) => s.toLowerCase() === initialSize?.toLowerCase()) ?? -1
+  const [sizeIdx, setSizeIdx] = useState(sizeFromUrl >= 0 ? sizeFromUrl : 1)
   const [mode, setMode] = useState<'once' | 'sub'>('once')
   const [cadence, setCadence] = useState(CADENCES[0].id)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [specsOpen, setSpecsOpen] = useState(true)
   const [reviewsOpen, setReviewsOpen] = useState(true)
-  const [showGapBanner, setShowGapBanner] = useState(false)
   const { add, openCart, notify } = useCart()
   const router = useRouter()
 
@@ -160,11 +171,6 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
     const isMobile = window.matchMedia('(max-width: 620px)').matches
     setSpecsOpen(!isMobile)
     setReviewsOpen(!isMobile)
-    // The gap-filler banner exists only to square off the desktop gallery
-    // column. It used to be hidden below 769px with display:none, which does
-    // not cancel the fetch — every phone paid 284KB for pixels never painted.
-    // Gating it in JSX is the only way to actually not download it.
-    setShowGapBanner(window.matchMedia('(min-width: 769px)').matches)
   }, [])
 
   // /api/events existed with zero instrumentation — not a single storefront
@@ -177,6 +183,23 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
   const shareUrl =
     (typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_SITE_URL ?? '') +
     `/product/${product.id}`
+
+  /**
+   * Pick a period-underwear size, and put it in the URL.
+   *
+   * The pads do this by navigating between sibling products — each length is
+   * its own route — but underwear is one product with four variants, so the
+   * size goes in the query string instead. `replace` rather than `push`, so a
+   * shopper trying all four sizes does not have to press Back four times to
+   * leave the page; `scroll: false`, so the choice does not throw her back to
+   * the top of the page she is reading.
+   */
+  const selectSize = (index: number) => {
+    setSizeIdx(index)
+    const size = product.sizes?.[index]
+    if (!size) return
+    router.replace(`/product/${product.id}?size=${encodeURIComponent(size)}`, { scroll: false })
+  }
 
   const copyShareLink = async () => {
     try {
@@ -339,54 +362,62 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
             <Link to="/">Home</Link> / <Link to="/shop">Shop</Link> / {product.name}
           </div>
 
-          {/* 3. TWO-COLUMN PRODUCT LAYOUT */}
-          <div className="pdp-grid">
-            {/* LEFT COLUMN — VERTICAL THUMBNAILS + STAGE */}
-            <div className="pdp-gallery-layout">
-              {/* Stacked Vertical Thumbnails */}
-              <div className="pdp-thumb-stack">
-                {extra.gallery.map((g, i) => (
-                  <button
-                    key={i}
-                    className={`pdp-vertical-thumb${i === imgIdx ? ' active' : ''}`}
-                    onClick={() => setImgIdx(i)}
-                    aria-label={`View photo ${i + 1}`}
-                  >
-                    {isPanty ? (
-                      <PantyArt variant={g as 'lilac' | 'plum' | 'gold'} />
-                    ) : (
-                      <img src={g} alt="" width={76} height={76} loading="lazy" decoding="async" />
-                    )}
-                  </button>
-                ))}
-              </div>
+          {/* 3. TWO-COLUMN PRODUCT LAYOUT
 
-              {/* Main Display Stage + Gap Filling Feature Image */}
+              `data-no-reveal` opts the whole buy block out of ScrollMotion's
+              automatic block pass. It contains the sticky gallery column, and a
+              translateY on an ancestor makes that ancestor the containing block
+              — which un-sticks the gallery for the length of the entrance. The
+              rows inside opt back in individually with `data-reveal-on`, which
+              is the finer grain this block wanted anyway. */}
+          <div className="pdp-grid" data-no-reveal>
+            {/* LEFT COLUMN — STICKY SQUARE STAGE, THUMBNAIL RAIL BENEATH */}
+            <div className="pdp-gallery-layout">
               <div className="pdp-stage-column">
                 <div className="pdp-hero-stage" onClick={() => setIsFullscreen(true)}>
                   {renderGalleryImage()}
                 </div>
 
-                {/* Gap Filling Image Banner — desktop only, see the effect above */}
-                {showGapBanner && (
-                  <div className="pdp-hero-gap-banner">
-                    <OptImg
-                      base="img/sample"
-                      sizes="(max-width: 1200px) 46vw, 620px"
-                      alt="Femi9 Organic Care Quality"
-                    />
-                  </div>
-                )}
+                {/* Thumbnails sit UNDER the stage as a single scrolling rail.
+                    They used to be a fixed vertical stack beside it, which is
+                    what forced a second, unrelated image into the column below
+                    the stage to square the two heights off. One rail, one
+                    stage, no filler. */}
+                <div className="pdp-thumb-rail">
+                  {extra.gallery.map((g, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className={`pdp-thumb${i === imgIdx ? ' active' : ''}`}
+                      onClick={() => setImgIdx(i)}
+                      aria-label={`View photo ${i + 1}`}
+                      aria-current={i === imgIdx}
+                    >
+                      {isPanty ? (
+                        <PantyArt variant={g as 'lilac' | 'plum' | 'gold'} />
+                      ) : (
+                        <img src={g} alt="" width={76} height={76} loading="lazy" decoding="async" />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* RIGHT COLUMN — PRODUCT INFORMATION */}
+            {/* RIGHT COLUMN — PRODUCT INFORMATION
+
+                Ordered the way Lumi9's buy box is ordered: identity, then
+                proof, then what it is, then what it costs, then the two
+                choices that change that cost, then the button. The badges and
+                the share row moved BELOW the button for the same reason —
+                nothing that cannot be bought sits between the price and the
+                thing that buys it. */}
             <div className="pdp-right-col">
-              <span className="pdp-eyebrow">SANITARY &amp; PERIOD CARE</span>
-              <h1 className="pdp-title">{product.name}</h1>
+              <span className="pdp-eyebrow" data-reveal-on>SANITARY &amp; PERIOD CARE</span>
+              <h1 className="pdp-title" data-reveal-on="40">{product.name}</h1>
 
               {/* Rating Row with Score */}
-              <div className="pdp-rating-row">
+              <div className="pdp-rating-row" data-reveal-on="80">
                 <Stars rating={averageRating} />
                 <span className="pdp-rating-score">{averageRating.toFixed(1)} / 5</span>
                 <span className="pdp-rating-count">({reviewTotal} reviews)</span>
@@ -394,8 +425,12 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 <span className="pdp-rating-sub">Organic Certified</span>
               </div>
 
+              {/* Short Description — above the price, as on Lumi9: she reads
+                  what it is before she reads what it costs. */}
+              <p className="pdp-desc-text" data-reveal-on="120">{shortDescription}</p>
+
               {/* Price Line with Was Price, Active Price & Discount Badge */}
-              <div className="pdp-price-block">
+              <div className="pdp-price-block" data-reveal-on="160">
                 <div className="pdp-price-line">
                   <span className="pdp-was-price">{rupees(Math.round(basePrice * 1.18))}</span>
                   <span className="pdp-now-price">{rupees(effPrice)}</span>
@@ -404,62 +439,74 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 <span className="pdp-tax-note">Tax included. Free shipping on orders over Rs. 499.</span>
               </div>
 
-              {/* Short Description */}
-              <p className="pdp-desc-text">{shortDescription}</p>
-
-              {/* 4 CIRCULAR BENEFIT BADGES */}
-              <div className="pdp-benefit-badges">
-                <div className="pdp-benefit-item">
-                  <div className="benefit-circle"><Leaf /></div>
-                  <span>Organic Cotton</span>
-                </div>
-                <div className="pdp-benefit-item">
-                  <div className="benefit-circle"><ShieldCheck /></div>
-                  <span>Chlorine Free</span>
-                </div>
-                <div className="pdp-benefit-item">
-                  <div className="benefit-circle"><Check /></div>
-                  <span>Dermat Tested</span>
-                </div>
-                <div className="pdp-benefit-item">
-                  <div className="benefit-circle"><Drop /></div>
-                  <span>All Flow Types</span>
-                </div>
-              </div>
-
-              {/* Pack Selector */}
-              {packs && (
+              {/* SIZE — every length is its own product, so every chip is a real
+                  route. The URL therefore always matches the choice, which is
+                  the whole point: a size she picked is a size she can send to
+                  someone. `scroll={false}` keeps the page where she was
+                  reading; `prefetch` is left at Next's default so hovering the
+                  row does not fetch four product pages she never asked for. */}
+              {!isPanty && sizeOptions.length > 1 && (
                 <div className="pdp-block">
-                  <div className="pdp-label">Choose your pack</div>
-                  <div className="pack-cards">
-                    {packs.map((p, i) => (
+                  <div className="pdp-label">
+                    Size
+                    {mmPart && <span className="pdp-label-note">&middot; {mmPart}</span>}
+                  </div>
+                  <div className="pdp-size-run">
+                    {sizeOptions.map((option) => {
+                      const selected = option.slug === product.id
+                      return (
+                        <Link
+                          key={option.slug}
+                          to={`/product/${option.slug}`}
+                          scroll={false}
+                          className={`pdp-size-chip${selected ? ' active' : ''}`}
+                          aria-current={selected ? 'true' : undefined}
+                        >
+                          <b>{option.label}</b>
+                          <span>{option.sub}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Panty Sizes — one product, four variants, so this one picks in
+                  place and writes the choice to `?size=` instead of navigating. */}
+              {isPanty && product.sizes && (
+                <div className="pdp-block">
+                  <div className="pdp-label">Choose your size</div>
+                  <div className="size-cards">
+                    {product.sizes.map((sz, i) => (
                       <button
-                        key={p.count}
-                        className={`pack-card${i === packIdx ? ' active' : ''}`}
-                        onClick={() => setPackIdx(i)}
-                        aria-pressed={i === packIdx}
+                        key={sz}
+                        type="button"
+                        className={`size-card${i === sizeIdx ? ' active' : ''}`}
+                        onClick={() => selectSize(i)}
+                        aria-pressed={i === sizeIdx}
                       >
-                        <b>{p.count} pcs</b>
-                        <span>{rupees(p.price)}</span>
+                        {sz}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Panty Sizes */}
-              {isPanty && product.sizes && (
+              {/* Pack Selector */}
+              {packs && (
                 <div className="pdp-block">
-                  <div className="pdp-label">Choose your size</div>
-                  <div className="size-cards">
-                    {product.sizes.map((s, i) => (
+                  <div className="pdp-label">Choose your pack</div>
+                  <div className="pack-cards">
+                    {packs.map((pk, i) => (
                       <button
-                        key={s}
-                        className={`size-card${i === sizeIdx ? ' active' : ''}`}
-                        onClick={() => setSizeIdx(i)}
-                        aria-pressed={i === sizeIdx}
+                        key={pk.count}
+                        type="button"
+                        className={`pack-card${i === packIdx ? ' active' : ''}`}
+                        onClick={() => setPackIdx(i)}
+                        aria-pressed={i === packIdx}
                       >
-                        {s}
+                        <b>{pk.count} pcs</b>
+                        <span>{rupees(pk.price)}</span>
                       </button>
                     ))}
                   </div>
@@ -505,6 +552,30 @@ export function ProductDetail({ product, extra, reviews, relatedProducts }: Prop
                 <button className={`add-to-bag-btn${ctaPulsing ? ' is-added' : ''}`} onClick={submit}>
                   <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
                 </button>
+              </div>
+
+              {/* TRUST STRIP — the four badges, moved below the button and
+                  gathered onto one tinted panel, the way Lumi9 groups them.
+                  Above the button they were four circles of reassurance sitting
+                  between the price and the purchase; below it they are what
+                  they always were, a footnote. */}
+              <div className="pdp-benefit-badges" data-reveal-on>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Leaf /></div>
+                  <span>Organic Cotton</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><ShieldCheck /></div>
+                  <span>Chlorine Free</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Check /></div>
+                  <span>Dermat Tested</span>
+                </div>
+                <div className="pdp-benefit-item">
+                  <div className="benefit-circle"><Drop /></div>
+                  <span>All Flow Types</span>
+                </div>
               </div>
 
               {/* Social Share Row (Reference Layout) */}

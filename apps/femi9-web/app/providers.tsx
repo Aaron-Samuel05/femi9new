@@ -6,6 +6,7 @@ import { CartProvider } from '@/store/cart'
 import { CycleModeProvider } from '@/immersive/CycleMode'
 import { SmoothScroll, useLenis } from '@/immersive/SmoothScroll'
 import { CartDrawer } from '@/components/CartDrawer'
+import { ScrollMotion } from '@/components/ScrollMotion'
 import { Toast } from '@/components/Toast'
 import { stickyNavHeight } from '@/lib/sticky-nav'
 
@@ -50,6 +51,11 @@ function ScrollManager() {
  * App-wide client providers, mirroring the old App.tsx tree:
  * CartProvider → CycleModeProvider → SmoothScroll, plus the global
  * CartDrawer and Toast overlays.
+ *
+ * ScrollMotion sits INSIDE SmoothScroll on purpose: Lenis owns how the page
+ * travels, ScrollMotion owns what the page does while it travels, and the two
+ * together are the Lumi9 scroll. It reads `window.scrollY` like any other
+ * consumer, so it needs no reference to the Lenis instance.
  */
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -57,6 +63,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CycleModeProvider>
         <SmoothScroll>
           <ScrollManager />
+          <ScrollMotion />
           {children}
           <CartDrawer />
           <Toast />

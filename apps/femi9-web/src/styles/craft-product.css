@@ -52,12 +52,8 @@
     drop-shadow(0 6px 9px rgba(52, 32, 78, 0.1));
 }
 
-/* Secondary desktop gap banner — same soft-frame family, quieter than the hero. */
-.pdp-page .pdp-hero-gap-banner {
-  border-radius: var(--cr-r-lg);
-  border: 1px solid var(--cr-hairline);
-  box-shadow: var(--cr-shadow-sm);
-}
+/* The secondary gap banner it used to frame is no longer rendered — the square
+   stage plus its thumbnail rail fill the gallery column on their own now. */
 
 /* ═══════════════════════════════════════════════════════════════════════════
    PACK + SIZE SELECTORS — a lone active card used to be a heavy dark slab.

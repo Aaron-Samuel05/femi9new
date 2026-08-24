@@ -53,6 +53,9 @@ import '@/components/ShopCatalog.css'
 // heading roles INSIDE `.f9dash`, and those rules must outrank both member.css
 // and the craft layer above at equal specificity.
 import '@/styles/f9dash.css'
+// The Lumi9 scroll. Attribute-driven and JS-armed, so it can only ever add an
+// entrance — it never hides server-rendered markup. See ScrollMotion.tsx.
+import '@/styles/motion.css'
 
 import { Providers } from './providers'
 import { optSrc, optSrcSet } from '@/components/OptImg'
