@@ -16,13 +16,15 @@
 # with no application in it. Femi9's build is untouched by this and keeps using
 # the root file.
 #
-# ── THE RUNTIME LAYOUT IS DELIBERATELY FLAT ─────────────────────────────────
-# `output: 'standalone'` traced from the workspace root emits a NESTED bundle:
-#   .next/standalone/apps/lumi9-web/server.js  + .next/standalone/node_modules
-# The runner stage flattens that to /app/server.js with /app/node_modules, which
-# is the layout Femi9's image already has — so one ECS task definition shape,
-# one entrypoint convention, and one CMD work for both brands. `server.js` is
-# entirely __dirname-relative, so relocating it is safe.
+# ── THE RUNTIME LAYOUT IS THE ONE NEXT PRODUCED ─────────────────────────────
+# Femi9's image FLATTENS the standalone bundle to /app/server.js, preserving the
+# layout it had before the monorepo so its task definition kept working. This
+# one does not, and that is the single most important line in the file: see the
+# runner stage for why moving the bundle two levels up dangles every symlink
+# Turbopack wrote into .next/node_modules and 500s every route.
+#
+# The consequence to know about: the working directory is /app/apps/lumi9-web,
+# not /app. A one-off task overriding CMD gets paths relative to that.
 # =============================================================================
 
 FROM node:22-alpine AS base
@@ -115,54 +117,75 @@ ENV NODE_ENV=production \
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
-# --- Application artifacts -------------------------------------------------
-# The standalone server does NOT bundle public/ or .next/static — they are
-# copied explicitly. Lumi9's public/ is the heavy one (pack photography, the
-# mascot GLB and its Draco decoder), and it is what next.config marks immutable.
-COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/public       ./public
-COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/.next/static ./.next/static
+# --- The standalone bundle, WITH ITS NESTED LAYOUT INTACT --------------------
+# `output: 'standalone'` traced from the workspace root emits
+#   .next/standalone/apps/lumi9-web/server.js   +   .next/standalone/node_modules
+# and those two paths are related by more than convention. Turbopack writes its
+# externalised server packages into apps/lumi9-web/.next/node_modules as RELATIVE
+# SYMLINKS -- @prisma/client-<hash> -> ../../../../../node_modules/@prisma/client
+# -- counted from exactly this depth.
+#
+# Femi9's image flattens the bundle to /app/server.js, which is byte-for-byte
+# the layout it had before the monorepo and keeps its task definition working.
+# Doing the same here moved every one of those symlinks two levels up, so each
+# resolved to /node_modules/... and dangled. The image built, started, and
+# answered 500 on EVERY route with "Cannot find module
+# '@prisma/client-2c3a283f134fdcb6'". Nothing but running the container shows it.
+#
+# So this image keeps the layout Next produced. There is no legacy task
+# definition to preserve for a service that has never been deployed.
+COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/.next/standalone/ ./
 
-# The standalone bundle, FLATTENED — the trailing `/.` copies the nested app
-# directory's CONTENTS, so /app ends up with server.js directly.
-COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/.next/standalone/apps/lumi9-web/. ./
+# public/ and .next/static are NOT bundled into standalone -- copy them beside
+# server.js. Lumi9's public/ is the heavy one: pack photography, the mascot GLB
+# and its Draco decoder, all of which next.config marks immutable.
+COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/public       ./apps/lumi9-web/public
+COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/.next/static ./apps/lumi9-web/.next/static
 
 # --- Prisma at runtime -----------------------------------------------------
 # The entrypoint runs `prisma db execute` and `prisma migrate deploy`, but the
 # Prisma CLI is a devDependency and is NOT traced into the standalone bundle.
-# Prisma 6's CLI also pulls a real transitive closure (@prisma/config → effect,
-# c12, empathic, deepmerge-ts …), so cherry-picking directories is fragile.
+# Prisma 6's CLI also pulls a real transitive closure (@prisma/config -> effect,
+# c12, empathic, deepmerge-ts ...), so cherry-picking directories is fragile.
 # Overlay the COMPLETE build-stage node_modules: a strict superset of the traced
-# one, which guarantees CLI + engines + generated client are all present and
-# migrations run fully OFFLINE at container start.
+# one, at the exact path those symlinks above expect, which guarantees CLI +
+# engines + generated client are present and migrations run fully OFFLINE.
 COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# The workspace packages themselves. npm links every workspace into
-# node_modules as a SYMLINK (node_modules/@femi9/core -> ../../packages/core),
-# and the overlay above copies those links verbatim. Without their targets on
-# disk each one dangles, and anything Next left as an external require — the
-# generated Prisma client most of all — fails to resolve at boot. The TypeScript
-# sources are a rounding error next to node_modules.
+# The workspace packages. npm links every workspace into node_modules as a
+# SYMLINK (node_modules/@femi9/core -> ../../packages/core) and the overlay
+# above copies those links verbatim; without their targets on disk each one
+# dangles. The TypeScript sources are a rounding error next to node_modules.
 COPY --from=build --chown=nextjs:nodejs /app/packages ./packages
 
-# The schema + its migration history, at the path the entrypoint expects.
-COPY --from=build --chown=nextjs:nodejs /app/packages/db/prisma ./prisma
+# --- The one-off task surface ----------------------------------------------
+# The seed scripts, NOT run on boot: this same image is launched as a one-off
+# ECS task with CMD overridden to load Lumi9's catalogue and delivery zones.
+# See infra/terraform/README.md.
+#
+# EVERY PATH BELOW IS THE WORKSPACE PATH, UNCHANGED. Relocating a script is
+# what breaks it: seed.ts reads `../src/lib/catalog` and `../src/lib/content`,
+# so copying prisma/ to some tidier name resolves those imports against a
+# directory that is not there. The failure lands on the one-off task, long
+# after the image deployed and passed every health check. So: prisma/ stays
+# prisma/, src/lib stays src/lib, and the shared schema is reached at its real
+# location under packages/ -- which the COPY above already put in place.
+COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/prisma  ./apps/lumi9-web/prisma
+COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/src/lib ./apps/lumi9-web/src/lib
 
-# The seed scripts. NOT run on boot — they are here so the same image can be
-# launched as a one-off ECS task with CMD overridden, which is how Lumi9's
-# catalogue and delivery zones get loaded. See infra/terraform/README.md.
-COPY --from=build --chown=nextjs:nodejs /app/apps/lumi9-web/prisma ./seed
-
-# Recreate the `.bin/prisma` shim — COPY does not reliably preserve the
+# Recreate the `.bin/prisma` shim -- COPY does not reliably preserve the
 # generated bin symlink, and without it `npx prisma` tries to DOWNLOAD the CLI,
 # which fails in a task with no egress and turns migrations into a boot loop.
 RUN mkdir -p node_modules/.bin \
  && ln -sf ../prisma/build/index.js node_modules/.bin/prisma \
  && chmod +x node_modules/prisma/build/index.js
 
-# Next writes ISR/cache artifacts under .next/cache — the non-root user needs it.
+# Everything from here runs from the app directory, where server.js lives.
+WORKDIR /app/apps/lumi9-web
+
+# Next writes ISR/cache artifacts under .next/cache -- the non-root user needs it.
 RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
-# --- Entrypoint ------------------------------------------------------------
 COPY --chown=nextjs:nodejs apps/lumi9-web/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 

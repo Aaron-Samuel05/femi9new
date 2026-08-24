@@ -136,10 +136,10 @@ aws ecs run-task \
   --task-definition femi9plat-staging-lumi9 \
   --launch-type FARGATE \
   --network-configuration 'awsvpcConfiguration={subnets=[subnet-…],securityGroups=[sg-…],assignPublicIp=DISABLED}' \
-  --overrides '{"containerOverrides":[{"name":"app","command":["npx","tsx","./seed/seed.ts"]}]}'
+  --overrides '{"containerOverrides":[{"name":"app","command":["npx","tsx","./prisma/seed.ts"]}]}'
 ```
 
-Then `./seed/seed-zones.ts` the same way. Both are idempotent — slugs and SKUs
+Then `./prisma/seed-zones.ts` the same way. Both are idempotent — slugs and SKUs
 are stable, so a rerun updates in place rather than duplicating.
 
 ### 7. Create the first admin
@@ -149,7 +149,7 @@ There is no self-service sign-up, and there should not be.
 ```bash
 aws ecs run-task … --task-definition femi9plat-staging-admin \
   --overrides '{"containerOverrides":[{"name":"app","command":[
-     "npx","tsx","./scripts-platform/create-admin.ts",
+     "npx","tsx","../../packages/db-platform/scripts/create-admin.ts",
      "--email","you@company.com","--name","You","--brand","femi9","--role","owner"],
      "environment":[{"name":"ADMIN_SEED_PASSWORD","value":"at least twelve chars"}]}]}'
 ```
@@ -281,6 +281,22 @@ the ALB. `cloudfront_certificate_arn` must be in **us-east-1**, always,
 whatever `aws_region` says — CloudFront reads certificates from there and
 nowhere else. Getting these the wrong way round produces a confusing
 `InvalidViewerCertificate` on apply.
+
+**The two new images do NOT have Femi9's flat layout.** Femi9's runner flattens
+the standalone bundle to `/app/server.js`; Lumi9's and the console's keep the
+nested one Next produced and run from `/app/apps/<app>`. That is not a style
+choice — Turbopack writes its externalised server packages into
+`.next/node_modules` as relative symlinks counted from that exact depth, and
+flattening dangles every one of them. The image then builds, starts, and answers
+500 on every route. Any `--overrides` command you write for a one-off task is
+relative to `/app/apps/<app>` — which is why the seed above is `./prisma/seed.ts`
+and create-admin reaches up to `../../packages/db-platform/scripts/`.
+
+**Nothing in those images is relocated.** Every script sits at its workspace
+path, because moving one silently rewrites its relative imports: `create-admin`
+imports the package it lives in as `../src/index`, and a tidier home for it
+produced `Cannot find module` on the one-off task, well after the image had
+deployed and gone healthy.
 
 **A schema name lives in two places.** `femi9_schema` / `lumi9_schema` /
 `platform_schema` go into the connection strings *and* into each container's

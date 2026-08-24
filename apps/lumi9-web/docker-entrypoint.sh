@@ -46,7 +46,7 @@ echo "CREATE SCHEMA IF NOT EXISTS \"$BRAND_SCHEMA\";" \
 # Lumi9's schema instead of failing loudly.
 echo "[entrypoint] Applying migrations to \"$BRAND_SCHEMA\"…"
 DATABASE_URL="$DATABASE_URL_LUMI9" DIRECT_URL="$MIGRATE_URL" \
-  npx prisma migrate deploy --schema=./prisma/schema.prisma
+  npx prisma migrate deploy --schema=../../packages/db/prisma/schema.prisma
 echo "[entrypoint] Migrations up to date."
 
 # NOTE on scale: with N tasks every one of them runs this on boot. Prisma

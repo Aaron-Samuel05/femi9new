@@ -16,6 +16,11 @@
 # The console ships no static assets — no logo files, no fonts, no images. There
 # is deliberately no `COPY … public ./public` below; adding one would fail the
 # build on a directory that does not exist.
+#
+# ── THE WORKING DIRECTORY IS /app/apps/admin, NOT /app ──────────────────────
+# Unlike Femi9's image, this one keeps the standalone bundle's nested layout.
+# See the runner stage: flattening it dangles every symlink Turbopack wrote into
+# .next/node_modules and every route answers 500.
 # =============================================================================
 
 FROM node:22-alpine AS base
@@ -84,39 +89,65 @@ ENV NODE_ENV=production \
 RUN addgroup --system --gid 1001 nodejs \
  && adduser  --system --uid 1001 nextjs
 
-# Client-side chunks. (No public/ — see the header.)
-COPY --from=build --chown=nextjs:nodejs /app/apps/admin/.next/static ./.next/static
+# --- The standalone bundle, WITH ITS NESTED LAYOUT INTACT --------------------
+# `output: 'standalone'` traced from the workspace root emits
+#   .next/standalone/apps/admin/server.js   +   .next/standalone/node_modules
+# and those two paths are related by more than convention. Turbopack writes its
+# externalised server packages into apps/admin/.next/node_modules as RELATIVE
+# SYMLINKS -- @prisma/client-<hash> -> ../../../../../node_modules/@prisma/client
+# -- counted from exactly this depth.
+#
+# Femi9's image flattens the bundle to /app/server.js, which is byte-for-byte
+# the layout it had before the monorepo and keeps its task definition working.
+# Doing the same here moved every one of those symlinks two levels up, so each
+# resolved to /node_modules/... and dangled. The image built, started, and
+# answered 500 on EVERY route with "Cannot find module
+# '@prisma/client-2c3a283f134fdcb6'". Nothing but running the container shows it.
+#
+# So this image keeps the layout Next produced. There is no legacy task
+# definition to preserve for a service that has never been deployed.
+COPY --from=build --chown=nextjs:nodejs /app/apps/admin/.next/standalone/ ./
 
-# The standalone bundle, FLATTENED to /app/server.js — same layout as both
-# storefront images, so one task-definition shape covers all three services.
-COPY --from=build --chown=nextjs:nodejs /app/apps/admin/.next/standalone/apps/admin/. ./
+# Client-side chunks. (No public/ -- the console ships no static assets.)
+COPY --from=build --chown=nextjs:nodejs /app/apps/admin/.next/static ./apps/admin/.next/static
 
-# The complete build-stage node_modules: the Prisma CLI is a devDependency and
-# is not traced into the bundle, but the entrypoint needs it to migrate.
+# --- Prisma at runtime -----------------------------------------------------
+# The entrypoint runs `prisma db execute` and `prisma migrate deploy`, but the
+# Prisma CLI is a devDependency and is NOT traced into the standalone bundle.
+# Prisma 6's CLI also pulls a real transitive closure (@prisma/config -> effect,
+# c12, empathic, deepmerge-ts ...), so cherry-picking directories is fragile.
+# Overlay the COMPLETE build-stage node_modules: a strict superset of the traced
+# one, at the exact path those symlinks above expect, which guarantees CLI +
+# engines + generated client are present and migrations run fully OFFLINE.
 COPY --from=build --chown=nextjs:nodejs /app/node_modules ./node_modules
 
-# The workspace packages. Required here, not merely prudent: the platform Prisma
-# client is generated to packages/db-platform/generated/, and the only path that
-# reaches it is the node_modules/@femi9/db-platform symlink copied above. Drop
-# this line and the console starts, then 500s on the first login attempt.
+# The workspace packages. npm links every workspace into node_modules as a
+# SYMLINK (node_modules/@femi9/core -> ../../packages/core) and the overlay
+# above copies those links verbatim; without their targets on disk each one
+# dangles. The TypeScript sources are a rounding error next to node_modules.
 COPY --from=build --chown=nextjs:nodejs /app/packages ./packages
 
-# The platform schema + its migration history, at the path the entrypoint uses.
-# Named prisma-platform/ rather than prisma/ so it can never be confused with a
-# brand schema by a future one-off task.
-COPY --from=build --chown=nextjs:nodejs /app/packages/db-platform/prisma ./prisma-platform
+# NOTE what is NOT copied here. The platform schema, its migrations and the
+# create-admin script all live under packages/db-platform, which the COPY above
+# already placed at its real workspace path -- so the entrypoint and any one-off
+# task reach them there.
+#
+# An earlier version copied them to tidier names beside server.js, and
+# create-admin died on `Cannot find module '../src/index'`: it imports the
+# package it lives in, by a relative path that only holds at the original
+# depth. Moving a script rewrites its imports. Don't move scripts.
 
-# The create-admin script, so the first account can be made with a one-off ECS
-# task on this same image instead of from somebody's laptop against production.
-COPY --from=build --chown=nextjs:nodejs /app/packages/db-platform/scripts ./scripts-platform
-
-# Recreate the `.bin/prisma` shim — COPY does not reliably preserve the
-# generated symlink, and without it `npx prisma` tries to DOWNLOAD the CLI,
+# Recreate the `.bin/prisma` shim -- COPY does not reliably preserve the
+# generated bin symlink, and without it `npx prisma` tries to DOWNLOAD the CLI,
 # which fails in a task with no egress and turns migrations into a boot loop.
 RUN mkdir -p node_modules/.bin \
  && ln -sf ../prisma/build/index.js node_modules/.bin/prisma \
  && chmod +x node_modules/prisma/build/index.js
 
+# Everything from here runs from the app directory, where server.js lives.
+WORKDIR /app/apps/admin
+
+# Next writes ISR/cache artifacts under .next/cache -- the non-root user needs it.
 RUN mkdir -p .next/cache && chown -R nextjs:nodejs .next
 
 COPY --chown=nextjs:nodejs apps/admin/docker-entrypoint.sh ./docker-entrypoint.sh

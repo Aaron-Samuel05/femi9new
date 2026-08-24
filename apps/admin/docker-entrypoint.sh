@@ -39,7 +39,7 @@ echo "CREATE SCHEMA IF NOT EXISTS \"$PLATFORM_SCHEMA\";" \
 # Idempotent: applies only what `_prisma_migrations` does not already record.
 echo "[entrypoint] Applying platform migrations…"
 DATABASE_URL_PLATFORM="$MIGRATE_URL" \
-  npx prisma migrate deploy --schema=./prisma-platform/schema.prisma
+  npx prisma migrate deploy --schema=../../packages/db-platform/prisma/schema.prisma
 echo "[entrypoint] Platform schema up to date."
 
 # NOTE: there is no bootstrap admin here on purpose. Seeding a default account
