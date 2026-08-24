@@ -195,7 +195,19 @@ jobs:
           context: .
           file: ${{ steps.names.outputs.dir }}/Dockerfile
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:${{ github.sha }}
+          # TWO tags, and the second one is a guard rather than a convenience.
+          #
+          # Deployments use the immutable SHA. But Terraform owns the task
+          # definition, and its container_image_tag defaults to "latest" — so an
+          # apply re-registers the definition and moves the service onto
+          # whatever that names. With nothing ever pushed as "latest", a routine
+          # `terraform apply` pointed all three services at a tag that did not
+          # exist and every task died with CannotPullContainerError. Publishing
+          # "latest" too means the default now resolves to the most recent build
+          # instead of to nothing.
+          tags: |
+            ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:${{ github.sha }}
+            ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:latest
           # Cached per service, so Femi9's layers never evict Lumi9's.
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}

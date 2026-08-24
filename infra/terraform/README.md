@@ -402,6 +402,21 @@ imports the package it lives in as `../src/index`, and a tidier home for it
 produced `Cannot find module` on the one-off task, well after the image had
 deployed and gone healthy.
 
+**Terraform owns the task definition; CI owns the image inside it.** That is a
+real seam, and it bit once already. `terraform apply` re-registers the task
+definition and moves each service onto `container_image_tag` — so an apply run
+after a CI deploy will roll the image back to whatever that variable says. Two
+things keep it survivable: the deploy workflow pushes every build as `latest`
+as well as by SHA, so the default always resolves to a real image rather than
+to nothing; and pinning `container_image_tag` to a SHA in tfvars makes an
+environment reproducible. Bump the pin after a deploy you want an apply to
+preserve.
+
+The first time this went wrong, nothing had ever been pushed as `latest`, and a
+routine apply pointed all three services at a tag that did not exist. The
+symptom is `CannotPullContainerError ... manifest not found`, and it appears
+minutes later on a service that was healthy before the apply.
+
 **A schema name lives in two places.** `femi9_schema` / `lumi9_schema` /
 `platform_schema` go into the connection strings *and* into each container's
 `BRAND_DB_SCHEMA` / `PLATFORM_DB_SCHEMA`. Change one without the other and a
