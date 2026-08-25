@@ -70,6 +70,12 @@ export type JournalPost = {
   featured?: boolean;
   /** <title> for the article route, from the SEO brief */
   metaTitle: string;
+  /**
+   * The article's own closing call-to-action, taken from the SEO brief. Each
+   * brief ends on wording written for that reader; the generic block only
+   * stands in where a brief supplied none.
+   */
+  cta?: string;
   /** primary + secondary keywords, emitted as `keywords` and in JSON-LD */
   keywords: string[];
   body: string[];
@@ -180,6 +186,8 @@ export const POSTS: JournalPost[] = [
       "Lumi9 diapers",
       "Lumi9 by Femi9",
     ],
+    cta:
+      "Ready to explore the comfort behind the story? Discover Lumi9 Baby Diapers and find the option designed for your baby's everyday movement, daytime play and night-time rest.",
     body: [
       "There is a moment most new parents know, even if nobody talks about it before the baby arrives. It is 2:17 in the morning. The room is finally quiet. You have just managed to settle a tiny person who seems capable of sensing the exact second you sit down. Then you notice it: the diaper feels heavy, the bedsheet is damp, or your baby is wriggling again because something just does not feel comfortable.",
       "You change them gently in the half-dark, trying not to wake them fully. Your hands are tired, your eyes are tired, but the thought in your head is completely awake: “I just want my baby to be comfortable.”",
@@ -294,7 +302,7 @@ export const POSTS: JournalPost[] = [
       },
       {
         q: "How do I choose the right Lumi9 diaper size?",
-        a: "Choose based primarily on the baby's weight range and actual fit around the waist and legs. Lumi9 runs from NB (up to 5 kg) through S (4–8 kg), M (7–12 kg), L (9–14 kg) and XL (12–17 kg) — the Baby Diaper Size Guide walks through size-specific guidance.",
+        a: "Choose based primarily on the baby's weight range and actual fit around the waist and legs. Lumi9 runs from NB (up to 5 kg) through S (4–8 kg), M (7–12 kg), L (9–14 kg) and XL (12–17 kg) — the [Baby Diaper Size Guide](/size-guide) walks through size-specific guidance.",
       },
     ],
   },
@@ -326,12 +334,14 @@ export const POSTS: JournalPost[] = [
       "overnight baby diapers",
       "what makes a baby diaper breathable",
     ],
+    cta:
+      "Looking for soft, breathable baby diapers designed around everyday movement, moisture management and practical protection? Explore Lumi9 Baby Diapers and find the size designed for your baby's growing needs.",
     body: [
       "Somewhere between the midnight feeds, the half-finished cups of tea and the hundredth time you check whether your baby is sleeping comfortably, something changes in you. You start noticing everything.",
       "The way your baby's tiny fingers curl during sleep. The little line a waistband leaves behind. The moment your baby becomes restless for no obvious reason. And sometimes, when you lift your baby for a diaper change, you wonder: “Is my baby feeling too warm inside this diaper?”",
       "Your baby cannot tell you. Your baby cannot say, “Mom, this feels stuffy,” or “I need a little more comfort.” So you learn to read the smallest signs.",
       "That is where **breathable baby diapers** become more than another feature on a diaper pack. Because when something stays close to your baby's delicate skin for hours every day, airflow, softness and moisture management are not small details. They are part of the quiet comfort every mom keeps trying to give — even when the baby cannot ask for it yet.",
-      "But what actually makes a diaper “breathable”? Does better airflow affect leak protection? And are all diapers labelled breathable really designed the same way? Let's look beyond the packaging.",
+      "But what actually makes a diaper “breathable”? Does better airflow affect leak protection? And are all diapers labelled breathable really designed the same way? Let's look beyond the packaging and understand what breathability actually means for the little person you spend every day trying to keep comfortable.",
 
       "## What Does “Breathable Baby Diaper” Actually Mean?",
       "A breathable baby diaper is designed so that its outer structure can support the movement of air and water vapour while still helping contain liquid inside the absorbent system.",
@@ -364,7 +374,7 @@ export const POSTS: JournalPost[] = [
 
       "### 2. ADL — Helping Liquid Move and Spread",
       "Below the top sheet is another important component: ADL, or Acquisition Distribution Layer. The ADL helps receive liquid and distribute it more evenly across the absorbent area instead of allowing moisture to concentrate heavily in one location.",
-      "Think of pouring water onto a sponge. If all the liquid remains in one small area, that section becomes overloaded. If the liquid spreads across more of the absorbent structure, the diaper can manage moisture more effectively.",
+      "Think of pouring water onto a sponge. If all the liquid remains in one small area, that section becomes overloaded. If the liquid spreads across more of the absorbent structure, the diaper can manage moisture more effectively. For Lumi9, ADL means liquid distribution. It is separate from the Aloe Vera-infused top sheet.",
 
       "### 3. Advanced SAP Core — Where Absorption Happens",
       "SAP stands for Super Absorbent Polymer. Lumi9 uses an Advanced SAP Core designed to absorb and hold moisture within the diaper's absorbent structure. This matters because a breathable outer layer alone would mean very little if the diaper could not manage wetness effectively.",
@@ -375,14 +385,14 @@ export const POSTS: JournalPost[] = [
       "Again, notice how different this is from breathability. Breathability does not mean moisture should escape from the diaper. A well-designed leak proof baby diaper needs to help keep liquid contained while still using an outer construction that supports everyday comfort.",
 
       "### 5. Breathable Backsheet — Supporting Airflow",
-      "Now we reach the feature at the centre of this article. The backsheet is the outer layer of the diaper. Lumi9's breathable backsheet is designed to support airflow through the outer layer. This is important because the diaper area naturally experiences warmth, moisture and close contact with materials.",
+      "Now we reach the feature at the centre of this article. The backsheet is the outer layer of the diaper. Lumi9's breathable backsheet is designed to support airflow through the outer layer. This is important because the diaper area naturally experiences warmth, moisture and close contact with materials. A breathable outer design is therefore one factor moms may consider when choosing comfortable everyday diapers.",
 
       "### What a Breathable Diaper Does Not Mean",
       "• that a baby can remain in a wet diaper indefinitely\n• that diaper rash can never happen\n• that sizing does not matter\n• that every baby's skin will respond identically\n• that airflow replaces diaper-free time\n• that hygiene becomes less important",
       "Breathability works best as part of good overall diaper care.",
 
       "## What About Leakage? Can a Breathable Diaper Still Protect Well?",
-      "This is a very reasonable question. If air can move through the outer structure, does that mean urine can leak through too? No — not when the diaper has been properly engineered.",
+      "This is a very reasonable mom question. If air can move through the outer structure, does that mean urine can leak through too? No — not when the diaper has been properly engineered.",
       "Breathable diaper materials can be designed to support vapour movement without simply allowing liquid to pass freely through the diaper. Meanwhile, leakage protection depends on several other factors, including:",
       "• absorbent capacity\n• core construction\n• leg barriers\n• waist fit\n• correct diaper size\n• how quickly liquid is distributed\n• how full the diaper becomes\n• baby's sleeping or movement position",
       "Lumi9 combines breathability with a Double Leakage Barrier and 360° protection designed to support all-around coverage. So moms do not have to think: comfort or protection? The aim is to support both.",
@@ -430,6 +440,7 @@ export const POSTS: JournalPost[] = [
       "That is why moms pay attention to things other people might call small: the softness of a waistband, the way a diaper fits around tiny legs, how well it manages wetness, whether the outer layer supports airflow, and whether you can see when it may be time for another change.",
       "> Those details matter because the little person wearing the diaper matters.",
       "And while no diaper can remove every messy part of motherhood, thoughtful design can make some of those ordinary moments feel a little easier. That is what Lumi9 by Femi9 is designed to support.",
+      "Softness for the skin your baby cannot yet describe. Movement for the little body that refuses to stay still. Protection for the nights when everyone needs sleep. And breathable everyday comfort for all the quiet moments in between.",
     ],
     faqs: [
       {
@@ -481,6 +492,8 @@ export const POSTS: JournalPost[] = [
       "how to put on a newborn diaper",
       "newborn diaper rash prevention",
     ],
+    cta:
+      "Looking for newborn baby diapers designed around softness, moisture management, breathable comfort and practical protection? Explore Lumi9 and choose the diaper size suited to your baby's early days.",
     body: [
       "The first night you bring your newborn home can feel strangely quiet. The hospital bag is still half-unpacked. Someone has left a tiny pair of socks on the sofa. Your baby is finally asleep, and for the first time all day, nobody is telling you what to do next. So you stand there and look at this impossibly small person.",
       "Then the questions begin. “Did my baby drink enough?” “Is that breathing normal?” “Should I wake the baby for a feed?” “Is the diaper too tight?” “Why is the baby crying again?” “Am I doing any of this right?”",
@@ -612,6 +625,8 @@ export const POSTS: JournalPost[] = [
       "why does my baby wake up crying at night",
       "wet diaper waking baby at night",
     ],
+    cta:
+      "If diaper comfort is one of the things interrupting your baby's night, explore Lumi9 baby diapers designed around softness, breathable comfort, moisture management, flexible fit and leakage protection for everyday and night-time wear.",
     body: [
       "It is 2:43 a.m. again. You were sure your baby was finally asleep. You lowered the baby into bed as carefully as if you were defusing a tiny, adorable alarm clock. You waited. One minute. Two minutes. Then the cry came.",
       "You pick your baby up, check the diaper, offer a feed, walk around the room, whisper the same lullaby you have already sung four times tonight — and somewhere between exhaustion and worry, one thought appears: “Why does my baby keep waking up crying? Am I missing something?”",

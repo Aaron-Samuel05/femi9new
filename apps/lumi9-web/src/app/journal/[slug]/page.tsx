@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PageShell } from "@/components/site/PageShell";
 import { PRIMARY_LINKS } from "@/components/site/Nav";
 import { Reveal } from "@/components/motion/Reveal";
-import { ArticleBody } from "@/components/journal/ArticleBody";
+import { ArticleBody, inline } from "@/components/journal/ArticleBody";
 import { ArticleCard, CategoryChip, PostMeta } from "@/components/journal/JournalCards";
 import { categoryMeta, getPost, POSTS, relatedPosts } from "@/lib/journal";
 import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
@@ -174,7 +174,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
                       {faq.q}
                     </dt>
                     <dd className="m-0 max-w-[64ch] text-[clamp(14px,1.3vw,16px)] leading-[1.7] text-muted">
-                      {faq.a}
+                      {inline(faq.a, `faq-${faq.q}`)}
                     </dd>
                   </div>
                 ))}
@@ -190,8 +190,8 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
               Discover Lumi9 Baby Diapers
             </h2>
             <p className="m-0 max-w-[52ch] text-[clamp(14px,1.3vw,16px)] leading-[1.6] text-muted">
-              Soft, breathable baby diapers and diaper pants designed around everyday movement, moisture management
-              and practical protection — in sizes from NB to XL.
+              {post.cta ??
+                "Soft, breathable baby diapers and diaper pants designed around everyday movement, moisture management and practical protection — in sizes from NB to XL."}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Link href="/shop" className="btn btn-dark">

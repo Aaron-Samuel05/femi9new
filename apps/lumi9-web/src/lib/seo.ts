@@ -122,6 +122,15 @@ export function breadcrumbSchema(crumbs: { name: string; path: string }[]) {
  * schema for hidden content is a manual-action risk, not a shortcut to a rich
  * result.
  */
+/**
+ * Strips the markdown subset used in answer copy. Schema.org answer text is read
+ * by machines, not rendered, so `[label](href)` would surface to searchers as
+ * literal brackets.
+ */
+function plainText(markdown: string): string {
+  return markdown.replace(/\[([^\]]+)\]\([^)\s]+\)/g, "$1").replace(/\*\*(.+?)\*\*/g, "$1");
+}
+
 export function faqSchema(faqs: { q: string; a: string }[]) {
   return {
     "@context": "https://schema.org",
@@ -129,7 +138,7 @@ export function faqSchema(faqs: { q: string; a: string }[]) {
     mainEntity: faqs.map((faq) => ({
       "@type": "Question",
       name: faq.q,
-      acceptedAnswer: { "@type": "Answer", text: faq.a },
+      acceptedAnswer: { "@type": "Answer", text: plainText(faq.a) },
     })),
   };
 }

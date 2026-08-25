@@ -38,7 +38,7 @@ function listKind(block: string): "ul" | "ol" | null {
  */
 const INLINE = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
 
-function inline(text: string, keyPrefix: string): ReactNode {
+export function inline(text: string, keyPrefix: string): ReactNode {
   const parts: ReactNode[] = [];
   let last = 0;
   let match: RegExpExecArray | null;
