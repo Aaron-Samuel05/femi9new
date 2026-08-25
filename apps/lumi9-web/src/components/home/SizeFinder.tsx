@@ -19,11 +19,12 @@ export function SizeFinder() {
     <section id="sizes" className="px-safe bg-butter py-section">
       <div className="mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-block md:grid-cols-2">
         <Reveal>
-          <SectionHeading eyebrow="Size finder" size="md" className="mb-4.5">
-            The perfect fit, <Em>in one tap.</Em>
+          <SectionHeading eyebrow="Find your Lumi9 size" size="md" className="mb-4.5">
+            Find the right baby diaper size <Em>in one tap.</Em>
           </SectionHeading>
           <p className="m-0 mb-8 max-w-[46ch] text-body leading-[1.6] text-muted">
-            Tell us your baby&apos;s weight and we&apos;ll match the size that moves with them — no red marks, no leaks.
+            Every baby grows differently. Choose your baby&apos;s current weight and Lumi9 will recommend the diaper
+            size for a comfortable fit around the waist and legs.
           </p>
           <div className="mb-3 text-sm font-semibold text-midnight">Baby&apos;s weight</div>
           <div className="flex flex-wrap gap-2.5">

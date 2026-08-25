@@ -23,44 +23,46 @@ export const HERO_STATS = [
 ];
 
 export const MARQUEE_ITEMS = [
-  "Chemical-free",
-  "12-hour dryness",
-  "Aloe vera top sheet",
-  "Biodegradable backsheet",
   "Dermatologist tested",
+  "Clinically proven",
+  "Paediatrician tested",
+  "No harmful chemicals",
+  "Antibacterial protection",
+  "Odor lock technology",
   "Wetness indicator",
+  "360° protection",
 ];
 
 export const USPS: { icon: IconName; title: string; body: string }[] = [
   {
-    icon: "leaf",
-    title: "Chemical-free by design",
-    body: "No lotions, fragrances, or harsh irritants — just clean materials next to delicate skin.",
-  },
-  {
     icon: "drop",
-    title: "12-hour dry nights",
-    body: "SAP absorbent core locks moisture instantly so baby sleeps through, dry and calm.",
+    title: "Quick moisture absorption",
+    body: "An Advanced SAP Core helps absorb moisture quickly and retain it within the diaper for comfortable everyday wear.",
   },
   {
-    icon: "wind",
-    title: "Breathable & biodegradable",
-    body: "Airflow pores prevent heat buildup; the backsheet breaks down kindly afterward.",
-  },
-  {
-    icon: "heart",
-    title: "Buttery-soft everywhere",
-    body: "Pure cotton contact layer and a stretchy waistband that never leaves red marks.",
+    icon: "lock",
+    title: "Wetness Lock support",
+    body: "Wetness Lock Technology helps move moisture away from the surface to support a drier, more comfortable feel.",
   },
   {
     icon: "shield",
-    title: "360° leak protection",
-    body: "Double side walls and flex-fit leg cuffs move with active babies, all angles covered.",
+    title: "Double Leakage Barrier",
+    body: "Added side protection helps manage unexpected leaks during active daytime movement and nighttime rest.",
   },
   {
-    icon: "tag",
-    title: "Honest, everyday pricing",
-    body: "Premium protection at a price built for real Indian families. No compromise, either end.",
+    icon: "grow",
+    title: "360° all-around protection",
+    body: "Comfortable all-around coverage is designed to move naturally as your baby rolls, crawls, walks and explores.",
+  },
+  {
+    icon: "wind",
+    title: "Soft, breathable comfort",
+    body: "A soft cotton-like touch, Aloe Vera-infused top sheet for skin smoothening and rash-free comfort, breathable backsheet and stretch waistband.",
+  },
+  {
+    icon: "clock",
+    title: "12-hour dry night protection",
+    body: "The ADL Layer helps distribute liquid evenly, while a Wetness Indicator makes it easier to know when it may be time for a change.",
   },
 ];
 
@@ -98,22 +100,42 @@ export const LAYERS: Layer[] = [
 export const LAYER_COLORS = ["#fbf6d8", "#f0ead0", "#e4dcbf", "#d3caa4", "#c2b98d"];
 
 export const VALUES = [
-  { n: "01", title: "Comfort", body: "Every layer designed for ultra-soft baby comfort." },
-  { n: "02", title: "Protection", body: "Advanced leakage control for day and night." },
-  { n: "03", title: "Safety", body: "Free from harmful chemicals and harsh irritants." },
-  { n: "04", title: "Innovation", body: "Smart layer tech for superior absorption and airflow." },
-  { n: "05", title: "Accessibility", body: "Premium quality at a genuinely affordable cost." },
+  {
+    n: "01",
+    title: "Comfort",
+    body: "Cloud-soft, cotton-like surfaces, a soft stretch waistband and flexible leg areas, as your baby sleeps, stretches, crawls and plays.",
+  },
+  {
+    n: "02",
+    title: "Protection",
+    body: "Advanced SAP Core, Wetness Lock Technology, Double Leakage Barrier and 360° protection, for daytime activity and nighttime rest.",
+  },
+  {
+    n: "03",
+    title: "Safety-conscious care",
+    body: "Designed without harsh chemicals — no parabens, fragrance, latex or phthalates — with soft materials for delicate baby skin.",
+  },
+  {
+    n: "04",
+    title: "Thoughtful innovation",
+    body: "Every feature has a purpose: the ADL Layer spreads liquid evenly, the breathable backsheet supports airflow, the indicator shows when to change.",
+  },
+  {
+    n: "05",
+    title: "Easy-to-find fit",
+    body: "From NB newborn tape diapers up to 5 kg to XL baby diaper pants for 12–17 kg, clear size options for every growing stage.",
+  },
 ];
 
 export const TESTIMONIALS = [
   {
-    quote: "“Finally a diaper that survives my son’s 11-hour sleeps with zero leaks. The cotton feel is unreal.”",
+    quote: "“The soft cotton-like feel is what we noticed first. It feels comfortable through the night, and the fit stays secure while our little one sleeps.”",
     name: "Ananya R.",
     role: "mum of one",
     initial: "A",
   },
   {
-    quote: "“Switched the whole family over. No rashes since, and my budget didn’t even flinch.”",
+    quote: "“We wanted a diaper that felt soft but could still keep up with active days. The flexible fit makes everyday changes feel much easier for us.”",
     name: "Priya & Karan",
     role: "parents of twins",
     initial: "P",
@@ -256,69 +278,9 @@ export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] =
   },
 ];
 
-export const JOURNAL_CATEGORIES = ["All", "Skin care", "Sleep", "New parents", "Sustainability"] as const;
-export type JournalCategory = (typeof JOURNAL_CATEGORIES)[number];
-
-export const FEATURED_POST = {
-  kicker: "FEATURED · SKIN CARE",
-  title: "The 3am rash: what actually causes it, and how to stop it",
-  excerpt:
-    'Most diaper rash is about moisture and friction, not "bad skin." Here\'s a dermatologist-backed routine that keeps things calm overnight.',
-  meta: "8 min read · Feb 2026",
-  image: "/assets/features/soothing-comfort.png",
-  imageAlt: "Soothing comfort",
-};
-
-export const POSTS: {
-  category: Exclude<JournalCategory, "All">;
-  title: string;
-  excerpt: string;
-  meta: string;
-  image: string;
-}[] = [
-  {
-    category: "Sleep",
-    title: "Building a bedtime routine that actually sticks",
-    excerpt: "Small, repeatable cues matter more than the perfect schedule. Here is where to start.",
-    meta: "6 min read · Feb 2026",
-    image: "/assets/features/softness.png",
-  },
-  {
-    category: "Skin care",
-    title: 'Why breathable beats "extra absorbent" for newborns',
-    excerpt: "Airflow keeps skin calm. We break down what the backsheet is really doing.",
-    meta: "5 min read · Jan 2026",
-    image: "/assets/features/wetness-lock.png",
-  },
-  {
-    category: "New parents",
-    title: "The honest first-week checklist nobody hands you",
-    excerpt: "Forget the 40-item registry. These are the things that carry you through week one.",
-    meta: "7 min read · Jan 2026",
-    image: "/assets/features/happiness-wrapped.png",
-  },
-  {
-    category: "Skin care",
-    title: 'Cotton-soft, decoded: what "gentle" should mean',
-    excerpt: "Not all soft is safe. A quick guide to reading a diaper like a label.",
-    meta: "4 min read · Dec 2025",
-    image: "/assets/features/soft-as-cotton.png",
-  },
-  {
-    category: "New parents",
-    title: "Sizing up without the guesswork",
-    excerpt: "Red marks, gaps, and blowouts each tell you something. Here is the fit cheat-sheet.",
-    meta: "5 min read · Dec 2025",
-    image: "/assets/features/perfect-fit.png",
-  },
-  {
-    category: "Sustainability",
-    title: 'What "biodegradable backsheet" really means',
-    excerpt: "A plain-language look at how our materials break down, and what they don’t.",
-    meta: "6 min read · Nov 2025",
-    image: "/assets/features/gentle-steps.png",
-  },
-];
+/* The journal now lives in `src/lib/journal.ts` — full articles with body,
+   SEO metadata and FAQs, rather than the card-only stubs that used to sit
+   here. Nothing else read them. */
 
 export const LEGAL_SECTIONS = [
   {

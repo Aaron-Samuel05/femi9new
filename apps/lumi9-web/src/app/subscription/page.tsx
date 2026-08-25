@@ -7,11 +7,21 @@ import { BoxBuilder } from "@/components/subscription/BoxBuilder";
 import { Em } from "@/components/ui/bits";
 import { Icon } from "@/components/ui/Icon";
 import { FEATURE_IMAGES, SUBSCRIPTION_BENEFITS, SUBSCRIPTION_STEPS } from "@/lib/content";
+import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+
+const TITLE = "Baby Diaper Subscription | Monthly Diaper Delivery | Lumi9";
+const DESCRIPTION =
+  "Never run out of baby diapers again. Set up recurring Lumi9 diaper delivery, move from NB through XL as your baby grows, and manage or skip upcoming boxes.";
 
 export const metadata: Metadata = {
-  title: "The Lumi9 subscription",
-  description:
-    "A monthly box that grows with your baby. Auto size-up, save 20%, skip or cancel anytime.",
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  keywords: [
+    "baby diaper subscription", "monthly baby diaper delivery", "baby diapers online",
+    "baby diaper pants combo pack", "jumbo pack diapers", "Lumi9 baby diapers",
+  ],
+  alternates: canonical("/subscription"),
+  openGraph: { type: "website", url: absoluteUrl("/subscription"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
 };
 
 const SUBSCRIPTION_LINKS = [

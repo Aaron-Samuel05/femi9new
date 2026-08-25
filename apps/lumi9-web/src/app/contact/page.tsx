@@ -5,10 +5,17 @@ import { ContactForm } from "@/components/contact/ContactForm";
 import { Em } from "@/components/ui/bits";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { BRAND } from "@/lib/content";
+import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+
+const TITLE = "Contact Lumi9 | Baby Diaper Support";
+const DESCRIPTION =
+  "Questions about diaper sizing, an order, or a bulk enquiry? The Lumi9 care team replies within a few hours.";
 
 export const metadata: Metadata = {
-  title: "Contact us",
-  description: "Questions about sizing, an order, or a bulk enquiry? Our care team replies within a few hours.",
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  alternates: canonical("/contact"),
+  openGraph: { type: "website", url: absoluteUrl("/contact"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
 };
 
 const CHANNELS: { icon: IconName; label: string; value: string; href?: string }[] = [

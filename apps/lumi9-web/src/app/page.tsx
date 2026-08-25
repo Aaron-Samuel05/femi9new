@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { Nav, HOME_LINKS } from "@/components/site/Nav";
@@ -11,6 +12,67 @@ import { SizeFinder } from "@/components/home/SizeFinder";
 import { Em, NumberedCard, QuoteCard, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { Icon } from "@/components/ui/Icon";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS, TESTIMONIALS, USPS, VALUES } from "@/lib/content";
+import { SIZES } from "@/lib/catalog";
+import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+
+const HOME_TITLE = "Baby Diapers & Baby Diaper Pants Online | Lumi9 by Femi9";
+const HOME_DESCRIPTION =
+  "Shop Lumi9 baby diapers and diaper pants for newborns and growing babies. Discover soft, breathable comfort, quick moisture absorption, 360° protection, wetness indicators and sizes from NB to XL.";
+
+export const metadata: Metadata = {
+  // The brief's homepage title already names the brand, so it opts out of the
+  // layout's "%s · Lumi9" template rather than ending "… | Lumi9 by Femi9 · Lumi9".
+  title: { absolute: HOME_TITLE },
+  description: HOME_DESCRIPTION,
+  keywords: [
+    "baby diapers",
+    "diaper pants for baby",
+    "baby diapers online",
+    "best baby diapers in India",
+    "buy baby diapers online India",
+    "soft baby diapers",
+    "breathable baby diapers",
+    "leak proof baby diapers",
+    "premium baby diapers",
+    "wetness indicator diapers",
+    "360 degree protection diapers",
+    "Lumi9 diapers",
+    "Lumi9 baby diaper pants",
+    "Femi9 Lumi9",
+  ],
+  alternates: canonical("/"),
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+  },
+  twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION },
+};
+
+/**
+ * The size run as an ItemList.
+ *
+ * Sourced from the seed list rather than the database on purpose: this is a
+ * navigational hint about which size pages exist, it changes only when a size
+ * is added or retired, and it must not be the thing that makes the homepage
+ * fail when the catalogue read is slow. Prices and availability are stated on
+ * the product pages, where the Product schema reads them live.
+ */
+const SIZE_LIST_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  name: "Lumi9 Cloud Soft baby diaper range",
+  itemListOrder: "https://schema.org/ItemListOrderAscending",
+  numberOfItems: SIZES.length,
+  itemListElement: SIZES.map((size, i) => ({
+    "@type": "ListItem",
+    position: i + 1,
+    name: `Lumi9 Cloud Soft ${size.name} baby diapers — ${size.fits}`,
+    url: absoluteUrl(`/product/${size.size.toLowerCase()}`),
+  })),
+};
 
 const FEATURE_COLUMNS = [
   { factor: 0.06, offset: false, images: [FEATURE_IMAGES.softness, FEATURE_IMAGES.gentleSteps] },
@@ -27,6 +89,8 @@ export default function HomePage() {
       <link rel="preload" href="/assets/mascot.glb" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossOrigin="anonymous" />
+
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(SIZE_LIST_SCHEMA)} />
 
       <Nav variant="home" links={HOME_LINKS} cta="both" />
 
@@ -72,21 +136,24 @@ export default function HomePage() {
               <span className="size-[7px] shrink-0 rounded-full bg-moss" aria-hidden />
               Trusted by 40,000+ Indian families
             </div>
-            <h1 className="m-0 mb-[clamp(16px,2.4vw,24px)] font-display text-[clamp(38px,10vw,92px)] font-normal leading-[0.98] md:text-[clamp(48px,6.4vw,92px)]">
-              Happy&nbsp;day,
+            {/* The page's one H1, and the only place the primary keyword
+                ("baby diapers") belongs at this weight. */}
+            <h1 className="m-0 mb-[clamp(14px,2vw,20px)] font-display text-[clamp(34px,8.6vw,78px)] font-normal leading-[1.0] md:text-[clamp(42px,5.4vw,78px)]">
+              CloudSoft Baby Diapers
               <br />
-              <Em>every</Em> day.
+              Made for <Em>Happy</Em> Little Days
             </h1>
-            <p className="m-0 mb-[clamp(24px,3.4vw,34px)] max-w-[52ch] text-lead leading-[1.6] text-muted">
-              Ultra-soft, chemical-free diapers engineered with a 5-layer protection system — gentle on delicate skin,
-              up to 12 hours of dryness, kind to the planet.
+            <p className="m-0 mb-[clamp(24px,3.4vw,34px)] max-w-[54ch] text-lead leading-[1.6] text-muted">
+              From sleepy newborn cuddles to crawling, stretching and first little steps, Lumi9 baby diapers are
+              designed to move comfortably with your growing baby — soft cotton-like comfort, quick moisture
+              absorption, breathable protection and a flexible fit for playtime, naps and nighttime rest.
             </p>
             <div className="mb-[clamp(28px,4vw,40px)] flex flex-wrap gap-3.5">
               <Link href="/shop" className="btn btn-dark max-[400px]:w-full">
-                Shop Cloud Soft →
+                Shop Baby Diapers →
               </Link>
               <Link href="#sizes" className="btn btn-ghost max-[400px]:w-full">
-                Find your size
+                Find your baby’s size
               </Link>
             </div>
             <div className="flex flex-wrap gap-x-[clamp(20px,3vw,30px)] gap-y-4">
@@ -128,8 +195,13 @@ export default function HomePage() {
           <div className="mx-auto max-w-[1180px]">
             <Reveal className="mb-[clamp(36px,5vw,64px)] max-w-[720px]">
               <SectionHeading eyebrow="Why Lumi9">
-                Safety shouldn&apos;t be a premium feature. It should be the <Em>standard.</Em>
+                Comfort and protection should come <Em>standard.</Em>
               </SectionHeading>
+              <p className="m-0 mt-5 text-body leading-[1.65] text-muted">
+                Every little stretch, crawl, nap and nighttime cuddle deserves comfort you can count on. Lumi9 baby
+                diapers bring together soft everyday care, fast moisture management, breathable materials and
+                all-around protection to support your baby through every little move.
+              </p>
             </Reveal>
             <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
               {USPS.map((usp) => (
@@ -184,15 +256,17 @@ export default function HomePage() {
 
             <Reveal>
               <SectionHeading eyebrow="Our story" size="sm" className="mb-5.5">
-                Built by parents who refused to choose between <Em>safe</Em> and <Em>affordable.</Em>
+                Made for the little moments parents <Em>notice most.</Em>
               </SectionHeading>
               <p className="m-0 mb-4.5 text-body leading-[1.65] text-muted">
-                Most diapers in India ask families to pick: affordable but full of questionable chemicals, or safe but
-                priced out of reach. We spent months testing samples to close that gap.
+                There is a particular kind of silence parents recognise. The room is finally quiet. Your baby has
+                fallen asleep after a long day of feeding, playing, crawling and being carried from one loving pair of
+                arms to another. And then you check the diaper.
               </p>
               <p className="m-0 mb-7 text-body leading-[1.65] text-muted">
-                Cloud Soft is the result — an aloe-infused cotton top sheet, a fast-absorbing SAP core, and a
-                breathable, biodegradable backsheet. No lotions, no fragrances, no compromise on either end.
+                Those small questions are part of everyday parenting, and they are part of what shapes Lumi9 by Femi9 —
+                soft everyday comfort, moisture-management technology, breathable materials and flexible protection in
+                baby diapers made to support babies as they grow.
               </p>
               <Link href="/about" className="inline-flex items-center coarse:min-h-10 text-[15px] font-semibold text-moss-deep hover:text-midnight">
                 Read our story →
@@ -251,7 +325,7 @@ export default function HomePage() {
               as="h2"
               className="m-0 mb-[clamp(32px,4.6vw,56px)] text-center font-display text-[clamp(28px,3.6vw,46px)] font-normal"
             >
-              What we stand for
+              The values behind every Lumi9 baby diaper
             </Reveal>
             <div className="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-moss-tint bg-moss-tint sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
               {VALUES.map((value) => (
@@ -266,7 +340,12 @@ export default function HomePage() {
         {/* TESTIMONIALS */}
         <section className="px-safe bg-paper py-section">
           <div className="mx-auto max-w-[1180px]">
-            <Reveal className="eyebrow mb-[clamp(28px,4vw,44px)] text-center">Loved by 40,000+ families</Reveal>
+            <Reveal className="mb-[clamp(28px,4vw,44px)] text-center">
+              <div className="eyebrow mb-4">Loved by Lumi9 mums</div>
+              <h2 className="m-0 font-display text-[clamp(26px,3.6vw,44px)] leading-[1.06] font-normal">
+                Real parent moments. Everyday cloud-soft comfort.
+              </h2>
+            </Reveal>
             <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
               {TESTIMONIALS.map((testimonial) => (
                 <Reveal key={testimonial.name}>
@@ -293,10 +372,11 @@ export default function HomePage() {
             <div className="relative z-2 max-w-[640px]">
               <div className="eyebrow mb-4.5 text-gold">The Lumi9 subscription</div>
               <h2 className="m-0 mb-5 font-display text-[clamp(28px,4.4vw,54px)] font-normal leading-[1.04] text-butter">
-                Never run out at 2am again.
+                Never run out of baby diapers again.
               </h2>
               <p className="m-0 mb-[clamp(24px,3.4vw,34px)] text-body leading-[1.6] text-butter/80">
-                A monthly box that grows with your baby. Size up automatically, save 20%, skip or cancel anytime.
+                Because the last thing a parent wants at 2 a.m. is to discover there is only one diaper left. Choose
+                your Lumi9 size and pack, set up recurring delivery, and move from NB through XL as your baby grows.
               </p>
               <div className="flex flex-wrap gap-3.5">
                 <Link href="/subscription" className="btn btn-cream max-[400px]:w-full">

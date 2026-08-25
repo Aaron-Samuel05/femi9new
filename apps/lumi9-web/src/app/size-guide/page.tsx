@@ -7,10 +7,22 @@ import { SizeMatcher } from "@/components/size-guide/SizeMatcher";
 import { Em, NumberedCard } from "@/components/ui/bits";
 import { FEATURE_IMAGES, FIT_TIPS } from "@/lib/content";
 import { loadCatalog } from "@/lib/catalog.server";
+import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+
+const TITLE = "Baby Diaper Size Chart | Find the Right Diaper Size | Lumi9";
+const DESCRIPTION =
+  "Always go by weight, not age. Use the Lumi9 baby diaper size chart — NB up to 5 kg, S 4–8 kg, M 7–12 kg, L 9–14 kg, XL 12–17 kg — and learn when to switch diaper size.";
 
 export const metadata: Metadata = {
-  title: "Size guide",
-  description: "Always go by weight, not age. Tap your baby's weight to find the Cloud Soft size that fits.",
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  keywords: [
+    "diaper size chart for babies", "how to choose right diaper size", "newborn diaper size",
+    "when to switch diaper size", "baby diaper size guide", "diapers for 7-12 kg baby",
+    "diapers for 4-8 kg baby", "diapers for 9-14 kg baby", "diapers for 12-17 kg baby",
+  ],
+  alternates: canonical("/size-guide"),
+  openGraph: { type: "website", url: absoluteUrl("/size-guide"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
 };
 
 export default async function SizeGuidePage() {

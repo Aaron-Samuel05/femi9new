@@ -46,6 +46,62 @@ the build require a database, which it cannot have. If SSR-per-request becomes
 a cost, cache the read behind a tag the console invalidates — do not go back to
 build-time data.
 
+## The Journal, and where SEO lives
+
+`/journal` and `/journal/[slug]` are Lumi9's blog. They follow Femi9's blog
+layout — hero, featured mosaic, category chips over a filtered grid, then an
+article page of cover + body + FAQ + related reads — rebuilt on this app's
+Tailwind tokens rather than Femi9's hand-written CSS.
+
+**The posts are in `src/lib/journal.ts`, not the database.** Femi9's journal
+reads `@femi9/core/services/blog`, which is brand-agnostic and would work here
+with `listPosts('lumi9')`. It is not wired up yet because the storefront would
+then show nothing until somebody seeded the `lumi9` schema. The module's shape
+mirrors `BlogPostDTO` deliberately, and its loaders carry the same names
+(`listPosts` / `getPost` / `listCategories` / `relatedPosts`), so moving to the
+database is a change of import in two pages and a delete of one array.
+
+The fields the DTO has no column for — `metaTitle`, `keywords`, `faqs`,
+`imageAlt` — drive `<head>` and JSON-LD, not the card. A DB migration that adds
+the journal will need them too.
+
+**Body blocks are a tiny markdown subset**, rendered by
+`components/journal/ArticleBody.tsx`: `## `, `### `, `> `, `• ` and `1. ` lists,
+plus inline `**bold**` and `[label](href)`. A list is ONE block with embedded
+newlines — the renderer splits it, because a `<p>` would let HTML whitespace
+collapsing eat every separator. No HTML is ever interpreted.
+
+**`src/lib/seo.ts` owns the origin.** Canonicals, Open Graph URLs, `sitemap.xml`,
+`robots.txt` and every JSON-LD `@id` resolve through `SITE_URL`, so one variable
+moves the whole site between staging and production.
+
+```
+SITE_URL=https://thelumi9.com     # server-only, read at RUNTIME
+```
+
+It is deliberately NOT a `NEXT_PUBLIC_` name. Next inlines every
+`NEXT_PUBLIC_*` reference at build time and the Docker build stage has no deploy
+configuration, so a public variable would bake whatever the build happened to
+see into the image — and `robots.ts`'s staging guard could never fire. Nothing
+in `seo.ts` is imported by a client component. `NEXT_PUBLIC_SITE_URL` is still
+honoured as a fallback because the email-link verifier already reads it.
+
+`CANONICAL_ORIGIN` in that file is the production domain from the SEO brief
+(`thelumi9.com`). The Terraform examples still say `shop.lumi9.in` — **if the
+site ships on lumi9.in instead, change that one constant**, or every canonical
+tag will point at a domain that does not serve the page.
+
+**Any origin that is not `CANONICAL_ORIGIN` serves `Disallow: /` and `noindex`.**
+Both, not either: robots.txt keeps a crawler out, and the meta tag is the only
+thing that removes a URL already indexed — which a crawler can only read on a
+page robots.txt let it fetch.
+
+**FAQ answers must stay in the DOM.** `ui/Accordion` hides collapsed panels with
+the `hidden` attribute instead of unmounting them, and the article FAQ is a
+plain `<dl>`. FAQPage structured data whose answers a crawler cannot find in the
+document is a manual-action risk, not a shortcut to a rich result. Whatever
+replaces either component has to keep that property.
+
 ## The seeds
 
 `prisma/` here holds **seed data only** — the schema and migrations are shared,

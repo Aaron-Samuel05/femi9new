@@ -4,6 +4,15 @@ import "./globals.css";
 import { loadCatalog } from "@/lib/catalog.server";
 import { CatalogProvider } from "@/lib/catalog-context";
 import { CartProvider } from "@/lib/cart";
+import {
+  DEFAULT_OG_IMAGE,
+  IS_CANONICAL_HOST,
+  jsonLd,
+  organizationSchema,
+  SITE_NAME,
+  SITE_URL,
+  websiteSchema,
+} from "@/lib/seo";
 
 const display = ABeeZee({
   subsets: ["latin"],
@@ -20,20 +29,49 @@ const ui = Hanken_Grotesk({
   display: "swap",
 });
 
+/**
+ * Brand-level defaults. Every route that can rank supplies its own title,
+ * description and — importantly — its own `alternates.canonical`; a canonical
+ * declared once up here would name the homepage as the canonical of every page
+ * on the site, which is a request to drop them all from the index.
+ */
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "Lumi9 — Happy day, every day",
+    default: "Lumi9 by Femi9 — Soft, Breathable Baby Diapers & Diaper Pants",
     template: "%s · Lumi9",
   },
   description:
-    "Ultra-soft, chemical-free Cloud Soft diapers engineered with a 5-layer protection system — gentle on delicate skin, up to 12 hours of dryness, kind to the planet.",
-  metadataBase: new URL("https://lumi9.in"),
+    "Lumi9 by Femi9 baby diapers and diaper pants for newborns and growing babies — soft cotton-like comfort, an Advanced SAP Core for quick moisture absorption, breathable protection, 360° coverage and a wetness indicator, in sizes NB to XL.",
+  applicationName: SITE_NAME,
+  category: "Baby care",
   openGraph: {
-    title: "Lumi9 — Happy day, every day",
-    description: "Chemical-free, cloud-soft diapers for every stage. Trusted by 40,000+ Indian families.",
     type: "website",
+    siteName: SITE_NAME,
     locale: "en_IN",
+    url: SITE_URL,
+    title: "Lumi9 by Femi9 — Soft, Breathable Baby Diapers & Diaper Pants",
+    description:
+      "Cloud Soft baby diapers and diaper pants designed around everyday movement, moisture management and dependable protection — NB to XL.",
+    images: [DEFAULT_OG_IMAGE],
   },
+  twitter: {
+    card: "summary_large_image",
+    title: "Lumi9 by Femi9 — Soft, Breathable Baby Diapers",
+    description:
+      "Cloud Soft baby diapers and diaper pants designed around everyday movement, moisture management and dependable protection — NB to XL.",
+    images: [DEFAULT_OG_IMAGE.url],
+  },
+  /**
+   * A non-production origin serves `noindex` from every page as well as a
+   * blanket robots.txt disallow. The two guard different failure modes: a URL
+   * already in the index is only removed by the meta tag, which a crawler can
+   * only read on a page robots.txt let it fetch.
+   */
+  robots: IS_CANONICAL_HOST
+    ? { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } }
+    : { index: false, follow: false },
+  formatDetection: { telephone: false },
   icons: { icon: "/favicon.ico" },
 };
 
@@ -69,6 +107,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // data-scroll-behavior keeps route changes instant while in-page anchors stay smooth
     <html lang="en-IN" data-scroll-behavior="smooth" className={`${display.variable} ${ui.variable}`}>
       <body className="font-ui antialiased">
+        {/* Organization + WebSite, emitted once for the whole site. Every other
+            node (BlogPosting, Product, BreadcrumbList) references these by @id
+            rather than restating the publisher on each page. */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(organizationSchema())} />
+        <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(websiteSchema())} />
         <CatalogProvider catalog={catalog}>
           <CartProvider>{children}</CartProvider>
         </CatalogProvider>

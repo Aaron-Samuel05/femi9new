@@ -80,7 +80,7 @@ export function ProductRange() {
       <div className="mx-auto max-w-[1180px]">
         <Reveal className="mb-[clamp(28px,4vw,52px)] flex flex-wrap items-end justify-between gap-5">
           <SectionHeading eyebrow="The Cloud Soft range">
-            One diaper. <Em>Every</Em> stage.
+            One baby diaper range for <Em>every</Em> growing stage.
           </SectionHeading>
           <Link href="/size-guide" className="inline-flex items-center coarse:min-h-10 text-[15px] font-semibold text-moss-deep hover:text-midnight">
             Not sure of the size? →

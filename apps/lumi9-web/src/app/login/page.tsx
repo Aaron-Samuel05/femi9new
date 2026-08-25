@@ -5,6 +5,7 @@ import { AuthCard } from "@/components/auth/AuthCard";
 export const metadata: Metadata = {
   title: "Sign in",
   description: "Track orders, manage your subscription, and reorder in a tap.",
+  robots: { index: false, follow: true },
 };
 
 const AUTH_LINKS = [

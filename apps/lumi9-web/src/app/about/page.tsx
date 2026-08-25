@@ -6,11 +6,18 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, NumberedCard } from "@/components/ui/bits";
 import { ABOUT_STATS, ABOUT_VALUES, FEATURE_IMAGES } from "@/lib/content";
+import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+
+const TITLE = "Our Story | Lumi9 by Femi9 Baby Diapers";
+const DESCRIPTION =
+  "The story behind Lumi9 by Femi9 — how a brand built around caring for women grew into breathable, skin-friendly, leak-protected baby diapers for little ones.";
 
 export const metadata: Metadata = {
-  title: "Our story",
-  description:
-    "Lumi9 began with a simple refusal: parents shouldn't have to choose between diapers that are affordable and diapers that are safe.",
+  title: { absolute: TITLE },
+  description: DESCRIPTION,
+  keywords: ["Lumi9", "Femi9", "Lumi9 by Femi9", "Femi9 Lumi9", "Lumi9 diapers", "baby diapers"],
+  alternates: canonical("/about"),
+  openGraph: { type: "website", url: absoluteUrl("/about"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
 };
 
 const ABOUT_LINKS = [

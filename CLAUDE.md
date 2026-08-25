@@ -10,9 +10,12 @@ apps/
                 Next 15.5 · hand-written CSS · Prisma/Postgres · LIVE.
                 Has its own CLAUDE.md — read it before touching this app.
   lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4. Has its own CLAUDE.md.
-                Its catalogue IS in the database now and manageable in the
-                console — but this app still renders from hardcoded modules.
-                Wiring it up is Phase 4.
+                Catalogue, cart, checkout and account run on the shared backend.
+                Marketing copy and the JOURNAL are still modules — the journal
+                posts live in src/lib/journal.ts, shaped like the DTO that
+                @femi9/core/services/blog returns so the swap is two imports.
+                It owns the site's SEO layer: src/lib/seo.ts, sitemap, robots
+                and the JSON-LD. Femi9 has none of that yet.
   admin/        ONE console, both brands. :3002. Has its own CLAUDE.md.
                 Brand comes from the SESSION, never the URL segment.
                 Holds ALL the ops pages and APIs — femi9-web has none.

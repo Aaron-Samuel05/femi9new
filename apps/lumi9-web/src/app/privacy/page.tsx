@@ -3,10 +3,12 @@ import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
 import { SUPPORT_LINKS } from "@/components/site/Nav";
 import { BRAND, LEGAL_SECTIONS, LEGAL_UPDATED } from "@/lib/content";
+import { canonical } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Privacy & Terms",
   description: "How Lumi9 collects, uses and protects your data, plus our terms of sale.",
+  alternates: canonical("/privacy"),
 };
 
 export default function PrivacyPage() {

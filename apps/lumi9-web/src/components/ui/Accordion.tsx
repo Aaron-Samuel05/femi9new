@@ -49,20 +49,25 @@ export function Accordion({
                 </span>
               </button>
             </h3>
-            {isOpen && (
-              <p
-                id={panelId}
-                role="region"
-                aria-labelledby={buttonId}
-                className={`m-0 text-muted ${
-                  padded
-                    ? "px-[clamp(16px,2.4vw,28px)] pb-[clamp(18px,2.4vw,26px)] text-[clamp(14px,1.4vw,16px)] leading-[1.7]"
-                    : "mb-5 max-w-[62ch] text-[clamp(14px,1.3vw,15px)] leading-[1.65]"
-                }`}
-              >
-                {item.a}
-              </p>
-            )}
+            {/* Rendered whether or not it is open, and hidden with the `hidden`
+                attribute rather than unmounted. Two reasons: `aria-controls`
+                above pointed at an element that did not exist while collapsed,
+                and an answer absent from the server-rendered HTML is an answer
+                no crawler can read — which is what makes the FAQPage structured
+                data on these pages honest. */}
+            <p
+              id={panelId}
+              hidden={!isOpen}
+              role="region"
+              aria-labelledby={buttonId}
+              className={`m-0 text-muted ${
+                padded
+                  ? "px-[clamp(16px,2.4vw,28px)] pb-[clamp(18px,2.4vw,26px)] text-[clamp(14px,1.4vw,16px)] leading-[1.7]"
+                  : "mb-5 max-w-[62ch] text-[clamp(14px,1.3vw,15px)] leading-[1.65]"
+              }`}
+            >
+              {item.a}
+            </p>
           </div>
         );
       })}

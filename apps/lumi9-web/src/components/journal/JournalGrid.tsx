@@ -1,68 +1,73 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
-import { JOURNAL_CATEGORIES, POSTS, type JournalCategory } from "@/lib/content";
+import { ArticleCard } from "@/components/journal/JournalCards";
+import type { JournalCategory, JournalPost } from "@/lib/journal";
 
-/** Category chips + filterable post grid. */
-export function JournalGrid() {
-  const [category, setCategory] = useState<JournalCategory>("All");
-  const posts = POSTS.filter((post) => category === "All" || post.category === category);
+/**
+ * "The latest" — category chips over a filterable grid.
+ *
+ * The chips are a filter, not a tab set: plain buttons carrying `aria-pressed`,
+ * inside a labelled group. Declaring `role="tablist"`/`role="tab"` without a
+ * matching tabpanel makes a screen reader announce "tab 3 of 5" and then find
+ * nothing to move into, which is worse than no ARIA at all.
+ */
+export function JournalGrid({ posts, categories }: { posts: JournalPost[]; categories: JournalCategory[] }) {
+  const [filter, setFilter] = useState<string>("All");
+
+  const filtered = useMemo(
+    () => (filter === "All" ? posts : posts.filter((post) => post.category === filter)),
+    [filter, posts],
+  );
+
+  const options = ["All", ...categories.map((category) => category.name)];
 
   return (
-    <>
-      <div className="scroll-row px-safe mx-auto max-w-[1180px] gap-2.5 pb-10 sm:flex-wrap sm:justify-center">
-        {JOURNAL_CATEGORIES.map((option) => (
-          <button
-            key={option}
-            type="button"
-            aria-pressed={category === option}
-            onClick={() => setCategory(option)}
-            className="chip whitespace-nowrap"
+    <section className="px-safe pb-section" id="latest">
+      <div className="mx-auto max-w-[1180px]">
+        <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+          <h2 className="m-0 font-display text-[clamp(26px,6.4vw,44px)] leading-[1.05] font-normal md:text-[clamp(30px,3.6vw,44px)]">
+            The latest
+          </h2>
+          {/* -mx-* + px-* so the row can scroll edge-to-edge on a phone while the
+              first chip still lines up with the page gutter. */}
+          <div
+            role="group"
+            aria-label="Filter articles by topic"
+            className="scroll-row -mx-[max(var(--spacing-gutter),env(safe-area-inset-left))] gap-2.5 px-[max(var(--spacing-gutter),env(safe-area-inset-left))] py-1 md:mx-0 md:flex-wrap md:px-0"
           >
-            {option}
-          </button>
-        ))}
-      </div>
+            {options.map((option) => (
+              <button
+                key={option}
+                type="button"
+                aria-pressed={filter === option}
+                onClick={() => setFilter(option)}
+                className="chip whitespace-nowrap"
+              >
+                {option}
+              </button>
+            ))}
+          </div>
+        </div>
 
-      <section className="px-safe pb-section">
-        <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-[clamp(16px,2.4vw,28px)] sm:grid-cols-2 lg:grid-cols-3">
-          {posts.map((post) => (
-            <Reveal
-              key={post.title}
-              as="article"
-              className="flex flex-col overflow-hidden rounded-card border border-moss-tint bg-canvas"
-            >
-              <div className="relative aspect-3/2 overflow-hidden bg-shell">
-                <Image
-                  src={post.image}
-                  alt={post.title}
-                  fill
-                  sizes="(max-width: 640px) 94vw, (max-width: 1024px) 46vw, 380px"
-                  className="object-cover"
-                />
-              </div>
-              <div className="flex flex-1 flex-col p-card">
-                <div className="mb-3 text-[12px] font-bold tracking-[0.14em] text-moss-deep uppercase">
-                  {post.category}
-                </div>
-                <h3 className="m-0 mb-3 font-display text-[clamp(18px,2vw,22px)] font-normal leading-[1.2] tracking-[-0.01em] text-midnight">
-                  {post.title}
-                </h3>
-                <p className="m-0 mb-5 text-[clamp(13px,1.2vw,14px)] leading-[1.6] text-muted">{post.excerpt}</p>
-                <div className="mt-auto text-[13px] text-muted">{post.meta}</div>
-              </div>
+        <div
+          aria-live="polite"
+          className="grid grid-cols-1 gap-[clamp(16px,2.4vw,28px)] sm:grid-cols-2 lg:grid-cols-3"
+        >
+          {filtered.map((post, i) => (
+            <Reveal key={post.slug} as="article" delay={i * 60} className="h-full">
+              <ArticleCard post={post} />
             </Reveal>
           ))}
         </div>
 
-        {posts.length === 0 && (
-          <p className="mx-auto max-w-[1180px] text-center text-base text-muted">
-            No posts in this category yet — check back soon.
+        {filtered.length === 0 && (
+          <p className="m-0 py-10 text-center text-base text-muted">
+            No posts in this topic yet — check back soon.
           </p>
         )}
-      </section>
-    </>
+      </div>
+    </section>
   );
 }
