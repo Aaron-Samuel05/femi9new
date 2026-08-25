@@ -1,11 +1,11 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useRef } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { ACESFilmicToneMapping, SRGBColorSpace, type Group } from "three";
 import { DEFAULT_EXTENTS, MascotLights, MascotModel, idleBob, type MascotExtents } from "./mascot-shared";
 import { FitCamera } from "./FitCamera";
-import { usePrefersReducedMotion } from "@/lib/motion";
+import { useNearViewport, usePrefersReducedMotion } from "@/lib/motion";
 
 const FIT = 2.6;
 const FOV = 38;
@@ -36,25 +36,18 @@ function IdleMascot({
 /** Renders the mascot only once the footer is close to the viewport. */
 export function FooterMascot() {
   const host = useRef<HTMLDivElement>(null);
-  const [active, setActive] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
   const extentsRef = useRef<MascotExtents>(DEFAULT_EXTENTS);
 
-  useEffect(() => {
-    const el = host.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) {
-          setActive(true);
-          observer.disconnect();
-        }
-      },
-      { rootMargin: "400px" },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
+  /**
+   * `active` is one-way on purpose — tearing the canvas down would drop the GL
+   * context and re-decode the GLB every time the footer scrolled away.
+   *
+   * `near` is the one that keeps reporting, and it is what gates the frame loop
+   * below. Before, reaching the footer once left this canvas rendering at 60fps
+   * for the rest of the session, on EVERY page — the footer is in PageShell.
+   */
+  const { near, seen: active } = useNearViewport(host, "400px");
 
   // Full-bleed in the tall desktop rail; capped and centred when the footer stacks,
   // so the canvas never becomes a very wide, short letterbox and Lumi keeps a
@@ -74,7 +67,7 @@ export function FooterMascot() {
           onCreated={({ gl }) => {
             gl.toneMappingExposure = 1.05;
           }}
-          frameloop={reducedMotion ? "demand" : "always"}
+          frameloop={near && !reducedMotion ? "always" : "demand"}
         >
           {/* the handoff framed this loosely (×1.3); hold that on desktop and tighten
               a little on a phone-width panel so Lumi doesn't shrink to a dot */}

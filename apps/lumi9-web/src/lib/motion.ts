@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
@@ -63,6 +63,64 @@ export function useRevealRef<T extends HTMLElement>() {
   }, []);
 
   return ref;
+}
+
+/* ---------------------------------------------------------------------------
+   Viewport proximity — unlike useRevealRef this keeps reporting, because the
+   callers use it to STOP work when their element leaves the screen.
+   --------------------------------------------------------------------------- */
+
+/**
+ * Reports whether `ref`'s element is within `rootMargin` of the viewport.
+ *
+ * Returns both readings because callers need different ones:
+ *   `near` — live, flips back to false when the element scrolls away. Gate
+ *            ongoing work (a render loop) on this.
+ *   `seen` — latches true on first sight and never clears. Gate one-time,
+ *            expensive setup (mounting a GL context, decoding a model) on this,
+ *            so scrolling past does not tear it down and rebuild it.
+ *
+ * The reveal observer above is one-shot on purpose — a heading animates in once.
+ * This one keeps reporting: a canvas that has scrolled away has to be TOLD to
+ * stop, and a "has been seen" flag alone can never say that.
+ */
+export function useNearViewport<T extends HTMLElement>(
+  ref: React.RefObject<T | null>,
+  rootMargin = "300px",
+) {
+  const [near, setNear] = useState(false);
+  const [seen, setSeen] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const isNear = entries.some((entry) => entry.isIntersecting);
+        setNear(isNear);
+        if (isNear) setSeen(true);
+      },
+      { rootMargin },
+    );
+    observer.observe(el);
+
+    // A backgrounded tab still fires rAF in some browsers, and always does on a
+    // second monitor — the canvas is not "visible" in any sense worth spending
+    // a GPU on, but the observer alone would still call it on-screen.
+    const onVisibility = () => {
+      if (document.hidden) setNear(false);
+      else if (el.getBoundingClientRect().top < window.innerHeight * 2) setNear(true);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      observer.disconnect();
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [ref, rootMargin]);
+
+  return { near, seen };
 }
 
 /* ---------------------------------------------------------------------------

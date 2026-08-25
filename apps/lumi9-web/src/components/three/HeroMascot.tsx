@@ -5,7 +5,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { ACESFilmicToneMapping, SRGBColorSpace, type Group } from "three";
 import { DEFAULT_EXTENTS, MascotLights, MascotModel, idleBob, type MascotExtents } from "./mascot-shared";
 import { FitCamera } from "./FitCamera";
-import { usePrefersReducedMotion } from "@/lib/motion";
+import { useNearViewport, usePrefersReducedMotion } from "@/lib/motion";
 
 const FIT = 3.4;
 
@@ -67,9 +67,27 @@ export function HeroMascot() {
   const [failed, setFailed] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
   const extentsRef = useRef<MascotExtents>(DEFAULT_EXTENTS);
+  const host = useRef<HTMLDivElement>(null);
+  const { near } = useNearViewport(host);
+
+  /**
+   * The canvas only drives a frame loop while the hero is actually on screen.
+   *
+   * It carried no `frameloop` at all, and r3f's default is "always" — so this
+   * canvas rendered WebGL at 60fps for the whole session, including the ~13,000px
+   * of homepage below it and while the tab sat in the background. Paired with the
+   * footer mascot doing the same thing, that is two live GL contexts competing
+   * with the compositor for every scroll frame, which is what the page felt like.
+   *
+   * "demand" rather than "never": the last frame stays on screen, so scrolling
+   * back up finds Lumi exactly where you left him instead of a blank canvas, and
+   * a resize can still invalidate one frame to re-fit the camera.
+   */
+  const frameloop = near && !reducedMotion ? "always" : "demand";
 
   return (
     <div
+      ref={host}
       className="
         relative z-2 w-full
         h-[min(52svh,360px)]
@@ -86,6 +104,7 @@ export function HeroMascot() {
         onCreated={({ gl }) => {
           gl.toneMappingExposure = 1.05;
         }}
+        frameloop={frameloop}
         style={{ cursor: "grab", touchAction: "pan-y" }}
       >
         {/* generous framing on desktop; near-edge-to-edge on a phone, but still
