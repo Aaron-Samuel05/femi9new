@@ -76,6 +76,16 @@ jobs:
               BEFORE="$(git rev-parse HEAD~1 2>/dev/null || true)"
             fi
 
+            # A push of more than one commit names a `before` the shallow
+            # clone does not contain, and `git diff` against a missing object
+            # exits 128 — which `set -e` turns into a failed deploy. That is
+            # not hypothetical: it is why run 32867435812 died in 19s and left
+            # Lumi9's journal unshipped. Unknown history means build everything.
+            if [ -n "$BEFORE" ] && ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              echo "Commit $BEFORE is outside the fetched history; building all apps."
+              BEFORE=""
+            fi
+
             if [ -z "$BEFORE" ]; then
               SELECTED="femi9 lumi9 admin"
             else

@@ -45,7 +45,12 @@ export default async function AccountPage() {
         </h1>
       </header>
 
-      <AccountDashboard orders={data.orders} addresses={data.addresses} />
+      <AccountDashboard
+        orders={data.orders}
+        addresses={data.addresses}
+        subscriptions={data.subscriptions}
+        pointsBalance={data.pointsBalance}
+      />
     </PageShell>
   );
 }

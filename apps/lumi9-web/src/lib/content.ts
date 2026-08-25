@@ -312,59 +312,11 @@ export const LEGAL_SECTIONS = [
 
 export const LEGAL_UPDATED = "Last updated 17 February 2026";
 
-export const ACCOUNT_ORDERS = [
-  {
-    size: "M",
-    title: "Cloud Soft — Medium · 54 pcs",
-    id: "#LM-20416",
-    date: "12 Feb 2026",
-    status: "Delivered",
-    total: "₹949",
-  },
-  {
-    size: "M",
-    title: "Cloud Soft — Medium · 54 pcs",
-    id: "#LM-19822",
-    date: "15 Jan 2026",
-    status: "Delivered",
-    total: "₹949",
-  },
-  {
-    size: "S",
-    title: "Cloud Soft — Small · 24 pcs",
-    id: "#LM-19003",
-    date: "18 Dec 2025",
-    status: "Delivered",
-    total: "₹399",
-  },
-  {
-    size: "NB",
-    title: "Cloud Soft — Newborn · 24 pcs",
-    id: "#LM-18110",
-    date: "20 Nov 2025",
-    status: "Delivered",
-    total: "₹349",
-  },
-];
-
-export const ACCOUNT_STATS = [
-  { value: "12", label: "Orders placed" },
-  { value: "₹2,940", label: "Saved with subscription" },
-  { value: "3", label: "Sizes grown through" },
-];
-
-export const ACCOUNT_ADDRESSES = [
-  {
-    label: "Home",
-    isDefault: true,
-    lines: "Ananya Rao · 222/1, Pavizham Nagar, Thindal, Erode, Tamil Nadu 638012 · +91 90429 16499",
-  },
-  {
-    label: "Mom’s place",
-    isDefault: false,
-    lines: "Lakshmi Rao · 14, Gandhi Street, RS Puram, Coimbatore, Tamil Nadu 641002 · +91 98765 43210",
-  },
-];
+/* ACCOUNT_ORDERS, ACCOUNT_STATS and ACCOUNT_ADDRESSES lived here. All three were
+   invented: every signed-in customer saw the same four delivered orders, was told
+   they had placed 12 and saved Rs.2,940, and the sample addresses carried
+   real-looking names and phone numbers. The account page reads getAccountData()
+   instead — see components/account/AccountDashboard. */
 
 export const FEATURE_IMAGES = {
   softness: { src: "/assets/features/softness.png", alt: "Softness that runs alongside every adventure" },
