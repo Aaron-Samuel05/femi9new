@@ -29,11 +29,11 @@ function PromoField() {
           value={code}
           onChange={(event) => setCode(event.target.value)}
           placeholder="Promo code"
-          className="min-w-0 flex-1 border-none bg-transparent text-sm text-midnight outline-none"
+          className="min-w-0 flex-1 border-none bg-transparent text-[max(16px,0.95rem)] text-midnight outline-none"
         />
         <button
           type="submit"
-          className="cursor-pointer rounded-pill bg-moss-tint px-4.5 py-2.5 text-[13px] font-bold text-midnight transition-colors hover:bg-moss-soft"
+          className="chip shrink-0 cursor-pointer border-transparent bg-moss-tint font-bold text-midnight hover:bg-moss-soft"
         >
           Apply
         </button>
@@ -85,7 +85,7 @@ export function CartView() {
                     <button
                       type="button"
                       onClick={() => remove(line.key)}
-                      className="-mr-1 inline-flex h-fit cursor-pointer items-center coarse:min-h-10 px-1 text-[13px] text-muted hover:text-midnight"
+                      className="-mr-1 inline-flex h-fit cursor-pointer items-center coarse:min-h-11 px-1 text-[13px] text-muted hover:text-midnight"
                     >
                       Remove
                     </button>
@@ -102,7 +102,7 @@ export function CartView() {
                 </div>
               </div>
             ))}
-            <Link href="/shop" className="mt-1.5 inline-flex items-center coarse:min-h-10 text-[15px] font-semibold text-moss-deep hover:text-midnight">
+            <Link href="/shop" className="mt-1.5 inline-flex items-center coarse:min-h-11 text-[15px] font-semibold text-moss-deep hover:text-midnight">
               ← Continue shopping
             </Link>
           </div>

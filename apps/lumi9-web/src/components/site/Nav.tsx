@@ -116,7 +116,10 @@ export function Nav({
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const isHome = variant === "home";
-  const ref = useMeasuredNavHeight(isHome);
+  // Measured on every variant, not just home: --nav-h is what the global
+  // scroll-padding-top in globals.css offsets anchor landings by, and the
+  // sticky nav on the inner pages is exactly as tall as the fixed one.
+  const ref = useMeasuredNavHeight(true);
 
   useEffect(() => {
     if (!isHome) return;

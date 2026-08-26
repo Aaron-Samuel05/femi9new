@@ -1025,3 +1025,26 @@
     animation: none !important;
   }
 }
+
+/* ===== Touch targets =====
+   `.f9d-btn` declares no min-height and no padding in its base rule, so every
+   variant landed wherever its own padding put it — measured 38-42px across the
+   segmented control, the reward buttons and the hero actions. This sheet also
+   had no `pointer: coarse` block and exactly one `min-height` in 1,000+ lines.
+
+   `/thara` is the model to copy: thara.css sets `.t9-btn--sm { min-height: 44px }`
+   on the button itself rather than hoping padding adds up. */
+@media (max-width: 900px), (pointer: coarse) {
+  .f9d-btn,
+  .f9d-seg__btn,
+  .f9d-reward__btn,
+  .f9d-order__again {
+    min-height: 44px;
+  }
+
+  /* The ≤620px pass tightens this to padding:11px 10px / font-size:13.5px,
+     which took it back down to ~38px. Re-assert the floor after it. */
+  .f9d-seg .f9d-seg__btn {
+    min-height: 44px;
+  }
+}

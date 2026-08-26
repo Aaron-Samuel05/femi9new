@@ -12,7 +12,7 @@ export function QtyStepper({
   size?: "sm" | "md";
   label?: string;
 }) {
-  const dims = size === "sm" ? "w-[38px] h-10 text-[19px]" : "w-[46px] h-13 text-[22px]";
+  const dims = size === "sm" ? "w-11 h-11 text-[19px]" : "w-[46px] h-13 text-[22px]";
   const valueWidth = size === "sm" ? "min-w-6 text-[15px]" : "min-w-7 text-[17px]";
 
   return (

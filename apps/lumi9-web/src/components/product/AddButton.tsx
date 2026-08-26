@@ -30,7 +30,7 @@ export function AddButton({
         if (timer.current) clearTimeout(timer.current);
         timer.current = setTimeout(() => setAdded(false), 1200);
       }}
-      className="flex size-[clamp(38px,3.4vw,44px)] shrink-0 cursor-pointer items-center justify-center rounded-full bg-midnight text-xl font-semibold text-butter transition-colors hover:bg-[#171a03]"
+      className="flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full bg-midnight text-xl font-semibold text-butter transition-colors hover:bg-[#171a03]"
     >
       <span aria-hidden>{added ? "✓" : "+"}</span>
     </button>

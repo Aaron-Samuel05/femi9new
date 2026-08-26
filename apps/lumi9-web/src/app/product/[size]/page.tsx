@@ -173,11 +173,11 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
       />
       <section className="px-safe mx-auto max-w-[1240px] pt-8.5 pb-section">
         <nav aria-label="Breadcrumb" className="mb-6.5 text-[clamp(12px,1.1vw,13px)] text-muted">
-          <Link href="/" className="text-muted hover:text-midnight">
+          <Link href="/" className="inline-flex items-center text-muted coarse:min-h-11 hover:text-midnight">
             Home
           </Link>
           <span className="px-2">/</span>
-          <Link href="/shop" className="text-muted hover:text-midnight">
+          <Link href="/shop" className="inline-flex items-center text-muted coarse:min-h-11 hover:text-midnight">
             Shop
           </Link>
           <span className="px-2">/</span>

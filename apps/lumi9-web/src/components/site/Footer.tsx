@@ -28,7 +28,7 @@ function LinkColumn({ title, links }: { title: string; links: { label: string; h
           <Link
             key={link.label}
             href={link.href}
-            className="inline-flex items-center text-butter/85 transition-colors hover:text-butter coarse:min-h-10"
+            className="inline-flex items-center text-butter/85 transition-colors hover:text-butter coarse:min-h-11"
           >
             {link.label}
           </Link>
@@ -61,13 +61,13 @@ export function Footer() {
         <div className="flex flex-col gap-2 text-[clamp(13px,1.15vw,14px)] text-midnight">
           <a
             href={`mailto:${BRAND.email}`}
-            className="inline-flex items-center text-midnight opacity-85 hover:opacity-100 coarse:min-h-10"
+            className="inline-flex items-center text-midnight opacity-85 hover:opacity-100 coarse:min-h-11"
           >
             {BRAND.email}
           </a>
           <a
             href={`tel:${BRAND.phone.replace(/\s/g, "")}`}
-            className="inline-flex items-center text-midnight opacity-85 hover:opacity-100 coarse:min-h-10"
+            className="inline-flex items-center text-midnight opacity-85 hover:opacity-100 coarse:min-h-11"
           >
             {BRAND.phone}
           </a>
@@ -100,7 +100,7 @@ export function Footer() {
               target="_blank"
               rel="noreferrer noopener"
               aria-label={social.name}
-              className="flex size-[clamp(38px,3.4vw,42px)] items-center justify-center rounded-full border-[1.5px] border-butter/40 text-butter transition-colors hover:border-butter hover:bg-butter/15"
+              className="flex size-11 items-center justify-center rounded-full border-[1.5px] border-butter/40 text-butter transition-colors hover:border-butter hover:bg-butter/15"
             >
               <SocialIcon name={social.name} />
             </a>
@@ -121,7 +121,7 @@ export function Footer() {
       <div className="px-safe flex flex-wrap justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3">
         <span>{BRAND.copyright}</span>
         <span className="max-sm:order-3 max-sm:w-full">{BRAND.legalLine}</span>
-        <Link href="/privacy" className="inline-flex items-center text-butter/75 hover:text-butter coarse:min-h-10">
+        <Link href="/privacy" className="inline-flex items-center text-butter/75 hover:text-butter coarse:min-h-11">
           Privacy Policy
         </Link>
       </div>

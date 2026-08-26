@@ -76,7 +76,7 @@ export function SizeFinder() {
               </button>
               <Link
                 href={`/product/${recommended.size.toLowerCase()}`}
-                className="inline-flex items-center coarse:min-h-10 justify-center text-sm font-semibold text-moss-deep hover:text-midnight"
+                className="inline-flex items-center coarse:min-h-11 justify-center text-sm font-semibold text-moss-deep hover:text-midnight"
               >
                 See the {recommended.name} pack →
               </Link>

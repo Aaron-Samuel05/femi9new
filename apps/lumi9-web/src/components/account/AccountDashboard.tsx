@@ -199,7 +199,7 @@ export function AccountDashboard({
                 <button
                   type="button"
                   onClick={() => setTab("orders")}
-                  className="inline-flex cursor-pointer items-center coarse:min-h-10 text-sm font-semibold text-moss-deep hover:text-midnight"
+                  className="inline-flex cursor-pointer items-center coarse:min-h-11 text-sm font-semibold text-moss-deep hover:text-midnight"
                 >
                   View all →
                 </button>
@@ -229,7 +229,7 @@ export function AccountDashboard({
                     <button
                       type="button"
                       onClick={() => reorder(order)}
-                      className="cursor-pointer rounded-pill border-[1.5px] border-midnight px-4 py-2 text-[13px] font-semibold text-midnight transition-colors hover:bg-midnight hover:text-butter"
+                      className="chip shrink-0 cursor-pointer border-midnight font-semibold text-midnight transition-colors hover:bg-midnight hover:text-butter"
                     >
                       Reorder
                     </button>

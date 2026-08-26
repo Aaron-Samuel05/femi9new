@@ -9,9 +9,9 @@ import { Reveal } from "@/components/motion/Reveal";
 import { LayerStack } from "@/components/home/LayerStack";
 import { ProductRange } from "@/components/home/ProductRange";
 import { SizeFinder } from "@/components/home/SizeFinder";
+import { WhyLumi9 } from "@/components/home/WhyLumi9";
 import { Em, NumberedCard, QuoteCard, SectionHeading, StatBlock } from "@/components/ui/bits";
-import { Icon } from "@/components/ui/Icon";
-import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS, TESTIMONIALS, USPS, VALUES } from "@/lib/content";
+import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS, TESTIMONIALS, VALUES } from "@/lib/content";
 import { SIZES } from "@/lib/catalog";
 import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -190,32 +190,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* WHY LUMI9 */}
-        <section id="why" className="px-safe bg-paper py-section">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal className="mb-[clamp(36px,5vw,64px)] max-w-[720px]">
-              <SectionHeading eyebrow="Why Lumi9">
-                Comfort and protection should come <Em>standard.</Em>
-              </SectionHeading>
-              <p className="m-0 mt-5 text-body leading-[1.65] text-muted">
-                Every little stretch, crawl, nap and nighttime cuddle deserves comfort you can count on. Lumi9 baby
-                diapers bring together soft everyday care, fast moisture management, breathable materials and
-                all-around protection to support your baby through every little move.
-              </p>
-            </Reveal>
-            <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
-              {USPS.map((usp) => (
-                <Reveal key={usp.title} className="rounded-card border border-moss-tint bg-canvas p-card">
-                  <div className="mb-[clamp(16px,2.2vw,22px)] flex size-13 items-center justify-center rounded-chip bg-moss-tint text-moss-deep">
-                    <Icon name={usp.icon} size={26} />
-                  </div>
-                  <h3 className="m-0 mb-2.5 text-[clamp(17px,1.6vw,20px)] font-bold">{usp.title}</h3>
-                  <p className="m-0 text-[clamp(14px,1.2vw,15px)] leading-[1.6] text-muted">{usp.body}</p>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        <WhyLumi9 />
 
         <LayerStack />
         <ProductRange />
@@ -268,7 +243,7 @@ export default function HomePage() {
                 soft everyday comfort, moisture-management technology, breathable materials and flexible protection in
                 baby diapers made to support babies as they grow.
               </p>
-              <Link href="/about" className="inline-flex items-center coarse:min-h-10 text-[15px] font-semibold text-moss-deep hover:text-midnight">
+              <Link href="/about" className="inline-flex items-center coarse:min-h-11 text-[15px] font-semibold text-moss-deep hover:text-midnight">
                 Read our story →
               </Link>
             </Reveal>

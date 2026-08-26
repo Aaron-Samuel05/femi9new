@@ -794,6 +794,10 @@ export async function orderNoForRazorpayOrderId(brand: Brand, razorpayOrderId: s
 
 /** One purchased line, shaped for the confirmation page. */
 export interface ConfirmationLine {
+  /** The variant bought. Carried so a storefront can join the line back to its
+   *  catalogue entry — for the pack photo, which is not snapshotted on the
+   *  order the way the name and price are. */
+  variantId: string
   productName: string
   variantLabel: string
   unitPrice: number
@@ -843,6 +847,7 @@ export async function getOrderByNo(brand: Brand, orderNo: string): Promise<Order
     total: order.total,
     customerName: order.user?.name ?? order.address?.name ?? 'there',
     items: order.items.map((it) => ({
+      variantId: it.variantId,
       productName: it.productName,
       variantLabel: it.variantLabel,
       unitPrice: it.unitPrice,

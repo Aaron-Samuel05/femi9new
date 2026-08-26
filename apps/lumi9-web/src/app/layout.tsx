@@ -75,7 +75,22 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.ico" },
 };
 
+/**
+ * `viewportFit: "cover"` is what ARMS `env(safe-area-inset-*)`.
+ *
+ * Next only injects `width=device-width, initial-scale=1` by default, which
+ * leaves viewport-fit unset — and with it unset every safe-area inset resolves
+ * to 0 in every browser. That silently turned the `max(...)` in the `px-safe`
+ * utility and in JournalGrid into a no-op, so the app's entire safe-area story
+ * did nothing on a notched phone.
+ *
+ * Deliberately NO `maximum-scale` / `user-scalable=no`: pinch-zoom must stay
+ * available.
+ */
 export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
   themeColor: "#f7f5ea",
 };
 

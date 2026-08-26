@@ -1,5 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import Link from "next/link";
+import { Reveal } from "@/components/motion/Reveal";
 
 /**
  * Renders a journal article's body blocks.
@@ -106,37 +107,40 @@ export function ArticleBody({ blocks }: { blocks: string[] }) {
         if (block.startsWith("## ")) {
           const text = block.slice(3);
           return (
-            <h2
+            <Reveal
+              as="h2"
               key={i}
               id={slugify(text)}
               className="m-0 mt-[clamp(20px,3vw,38px)] scroll-mt-28 font-display text-[clamp(22px,4.4vw,32px)] leading-[1.16] font-normal tracking-[-0.015em] text-midnight"
             >
               {inline(text, `h2-${i}`)}
-            </h2>
+            </Reveal>
           );
         }
 
         if (block.startsWith("### ")) {
           const text = block.slice(4);
           return (
-            <h3
+            <Reveal
+              as="h3"
               key={i}
               id={slugify(text)}
               className="m-0 mt-[clamp(10px,1.6vw,18px)] scroll-mt-28 text-[clamp(17px,2vw,20px)] leading-[1.3] font-bold text-midnight"
             >
               {inline(text, `h3-${i}`)}
-            </h3>
+            </Reveal>
           );
         }
 
         if (block.startsWith("> ")) {
           return (
-            <blockquote
+            <Reveal
+              as="blockquote"
               key={i}
               className="my-[clamp(8px,1.4vw,16px)] m-0 rounded-card border-l-4 border-[var(--accent)] bg-moss-tint/40 py-[clamp(16px,2vw,24px)] pr-[clamp(16px,2vw,26px)] pl-[clamp(16px,2vw,26px)] font-display text-[clamp(17px,1.8vw,21px)] leading-[1.45] text-midnight"
             >
               {inline(block.slice(2), `q-${i}`)}
-            </blockquote>
+            </Reveal>
           );
         }
 
@@ -152,28 +156,28 @@ export function ArticleBody({ blocks }: { blocks: string[] }) {
             "m-0 flex flex-col gap-2.5 pl-[1.35em] text-[clamp(15px,1.25vw,17px)] leading-[1.72] text-muted marker:text-moss";
 
           return kind === "ol" ? (
-            <ol key={i} className={`${shared} list-decimal`}>
+            <Reveal as="ol" key={i} className={`${shared} list-decimal`}>
               {items.map((item, j) => (
                 <li key={j} className="pl-1">
                   {inline(item, `ol-${i}-${j}`)}
                 </li>
               ))}
-            </ol>
+            </Reveal>
           ) : (
-            <ul key={i} className={`${shared} list-disc`}>
+            <Reveal as="ul" key={i} className={`${shared} list-disc`}>
               {items.map((item, j) => (
                 <li key={j} className="pl-1">
                   {inline(item, `ul-${i}-${j}`)}
                 </li>
               ))}
-            </ul>
+            </Reveal>
           );
         }
 
         return (
-          <p key={i} className="m-0 text-[clamp(15px,1.25vw,17px)] leading-[1.72] text-muted">
+          <Reveal as="p" key={i} className="m-0 text-[clamp(15px,1.25vw,17px)] leading-[1.72] text-muted">
             {inline(block, `p-${i}`)}
-          </p>
+          </Reveal>
         );
       })}
     </div>

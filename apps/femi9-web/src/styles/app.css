@@ -2554,3 +2554,19 @@
 }
 
 
+
+/* ===== Touch targets: the PDP quantity stepper =====
+   The 48px stepper lives in `@media (max-width: 768px)`, so a phone held in
+   LANDSCAPE (844px wide) never matches it and the −/+ buttons stay 36x36 — the
+   one control a shopper taps repeatedly. Keyed on the pointer here rather than
+   a width, which is how the rest of the codebase covers touch tablets too. */
+@media (pointer: coarse) {
+  .qty-stepper {
+    height: 52px;
+  }
+
+  .qty-stepper button {
+    width: 48px;
+    height: 48px;
+  }
+}
