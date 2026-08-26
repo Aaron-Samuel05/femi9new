@@ -23,7 +23,10 @@ function LinkColumn({ title, links }: { title: string; links: { label: string; h
   return (
     <div>
       <div className="mb-[clamp(14px,2vw,22px)] text-[clamp(18px,2vw,22px)] font-bold text-butter">{title}</div>
-      <div className="flex flex-col gap-[clamp(11px,1.4vw,15px)] text-[clamp(14px,1.2vw,15px)]">
+      {/* On touch each link is already a 44px row, so the gap on top of it made
+          the two columns ~110px taller than they read on a mouse. Drop it there
+          and let the row height do the spacing. */}
+      <div className="flex flex-col gap-[clamp(11px,1.4vw,15px)] text-[clamp(14px,1.2vw,15px)] coarse:gap-0">
         {links.map((link) => (
           <Link
             key={link.label}

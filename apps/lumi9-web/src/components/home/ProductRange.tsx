@@ -38,21 +38,24 @@ function RangeCard({ size }: { size: DbProductSize }) {
       </Link>
       <div className="mt-1 mb-3.5 text-[clamp(12px,1.1vw,13px)] text-muted">Fits {size.fits}</div>
 
-      {/* pack chips scroll rather than wrap into a tall stack on narrow cards */}
-      <div
-        className="scroll-row mb-4 gap-2"
-        role="group"
-        aria-label={`Pack size for Cloud Soft ${size.name}`}
-      >
+      {/* Two cards share a 390px phone, which leaves ~155px of card interior —
+          three "24 pcs" chips need 208 and used to be cut mid-word by the
+          scroller with nothing to say they continued. Below `sm` the unit moves
+          out to a single caption and the chips carry the number alone, so the
+          whole set fits and nothing scrolls. */}
+      <div className="mb-1.5 text-[11px] font-semibold tracking-[0.08em] text-muted uppercase sm:hidden">Pack (pcs)</div>
+      <div className="mb-4 flex flex-wrap gap-1.5 sm:gap-2" role="group" aria-label={`Pack size for Cloud Soft ${size.name}`}>
         {size.packs.map((option) => (
           <button
             key={option.count}
             type="button"
             aria-pressed={option.count === packCount}
+            aria-label={`${option.count} pieces`}
             onClick={() => setPackCount(option.count)}
-            className="chip px-3 py-1.5 text-[clamp(12px,1.1vw,13px)]"
+            className="chip min-w-11 px-2.5 text-[clamp(12px,1.1vw,13px)] sm:px-3"
           >
-            {option.count} pcs
+            {option.count}
+            <span className="max-sm:sr-only"> pcs</span>
           </button>
         ))}
       </div>

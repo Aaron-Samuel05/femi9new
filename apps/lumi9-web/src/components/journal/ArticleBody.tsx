@@ -111,7 +111,7 @@ export function ArticleBody({ blocks }: { blocks: string[] }) {
               as="h2"
               key={i}
               id={slugify(text)}
-              className="m-0 mt-[clamp(20px,3vw,38px)] scroll-mt-28 font-display text-[clamp(22px,4.4vw,32px)] leading-[1.16] font-normal tracking-[-0.015em] text-midnight"
+              className="m-0 mt-[clamp(20px,3vw,38px)] font-display text-[clamp(22px,4.4vw,32px)] leading-[1.16] font-normal tracking-[-0.015em] text-midnight"
             >
               {inline(text, `h2-${i}`)}
             </Reveal>
@@ -125,7 +125,7 @@ export function ArticleBody({ blocks }: { blocks: string[] }) {
               as="h3"
               key={i}
               id={slugify(text)}
-              className="m-0 mt-[clamp(10px,1.6vw,18px)] scroll-mt-28 text-[clamp(17px,2vw,20px)] leading-[1.3] font-bold text-midnight"
+              className="m-0 mt-[clamp(10px,1.6vw,18px)] text-[clamp(17px,2vw,20px)] leading-[1.3] font-bold text-midnight"
             >
               {inline(text, `h3-${i}`)}
             </Reveal>

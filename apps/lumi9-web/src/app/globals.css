@@ -94,8 +94,10 @@
        puts the target flush with the top of the viewport — i.e. underneath the
        fixed/sticky nav, which is two rows and ~112px on a phone. Inset the
        scrollport once here instead of repeating scroll-mt on every section.
-       --nav-h is published by the Nav's ResizeObserver on every route. */
-    scroll-padding-top: calc(var(--nav-h, 104px) + env(safe-area-inset-top) + 12px);
+       --nav-h is published by the Nav's ResizeObserver on every route; the
+       fallback is the pre-hydration guess, ~64px on a phone and ~70 at the
+       design width. */
+    scroll-padding-top: calc(var(--nav-h, 68px) + env(safe-area-inset-top) + 12px);
   }
 
   html {
