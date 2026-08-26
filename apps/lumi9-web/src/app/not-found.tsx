@@ -56,7 +56,7 @@ export default function NotFound() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="inline-flex items-center coarse:min-h-10 text-moss-deep hover:text-midnight"
+                className="inline-flex items-center coarse:min-h-11 text-moss-deep hover:text-midnight"
               >
                 {link.label}
               </Link>

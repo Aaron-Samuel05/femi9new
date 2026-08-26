@@ -90,6 +90,12 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* A hash landing (#tech, #sizes, #why, a nav link, a pasted URL) otherwise
+       puts the target flush with the top of the viewport — i.e. underneath the
+       fixed/sticky nav, which is two rows and ~112px on a phone. Inset the
+       scrollport once here instead of repeating scroll-mt on every section.
+       --nav-h is published by the Nav's ResizeObserver on every route. */
+    scroll-padding-top: calc(var(--nav-h, 104px) + env(safe-area-inset-top) + 12px);
   }
 
   html {
@@ -231,7 +237,9 @@
   }
 
   .btn-sm {
-    min-height: clamp(40px, 3vw, 44px);
+    /* 44px is the floor, not the ceiling: clamp(40px, 3vw, 44px) only reached
+       44 above a 1467px viewport — every phone got 40. */
+    min-height: clamp(44px, 3vw, 48px);
     padding: clamp(10px, 0.9vw, 11px) clamp(16px, 1.6vw, 22px);
     font-size: clamp(13px, 1vw, 14px);
   }
@@ -269,7 +277,7 @@
     font-weight: 600;
     font-size: clamp(13px, 1vw, 14px);
     line-height: 1.1;
-    min-height: clamp(40px, 3vw, 44px);
+    min-height: clamp(44px, 3vw, 48px);
     padding: clamp(10px, 0.9vw, 12px) clamp(14px, 1.5vw, 20px);
     border-radius: var(--radius-pill);
     border: 1.5px solid var(--color-moss-tint);

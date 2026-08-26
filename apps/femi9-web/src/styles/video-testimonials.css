@@ -335,3 +335,15 @@
 .figma-landing .fl-testimonials--video .vt-section {
   margin: clamp(28px, 3.5vw, 44px) 0 0;
 }
+
+/* ===== Touch targets =====
+   This sheet had no `pointer: coarse` block. Measured on a phone: `.vt-arrow`
+   40x40, `.vt-ctl` 36x36. These render on the landing page AND on every product
+   page, so they were the most-seen undersized controls in the app. */
+@media (max-width: 900px), (pointer: coarse) {
+  .vt-arrow,
+  .vt-ctl {
+    width: 44px;
+    height: 44px;
+  }
+}

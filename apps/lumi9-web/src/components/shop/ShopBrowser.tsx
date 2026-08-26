@@ -43,7 +43,7 @@ export function ShopBrowser() {
                 type="button"
                 aria-pressed={sizeFilter === filter}
                 onClick={() => setSizeFilter(filter)}
-                className={`min-h-10 cursor-pointer rounded-chip border-[1.5px] px-3.5 py-2.5 text-left text-sm font-semibold whitespace-nowrap transition-colors ${
+                className={`min-h-11 min-w-11 cursor-pointer rounded-chip border-[1.5px] px-3.5 py-2.5 text-center text-sm font-semibold whitespace-nowrap transition-colors ${
                   sizeFilter === filter
                     ? "border-midnight bg-midnight text-butter"
                     : "border-moss-tint text-midnight hover:border-moss-soft"
@@ -64,7 +64,7 @@ export function ShopBrowser() {
                 type="button"
                 aria-pressed={sort === option}
                 onClick={() => setSort(option)}
-                className={`min-h-10 cursor-pointer rounded-chip px-3.5 py-2.25 text-left text-sm font-medium whitespace-nowrap transition-colors ${
+                className={`min-h-11 cursor-pointer rounded-chip px-3.5 py-2.25 text-left text-sm font-medium whitespace-nowrap transition-colors ${
                   sort === option ? "bg-moss-tint text-midnight" : "text-muted hover:text-midnight"
                 }`}
               >
@@ -103,7 +103,7 @@ export function ShopBrowser() {
 
                 <Link
                   href={href}
-                  className="text-[clamp(15px,1.5vw,17px)] font-bold text-midnight hover:text-moss-deep"
+                  className="inline-flex items-center text-[clamp(15px,1.5vw,17px)] font-bold text-midnight coarse:min-h-11 hover:text-moss-deep"
                 >
                   Cloud Soft — {size.name}
                 </Link>

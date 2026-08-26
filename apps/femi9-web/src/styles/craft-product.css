@@ -346,3 +346,23 @@
   flex-wrap: wrap;
   row-gap: 10px;
 }
+
+/* ===== Touch targets on the PDP =====
+   Measured at phone widths: the breadcrumb links were 15px tall and the
+   related-card titles 21px — both real controls with a text-line hit box.
+   inline-flex + a min-height gives the anchor a thumb-sized target without
+   moving the type or changing how the line reads. */
+@media (max-width: 900px), (pointer: coarse) {
+  .crumbs a,
+  .pdp-page .related-title {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* The title is the card's primary affordance, so let it fill the card width
+     rather than only the width of its own text. */
+  .pdp-page .related-title {
+    width: 100%;
+  }
+}

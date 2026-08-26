@@ -33,7 +33,7 @@ function RangeCard({ size }: { size: DbProductSize }) {
         </span>
       </Link>
 
-      <Link href={href} className="text-[clamp(15px,1.5vw,18px)] font-bold text-midnight hover:text-moss-deep">
+      <Link href={href} className="inline-flex items-center text-[clamp(15px,1.5vw,18px)] font-bold text-midnight coarse:min-h-11 hover:text-moss-deep">
         Cloud Soft — {size.name}
       </Link>
       <div className="mt-1 mb-3.5 text-[clamp(12px,1.1vw,13px)] text-muted">Fits {size.fits}</div>
@@ -50,7 +50,7 @@ function RangeCard({ size }: { size: DbProductSize }) {
             type="button"
             aria-pressed={option.count === packCount}
             onClick={() => setPackCount(option.count)}
-            className="chip min-h-9 px-3 py-1.5 text-[clamp(12px,1.1vw,13px)]"
+            className="chip px-3 py-1.5 text-[clamp(12px,1.1vw,13px)]"
           >
             {option.count} pcs
           </button>
@@ -82,7 +82,7 @@ export function ProductRange() {
           <SectionHeading eyebrow="The Cloud Soft range">
             One baby diaper range for <Em>every</Em> growing stage.
           </SectionHeading>
-          <Link href="/size-guide" className="inline-flex items-center coarse:min-h-10 text-[15px] font-semibold text-moss-deep hover:text-midnight">
+          <Link href="/size-guide" className="inline-flex items-center coarse:min-h-11 text-[15px] font-semibold text-moss-deep hover:text-midnight">
             Not sure of the size? →
           </Link>
         </Reveal>

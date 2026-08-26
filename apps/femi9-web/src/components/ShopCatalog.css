@@ -457,3 +457,47 @@
   .shop-rail,
   .shop-pill { transition: none }
 }
+
+/* ===== Touch targets =====
+   This sheet had no `pointer: coarse` block at all, which is why its controls
+   were the smallest in the app: the filter sheet's only dismiss button measured
+   34x34, every filter pill 30px tall, and the sort <select> 13.76px — small
+   enough that iOS Safari zooms the layout viewport on focus and never zooms
+   back out. None of it showed up in the existing mobile gate because the rail
+   is `visibility: hidden` until it is opened, and the audit only measures what
+   getComputedStyle can see.
+
+   Scoped the way the rest of the codebase scopes this — width OR coarse pointer,
+   so touch tablets are covered too. */
+@media (max-width: 900px), (pointer: coarse) {
+  .shop-rail__close {
+    width: 44px;
+    height: 44px;
+  }
+
+  .shop-pill,
+  .shop-chip,
+  .shop-bar__btn,
+  .shop-rail__apply,
+  .shop-rail__clear {
+    min-height: 44px;
+  }
+
+  /* The remove "x" was a 9px icon inside a 29px chip. */
+  .shop-chip svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .shop-sort__select {
+    /* 16px is a floor, not a preference: below it iOS zooms on focus. */
+    font-size: 16px;
+    min-height: 44px;
+  }
+
+  /* The price slider thumb is the target here, and the input itself was 13.3px. */
+  .shop-price__range {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}

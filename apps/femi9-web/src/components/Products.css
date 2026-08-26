@@ -212,3 +212,15 @@
   .add.is-added,.card-quick-add.is-added{animation:none}
   .add.is-added::after,.card-quick-add.is-added::after{animation:none;opacity:.4;transform:none}
 }
+
+/* ===== Touch targets =====
+   The card title is a link wrapping an <h3> and measured 35px tall — the second
+   most-used way into a PDP after the image. Give the anchor the block box its
+   heading already occupies plus a thumb-sized floor. */
+@media (max-width: 900px), (pointer: coarse) {
+  .card-body > a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}

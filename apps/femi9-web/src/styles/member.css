@@ -962,3 +962,25 @@ a.m-row:focus-visible, button.m-row:focus-visible { outline: 2px solid rgba(86, 
   }
   .m-area .reveal { opacity: 1 !important; transform: none !important; }
 }
+
+/* ===== Touch targets =====
+   The member sub-nav is the primary navigation on /account and measured 40px
+   tall on every phone; the ghost button beside it 38px. Both sit above the fold
+   on the page a signed-in customer lands on. */
+@media (max-width: 900px), (pointer: coarse) {
+  .m-subnav__link {
+    min-height: 44px;
+  }
+
+  /* Scoped to the member surface rather than `.btn` globally: base.css owns
+     the shared button and other pages size it deliberately. */
+  .m-shell .btn,
+  .m-main .btn,
+  .m-panel .btn,
+  .m-card .btn,
+  .m-head .btn,
+  .m-head__actions .btn,
+  .m-identity__actions .btn {
+    min-height: 44px;
+  }
+}
