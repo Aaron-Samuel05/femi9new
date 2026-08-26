@@ -1,6 +1,8 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { OrderConfirmation } from "@femi9/core/services/checkout";
-import { inr, shippingLabel } from "@/lib/catalog";
+import { inr, packImage, shippingLabel } from "@/lib/catalog";
+import { loadCatalog } from "@/lib/catalog.server";
 
 /**
  * The confirmation, rendered from the ORDER as the database has it.
@@ -9,6 +11,11 @@ import { inr, shippingLabel } from "@/lib/catalog";
  * screen could disagree with what was actually bought — and showed nothing at
  * all on another device. This is a server component now: no cart, no
  * catalogue, no "ready" flicker.
+ *
+ * The one thing it does read the catalogue for is the pack photo: the order
+ * snapshots the name, label and price at purchase, but not an image, so each
+ * line is joined back to its variant to find one. A line whose variant has
+ * since been retired keeps the plain quantity chip.
  */
 
 const TIMELINE = [
@@ -17,7 +24,13 @@ const TIMELINE = [
   { dot: "#c7cdb4", title: "Out for delivery", body: "We’ll text you tracking as soon as it moves." },
 ];
 
-export function ConfirmationView({ order }: { order: OrderConfirmation }) {
+export async function ConfirmationView({ order }: { order: OrderConfirmation }) {
+  // variantId → pack photo, built once for the whole line list.
+  const catalog = await loadCatalog();
+  const photos = new Map(
+    catalog.flatMap((size) => size.packs.map((pack) => [pack.variantId, packImage(size.size, pack.count)])),
+  );
+
   // The greeting uses the first word of the name on the order.
   const firstName = order.customerName.trim().split(/\s+/)[0] || "there";
   const shipTo = order.address
@@ -64,18 +77,34 @@ export function ConfirmationView({ order }: { order: OrderConfirmation }) {
         <div className="mb-5.5 flex flex-col gap-4">
           {/* Names and prices are the ones snapshotted at purchase, so this
               still reads correctly after the catalogue changes. */}
-          {order.items.map((item, index) => (
-            <div key={`${item.productName}-${index}`} className="flex items-center gap-3.5">
-              <div className="flex size-[clamp(52px,5vw,60px)] shrink-0 items-center justify-center rounded-chip bg-shell text-sm font-bold text-muted">
-                ×{item.qty}
+          {order.items.map((item, index) => {
+            const photo = photos.get(item.variantId);
+            return (
+              <div key={`${item.productName}-${index}`} className="flex items-center gap-3.5">
+                <div className="relative size-[clamp(52px,5vw,60px)] shrink-0">
+                  {photo ? (
+                    <>
+                      <span className="absolute inset-0 overflow-hidden rounded-chip bg-shell">
+                        <Image src={photo} alt="" fill sizes="60px" className="object-cover" />
+                      </span>
+                      <span className="absolute -top-1.5 -right-1.5 z-1 flex size-5.5 items-center justify-center rounded-full bg-midnight text-xs font-bold text-butter">
+                        {item.qty}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="flex size-full items-center justify-center rounded-chip bg-shell text-sm font-bold text-muted">
+                      ×{item.qty}
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div className="text-[15px] font-bold">{item.productName}</div>
+                  <div className="text-[13px] text-muted">{item.variantLabel}</div>
+                </div>
+                <div className="text-[15px] font-bold">{inr(item.lineTotal)}</div>
               </div>
-              <div className="flex-1">
-                <div className="text-[15px] font-bold">{item.productName}</div>
-                <div className="text-[13px] text-muted">{item.variantLabel}</div>
-              </div>
-              <div className="text-[15px] font-bold">{inr(item.lineTotal)}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="flex flex-col gap-2.5 border-t border-moss-tint pt-5 text-sm">

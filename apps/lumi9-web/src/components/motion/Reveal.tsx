@@ -3,7 +3,18 @@
 import type { ComponentPropsWithoutRef, Ref } from "react";
 import { useRevealRef } from "@/lib/motion";
 
-type RevealTag = "div" | "section" | "article" | "li" | "h2" | "h3" | "p" | "figure";
+type RevealTag =
+  | "div"
+  | "section"
+  | "article"
+  | "li"
+  | "ul"
+  | "ol"
+  | "h2"
+  | "h3"
+  | "p"
+  | "figure"
+  | "blockquote";
 
 /** Fades + lifts its child into place when 12% of it enters the viewport. */
 export function Reveal({

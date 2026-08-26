@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/site/PageShell";
 import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { ArticleBody, inline } from "@/components/journal/ArticleBody";
 import { ArticleCard, CategoryChip, PostMeta } from "@/components/journal/JournalCards";
@@ -107,13 +108,13 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
         <div className="px-safe pt-[clamp(24px,4vw,48px)] pb-[clamp(20px,3vw,32px)]">
           <div className="mx-auto max-w-[860px]">
             <nav aria-label="Breadcrumb" className="mb-6 text-[13px] text-muted">
-              <Link href="/" className="hover:text-midnight">
+              <Link href="/" className="inline-flex items-center coarse:min-h-11 hover:text-midnight">
                 Home
               </Link>
               <span className="px-2" aria-hidden>
                 /
               </span>
-              <Link href="/journal" className="hover:text-midnight">
+              <Link href="/journal" className="inline-flex items-center coarse:min-h-11 hover:text-midnight">
                 Journal
               </Link>
             </nav>
@@ -127,17 +128,23 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
           </div>
         </div>
 
-        {/* COVER — the LCP element, so it is eager and carries its own sizes */}
+        {/* COVER — the LCP element, so it is eager and carries its own sizes.
+            The photograph drifts on scroll inside an over-tall wrapper (top -12%
+            / height 124%), so it still covers the frame at the extremes of that
+            drift — and the framing is correct with no transform at all, which is
+            what `prefers-reduced-motion` gets. */}
         <div className="px-safe pb-[clamp(28px,4vw,52px)]">
           <div className="relative mx-auto aspect-3/2 w-full max-w-[1120px] overflow-hidden rounded-media bg-shell shadow-hero sm:aspect-16/9">
-            <Image
-              src={post.image}
-              alt={post.imageAlt}
-              fill
-              priority
-              sizes="(max-width: 900px) 94vw, 1120px"
-              className="object-cover"
-            />
+            <Parallax factor={0.18} pointerScale={24} className="absolute inset-x-0 top-[-12%] h-[124%]">
+              <Image
+                src={post.image}
+                alt={post.imageAlt}
+                fill
+                priority
+                sizes="(max-width: 900px) 94vw, 1120px"
+                className="object-cover"
+              />
+            </Parallax>
           </div>
         </div>
 
