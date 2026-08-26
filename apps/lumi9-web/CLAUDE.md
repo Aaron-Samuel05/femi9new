@@ -170,6 +170,20 @@ warns you to turn it off; that warning is stale. Leave it off — the cart scree
 are reviewable by adding an item, and a basket pre-filled with phantom lines is
 worse than an empty one now that the prices beside them are real.
 
+**The nav is ONE row below `md`, and `--nav-h` is load-bearing.** The links live
+behind a burger in a slide-down sheet; the bar used to wrap them onto a second
+scrolling line and stood 118px tall on a phone, fixed, over an 844px viewport.
+`--nav-h` is published by the nav's ResizeObserver and is what `scroll-padding-top`
+in `globals.css` offsets every in-page anchor by — so never add `scroll-mt-*` to
+an anchor target as well, or it lands a whole screen too low.
+
+**A `backdrop-filter` element is a backdrop root; nesting one inside it does
+nothing.** The nav carries `backdrop-blur`, so the menu sheet's own blur sampled
+the nav's (transparent) content rather than the page and the hero read straight
+through the menu. The sheet is opaque for that reason. The same trap ate the
+sheet's scrim: as a child of the nav its negative z-index put it behind that
+backdrop root and it never painted at all — it is a SIBLING of the bar, at z-90.
+
 **Nothing here may import a package this app does not declare.** `@femi9/core`
 is shared source, not a built artifact, so its imports become this app's
 imports. The image build is where that surfaces: `npm ci --workspace lumi9-web`

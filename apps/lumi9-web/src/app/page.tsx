@@ -100,7 +100,7 @@ export default function HomePage() {
           id="top"
           /* full-height hero, except on short viewports (landscape phones, split
              screens) where it just wraps its content instead of overflowing */
-          className="px-safe relative flex min-h-[100svh] flex-col items-center gap-[clamp(20px,4vw,32px)] pb-[clamp(40px,6vw,60px)] pt-[calc(var(--nav-h,104px)+clamp(20px,4vw,44px))] md:flex-row md:gap-0 [@media(max-height:560px)]:min-h-0 [@media(max-height:560px)]:pt-[calc(var(--nav-h,104px)+14px)] [@media(max-height:560px)]:pb-8"
+          className="px-safe relative flex min-h-[100svh] flex-col items-center gap-[clamp(12px,4vw,32px)] pb-[clamp(32px,6vw,60px)] pt-[calc(var(--nav-h,68px)+clamp(18px,4vw,44px))] md:flex-row md:gap-0 [@media(max-height:560px)]:min-h-0 [@media(max-height:560px)]:pt-[calc(var(--nav-h,68px)+14px)] [@media(max-height:560px)]:pb-8"
           style={{ background: "radial-gradient(120% 90% at 78% 20%, #eef1e0 0%, #f7f5ea 55%)" }}
         >
           <FloatyBlob
@@ -143,16 +143,16 @@ export default function HomePage() {
               <br />
               Made for <Em>Happy</Em> Little Days
             </h1>
-            <p className="m-0 mb-[clamp(24px,3.4vw,34px)] max-w-[54ch] text-lead leading-[1.6] text-muted">
+            <p className="m-0 mb-[clamp(20px,3.4vw,34px)] max-w-[54ch] text-lead leading-[1.55] text-muted md:leading-[1.6]">
               From sleepy newborn cuddles to crawling, stretching and first little steps, Lumi9 baby diapers are
               designed to move comfortably with your growing baby — soft cotton-like comfort, quick moisture
               absorption, breathable protection and a flexible fit for playtime, naps and nighttime rest.
             </p>
-            <div className="mb-[clamp(28px,4vw,40px)] flex flex-wrap gap-3.5">
-              <Link href="/shop" className="btn btn-dark max-[400px]:w-full">
+            <div className="mb-[clamp(22px,4vw,40px)] flex flex-wrap gap-3">
+              <Link href="/shop" className="btn btn-dark max-[520px]:w-full">
                 Shop Baby Diapers →
               </Link>
-              <Link href="#sizes" className="btn btn-ghost max-[400px]:w-full">
+              <Link href="#sizes" className="btn btn-ghost max-[520px]:w-full">
                 Find your baby’s size
               </Link>
             </div>
@@ -354,12 +354,12 @@ export default function HomePage() {
                 your Lumi9 size and pack, set up recurring delivery, and move from NB through XL as your baby grows.
               </p>
               <div className="flex flex-wrap gap-3.5">
-                <Link href="/subscription" className="btn btn-cream max-[400px]:w-full">
+                <Link href="/subscription" className="btn btn-cream max-[520px]:w-full">
                   Start my box — save 20%
                 </Link>
                 <Link
                   href="#tech"
-                  className="btn border-butter/35 text-butter hover:border-butter hover:text-butter max-[400px]:w-full"
+                  className="btn border-butter/35 text-butter hover:border-butter hover:text-butter max-[520px]:w-full"
                 >
                   How it works
                 </Link>

@@ -56,8 +56,26 @@ export function ShopBrowser() {
         </div>
 
         <div>
-          <h2 className="mb-3 text-[13px] font-bold tracking-[0.1em] text-midnight">SORT BY</h2>
-          <div className="scroll-row gap-2 max-md:-mx-[var(--spacing-gutter)] max-md:px-[var(--spacing-gutter)] md:flex-col">
+          <h2 className="mb-3 text-[13px] font-bold tracking-[0.1em] text-midnight" id="sort-label">
+            SORT BY
+          </h2>
+          {/* The three labels need ~440px side by side. In the phone scroller they
+              overflowed with the last option cut at the edge, and — being flat
+              text until selected — they did not read as controls at all. A native
+              select always fits, and hands sorting to the OS picker. */}
+          <select
+            aria-labelledby="sort-label"
+            value={sort}
+            onChange={(event) => setSort(event.target.value as Sort)}
+            className="field cursor-pointer py-3 md:hidden"
+          >
+            {SORTS.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+          <div className="max-md:hidden md:flex md:flex-col md:gap-2">
             {SORTS.map((option) => (
               <button
                 key={option}

@@ -26,6 +26,8 @@ const PATHS = {
   check: ["M5 13l4 4L19 7"],
   arrowLeft: ["M19 12H5", "M11 6l-5 6 5 6"],
   logout: ["M14 5H6v14h8", "M17 9l3 3-3 3M20 12h-8"],
+  menu: ["M4 7h16", "M4 12h16", "M4 17h16"],
+  close: ["M6 6l12 12", "M18 6L6 18"],
 } as const;
 
 export type IconName = keyof typeof PATHS;

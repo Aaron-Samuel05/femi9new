@@ -31,7 +31,7 @@ export default function PrivacyPage() {
 
         <div>
           {LEGAL_SECTIONS.map((section) => (
-            <section key={section.id} id={section.id} className="mb-[clamp(28px,4vw,40px)] scroll-mt-24">
+            <section key={section.id} id={section.id} className="mb-[clamp(28px,4vw,40px)]">
               <h2 className="m-0 mb-3.5 font-display text-[clamp(21px,2.6vw,26px)] font-normal tracking-[-0.01em]">{section.title}</h2>
               <p className="m-0 text-[clamp(14px,1.4vw,16px)] leading-[1.75] text-muted">{section.body}</p>
             </section>

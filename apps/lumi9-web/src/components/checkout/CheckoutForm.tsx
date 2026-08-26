@@ -287,8 +287,8 @@ export function CheckoutForm() {
                 autoComplete="cc-number"
                 className="field min-[420px]:col-span-2"
               />
-              <input aria-label="Expiry date" placeholder="MM / YY" autoComplete="cc-exp" className="field" />
-              <input aria-label="Security code" placeholder="CVC" autoComplete="cc-csc" className="field" />
+              <input aria-label="Expiry date" placeholder="MM / YY" inputMode="numeric" autoComplete="cc-exp" className="field" />
+              <input aria-label="Security code" placeholder="CVC" inputMode="numeric" autoComplete="cc-csc" className="field" />
             </div>
           )}
           {payment === "UPI" && (
