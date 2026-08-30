@@ -398,6 +398,12 @@ variable "lumi9_email_from" {
   default     = ""
 }
 
+variable "lumi9_care_inbox_email" {
+  description = "Where /contact messages are delivered for Lumi9, e.g. care@lumi9.in. The contact form FAILS CLOSED without it — it tells the visitor to email us directly rather than showing a confirmation for a message nobody will read, which is the defect it replaced. Not a secret: it is printed at the bottom of every page."
+  type        = string
+  default     = ""
+}
+
 # ── Public (NEXT_PUBLIC_*) values ────────────────────────────────────────────
 # These are inlined into the CLIENT bundle at `next build` time, NOT read from
 # the container. They are declared here because server code reads them too, and

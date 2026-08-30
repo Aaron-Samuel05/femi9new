@@ -6,18 +6,36 @@ import { useState } from "react";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
+import { useQuote } from "@/lib/quote";
 import { inr, shippingLabel } from "@/lib/catalog";
 
+/**
+ * The promo box, now connected to the coupon system that was already there.
+ *
+ * It used to answer EVERY code with a hardcoded "isn't a valid code right now"
+ * and call nothing — while the console has had a full coupons section, and
+ * `placeOrder` has had the redemption logic, since before this storefront
+ * existed. Every campaign code the team created was unredeemable, and the one
+ * screen that would have shown it said so in a sentence that was true by
+ * construction rather than by checking.
+ *
+ * Submitting hands the code to the quote provider, which asks the server what
+ * it is worth against THIS basket and this shopper. The code then rides through
+ * to /api/checkout, where it is re-validated and its use atomically claimed.
+ */
 function PromoField() {
+  const { quote, loading, coupon, applyCoupon } = useQuote();
   const [code, setCode] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
+
+  const applied = quote?.couponCode;
+  const error = quote?.couponError;
 
   return (
     <form
       className="mb-5.5"
       onSubmit={(event) => {
         event.preventDefault();
-        setMessage(code.trim() ? `“${code.trim()}” isn’t a valid code right now.` : null);
+        applyCoupon(code);
       }}
     >
       <div className="flex rounded-pill border border-moss-tint bg-paper p-1.25 pl-4.5">
@@ -33,18 +51,38 @@ function PromoField() {
         />
         <button
           type="submit"
-          className="chip shrink-0 cursor-pointer border-transparent bg-moss-tint font-bold text-midnight hover:bg-moss-soft"
+          disabled={loading}
+          className="chip shrink-0 cursor-pointer border-transparent bg-moss-tint font-bold text-midnight hover:bg-moss-soft disabled:opacity-60"
         >
-          Apply
+          {loading ? "Checking…" : "Apply"}
         </button>
       </div>
-      {message && <p className="m-0 mt-2 text-xs text-muted">{message}</p>}
+      {applied && (
+        <p className="m-0 mt-2 text-xs text-moss-deep">
+          “{applied}” applied — {inr(quote!.discount)} off.{" "}
+          <button
+            type="button"
+            className="cursor-pointer underline"
+            onClick={() => {
+              setCode("");
+              applyCoupon("");
+            }}
+          >
+            Remove
+          </button>
+        </p>
+      )}
+      {/* Only shown once a code has actually been submitted and refused. */}
+      {!applied && coupon && error && <p className="m-0 mt-2 text-xs text-muted">{error}</p>}
     </form>
   );
 }
 
 export function CartView() {
-  const { lines, count, subtotal, shipping, total, increment, decrement, remove, ready } = useCart();
+  const { lines, count, subtotal, increment, decrement, remove, ready } = useCart();
+  // Shipping and total come from the server — the same calculation that will
+  // price the order — rather than from a threshold hardcoded in this bundle.
+  const { quote } = useQuote();
 
   return (
     <section className="px-safe mx-auto max-w-[1180px] pt-[clamp(32px,4.4vw,56px)] pb-section">
@@ -116,19 +154,28 @@ export function CartView() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted">Shipping</span>
-                <span className="font-semibold text-moss-deep">{shippingLabel(shipping)}</span>
+                <span className="font-semibold text-moss-deep">
+                  {quote ? shippingLabel(quote.shipping) : "Calculating…"}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Subscription saving</span>
-                <span className="font-semibold">₹0</span>
-              </div>
+              {/* Only rendered when there IS one. The row used to be permanent
+                  and permanently "₹0", which is a line item for a discount this
+                  storefront cannot yet apply. */}
+              {quote && quote.discount > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-muted">Discount</span>
+                  <span className="font-semibold text-moss-deep">−{inr(quote.discount)}</span>
+                </div>
+              )}
             </div>
 
             <PromoField />
 
             <div className="mb-5.5 flex items-baseline justify-between border-t border-moss-tint pt-4.5">
               <span className="text-[17px] font-bold">Total</span>
-              <span className="font-display text-[clamp(24px,2.8vw,30px)] text-midnight">{inr(total)}</span>
+              <span className="font-display text-[clamp(24px,2.8vw,30px)] text-midnight">
+                {quote ? inr(quote.total) : inr(subtotal)}
+              </span>
             </div>
 
             <Link href="/checkout" className="btn btn-dark w-full font-bold">

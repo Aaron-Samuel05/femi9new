@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { auditConsole } from '@/lib/audit'
 import { allowsProductType } from '@femi9/core/brands'
 import {
   ProductInputSchema,
@@ -50,9 +51,9 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ brand: s
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)
@@ -64,7 +65,16 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     }
 
     try {
-      return ok(await updateProduct(brand, params.id, parsed.data))
+      const updated = await updateProduct(brand, params.id, parsed.data)
+      // A catalogue edit sets prices. Log the slug and the base price rather
+      // than the whole payload — enough to see what changed and when, without
+      // copying every description into a second table.
+      await auditConsole(session, req, 'product.update', params.id, {
+        slug: parsed.data.slug || undefined,
+        basePrice: parsed.data.basePrice,
+        status: parsed.data.status,
+      })
+      return ok(updated)
     } catch (err) {
       const mapped = mapPrismaError(err)
       if (mapped) return mapped
@@ -75,13 +85,15 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     try {
-      return ok(await archiveProduct(brand, params.id))
+      const archived = await archiveProduct(brand, params.id)
+      await auditConsole(session, _req, 'product.archive', params.id)
+      return ok(archived)
     } catch (err) {
       const mapped = mapPrismaError(err)
       if (mapped) return mapped

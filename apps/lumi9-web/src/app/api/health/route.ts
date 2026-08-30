@@ -1,5 +1,6 @@
 import { ok, handle } from "@femi9/core/api";
 import { brandReadiness } from "@femi9/core/brand-readiness";
+import { noindexReason, warnIfNotIndexable } from "@/lib/seo";
 
 /**
  * The ALB target group's health check.
@@ -22,6 +23,14 @@ export async function GET() {
     const { db, blocking, warnings } = await brandReadiness("lumi9");
     const ready = db && blocking.length === 0;
 
+    // A WARNING, never blocking. Serving noindex is wrong, but a task that is
+    // otherwise healthy must keep taking traffic — failing the probe over an
+    // SEO setting would turn a mis-set variable into an outage. It is reported
+    // here because it is otherwise completely silent: the site works, and only
+    // crawlers can tell that anything is wrong.
+    warnIfNotIndexable();
+    const noindex = noindexReason();
+
     return ok(
       {
         status: ready ? "ok" : "degraded",
@@ -29,7 +38,9 @@ export async function GET() {
         db,
         configuration: blocking.length === 0,
         ...(blocking.length ? { missingOrInvalid: blocking } : {}),
-        ...(warnings.length ? { warnings } : {}),
+        ...(warnings.length || noindex
+          ? { warnings: [...warnings, ...(noindex ? [`NOT_INDEXABLE: ${noindex}`] : [])] }
+          : {}),
         // Computed per request — a module-level value would freeze at build.
         time: new Date().toISOString(),
       },

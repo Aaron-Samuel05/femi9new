@@ -10,7 +10,55 @@ import type { NextConfig } from "next";
  */
 const IMMUTABLE = "public, max-age=31536000, immutable";
 
+/**
+ * Content Security Policy — production only.
+ *
+ * Femi9 has carried one since it shipped; this storefront had NO security
+ * headers at all, which meant it could be framed by any origin, sniffed for a
+ * content type it never declared, and leaked full referrer URLs cross-site. It
+ * also takes payments, which makes `frame-ancestors` the difference between a
+ * clickjacked checkout and a refused one.
+ *
+ * Development is exempt because `next dev` needs `eval` for hot reload; the
+ * non-CSP headers below apply in both.
+ *
+ * Each allowance below is here for a specific reason — nothing is speculative:
+ *  - 'unsafe-inline' in script-src: Next's own bootstrap and flight payloads are
+ *    inline <script>s. Removing it means adopting nonces through the whole
+ *    document, which is a change to make deliberately rather than in a headers
+ *    block. Femi9 makes the same trade.
+ *  - 'wasm-unsafe-eval': public/draco/draco_decoder.wasm decompresses the
+ *    mascot GLB. Instantiating any WebAssembly needs it, and without it the
+ *    mascot silently fails to load with only a console error.
+ *  - checkout.razorpay.com in script-src + *.razorpay.com in frame-src and
+ *    connect-src: the payment widget is a script we load and an iframe it opens.
+ *  - blob: in worker-src and img-src: three.js creates workers and textures
+ *    from object URLs.
+ *  - https: in img-src: product photographs may be served from Cloudinary when
+ *    that provider branch is configured instead of the S3 bucket.
+ */
+const productionCsp = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "form-action 'self'",
+  "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://checkout.razorpay.com",
+  "style-src 'self' 'unsafe-inline'",
+  "font-src 'self' data:",
+  "img-src 'self' data: blob: https:",
+  "worker-src 'self' blob:",
+  "connect-src 'self' https://*.razorpay.com",
+  "frame-src https://*.razorpay.com",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+  // `X-Powered-By: Next.js` names the framework and its major version to anyone
+  // who asks, which is free reconnaissance and buys nothing.
+  poweredByHeader: false,
+
   // The workspace packages ship TypeScript source with no build step in front.
   transpilePackages: ["@femi9/core", "@femi9/db"],
 
@@ -28,6 +76,23 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          // Explicitly OFF. The legacy XSS auditor introduced vulnerabilities of
+          // its own and is gone from every current browser; a CSP is the control
+          // that replaced it. Femi9 sends the same 0.
+          { key: "X-XSS-Protection", value: "0" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
+          ...(process.env.NODE_ENV === "production"
+            ? [{ key: "Content-Security-Policy", value: productionCsp }]
+            : []),
+        ],
+      },
       { source: "/assets/:path*", headers: [{ key: "Cache-Control", value: IMMUTABLE }] },
       { source: "/draco/:path*", headers: [{ key: "Cache-Control", value: IMMUTABLE }] },
     ];

@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { auditConsole } from '@/lib/audit'
 import {
   CouponCodeTakenError,
   CouponInputSchema,
@@ -34,9 +35,9 @@ function mapCouponError(err: unknown) {
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)
@@ -45,6 +46,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     if (raw && typeof raw === 'object' && (raw as { toggle?: unknown }).toggle === true) {
       const updated = await toggleActive(brand, params.id)
       if (!updated) return notFound('Coupon not found')
+      await auditConsole(session, req, 'coupon.toggle', params.id, {
+        active: updated.active,
+      })
       return ok(updated)
     }
 
@@ -52,7 +56,13 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return ok(await updateCoupon(brand, params.id, parsed.data))
+      const coupon = await updateCoupon(brand, params.id, parsed.data)
+      await auditConsole(session, req, 'coupon.update', params.id, {
+        code: parsed.data.code,
+        type: parsed.data.type,
+        value: parsed.data.value,
+      })
+      return ok(coupon)
     } catch (err) {
       const mapped = mapCouponError(err)
       if (mapped) return mapped
@@ -63,13 +73,15 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     try {
-      return ok(await deleteCoupon(brand, params.id))
+      const deleted = await deleteCoupon(brand, params.id)
+      await auditConsole(session, _req, 'coupon.delete', params.id)
+      return ok(deleted)
     } catch (err) {
       const mapped = mapCouponError(err)
       if (mapped) return mapped

@@ -2,6 +2,7 @@ import 'server-only'
 import { createHash } from 'node:crypto'
 import { DynamoDBClient, UpdateItemCommand } from '@aws-sdk/client-dynamodb'
 import { logger } from './logger'
+import { parseIp } from './geo/ip'
 
 /**
  * Fixed-window rate limiter with a shared DynamoDB store on ECS, optional
@@ -184,11 +185,45 @@ export async function rateLimit(
   return { ok: true, remaining: limit - b.count, retryAfterSec: 0 }
 }
 
-/** Best-effort client IP from the standard proxy headers (Vercel/ALB set these). */
+/**
+ * The address to key a rate-limit bucket on.
+ *
+ * ── Why this is not `x-forwarded-for.split(',')[0]` ────────────────────────
+ * That is the shape every example uses, and behind CloudFront it is attacker
+ * controlled. CloudFront does not REPLACE an X-Forwarded-For the viewer sent —
+ * it APPENDS the viewer's address to it. So a client that sends
+ * `X-Forwarded-For: 1.2.3.4` arrives at the origin as `1.2.3.4, <real ip>`, and
+ * taking the first entry keys the bucket on a value the caller chose. Rotate it
+ * per request and every per-IP limit on the platform — OTP requests, magic-link
+ * requests, admin sign-in, checkout — becomes unlimited, while the code reads
+ * as though it is throttling.
+ *
+ * `CloudFront-Viewer-Address` is generated at the edge, cannot be set by the
+ * viewer, and is already forwarded to the origin (see the origin request policy
+ * in infra/terraform/cloudfront.tf). It is therefore what we key on, and
+ * `geo/detect.ts` has preferred it for the same reason since it was written.
+ *
+ * The XFF fallback takes the LAST entry rather than the first: entries are
+ * appended left to right, so the rightmost is the one our nearest trusted proxy
+ * wrote and the leftmost is whatever the client made up. That is still weaker
+ * than the edge header — a request that reaches the ALB directly has only the
+ * ALB's own single-entry XFF — which is why it is the fallback and not the
+ * source. `parseIp` normalises the port CloudFront and the ALB include, so a
+ * client cannot spread one address across many buckets by varying it.
+ */
 export function clientIp(req: Request): string {
+  const viewer = parseIp(req.headers.get('cloudfront-viewer-address'))
+  if (viewer) return viewer.address
+
   const xff = req.headers.get('x-forwarded-for')
-  if (xff) return xff.split(',')[0]!.trim()
-  return req.headers.get('x-real-ip') || 'unknown'
+  if (xff) {
+    const entries = xff.split(',')
+    const nearest = parseIp(entries[entries.length - 1])
+    if (nearest) return nearest.address
+  }
+
+  const real = parseIp(req.headers.get('x-real-ip'))
+  return real?.address ?? 'unknown'
 }
 
 /** 429 JSON response with a Retry-After header — use when rateLimit().ok is false.

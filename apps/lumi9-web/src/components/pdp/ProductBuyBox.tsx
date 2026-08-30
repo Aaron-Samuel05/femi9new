@@ -25,7 +25,7 @@ const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEA
  * prices are shareable; pack, quantity and the active image are local state.
  */
 export function ProductBuyBox({ size }: { size: DbProductSize }) {
-  const { sizes } = useCatalogData();
+  const { sizes, subscribeSavePct } = useCatalogData();
   const [packCount, setPackCount] = useState(defaultPack(size).count);
   const [qty, setQty] = useState(1);
   const [mainImage, setMainImage] = useState<string | null>(null);
@@ -170,7 +170,10 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           href="/subscription"
           className="btn btn-cream mb-7 w-full border-[1.5px] border-moss-deep text-[clamp(14px,1.3vw,15px)]"
         >
-          Subscribe &amp; save 20% — {inr(subscriptionPrice(pack.price))}/month
+          {/* The percentage is the console's, not a constant: renewal orders are
+              discounted by Settings.subscribeSavePct, and this used to say 20%
+              while that defaulted to 15. */}
+          Subscribe &amp; save {subscribeSavePct}% — {inr(subscriptionPrice(pack.price, subscribeSavePct))}/month
         </Link>
 
         {/* TRUST */}

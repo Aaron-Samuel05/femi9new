@@ -27,8 +27,8 @@ const FEATURE_BAND = [
 
 /** One size by its URL segment, case-insensitively. */
 async function findSize(slug: string) {
-  const catalog = await loadCatalog();
-  return catalog.find((entry) => entry.size === slug.toUpperCase());
+  const { sizes } = await loadCatalog();
+  return sizes.find((entry) => entry.size === slug.toUpperCase());
 }
 
 /**

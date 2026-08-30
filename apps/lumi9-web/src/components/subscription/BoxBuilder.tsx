@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { SUBSCRIPTION_FREQUENCIES } from "@/lib/content";
-import { inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
+import { CADENCES, inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import type { DbProductSize } from "@/lib/catalog.server";
 
@@ -13,14 +13,60 @@ function subscribablePacks(size: DbProductSize) {
 }
 
 export function BoxBuilder() {
-  const { sizes, getSizeOrDefault } = useCatalogData();
+  const router = useRouter();
+  const { sizes, getSizeOrDefault, subscribeSavePct } = useCatalogData();
   const [sizeCode, setSizeCode] = useState<SizeCode>("M");
   const [packCount, setPackCount] = useState<number | null>(null);
-  const [frequency, setFrequency] = useState<(typeof SUBSCRIPTION_FREQUENCIES)[number]>("4 weeks");
+  // The cadence CODE, not a display string. It used to be the label ("4 weeks")
+  // from a copy module, which was never sent anywhere; the API resolves this
+  // against the Cadence rows the seed writes.
+  const [cadenceCode, setCadenceCode] = useState<string>("4w");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const size = getSizeOrDefault(sizeCode);
   const packs = subscribablePacks(size);
   const pack = packs.find((option) => option.count === packCount) ?? packs[packs.length - 1];
+  const cadence = CADENCES.find((c) => c.code === cadenceCode) ?? CADENCES[1]!;
+
+  /**
+   * Start the subscription for real.
+   *
+   * "Start subscription" was a `<Link href="/checkout">`: it created nothing,
+   * carried none of the size, pack or frequency chosen above, and applied no
+   * discount — the shopper arrived at checkout with whatever was already in her
+   * cart, at full price, having been told she was subscribing at a saving.
+   *
+   * A subscription belongs to an account (it has to: it recurs, and something
+   * has to own it), so a guest is sent to sign in and returned here.
+   */
+  async function startSubscription() {
+    if (submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/subscriptions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ variantId: pack.variantId, qty: 1, cadenceCode }),
+      });
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent("/subscription#build")}`);
+        return;
+      }
+      if (res.ok) {
+        router.push("/account?tab=subscription");
+        router.refresh();
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(body?.error ?? "We could not start your subscription. Please try again.");
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
     <section id="build" className="px-safe pt-5 pb-section">
@@ -67,15 +113,16 @@ export function BoxBuilder() {
 
           <div className="mb-3 text-sm font-semibold">Delivery frequency</div>
           <div className="flex flex-wrap gap-2.5" role="group" aria-label="Delivery frequency">
-            {SUBSCRIPTION_FREQUENCIES.map((option) => (
+            {CADENCES.map((option) => (
               <button
-                key={option}
+                key={option.code}
                 type="button"
-                aria-pressed={option === frequency}
-                onClick={() => setFrequency(option)}
+                aria-pressed={option.code === cadenceCode}
+                onClick={() => setCadenceCode(option.code)}
                 className="chip"
+                title={option.sub}
               >
-                Every {option}
+                {option.label}
               </button>
             ))}
           </div>
@@ -85,18 +132,39 @@ export function BoxBuilder() {
           <div className="mb-4 text-xs font-bold tracking-[0.14em] text-gold">YOUR BOX</div>
           <div className="mb-1.5 font-display text-[clamp(20px,2.2vw,24px)]">Cloud Soft — {size.name}</div>
           <div className="mb-6 text-sm opacity-80">
-            {pack.count} pants · every {frequency}
+            {pack.count} pants · {cadence.label.toLowerCase()}
           </div>
           <div className="mb-1.5 flex flex-wrap items-baseline gap-2.5">
-            <span className="font-display text-[clamp(30px,3.6vw,40px)]">{inr(subscriptionPrice(pack.price))}</span>
+            <span className="font-display text-[clamp(30px,3.6vw,40px)]">
+              {inr(subscriptionPrice(pack.price, subscribeSavePct))}
+            </span>
             <span className="text-[15px] line-through opacity-70">{inr(pack.price)}</span>
           </div>
-          <div className="mb-6 text-[13px] text-gold">You save 20% every delivery</div>
-          <Link href="/checkout" className="btn btn-cream mb-3.5 w-full">
-            Start subscription
-          </Link>
+          {/* The console's percentage, which is what a renewal order is actually
+              discounted by. This said a flat "20%" from a hardcoded constant
+              while generateDueOrders() applied Settings.subscribeSavePct. */}
+          <div className="mb-6 text-[13px] text-gold">
+            You save {subscribeSavePct}% every delivery
+          </div>
+          {error && (
+            <p className="m-0 mb-3 text-[13px] text-gold" role="alert" aria-live="polite">
+              {error}
+            </p>
+          )}
+          <button
+            type="button"
+            onClick={startSubscription}
+            disabled={submitting}
+            className="btn btn-cream mb-3.5 w-full disabled:opacity-60"
+          >
+            {submitting ? "Starting…" : "Start subscription"}
+          </button>
           <div className="text-center text-xs leading-[1.5] opacity-70">
-            Skip, pause or cancel anytime. Free delivery.
+            Skip, pause or cancel anytime from{" "}
+            <Link href="/account?tab=subscription" className="underline">
+              your account
+            </Link>
+            . Free delivery.
           </div>
         </div>
       </div>

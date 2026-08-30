@@ -7,15 +7,8 @@ import {
   useEffect,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from "react";
-import {
-  inr,
-  packImage,
-  standardShipping,
-  EXPRESS_SHIPPING_FEE,
-  type SizeCode,
-} from "@/lib/catalog";
+import { inr, packImage, type SizeCode } from "@/lib/catalog";
 import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
 
 /**
@@ -34,10 +27,6 @@ import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
  *  - **A line's key is its variant id.** Callers treat it as opaque and pass it
  *    straight back to increment/decrement/remove, so nothing outside this file
  *    changed.
- *
- * `lastOrder` is still localStorage. Checkout has not moved yet — that is the
- * next slice — and a confirmation screen that forgets on refresh is worse than
- * one backed by a value we are about to replace.
  */
 
 export type CartLine = {
@@ -55,18 +44,6 @@ export type ResolvedLine = CartLine & {
   price: number;
   lineTotal: number;
   image: string;
-};
-
-export type PlacedOrder = {
-  id: string;
-  lines: CartLine[];
-  subtotal: number;
-  shipping: number;
-  total: number;
-  delivery: "standard" | "express";
-  eta: string;
-  shipTo: string;
-  firstName: string;
 };
 
 /** The server's cart shape, as `@femi9/core/services/cart` returns it. */
@@ -92,61 +69,17 @@ interface CartDTO {
 
 const EMPTY: CartDTO = { items: [], subtotal: 0, baseSubtotal: 0, count: 0, zone: null };
 
-const ORDER_KEY = "lumi9.lastOrder.v1";
-
-// ─────────────────────────── last order (local) ────────────────────────────
-
-function readOrder(): PlacedOrder | null {
-  try {
-    const raw = window.localStorage.getItem(ORDER_KEY);
-    return raw ? (JSON.parse(raw) as PlacedOrder) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeOrder(order: PlacedOrder | null) {
-  try {
-    if (order) window.localStorage.setItem(ORDER_KEY, JSON.stringify(order));
-    else window.localStorage.removeItem(ORDER_KEY);
-  } catch {
-    /* private mode, or storage disabled */
-  }
-}
-
-/**
- * The last order is read through an external store rather than pulled into
- * state by an effect.
+/*
+ * The localStorage "last order" store that lived here is gone.
  *
- * localStorage is not available while rendering on the server, so it cannot be
- * a lazy `useState` initialiser without a hydration mismatch — and setting it
- * synchronously inside an effect causes a cascading render. `useSyncExternalStore`
- * is the shape React provides for exactly this: a server snapshot of null, a
- * client snapshot read once and cached, and subscribers notified on write.
+ * It cached a PlacedOrder — lines, subtotal, shipping, and a `delivery:
+ * "standard" | "express"` — so the confirmation screen could render without a
+ * round trip, back when checkout was local. Checkout is real now: the
+ * confirmation page reads the order from the database, authorised by the
+ * capability token in `?t=`, and nothing has read `lastOrder` since. Leaving it
+ * meant the app still carried a client-side notion of an express delivery tier
+ * that the server has never had, waiting to be wired to something.
  */
-let orderCache: PlacedOrder | null | undefined;
-const orderListeners = new Set<() => void>();
-
-function subscribeOrder(onChange: () => void) {
-  orderListeners.add(onChange);
-  return () => orderListeners.delete(onChange);
-}
-
-function getOrderSnapshot(): PlacedOrder | null {
-  if (orderCache === undefined) orderCache = readOrder();
-  return orderCache;
-}
-
-/** Null on the server, so SSR and first paint agree. */
-function getOrderServerSnapshot(): PlacedOrder | null {
-  return null;
-}
-
-function publishOrder(order: PlacedOrder | null) {
-  writeOrder(order);
-  orderCache = order;
-  for (const listener of orderListeners) listener();
-}
 
 // ───────────────────────────────── context ─────────────────────────────────
 
@@ -155,8 +88,6 @@ interface CartState {
   /** False until the first fetch resolves, so SSR and first paint agree. */
   ready: boolean;
   setCart: (next: CartDTO) => void;
-  lastOrder: PlacedOrder | null;
-  setLastOrder: (order: PlacedOrder | null) => void;
 }
 
 const CartContext = createContext<CartState | null>(null);
@@ -164,7 +95,6 @@ const CartContext = createContext<CartState | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartDTO>(EMPTY);
   const [ready, setReady] = useState(false);
-  const lastOrder = useSyncExternalStore(subscribeOrder, getOrderSnapshot, getOrderServerSnapshot);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,12 +113,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const setLastOrder = useCallback((order: PlacedOrder | null) => publishOrder(order), []);
-
-  const value = useMemo(
-    () => ({ cart, ready, setCart, lastOrder, setLastOrder }),
-    [cart, ready, lastOrder, setLastOrder],
-  );
+  const value = useMemo(() => ({ cart, ready, setCart }), [cart, ready]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
@@ -243,7 +168,7 @@ export function resolveLine(catalog: CatalogData, line: CartLine): ResolvedLine 
 
 export function useCart() {
   const catalog = useCatalogData();
-  const { cart, ready, setCart, lastOrder, setLastOrder } = useCartState();
+  const { cart, ready, setCart } = useCartState();
 
   /** Every mutation returns the WHOLE cart, so the server stays authoritative
    *  and nothing here has to guess what a write did to the totals. */
@@ -335,43 +260,24 @@ export function useCart() {
   );
 
   const subtotal = cart.subtotal;
-  const shipping = standardShipping(subtotal);
-
-  const placeOrder = useCallback(
-    (details: Omit<PlacedOrder, "lines" | "subtotal" | "shipping" | "total">) => {
-      const orderShipping =
-        details.delivery === "express" ? EXPRESS_SHIPPING_FEE : standardShipping(subtotal);
-      const order: PlacedOrder = {
-        ...details,
-        lines: lines.map(({ key, size, count, qty }) => ({ key, size, count, qty })),
-        subtotal,
-        shipping: orderShipping,
-        total: subtotal + orderShipping,
-      };
-      setLastOrder(order);
-      void clear();
-      return order;
-    },
-    [lines, subtotal, setLastOrder, clear],
-  );
 
   return {
     ready,
     lines,
     count: cart.count,
     subtotal,
-    shipping,
-    total: subtotal + shipping,
+    /* No `shipping` or `total` here on purpose. Both used to be computed from
+       a threshold hardcoded in this bundle, while the server priced the order
+       from editable Settings — two calculations for one number. `useQuote()`
+       in lib/quote.tsx asks the server, and is the only source of either. */
     /** The zone that priced this cart, when it moved a price. Null otherwise. */
     zone: cart.zone,
-    lastOrder,
     add,
     addVariant,
     increment,
     decrement,
     remove,
     clear,
-    placeOrder,
   };
 }
 

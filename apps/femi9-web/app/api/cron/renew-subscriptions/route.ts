@@ -1,5 +1,6 @@
 import { handle, ok, unauthorized } from '@femi9/core/api'
 import { requireAdmin } from '@femi9/core/admin-auth'
+import { cronSecretOk } from '@femi9/core/cron-auth'
 import { generateDueOrders } from '@femi9/core/services/subscriptions'
 
 /**
@@ -19,11 +20,10 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
   return handle(async () => {
-    const secret = process.env.CRON_SECRET
-    const provided = req.headers.get('x-cron-secret')
-    const secretOk = Boolean(secret) && provided === secret
-
-    if (!secretOk) {
+    // Constant-time, and it treats Terraform's TODO placeholder as unset — the
+    // inline `provided === secret` this replaces leaked the common prefix's
+    // length on an endpoint that generates orders. See @femi9/core/cron-auth.
+    if (!cronSecretOk(req)) {
       const admin = await requireAdmin()
       if (!admin) return unauthorized()
     }

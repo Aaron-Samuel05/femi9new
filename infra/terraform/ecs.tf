@@ -187,6 +187,10 @@ locals {
       # The schema this brand's entrypoint migrates. It MUST agree with the
       # `?schema=` in DATABASE_URL_LUMI9 — see secrets.tf.
       { name = "BRAND_DB_SCHEMA", value = var.lumi9_schema },
+      # Where /api/contact delivers. Absent, that route answers 503 and tells the
+      # visitor to email us — deliberately, because the form it replaced showed a
+      # green tick and discarded the message.
+      { name = "CARE_INBOX_EMAIL_LUMI9", value = var.lumi9_care_inbox_email },
       { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     ])

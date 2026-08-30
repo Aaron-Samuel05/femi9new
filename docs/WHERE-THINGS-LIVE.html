@@ -1,0 +1,93 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>femi9-platform — Where things live</title>
+<style>
+  @page { size: A4; margin: 12mm 13mm; }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin:0; font-family: "Segoe UI", system-ui, sans-serif; color:#241d26;
+         font-size: 8.4pt; line-height: 1.42; }
+  code, .m { font-family: "Cascadia Mono", Consolas, monospace; font-size: 0.94em; }
+  h1 { font-size: 15pt; margin:0; letter-spacing:-.2px; font-weight:650; }
+  .sub { color:#7a6f80; font-size:8pt; margin-top:2px; }
+  header { border-bottom:1.6px solid #6d4a7d; padding-bottom:6px; margin-bottom:9px;
+           display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
+  .root { text-align:right; font-size:7.6pt; color:#7a6f80; }
+  .root b { color:#6d4a7d; display:block; font-size:8.4pt; }
+  h2 { font-size:8.6pt; text-transform:uppercase; letter-spacing:.09em; color:#6d4a7d;
+       margin:11px 0 5px; font-weight:700; }
+  h2:first-of-type { margin-top:0; }
+  table { width:100%; border-collapse:collapse; }
+  th { text-align:left; font-size:7.2pt; text-transform:uppercase; letter-spacing:.05em;
+       color:#8b8090; font-weight:600; padding:0 6px 3px 0; border-bottom:1px solid #e6e0e9; }
+  td { padding:4px 6px 4px 0; vertical-align:top; border-bottom:1px solid #f0ecf2; }
+  tr:last-child td { border-bottom:none; }
+  .p { color:#6d4a7d; font-weight:600; white-space:nowrap; }
+  .port { color:#8b8090; white-space:nowrap; }
+  .cols { display:grid; grid-template-columns:1fr 1fr; gap:0 18px; }
+  .kv { margin-bottom:4px; }
+  .kv b { color:#241d26; }
+  .note { background:#faf7fb; border-left:2.5px solid #b79ac6; padding:6px 9px; margin-top:4px; }
+  .warn { background:#fdf4f4; border-left:2.5px solid #c96a6a; padding:6px 9px; margin-top:6px; }
+  .warn b { color:#a83a3a; }
+  .dead { color:#8b8090; font-size:7.6pt; margin-top:5px; }
+  footer { margin-top:10px; padding-top:6px; border-top:1px solid #e6e0e9;
+           font-size:7.2pt; color:#9a90a0; display:flex; justify-content:space-between; }
+</style></head><body>
+
+<header>
+  <div>
+    <h1>femi9-platform — where things live</h1>
+    <div class="sub">Two storefronts, one shared backend, one console.</div>
+  </div>
+  <div class="root">repo root<b class="m">E:/FreeLancing/femi9/femi9/femi9</b></div>
+</header>
+
+<h2>Frontends — apps/</h2>
+<table>
+  <tr><th style="width:23%">App</th><th style="width:9%">Port</th><th style="width:26%">Stack</th><th>What it is / where the UI sits</th></tr>
+  <tr><td class="p m">apps/femi9-web</td><td class="port">:3000</td><td>Next 16.3.1 · hand-written CSS</td>
+      <td>Femi9 storefront + account. <b>LIVE.</b> UI in <span class="m">src/</span> (components, screens, immersive, charts); routes in <span class="m">app/</span></td></tr>
+  <tr><td class="p m">apps/lumi9-web</td><td class="port">:3001</td><td>Next 16.3.1 · Tailwind v4</td>
+      <td>Lumi9 storefront — all under <span class="m">src/app/</span> (shop, cart, checkout, journal, account). Owns the SEO layer: <span class="m">src/lib/seo.ts</span>, sitemap, robots, JSON-LD</td></tr>
+  <tr><td class="p m">apps/admin</td><td class="port">:3002</td><td>Next 16.3.1</td>
+      <td>ONE console, <b>both</b> brands. Brand comes from the <b>session</b>, never the URL. <span class="m">app/[brand]</span>, <span class="m">app/api</span></td></tr>
+</table>
+<div class="dead"><b>Empty leftovers:</b> <span class="m">apps/femi9-web/app/admin</span> and <span class="m">app/api/admin</span> — every ops page and API now lives in <span class="m">apps/admin</span>.</div>
+
+<h2>Backend — packages/</h2>
+<div class="note" style="margin-top:0">There is <b>no separate API service.</b> “One backend” means one shared library that App Router server components import and read Postgres with directly.</div>
+<table style="margin-top:5px">
+  <tr><td class="p m" style="width:23%">packages/core</td><td><span class="m">@femi9/core</span> — the actual backend. Auth, sessions, Razorpay, pricing, geo, OTP, Thara + <span class="m">src/services/*</span> (cart, checkout, orders, products, subscriptions, blog…) and <span class="m">src/services/admin/*</span>.<br>Import by <b>subpath</b>, never the barrel: <span class="m">import &#123; getOrders &#125; from &#39;@femi9/core/services/admin/orders&#39;</span></td></tr>
+  <tr><td class="p m">packages/db</td><td><span class="m">@femi9/db</span> — the one Prisma schema + migrations. Exposes <span class="m">dbFor(brand)</span></td></tr>
+  <tr><td class="p m">packages/db-platform</td><td><span class="m">@femi9/db-platform</span> — admin identity in its own schema; generates to <span class="m">generated/</span> (gitignored)</td></tr>
+  <tr><td class="p m">HTTP surface</td><td>Each app&#39;s own route handlers — e.g. <span class="m">apps/femi9-web/app/api/&#123;auth, cart, checkout, payments, webhooks, cron, …&#125;</span></td></tr>
+</table>
+<div class="note">One Postgres, three schemas: <span class="m">femi9</span> · <span class="m">lumi9</span> · <span class="m">platform</span>. Isolation lives in the <b>connection string</b>, not a <span class="m">where</span> clause somebody can forget.</div>
+
+<div class="cols">
+ <div>
+  <h2>Env — no root .env, it&#39;s per-app</h2>
+  <div class="kv"><b class="m">apps/femi9-web/.env</b> — DATABASE_URL, DIRECT_URL, AUTH_SECRET, Razorpay, Resend, Google OAuth, TEST_DATABASE_URL, THARA_ENABLED</div>
+  <div class="kv"><b class="m">apps/lumi9-web/.env</b> — DATABASE_URL_LUMI9, AUTH_SECRET, RESEND_API_KEY_LUMI9 / EMAIL_FROM_LUMI9, Razorpay, SITE_URL</div>
+  <div class="kv"><b class="m">apps/admin/</b> — <b>no .env.</b> In prod reads DATABASE_URL_PLATFORM + ADMIN_AUTH_SECRET from the task definition / Secrets Manager. Create one locally.</div>
+  <div class="note">The canonical list (~60 vars — brand-suffixed <span class="m">*_FEMI9 / *_LUMI9 / *_PLATFORM</span>, Sentry, MSG91, Upstash, CYCLE_DATA_ENCRYPTION_KEY, CRON_SECRET) is <b class="m">apps/femi9-web/.env.example</b> — the reference for all three apps.</div>
+ </div>
+ <div>
+  <h2>Commands &amp; two gotchas</h2>
+  <table>
+    <tr><td class="p m" style="width:38%">npm install</td><td><b>always at the root.</b> One hoisted lockfile; apps have none</td></tr>
+    <tr><td class="p m">npm run dev:femi9</td><td>:3000</td></tr>
+    <tr><td class="p m">npm run dev:lumi9</td><td>:3001</td></tr>
+    <tr><td class="p m">npm run dev:admin</td><td>:3002</td></tr>
+    <tr><td class="p m">npm run build</td><td>turbo — all apps</td></tr>
+  </table>
+  <div class="warn"><b>npm test in femi9-web truncates every table.</b> Never run it with a <span class="m">.env</span> pointing at staging or production.</div>
+  <div class="warn" style="border-left-color:#c9a06a; background:#fdf9f3"><b style="color:#9a6f26">Docker builds from the repo root</b>, not from the app — <span class="m">npm ci</span> needs the hoisted lockfile.</div>
+ </div>
+</div>
+
+<h2>Not the code</h2>
+<div class="dead">One level up (<span class="m">E:/FreeLancing/femi9/femi9/</span>): <span class="m">lumi9-web/</span> is a pre-monorepo extraction; <span class="m">design_handoff_lumi9/</span> and the .docx/.zip files are handoff assets. At the monorepo root, <span class="m">femi9-app/ · femi9-react/ · femi9-scrool/ · femi9-lavender/ · index.html · app.js · styles.css · assets/ · Images/</span> are dead — superseded by <span class="m">apps/femi9-web</span>. The PDFs there are product docs and are worth consulting.</div>
+
+<footer><span>Source of truth: root <span class="m">CLAUDE.md</span> + each app&#39;s own <span class="m">CLAUDE.md</span></span><span>2026-08-27</span></footer>
+</body></html>

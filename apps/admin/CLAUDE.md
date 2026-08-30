@@ -41,7 +41,7 @@ network, and every font token declares a system fallback.
 
 Runs on `:3002` (`npm run dev:admin` from the repo root).
 
-## The three rules
+## The four rules
 
 **1. Brand comes from the SESSION, never from the URL.**
 `/[brand]/orders` has the brand in the path, but that segment only decides which
@@ -55,7 +55,21 @@ another's orders.
 should not learn that Thara exists by guessing a URL, and 403 tells them it does.
 Hiding a nav link is decoration; the guard is the enforcement.
 
-**3. Every way of failing to sign in looks the same.**
+**3. A role is enforced by the API, not by the nav.**
+`requireConsoleApi(brand, minRole)` takes the minimum role for the operation:
+reads pass `readonly` (the default), ordinary writes `support`, anything that
+moves money or changes who can do what `manager`. This was decorative for a long
+time — `create-admin` issued four roles and `hasAtLeast()` existed to compare
+them, and NOTHING called it, so a `readonly` account could refund an order,
+rewrite a price and change a customer's account role. Adding a route means
+choosing its tier.
+
+Unlike `hasModule`, an insufficient role is **403, not 404** — the opposite call,
+deliberately. Hiding Thara from Lumi9's staff hides a programme they should not
+know exists; hiding "refund" from a support agent hides a button they can already
+see, in a console they are legitimately signed into.
+
+**4. Every way of failing to sign in looks the same.**
 Wrong password, unknown email, disabled account, and a valid password for a
 brand you hold no role in all return the identical 401 with the identical
 message. The not-found path also spends the same time a real verify costs
@@ -79,7 +93,8 @@ app/
   [brand]/api/                31 route handlers, moved from /api/admin
 src/lib/
   guard.ts                    requireConsole(brand, module?) — call it in EVERY page
-  api-guard.ts                requireConsoleApi(brand)      — call it in EVERY route
+  api-guard.ts                requireConsoleApi(brand, minRole?) — EVERY route
+  audit.ts                    auditConsole(session, req, action, …) — after a write
   safe-next.ts                validates ?next= before it reaches a Location header
 src/charts/ src/components/ src/styles/   moved with the pages
 test/unit/                    identity · redirect safety · module gating
@@ -179,6 +194,22 @@ environment variables would put a working credential in the task definition and
 in CloudWatch's environment dump. The first account is made with a one-off task
 running `create-admin` — see above.
 
+## The audit log
+
+`AdminAuditLog` recorded exactly two things for a long time: `admin.login` and
+`admin.login.failed`. So it could tell you somebody signed in and nothing at all
+about what they did next, in a console that refunds money. When a refund is
+disputed weeks later, "who issued it" had no answer anywhere in the system.
+
+`auditConsole()` in `src/lib/audit.ts` is called AFTER a successful write —
+never before, because a log line for an action that then failed is read as fact.
+Covered today: `order.refund`, `order.status`, `customer.adjust-points`,
+`customer.change-role`, `settings.update`, `product.create|update|archive`,
+`coupon.update|toggle|delete`, `pricing-zone.update|delete`.
+
+Keep customer data out of `target` and `meta`. This table lives in the `platform`
+schema, which a wider set of people can read than one brand's customers.
+
 ## Things that will bite
 
 **The platform Prisma client has a custom output path** (`generated/`, gitignored).
@@ -188,6 +219,16 @@ clone or Docker build must run `prisma generate` for **both** packages.
 
 **Turbopack warns "Dynamic filesystem access causes tracing of the whole
 project"** on build. That is Prisma's engine loader, not a defect.
+
+**Product images are UPLOADED, never typed.** The product form's free-text
+"Image URL" rows are gone; both it and the blog cover field are upload buttons
+over `/<brand>/api/upload`, which sniffs the magic number (so a spoofed
+`.svg`/`.html` cannot be stored and served as active content from our own origin)
+and writes to the private S3 bucket CloudFront reads through OAC. `isManagedImageUrl`
+in `@femi9/core/image-url` is the enforcement — the schemas reject anything that
+is not `/uploads/…`, `/assets/…` or a Cloudinary URL, because a form is not an
+authorisation boundary. `/assets/` is allowed because both brands' seeds write
+those paths, and rejecting them would make every seeded product unsaveable.
 
 **A brand sells only some product types.** `brandConfig(brand).productTypes`
 drives the form's options AND the product routes reject anything outside it. The

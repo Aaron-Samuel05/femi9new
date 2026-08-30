@@ -4,9 +4,57 @@ import { useState } from "react";
 
 const SUBJECTS = ["Sizing help", "An existing order", "Subscription", "Bulk / wholesale"];
 
-/** Contact form; swaps to a success panel on submit. Wire `onSubmit` to the care inbox. */
+/**
+ * Contact form.
+ *
+ * It used to flip `sent` on submit and show "Thanks for reaching out — we'll be
+ * in touch shortly" without sending anything: none of the fields even carried a
+ * `name`, so there was nothing to send. Its own comment asked for `onSubmit` to
+ * be wired to the care inbox. It now POSTs to /api/contact, which mails the
+ * message and logs the delivery, and the success panel is shown only once that
+ * has actually happened — a form that says "sent" when it has not is worse than
+ * one that says it is broken.
+ */
 export function ContactForm() {
   const [sent, setSent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (submitting) return;
+
+    const data = new FormData(event.currentTarget);
+    const get = (key: string) => String(data.get(key) ?? "").trim();
+
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          firstName: get("firstName"),
+          lastName: get("lastName"),
+          email: get("email"),
+          subject: get("subject"),
+          message: get("message"),
+        }),
+      });
+      if (res.ok) {
+        setSent(true);
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      // The route's messages already tell the visitor what to do instead
+      // (email care@lumi9.in), so surface them rather than a generic one.
+      setError(body?.error ?? "We could not send your message. Please try again.");
+    } catch {
+      setError("Network error — please try again, or email care@lumi9.in.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (sent) {
     return (
@@ -23,19 +71,28 @@ export function ContactForm() {
   }
 
   return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        setSent(true);
-      }}
-      className="rounded-media border border-moss-tint bg-canvas p-card-lg shadow-hero"
-    >
+    <form onSubmit={onSubmit} className="rounded-media border border-moss-tint bg-canvas p-card-lg shadow-hero">
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-[clamp(10px,1.4vw,14px)] min-[420px]:grid-cols-2">
-          <input aria-label="First name" placeholder="First name" required autoComplete="given-name" className="field" />
-          <input aria-label="Last name" placeholder="Last name" required autoComplete="family-name" className="field" />
+          <input
+            name="firstName"
+            aria-label="First name"
+            placeholder="First name"
+            required
+            autoComplete="given-name"
+            className="field"
+          />
+          <input
+            name="lastName"
+            aria-label="Last name"
+            placeholder="Last name"
+            required
+            autoComplete="family-name"
+            className="field"
+          />
         </div>
         <input
+          name="email"
           type="email"
           aria-label="Email address"
           placeholder="Email address"
@@ -43,7 +100,7 @@ export function ContactForm() {
           autoComplete="email"
           className="field"
         />
-        <select aria-label="What's this about?" required defaultValue="" className="field text-muted">
+        <select name="subject" aria-label="What's this about?" required defaultValue="" className="field text-muted">
           <option value="" disabled>
             What&apos;s this about?
           </option>
@@ -54,14 +111,20 @@ export function ContactForm() {
           ))}
         </select>
         <textarea
+          name="message"
           aria-label="Your message"
           placeholder="Your message"
           rows={5}
           required
           className="field resize-y"
         />
-        <button type="submit" className="btn btn-dark w-full font-bold">
-          Send message
+        {error && (
+          <p className="m-0 text-sm text-[#b4232c]" role="alert" aria-live="polite">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={submitting} className="btn btn-dark w-full font-bold disabled:opacity-60">
+          {submitting ? "Sending…" : "Send message"}
         </button>
       </div>
     </form>

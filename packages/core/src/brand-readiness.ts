@@ -2,6 +2,7 @@ import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
 import { mailConfigured } from './mail-identity'
 import { paymentsConfigured, webhookConfiguredFor } from './payment-identity'
+import { configuredEnv } from './runtime-mode'
 
 /**
  * Is this brand configured well enough to serve traffic?
@@ -73,6 +74,14 @@ export async function brandReadiness(brand: Brand): Promise<BrandReadiness> {
     // Sign-in is by emailed link, so no mail means no new sessions — but
     // browsing, and every already-signed-in shopper, is unaffected.
     if (!mailConfigured(brand)) warnings.push(`RESEND_API_KEY_${upper} / EMAIL_FROM_${upper}`)
+
+    // Without this, the four `/api/cron/*` routes refuse every caller and no
+    // scheduled job runs: subscriptions ship one box and then nothing, and an
+    // order whose webhook was missed sits `pending` forever holding its stock.
+    // A WARNING, not blocking — the storefront serves perfectly well without it,
+    // which is exactly why nobody notices. cronSecretOk() treats Terraform's
+    // "TODO-" placeholder as unset, so `configuredEnv` is the right test here.
+    if (!configuredEnv('CRON_SECRET')) warnings.push('CRON_SECRET(scheduled-jobs-disabled)')
   }
 
   return { db, blocking, warnings }

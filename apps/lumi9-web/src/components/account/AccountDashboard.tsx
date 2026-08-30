@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
@@ -62,6 +63,89 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
   );
 }
 
+/**
+ * Skip / pause / resume / cancel, against PATCH /api/subscriptions/[id].
+ *
+ * Ownership is enforced server-side — the service scopes every mutation by
+ * { id, userId } — so nothing here needs to prove the plan is hers; a plan that
+ * is not comes back 404 and the message below says so.
+ *
+ * `router.refresh()` rather than local state: the row is rendered from a server
+ * component reading the database, and re-reading it is the only way the next
+ * delivery date and saved total stay true after a skip.
+ */
+function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function act(action: "pause" | "resume" | "skip" | "cancel") {
+    if (busy) return;
+    setBusy(action);
+    setError(null);
+    try {
+      const res = await fetch(`/api/subscriptions/${plan.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action }),
+      });
+      if (res.ok) {
+        router.refresh();
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      setError(body?.error ?? "That did not work. Please try again.");
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const ghost =
+    "rounded-pill border-[1.5px] border-moss-tint px-6 py-3.25 text-sm font-semibold text-midnight transition-colors hover:border-moss-soft disabled:opacity-60";
+
+  return (
+    <>
+      {error && (
+        <p className="m-0 mb-3 text-sm text-[#b4232c]" role="alert" aria-live="polite">
+          {error}
+        </p>
+      )}
+      <div className="flex flex-wrap gap-3">
+        <Link href="/subscription#build" className="btn btn-dark btn-sm py-3.25">
+          Change size or pack
+        </Link>
+
+        {plan.status === "active" && (
+          <>
+            <button type="button" onClick={() => act("skip")} disabled={busy !== null} className={ghost}>
+              {busy === "skip" ? "Skipping…" : "Skip next box"}
+            </button>
+            <button type="button" onClick={() => act("pause")} disabled={busy !== null} className={ghost}>
+              {busy === "pause" ? "Pausing…" : "Pause"}
+            </button>
+          </>
+        )}
+
+        {plan.status === "paused" && (
+          <button type="button" onClick={() => act("resume")} disabled={busy !== null} className={ghost}>
+            {busy === "resume" ? "Resuming…" : "Resume"}
+          </button>
+        )}
+
+        {/* Cancelling is not reversible from here, so it is not offered on a
+            plan that is already cancelled and it says what it is. */}
+        {plan.status !== "cancelled" && (
+          <button type="button" onClick={() => act("cancel")} disabled={busy !== null} className={ghost}>
+            {busy === "cancel" ? "Cancelling…" : "Cancel subscription"}
+          </button>
+        )}
+      </div>
+    </>
+  );
+}
+
 /** Sidebar tabs (overview / orders / subscription / addresses) switching the panel. */
 export function AccountDashboard({
   orders,
@@ -74,7 +158,13 @@ export function AccountDashboard({
   subscriptions: AccountSubscription[];
   pointsBalance: number;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  // `?tab=subscription` so a link can land on a panel — the box builder sends
+  // the shopper straight to her new plan after starting one. Anything that is
+  // not a known tab falls back to overview rather than rendering nothing.
+  const requested = useSearchParams().get("tab");
+  const [tab, setTab] = useState<Tab>(
+    TABS.some((t) => t.key === requested) ? (requested as Tab) : "overview",
+  );
   const { addVariant } = useCart();
 
   /**
@@ -296,20 +386,11 @@ export function AccountDashboard({
                   ))}
                 </div>
 
-                {/* Skip and Pause need a PATCH endpoint this storefront does not
-                    have yet. Sending the customer to the subscription page is a
-                    working route; a button that silently does nothing is not. */}
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/subscription#build" className="btn btn-dark btn-sm py-3.25">
-                    Change size or pack
-                  </Link>
-                  <Link
-                    href="/contact"
-                    className="rounded-pill border-[1.5px] border-moss-tint px-6 py-3.25 text-sm font-semibold text-midnight transition-colors hover:border-moss-soft"
-                  >
-                    Skip or pause a box
-                  </Link>
-                </div>
+                {/* Real controls now. These were a link to /contact, with a
+                    comment saying the PATCH endpoint did not exist yet — so
+                    "Skip, pause or cancel anytime" on the subscription page was
+                    a promise the site could only keep by email. */}
+                <SubscriptionControls plan={plan} />
               </>
             )}
           </div>

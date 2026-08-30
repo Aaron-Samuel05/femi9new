@@ -129,3 +129,10 @@ femi9_public_razorpay_key_id = ""
 # msg91_template_id = ""
 
 # next_public_sentry_dsn = ""
+
+# ── Lumi9 care inbox ────────────────────────────────────────────────────────
+# Where the /contact form delivers. Leave it empty and that route answers 503
+# with "please email care@lumi9.in" — deliberately, because the form it replaced
+# rendered a green tick and threw the message away. Not a secret; it is printed
+# in the site footer.
+# lumi9_care_inbox_email = "care@lumi9.in"

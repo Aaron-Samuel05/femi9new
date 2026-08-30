@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useMemo } from 'react'
-import type { DbProductSize } from './catalog.server'
+import type { CatalogPayload, DbProductSize } from './catalog.server'
 import type { SizeCode } from './catalog'
 
 /**
@@ -18,13 +18,13 @@ import type { SizeCode } from './catalog'
 
 export type Catalog = DbProductSize[]
 
-const CatalogContext = createContext<Catalog | null>(null)
+const CatalogContext = createContext<CatalogPayload | null>(null)
 
 export function CatalogProvider({
   catalog,
   children,
 }: {
-  catalog: Catalog
+  catalog: CatalogPayload
   children: React.ReactNode
 }) {
   return <CatalogContext.Provider value={catalog}>{children}</CatalogContext.Provider>
@@ -39,6 +39,13 @@ export interface CatalogData {
   getSize: (code: string | null | undefined) => DbProductSize | undefined
   /** One size with a fallback, so a view never renders empty on a bad param. */
   getSizeOrDefault: (code: string | null | undefined, fallback?: SizeCode) => DbProductSize
+  /**
+   * The subscription discount, as a percentage, from Settings — the SAME value
+   * `generateDueOrders()` discounts a renewal by. Not a constant: the page used
+   * to promise 20% from a hardcoded module while renewals applied the console's
+   * 15% default.
+   */
+  subscribeSavePct: number
 }
 
 /**
@@ -53,10 +60,11 @@ export interface CatalogData {
  * bug that should be loud.
  */
 export function useCatalogData(): CatalogData {
-  const sizes = useContext(CatalogContext)
-  if (sizes === null) {
+  const payload = useContext(CatalogContext)
+  if (payload === null) {
     throw new Error('useCatalogData must be used inside <CatalogProvider>')
   }
+  const { sizes, subscribeSavePct } = payload
 
   return useMemo(() => {
     const getSize = (code: string | null | undefined) => {
@@ -66,6 +74,7 @@ export function useCatalogData(): CatalogData {
     }
     return {
       sizes,
+      subscribeSavePct,
       weightOptions: sizes.map((s) => ({ label: s.fits, size: s.size })),
       getSize,
       getSizeOrDefault: (code: string | null | undefined, fallback: SizeCode = 'M') => {
@@ -76,5 +85,5 @@ export function useCatalogData(): CatalogData {
         return found
       },
     }
-  }, [sizes])
+  }, [sizes, subscribeSavePct])
 }

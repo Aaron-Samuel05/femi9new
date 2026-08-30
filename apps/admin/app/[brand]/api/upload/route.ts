@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
-import { badRequest, handle, ok, serviceUnavailable, unauthorized } from '@femi9/core/api'
+import { badRequest, handle, ok, serviceUnavailable } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
 import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 
@@ -30,7 +30,7 @@ export const dynamic = 'force-dynamic'
 const MAX_BYTES = 5 * 1024 * 1024
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'support')
   if (!auth.ok) return auth.response
   const { brand } = auth
 
@@ -58,7 +58,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
 
     let url: string
     try {
-      url = await storeImage(bytes, safeName, sniffed.mime)
+      // Keyed under the AUTHENTICATED brand, never the URL segment. One bucket
+      // serves both brands (these are published product photographs, not
+      // customer data), but a per-brand prefix is what makes "delete everything
+      // Lumi9 ever uploaded" a expressible operation rather than an archaeology
+      // exercise over a flat, timestamp-ordered list.
+      url = await storeImage(brand, bytes, safeName, sniffed.mime)
     } catch (error) {
       if (error instanceof ProviderConfigurationError) {
         return serviceUnavailable('Product image storage is not configured.')
@@ -71,13 +76,18 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
 
 /** Pick the storage backend from env. Add a branch here to introduce a new
  *  provider; the route body never changes. */
-async function storeImage(bytes: Buffer, safeName: string, contentType: string): Promise<string> {
-  if (process.env.UPLOADS_BUCKET) return uploadToS3(bytes, safeName, contentType)
+async function storeImage(
+  brand: string,
+  bytes: Buffer,
+  safeName: string,
+  contentType: string,
+): Promise<string> {
+  if (process.env.UPLOADS_BUCKET) return uploadToS3(brand, bytes, safeName, contentType)
   if (process.env.CLOUDINARY_URL) return uploadToCloudinary(bytes, safeName, contentType)
   if (process.env.NODE_ENV === 'production') {
     throw new ProviderConfigurationError('Durable upload storage')
   }
-  return saveToDisk(bytes, safeName)
+  return saveToDisk(brand, bytes, safeName)
 }
 
 let s3: S3Client | undefined
@@ -87,10 +97,18 @@ let s3: S3Client | undefined
  * behavior reads them through Origin Access Control and serves the site-relative
  * URL returned here.
  */
-async function uploadToS3(bytes: Buffer, safeName: string, contentType: string): Promise<string> {
+async function uploadToS3(
+  brand: string,
+  bytes: Buffer,
+  safeName: string,
+  contentType: string,
+): Promise<string> {
   const bucket = process.env.UPLOADS_BUCKET as string
   const name = `${Date.now()}-${safeName}`
-  const key = `uploads/${name}`
+  // Still under `uploads/`, which is what both the bucket policy and
+  // CloudFront's `/uploads/*` behavior are scoped to — adding a brand segment
+  // below that changes neither.
+  const key = `uploads/${brand}/${name}`
   s3 ??= new S3Client({})
   await s3.send(
     new PutObjectCommand({
@@ -107,12 +125,14 @@ async function uploadToS3(bytes: Buffer, safeName: string, contentType: string):
 /** DEV / single-instance: write under public/uploads and return `/uploads/<name>`
  *  (served statically by Next). The timestamp prefix keeps names unique so a
  *  re-upload of the same filename doesn't clobber an earlier image. */
-async function saveToDisk(bytes: Buffer, safeName: string): Promise<string> {
+async function saveToDisk(brand: string, bytes: Buffer, safeName: string): Promise<string> {
   const name = `${Date.now()}-${safeName}`
-  const dir = join(process.cwd(), 'public', 'uploads')
+  // `brand` reached here through requireConsoleApi, which narrows it with
+  // isBrand() — so it is one of a closed set of literals and cannot traverse.
+  const dir = join(process.cwd(), 'public', 'uploads', brand)
   await mkdir(dir, { recursive: true }) // the dir may not exist on a fresh clone
   await writeFile(join(dir, name), bytes)
-  return `/uploads/${name}`
+  return `/uploads/${brand}/${name}`
 }
 
 /**

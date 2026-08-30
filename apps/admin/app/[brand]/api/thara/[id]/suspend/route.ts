@@ -13,7 +13,7 @@ const bodySchema = z.object({ reason: z.string().min(1).max(500) })
 export async function POST(req: NextRequest, ctx: { params: Promise<{ brand: string; id: string }> }) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const auth = await requireConsoleApi((await ctx.params).brand)
+    const auth = await requireConsoleApi((await ctx.params).brand, 'manager')
     if (!auth.ok) return auth.response
     const { brand } = auth
 

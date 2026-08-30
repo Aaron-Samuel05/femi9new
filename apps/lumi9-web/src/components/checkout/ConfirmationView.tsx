@@ -26,9 +26,9 @@ const TIMELINE = [
 
 export async function ConfirmationView({ order }: { order: OrderConfirmation }) {
   // variantId → pack photo, built once for the whole line list.
-  const catalog = await loadCatalog();
+  const { sizes } = await loadCatalog();
   const photos = new Map(
-    catalog.flatMap((size) => size.packs.map((pack) => [pack.variantId, packImage(size.size, pack.count)])),
+    sizes.flatMap((size) => size.packs.map((pack) => [pack.variantId, packImage(size.size, pack.count)] as const)),
   );
 
   // The greeting uses the first word of the name on the order.

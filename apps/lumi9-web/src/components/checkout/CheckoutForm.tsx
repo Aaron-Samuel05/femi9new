@@ -10,18 +10,8 @@ import {
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useCart } from "@/lib/cart";
-import { EXPRESS_SHIPPING_FEE, inr, shippingLabel, standardShipping } from "@/lib/catalog";
-
-type Delivery = "standard" | "express";
-
-const DELIVERY_OPTIONS: { key: Delivery; name: string; eta: string; fee: number }[] = [
-  { key: "standard", name: "Standard delivery", eta: "3–5 business days", fee: 0 },
-  { key: "express", name: "Express delivery", eta: "1–2 business days", fee: EXPRESS_SHIPPING_FEE },
-];
-
-const PAYMENT_METHODS = ["Card", "UPI", "Cash on delivery"] as const;
-
-
+import { useQuote } from "@/lib/quote";
+import { inr, shippingLabel } from "@/lib/catalog";
 
 function Fieldset({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
   return (
@@ -37,17 +27,17 @@ function Fieldset({ step, title, children }: { step: number; title: string; chil
 export function CheckoutForm() {
   const router = useRouter();
   const { lines, subtotal, ready } = useCart();
-  const [delivery, setDelivery] = useState<Delivery>("standard");
-  const [payment, setPayment] = useState<(typeof PAYMENT_METHODS)[number]>("Card");
+  // The same quote the cart showed, from the same provider — including any
+  // coupon the shopper applied there. Nothing on this screen computes a total.
+  const { quote } = useQuote();
   const [firstName, setFirstName] = useState("");
   const [city, setCity] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
-  const shipping = delivery === "express" ? EXPRESS_SHIPPING_FEE : standardShipping(subtotal);
-  const total = subtotal + shipping;
   const isEmpty = ready && lines.length === 0;
+  const total = quote?.total ?? subtotal;
 
   /**
    * Place the order, then take payment.
@@ -81,6 +71,11 @@ export function CheckoutForm() {
           city: get("city"),
           state: get("state") || undefined,
           pincode: get("pincode") || undefined,
+          // The code the shopper applied in the cart. Sent, not assumed: the
+          // service re-validates it and claims its use inside the order
+          // transaction, so a code that was quoted but has since been spent
+          // fails the placement rather than silently discounting nothing.
+          couponCode: quote?.couponCode ?? undefined,
         }),
       });
 
@@ -219,86 +214,54 @@ export function CheckoutForm() {
           </div>
         </Fieldset>
 
+        {/*
+          One delivery option, because there is one. The "Express delivery ₹79"
+          radio that stood here was never sent to /api/checkout and never
+          reached an Order row: picking it added ₹79 to the total on screen and
+          changed nothing about what was charged or how the parcel shipped.
+          Standard is what the courier contract covers, and the server's own
+          quote is what the row below reads.
+        */}
         <Fieldset step={3} title="Delivery">
-          <div className="flex flex-col gap-3" role="radiogroup" aria-label="Delivery method">
-            {DELIVERY_OPTIONS.map((option) => {
-              const selected = option.key === delivery;
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => setDelivery(option.key)}
-                  className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 rounded-chip border-[1.5px] px-[clamp(14px,1.8vw,20px)] py-[clamp(13px,1.6vw,18px)] text-left transition-colors ${
-                    selected ? "border-moss-deep bg-moss-tint" : "border-moss-tint hover:border-moss-soft"
-                  }`}
-                >
-                  <span className="flex items-center gap-3.5">
-                    <span
-                      aria-hidden
-                      className={`inline-flex size-4.5 shrink-0 rounded-full border-2 ${
-                        selected ? "border-moss-deep bg-moss-deep/25" : "border-[#c7cdb4]"
-                      }`}
-                    />
-                    <span>
-                      <span className="block text-[15px] font-bold text-midnight">{option.name}</span>
-                      <span className="text-[13px] text-muted">{option.eta}</span>
-                    </span>
-                  </span>
-                  <span className="text-[15px] font-bold text-midnight">
-                    {option.fee === 0 ? "Free" : inr(option.fee)}
-                  </span>
-                </button>
-              );
-            })}
+          <div className="rounded-chip border-[1.5px] border-moss-tint px-[clamp(14px,1.8vw,20px)] py-[clamp(13px,1.6vw,18px)]">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                <span className="block text-[15px] font-bold text-midnight">Standard delivery</span>
+                <span className="text-[13px] text-muted">3–5 business days, across India</span>
+              </span>
+              <span className="text-[15px] font-bold text-midnight">
+                {quote ? shippingLabel(quote.shipping) : "Calculated below"}
+              </span>
+            </div>
+            {quote && quote.shipping > 0 && (
+              <p className="m-0 mt-2 text-[13px] text-muted">
+                Free on orders over {inr(quote.freeShipThreshold)}.
+              </p>
+            )}
           </div>
         </Fieldset>
 
+        {/*
+          Payment is taken by Razorpay, in Razorpay's own window.
+          
+          What stood here was a mock: three method chips whose selection was
+          never read, and — under "Card" — a card number, expiry and CVC field
+          with no `name`, never submitted anywhere and never used. They put a
+          shopper's PAN and CVC into our DOM, on our origin, for nothing: the
+          Razorpay modal opens straight afterwards and asks for the card again.
+          Collecting those digits at all drags this origin into PCI-DSS scope,
+          and a "Cash on delivery" chip advertised a settlement option that does
+          not exist — selecting it still opened the gateway and demanded payment.
+        */}
         <Fieldset step={4} title="Payment">
-          <div className="mb-4 flex flex-wrap gap-2.5" role="radiogroup" aria-label="Payment method">
-            {PAYMENT_METHODS.map((method) => {
-              const selected = method === payment;
-              return (
-                <button
-                  key={method}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  onClick={() => setPayment(method)}
-                  className={`min-h-11 cursor-pointer rounded-chip border-[1.5px] px-[clamp(14px,1.8vw,20px)] py-3 text-sm font-semibold transition-colors ${
-                    selected
-                      ? "border-midnight bg-midnight text-butter"
-                      : "border-moss-tint text-midnight hover:border-moss-soft"
-                  }`}
-                >
-                  {method}
-                </button>
-              );
-            })}
-          </div>
-
-          {payment === "Card" && (
-            <div className="grid grid-cols-1 gap-[clamp(10px,1.4vw,14px)] min-[420px]:grid-cols-2">
-              <input
-                aria-label="Card number"
-                placeholder="Card number"
-                inputMode="numeric"
-                autoComplete="cc-number"
-                className="field min-[420px]:col-span-2"
-              />
-              <input aria-label="Expiry date" placeholder="MM / YY" inputMode="numeric" autoComplete="cc-exp" className="field" />
-              <input aria-label="Security code" placeholder="CVC" inputMode="numeric" autoComplete="cc-csc" className="field" />
-            </div>
-          )}
-          {payment === "UPI" && (
-            <input aria-label="UPI ID" placeholder="yourname@upi" className="field" />
-          )}
-          {payment === "Cash on delivery" && (
-            <p className="m-0 rounded-[14px] bg-moss-tint px-5 py-4 text-sm text-midnight">
-              Pay the courier when your box arrives. Available on orders under ₹5,000.
+          <div className="rounded-[14px] bg-moss-tint px-5 py-4 text-sm text-midnight">
+            <p className="m-0 mb-1.5 font-bold">Secure payment by Razorpay</p>
+            <p className="m-0 text-muted">
+              Card, UPI, net banking and wallets. Placing your order opens
+              Razorpay&apos;s payment window — your card details are entered
+              there and never touch Lumi9.
             </p>
-          )}
+          </div>
         </Fieldset>
       </div>
 
@@ -329,9 +292,19 @@ export function CheckoutForm() {
             <span className="text-muted">Subtotal</span>
             <span className="font-semibold">{inr(subtotal)}</span>
           </div>
+          {quote && quote.discount > 0 && (
+            <div className="flex justify-between">
+              <span className="text-muted">
+                Discount{quote.couponCode ? ` (${quote.couponCode})` : ""}
+              </span>
+              <span className="font-semibold text-moss-deep">−{inr(quote.discount)}</span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-muted">Delivery</span>
-            <span className="font-semibold text-moss-deep">{shippingLabel(shipping)}</span>
+            <span className="font-semibold text-moss-deep">
+              {quote ? shippingLabel(quote.shipping) : "Calculating…"}
+            </span>
           </div>
         </div>
 
@@ -352,7 +325,7 @@ export function CheckoutForm() {
         )}
 
         <button type="submit" className="btn btn-dark w-full font-bold" disabled={submitting}>
-          {submitting ? "Placing order…" : `Place order · ${inr(total)}`}
+          {submitting ? "Placing order…" : quote ? `Place order · ${inr(total)}` : "Place order"}
         </button>
         <p className="m-0 mt-3.5 text-center text-xs leading-[1.5] text-muted">
           By placing your order you agree to Lumi9&apos;s{" "}

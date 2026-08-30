@@ -31,9 +31,154 @@ import type { OrderStatus } from '@prisma/client'
  * trusted for who/where to ship, never for what to charge.
  */
 
-// Flat courier fee below the free-shipping threshold. Kept in sync with the
-// storefront's cart hint; the threshold itself is editable via Settings.
-const SHIPPING_FEE = 49
+// Flat courier fee below the free-shipping threshold. The threshold itself is
+// editable via Settings.
+export const SHIPPING_FEE = 49
+
+/**
+ * What this brand charges to deliver a `subtotal`-worth basket.
+ *
+ * Exported because "kept in sync with the storefront's cart hint" is not a
+ * mechanism, and both storefronts proved it: each carried its own copy of the
+ * fee and the threshold, so a console change to `freeShipThreshold` moved what
+ * the shopper was CHARGED without moving what she was SHOWN. Lumi9 went further
+ * and offered an "Express delivery ₹79" the server had never heard of — the
+ * summary added it to the total, and the Razorpay order was opened for the
+ * standard amount.
+ *
+ * One function, called by `placeOrder` and by the quote endpoint the checkout
+ * summary reads. A shipping rule that can be shown and charged from two
+ * different expressions will eventually show and charge two different numbers.
+ */
+export function shippingFor(subtotal: number, freeShipThreshold: number): number {
+  return subtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
+}
+
+/**
+ * Is this coupon usable right now, and what is it worth on `subtotal`?
+ *
+ * Read-only — it never increments `usedCount`. `placeOrder` re-checks every one
+ * of these conditions inside its transaction AND claims the use with a
+ * compare-and-set, because two shoppers can quote the last remaining use of the
+ * same code at the same moment. This is what the shopper is SHOWN; that is what
+ * she is CHARGED, and the two are separate on purpose.
+ *
+ * `userId` is the signed-in shopper, or null for a guest. A coupon minted by
+ * redeeming Bloom points carries the id of whoever paid for it, so a guest must
+ * not be told a `BLOOM-` code they overheard is worth anything.
+ */
+export function couponDiscountFor(
+  coupon: {
+    active: boolean
+    expiresAt: Date | null
+    minOrder: number
+    maxUses: number | null
+    usedCount: number
+    userId: string | null
+    type: string
+    value: number
+  } | null,
+  subtotal: number,
+  userId: string | null,
+): number | null {
+  if (!coupon) return null
+  if (!coupon.active) return null
+  if (coupon.expiresAt !== null && coupon.expiresAt <= new Date()) return null
+  if (subtotal < coupon.minOrder) return null
+  if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) return null
+  if (coupon.userId !== null && coupon.userId !== userId) return null
+
+  const raw =
+    coupon.type === 'pct'
+      ? Math.round((subtotal * Math.min(100, coupon.value)) / 100)
+      : coupon.value
+  return Math.min(subtotal, Math.max(0, raw))
+}
+
+/** What the checkout summary renders, computed the way the order will be. */
+export interface CheckoutQuote {
+  subtotal: number
+  /** Coupon value applied to this basket. 0 when no code, or none that applies. */
+  discount: number
+  shipping: number
+  freeShipThreshold: number
+  total: number
+  /** The code that produced `discount`, echoed back so the UI can show it. */
+  couponCode: string | null
+  /** Set when a code WAS supplied and does not apply, so the form can say why. */
+  couponError: string | null
+}
+
+/**
+ * Price the current cart exactly as `placeOrder` would, without placing it.
+ *
+ * Read-only and side-effect free: no order row, no stock decrement, no gateway
+ * call. It exists so the summary beside the checkout form can stop guessing.
+ * Coupons are NOT applied here — a code is validated at placement, where the
+ * failure has somewhere to go; quoting a discount that placement then refuses
+ * would reintroduce the same class of lie in a new place.
+ */
+export async function quoteCart(
+  brand: Brand,
+  token: string | null,
+  options: { couponCode?: string; userId?: string } = {},
+): Promise<CheckoutQuote> {
+  const { freeShipThreshold } = await getSettings(brand)
+  const empty: CheckoutQuote = {
+    subtotal: 0,
+    discount: 0,
+    shipping: 0,
+    freeShipThreshold,
+    total: 0,
+    couponCode: null,
+    couponError: null,
+  }
+  if (!token) return empty
+
+  // Dynamic import: ./cart imports this module for its own types, and a static
+  // import here would close the cycle at module-init time.
+  //
+  // No `zone` argument, so getCart resolves the AMBIENT zone from the request
+  // headers — the same zone the cart page already shows. Placement re-resolves
+  // from the typed state/pincode, so a shopper whose address lands in a
+  // different zone than her IP suggests can still see the total move once she
+  // fills the form. That is the pre-existing behaviour of every price on the
+  // site, not something this quote introduces; what it removes is a shipping
+  // line the server had never agreed to.
+  const { getCart } = await import('./cart')
+  const cart = await getCart(brand, token)
+  if (cart.items.length === 0) return empty
+
+  const shipping = shippingFor(cart.subtotal, freeShipThreshold)
+
+  let discount = 0
+  let couponCode: string | null = null
+  let couponError: string | null = null
+  const code = options.couponCode?.trim().toUpperCase()
+  if (code) {
+    const coupon = await dbFor(brand).coupon.findUnique({ where: { code } })
+    const value = couponDiscountFor(coupon, cart.subtotal, options.userId ?? null)
+    if (value === null) {
+      // ONE message for every reason a code does not apply — expired, spent,
+      // below its minimum, or somebody else's. Saying which would let a caller
+      // probe the coupon table by trying codes and reading the difference.
+      couponError = 'That code is invalid, expired, or no longer available.'
+    } else {
+      discount = value
+      couponCode = code
+    }
+  }
+
+  return {
+    subtotal: cart.subtotal,
+    discount,
+    shipping,
+    freeShipThreshold,
+    total: Math.max(0, cart.subtotal - discount) + shipping,
+    couponCode,
+    couponError,
+  }
+}
 
 /** No cart / empty cart at checkout time. Route layer maps this to a 400. */
 export class EmptyCartError extends Error {
@@ -249,7 +394,7 @@ export async function placeOrder(brand: Brand,
       }
     })
 
-    const shipping = subtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
+    const shipping = shippingFor(subtotal, freeShipThreshold)
 
     // ── WHO IS BUYING ────────────────────────────────────────────────────────
     // A signed-in shopper's order belongs to HER session row, full stop. This
@@ -338,18 +483,18 @@ export async function placeOrder(brand: Brand,
     const couponCode = customer.couponCode?.trim().toUpperCase()
     if (couponCode) {
       const coupon = await tx.coupon.findUnique({ where: { code: couponCode } })
-      const unavailable =
-        !coupon ||
-        !coupon.active ||
-        (coupon.expiresAt !== null && coupon.expiresAt <= new Date()) ||
-        subtotal < coupon.minOrder ||
-        (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) ||
-        // A coupon minted by redeeming Bloom points belongs to the customer who
-        // paid for it. Without this, anyone who learned a BLOOM- code could
-        // spend someone else's single use. A null userId is a public campaign
-        // code and stays open to everyone.
-        (coupon.userId !== null && coupon.userId !== user.id)
-      if (unavailable || !coupon) throw new InvalidCouponError()
+      // The same predicate the quote endpoint shows the shopper — active, in
+      // date, over its minimum, uses remaining, and HERS (a coupon minted by
+      // redeeming Bloom points carries the id of whoever paid for it; without
+      // that check anyone who learned a BLOOM- code could spend someone else's
+      // single use, while a null userId is a public campaign code open to all).
+      //
+      // Evaluated here again rather than trusted from the quote, because the
+      // quote ran outside this transaction and the last remaining use may have
+      // gone to somebody else in between. The compare-and-set below is what
+      // actually settles that race; this only decides whether to attempt it.
+      const couponDiscount = couponDiscountFor(coupon, subtotal, user.id)
+      if (!coupon || couponDiscount === null) throw new InvalidCouponError()
 
       const claimed = await tx.coupon.updateMany({
         // Ownership is re-asserted in the claim itself so the check above cannot
@@ -364,11 +509,10 @@ export async function placeOrder(brand: Brand,
       })
       if (claimed.count !== 1) throw new InvalidCouponError()
       couponId = coupon.id
-      const couponDiscount = coupon.type === 'pct'
-        ? Math.round(subtotal * Math.min(100, coupon.value) / 100)
-        : coupon.value
+      // Capped at what is LEFT after any Thara credit, so two discounts on one
+      // basket can never take the subtotal below zero.
       const remainingSubtotal = Math.max(0, subtotal - discount)
-      discount += Math.min(remainingSubtotal, Math.max(0, couponDiscount))
+      discount += Math.min(remainingSubtotal, couponDiscount)
     }
     let total = Math.max(0, subtotal - discount + shipping)
 

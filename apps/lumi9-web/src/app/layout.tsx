@@ -4,6 +4,7 @@ import "./globals.css";
 import { loadCatalog } from "@/lib/catalog.server";
 import { CatalogProvider } from "@/lib/catalog-context";
 import { CartProvider } from "@/lib/cart";
+import { CartQuoteProvider } from "@/lib/quote";
 import {
   DEFAULT_OG_IMAGE,
   IS_CANONICAL_HOST,
@@ -128,7 +129,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(organizationSchema())} />
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(websiteSchema())} />
         <CatalogProvider catalog={catalog}>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            {/* Totals come from the server, once, for both the cart and checkout. */}
+            <CartQuoteProvider>{children}</CartQuoteProvider>
+          </CartProvider>
         </CatalogProvider>
       </body>
     </html>

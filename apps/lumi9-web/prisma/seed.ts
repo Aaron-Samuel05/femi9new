@@ -16,7 +16,7 @@
  * Idempotent: slugs and SKUs are stable, so a rerun updates in place.
  */
 import { dbFor } from '@femi9/db'
-import { SIZES, defaultPack, packImage, productName, type ProductSize } from '../src/lib/catalog'
+import { CADENCES, SIZES, defaultPack, packImage, productName, type ProductSize } from '../src/lib/catalog'
 import { PDP_ACCORDION } from '../src/lib/content'
 
 const BRAND = 'lumi9' as const
@@ -42,8 +42,34 @@ function ratedFor(size: ProductSize): string {
   return `${size.fits} · up to 12h dryness`
 }
 
+/**
+ * Subscription cadences — reference data, not demo content.
+ *
+ * The box builder posts a `code` to /api/subscriptions and `createSubscription`
+ * resolves it against these rows; without them EVERY subscribe attempt is a 400
+ * that nothing on the page can explain. Sourced from CADENCES in
+ * src/lib/catalog.ts so the picker and the database cannot drift apart — the
+ * same arrangement, and the same reason, as Femi9's seed.
+ *
+ * The codes are Lumi9's own. Femi9's are period-cycle shaped ('cycle', '4w',
+ * '6w'); a diaper refill is not, and the two brands' rows live in separate
+ * schemas so they need not agree.
+ */
+async function seedCadences(db: ReturnType<typeof dbFor>) {
+  for (const [position, cadence] of CADENCES.entries()) {
+    const row = { label: cadence.label, sub: cadence.sub, days: cadence.days, active: true, position }
+    await db.cadence.upsert({
+      where: { code: cadence.code },
+      create: { code: cadence.code, ...row },
+      update: row,
+    })
+  }
+  console.log(`Seeded subscription cadences (${CADENCES.length})`)
+}
+
 async function main() {
   const db = dbFor(BRAND)
+  await seedCadences(db)
 
   const description =
     PDP_ACCORDION.find((entry) => entry.q === 'Description')?.a ??

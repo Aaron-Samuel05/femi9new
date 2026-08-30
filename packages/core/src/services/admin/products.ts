@@ -1,6 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { dbFor, type Brand } from '@femi9/db'
+import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
 
 /**
  * Admin product service — the write-side counterpart to src/lib/services/products.ts
@@ -63,7 +64,17 @@ export const ProductInputSchema = z.object({
   longDescription: z.string().trim().optional().nullable(),
   tag: z.string().trim().optional().nullable(),
   status: z.enum(['active', 'draft', 'archived']).default('draft'),
-  images: z.array(z.string().trim().min(1)).default([]),
+  /**
+   * Only images this platform hosts — see @femi9/core/image-url. The form is an
+   * upload button now, but the form is UI; this is what a crafted POST meets.
+   * Without it the column would still accept `https://someone-else.example/x.png`
+   * (hotlinked, and leaking our shoppers' referrers to a third party) or a
+   * `data:`/`javascript:` URL that becomes stored XSS the moment a template puts
+   * it somewhere that executes.
+   */
+  images: z
+    .array(z.string().trim().min(1).refine(isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE))
+    .default([]),
   variants: z.array(VariantInput).default([]),
   /**
    * Key Benefits and the specs table. Both were previously READ into the editor

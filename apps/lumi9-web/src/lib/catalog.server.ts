@@ -1,5 +1,6 @@
 import 'server-only'
 import { getCatalog } from '@femi9/core/services/products'
+import { getSettings } from '@femi9/core/services/settings'
 import type { ProductSize, SizeCode } from './catalog'
 
 /**
@@ -42,14 +43,29 @@ function spec(specs: { key: string; value: string }[], key: string): string {
 }
 
 /**
+ * The catalogue PLUS the business config the storefront prices against.
+ *
+ * `subscribeSavePct` rides along because it is a number the shopper is quoted
+ * ("Subscribe & save 20%") and the number a renewal order is actually
+ * discounted by, and those were two different constants: the page said 20% from
+ * a hardcoded `SUBSCRIPTION_DISCOUNT`, while `generateDueOrders()` applies
+ * `Settings.subscribeSavePct`, which the console owns and which defaults to 15.
+ * One request, one query already, so there is no reason for the client to guess.
+ */
+export interface CatalogPayload {
+  sizes: DbProductSize[]
+  subscribeSavePct: number
+}
+
+/**
  * The catalogue, ordered as the seed wrote it — NB, S, M, L, XL — which is the
  * order a size run should read in. Products with no active pack variant are
  * dropped: a size with nothing purchasable is worse on the page than absent.
  */
-export async function loadCatalog(): Promise<DbProductSize[]> {
-  const rows = await getCatalog('lumi9')
+export async function loadCatalog(): Promise<CatalogPayload> {
+  const [rows, settings] = await Promise.all([getCatalog('lumi9'), getSettings('lumi9')])
 
-  return rows
+  const sizes = rows
     .map((row) => {
       const fits = spec(row.specs, 'Fits')
       const packs = row.variants
@@ -75,4 +91,6 @@ export async function loadCatalog(): Promise<DbProductSize[]> {
       }
     })
     .filter((entry) => entry.packs.length > 0)
+
+  return { sizes, subscribeSavePct: settings.subscribeSavePct }
 }

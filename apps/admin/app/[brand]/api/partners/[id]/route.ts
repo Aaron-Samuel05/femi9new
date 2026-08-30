@@ -24,7 +24,7 @@ const PatchSchema = z
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
   const { brand } = auth
 

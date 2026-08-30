@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest, handle, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { auditConsole } from '@/lib/audit'
 import { getEditableSettings, updateSettings } from '@femi9/core/services/admin/settings-admin'
 
 /**
@@ -32,15 +33,20 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bra
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)
     const parsed = SettingsPatchSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
-    return ok(await updateSettings(brand, parsed.data))
+    const updated = await updateSettings(brand, parsed.data)
+    // Every field here is business config a shopper is charged by — the free
+    // shipping threshold, the points rate, the welcome bonus. The changed keys
+    // go in the log; they are numbers and thresholds, not anybody's data.
+    await auditConsole(session, req, 'settings.update', undefined, parsed.data)
+    return ok(updated)
   })
 }

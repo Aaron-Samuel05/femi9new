@@ -1,6 +1,7 @@
 import 'server-only'
 import { z } from 'zod'
 import { dbFor, type Brand } from '@femi9/db'
+import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
 
 /**
  * Admin blog/content service — the write-side CMS for BlogPost rows. Mirrors the
@@ -31,7 +32,14 @@ export const BlogPostInputSchema = z.object({
   readTime: z.coerce.number().int().min(1, 'Read time must be ≥ 1').default(4),
   tone: z.string().trim().default(''),
   // Empty image => null so the column stays NULL rather than an empty string.
-  image: z.string().trim().optional().nullable(),
+  // A present one must be an image WE host — the editor's cover field is an
+  // upload button, and this is the half of that rule a crafted request meets.
+  image: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .refine((v) => !v || isManagedImageUrl(v), MANAGED_IMAGE_URL_MESSAGE),
   featured: z.boolean().default(false),
   status: z.enum(['pending', 'approved', 'hidden']).default('approved'),
   // Raw textarea text — one block per line; split into the String[] column below.

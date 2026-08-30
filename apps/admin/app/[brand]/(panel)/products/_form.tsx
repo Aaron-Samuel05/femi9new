@@ -150,9 +150,18 @@ export default function ProductForm({
   const [archiving, setArchiving] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
-  // File upload lives beside the manual URL rows. It POSTs the picked image to
-  // /<brand>/api/upload and appends the returned URL as a normal image row, so the
-  // uploaded file flows through the exact same save path as a hand-typed URL.
+  // Product images are UPLOADED, never typed. This used to sit beside a column
+  // of free-text "Image URL" boxes, which meant an editor had to get the bytes
+  // onto some host by other means first — and a typo shipped a product with a
+  // broken photo. The picked file goes to /<brand>/api/upload, which verifies
+  // the magic number (so a spoofed .svg/.html cannot be stored and served as
+  // active content from our own origin), caps the size at 5MB, and puts the
+  // object in the private S3 uploads bucket that CloudFront reads through
+  // Origin Access Control. We keep only the URL it returns.
+  //
+  // The API enforces the same rule (see isManagedImageUrl in
+  // @femi9/core/image-url): removing the box is the UI half, and a form is not
+  // an authorisation boundary.
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
@@ -169,11 +178,22 @@ export default function ProductForm({
     setVariants((rows) => rows.filter((r) => r._key !== key))
   }
 
-  function updateImage(key: string, url: string) {
-    setImages((rows) => rows.map((r) => (r._key === key ? { ...r, url } : r)))
-  }
-  function addImage() {
-    setImages((rows) => [...rows, { _key: nextKey(), url: '' }])
+  /**
+   * Reorder, which used to happen implicitly: the rows were free-text boxes, so
+   * changing the order meant retyping the URLs into different rows. With the
+   * boxes gone that is no longer possible, and position is not cosmetic — the
+   * first image is the storefront thumbnail.
+   */
+  function moveImage(key: string, delta: number) {
+    setImages((rows) => {
+      const from = rows.findIndex((r) => r._key === key)
+      const to = from + delta
+      if (from < 0 || to < 0 || to >= rows.length) return rows
+      const next = [...rows]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved!)
+      return next
+    })
   }
   function removeImage(key: string) {
     setImages((rows) => rows.filter((r) => r._key !== key))
@@ -440,7 +460,7 @@ export default function ProductForm({
         </section>
       </div>
 
-      {/* Images — ordered URL list */}
+      {/* Images — ordered, and every one of them uploaded here */}
       <section className="adm-card" style={{ marginTop: 16 }}>
         <div className="adm-card-head">
           <h2 className="adm-card-title">Images</h2>
@@ -452,9 +472,6 @@ export default function ProductForm({
               disabled={uploading}
             >
               {uploading ? 'Uploading…' : 'Upload image'}
-            </button>
-            <button type="button" className="adm-btn adm-btn--secondary adm-btn--sm" onClick={addImage}>
-              + Add image
             </button>
           </div>
           {/* Hidden native picker driven by the button above. */}
@@ -475,33 +492,65 @@ export default function ProductForm({
 
         {images.length === 0 ? (
           <p className="adm-help" style={{ margin: 0 }}>
-            No images yet. The first image is used as the thumbnail.
+            No images yet. Upload a PNG, JPEG or WebP (max 5MB) — the first image
+            is used as the thumbnail.
           </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {images.map((img, i) => (
               <div key={img._key} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span
-                  aria-hidden
+                {/* Plain <img>: the source is a runtime upload URL (S3 through
+                    CloudFront, /uploads on a dev box), not a build-time asset
+                    next/image could size. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={img.url}
+                  alt=""
                   style={{
                     width: 40,
                     height: 40,
                     flex: 'none',
+                    objectFit: 'cover',
                     borderRadius: 8,
                     border: '1px solid var(--line)',
-                    background: img.url
-                      ? `center / cover no-repeat url(${JSON.stringify(img.url)})`
-                      : 'var(--canvas)',
+                    background: 'var(--canvas)',
                   }}
                 />
-                <input
-                  className="adm-input"
-                  value={img.url}
-                  onChange={(e) => updateImage(img._key, e.target.value)}
-                  placeholder="/assets/img/prod-330-double.webp"
-                  aria-label={`Image URL ${i + 1}`}
-                  style={{ flex: 1 }}
-                />
+                {/* The URL is shown, never typed. It is whatever /<brand>/api/upload
+                    returned; the products API refuses anything else, so an
+                    editable box here would only ever produce a rejected save. */}
+                <code
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: 12,
+                    color: 'var(--ink-soft, #666)',
+                  }}
+                  title={img.url}
+                >
+                  {img.url}
+                </code>
+                <button
+                  type="button"
+                  className="adm-btn adm-btn--ghost adm-btn--sm"
+                  onClick={() => moveImage(img._key, -1)}
+                  disabled={i === 0}
+                  aria-label={`Move image ${i + 1} earlier`}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="adm-btn adm-btn--ghost adm-btn--sm"
+                  onClick={() => moveImage(img._key, 1)}
+                  disabled={i === images.length - 1}
+                  aria-label={`Move image ${i + 1} later`}
+                >
+                  ↓
+                </button>
                 <button
                   type="button"
                   className="adm-btn adm-btn--ghost adm-btn--sm"

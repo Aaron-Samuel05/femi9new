@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { auditConsole } from '@/lib/audit'
 import {
   CannotDeleteDefaultError,
   CannotUnsetDefaultError,
@@ -34,9 +35,9 @@ function mapZoneError(err: unknown) {
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)
@@ -44,7 +45,11 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     if (!parsed.success) return badRequest('Please fix the errors below', parsed.error.flatten())
 
     try {
-      return ok(await updateZone(brand, params.id, parsed.data))
+      const zone = await updateZone(brand, params.id, parsed.data)
+      // A zone decides what a shopper in a region is charged. Changing one
+      // re-prices the catalogue for everybody in it, with no other trace.
+      await auditConsole(session, req, 'pricing-zone.update', params.id, parsed.data)
+      return ok(zone)
     } catch (err) {
       const mapped = mapZoneError(err)
       if (mapped) return mapped
@@ -55,13 +60,15 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
-  const { brand } = auth
+  const { brand, session } = auth
 
   return handle(async () => {
     try {
-      return ok(await deleteZone(brand, params.id))
+      const deleted = await deleteZone(brand, params.id)
+      await auditConsole(session, _req, 'pricing-zone.delete', params.id)
+      return ok(deleted)
     } catch (err) {
       const mapped = mapZoneError(err)
       if (mapped) return mapped

@@ -35,6 +35,44 @@ export const SITE_URL = (
 /** True only on production. Staging and previews must not be indexed. */
 export const IS_CANONICAL_HOST = SITE_URL === CANONICAL_ORIGIN;
 
+/**
+ * Why a deployment is serving `noindex`, or null when it is not.
+ *
+ * The staging guard is correct and load-bearing, and it is also the quietest
+ * possible way to launch invisibly. `CANONICAL_ORIGIN` is a constant in this
+ * file; `SITE_URL` arrives from the environment. If the site ships on a
+ * hostname nobody remembered to write here — `shop.lumi9.in` and `lumi9.in`
+ * are both named elsewhere in this repo, and an un-aliased CloudFront
+ * distribution serves a `*.cloudfront.net` name — then every page carries
+ * `noindex` and robots.txt says `Disallow: /`, the site works perfectly for
+ * every human who visits it, and no crawler ever comes. Nothing fails, nothing
+ * logs, and the first signal is an empty Search Console weeks later.
+ *
+ * So the mismatch is surfaced: /api/health reports it as a warning (not a
+ * failure — a mis-set origin must never pull tasks out of the load balancer),
+ * and `assertCanonicalHostIntent` logs it once at boot.
+ */
+export function noindexReason(): string | null {
+  if (IS_CANONICAL_HOST) return null;
+  return `SITE_URL is ${SITE_URL || "(unset)"} but CANONICAL_ORIGIN is ${CANONICAL_ORIGIN} — every page is serving noindex and robots.txt is Disallow: /`;
+}
+
+/**
+ * Say so, loudly, once, when a production deployment is not indexable.
+ *
+ * Called from the health probe rather than at module scope: this module is
+ * imported by the build, which has no deploy configuration and would warn on
+ * every build for no reason.
+ */
+let warned = false;
+export function warnIfNotIndexable(): void {
+  if (warned || process.env.NODE_ENV !== "production") return;
+  const reason = noindexReason();
+  if (!reason) return;
+  warned = true;
+  console.warn(`[seo] NOT INDEXABLE: ${reason}`);
+}
+
 export const SITE_NAME = "Lumi9";
 export const BRAND_LEGAL_NAME = "Lumi9 by Femi9";
 

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(_req: Request, ctx: { params: Promise<{ brand: string; id: string }> }) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const auth = await requireConsoleApi((await ctx.params).brand)
+    const auth = await requireConsoleApi((await ctx.params).brand, 'manager')
     if (!auth.ok) return auth.response
     const { brand } = auth
 

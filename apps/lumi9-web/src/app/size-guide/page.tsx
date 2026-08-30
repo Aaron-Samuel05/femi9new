@@ -26,7 +26,7 @@ export const metadata: Metadata = {
 };
 
 export default async function SizeGuidePage() {
-  const sizes = await loadCatalog();
+  const { sizes } = await loadCatalog();
   return (
     <PageShell links={SUPPORT_LINKS} cta="shop">
       <header className="px-safe mx-auto max-w-[720px] pt-[clamp(44px,6vw,80px)] pb-10 text-center">

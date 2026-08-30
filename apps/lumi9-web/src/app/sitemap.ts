@@ -42,8 +42,8 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
 
 async function productPaths(): Promise<string[]> {
   try {
-    const catalog = await loadCatalog();
-    if (catalog.length > 0) return catalog.map((entry) => `/product/${entry.size.toLowerCase()}`);
+    const { sizes } = await loadCatalog();
+    if (sizes.length > 0) return sizes.map((entry) => `/product/${entry.size.toLowerCase()}`);
   } catch {
     // fall through to the seed list
   }

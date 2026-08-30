@@ -290,9 +290,17 @@ interface Network {
 
 /**
  * The viewer's address, preferring CloudFront's own `-Viewer-Address` over the
- * `X-Forwarded-For` chain. XFF is client-appendable; the first entry is only
- * trustworthy because our ALB sits behind CloudFront, and `-Viewer-Address` is
- * generated at the edge and cannot be spoofed at all.
+ * `X-Forwarded-For` chain. `-Viewer-Address` is generated at the edge and cannot
+ * be spoofed at all.
+ *
+ * The XFF fallback takes the LAST entry, not the first. CloudFront does not
+ * replace a viewer-supplied X-Forwarded-For — it APPENDS the viewer's address to
+ * it — so `1.2.3.4` sent by a client arrives as `1.2.3.4, <real ip>` and the
+ * FIRST entry is whatever that client chose. Entries are appended left to right,
+ * which makes the rightmost the one our nearest trusted proxy wrote. Here that
+ * only decides which pricing zone a shopper is offered; `clientIp()` in
+ * ../rate-limit.ts keys throttling on the same rule, where getting it wrong
+ * makes every per-IP limit unlimited.
  */
 function viewerIp(h: Headers): ParsedIp | null {
   const cloudfront = parseIp(h.get(H.address))
@@ -300,8 +308,8 @@ function viewerIp(h: Headers): ParsedIp | null {
 
   const forwarded = h.get(H.forwardedFor)
   if (forwarded) {
-    const first = forwarded.split(',')[0]
-    const parsed = parseIp(first)
+    const entries = forwarded.split(',')
+    const parsed = parseIp(entries[entries.length - 1])
     if (parsed) return parsed
   }
   return parseIp(h.get(H.realIp))

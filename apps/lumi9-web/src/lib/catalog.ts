@@ -108,10 +108,68 @@ export const WEIGHT_OPTIONS: { label: string; size: SizeCode }[] = [
 /** Preferred default pack tier when one exists for the size. */
 export const DEFAULT_PACK_COUNT = 24;
 
+/**
+ * Marketing copy only — "free delivery on orders over ₹999" appears in a
+ * handful of sentences and needs a number to interpolate.
+ *
+ * It is NOT what anybody is charged. `Settings.freeShipThreshold` is, the
+ * console can edit it, and `/api/checkout/quote` is where every rendered total
+ * comes from. Keep this in step with the seeded default when it changes; do not
+ * reintroduce a second calculation from it.
+ */
 export const FREE_SHIPPING_THRESHOLD = 999;
-export const STANDARD_SHIPPING_FEE = 49;
-export const EXPRESS_SHIPPING_FEE = 79;
-export const SUBSCRIPTION_DISCOUNT = 0.2;
+
+/*
+ * STANDARD_SHIPPING_FEE / EXPRESS_SHIPPING_FEE / standardShipping() used to
+ * live here and price the cart and checkout summaries.
+ *
+ * They were a duplicate of a rule the server owns — so a console change to the
+ * threshold moved what a shopper was CHARGED without moving what she was SHOWN
+ * — and the express tier was worse than duplicated: it existed nowhere but this
+ * file. Picking it added ₹79 to the on-screen total, was never sent to
+ * /api/checkout, never reached an Order row, and never changed how the parcel
+ * shipped. `shippingFor()` in @femi9/core/services/checkout is the one rule.
+ */
+
+/**
+ * Subscription cadences — reference data, not marketing copy.
+ *
+ * ONE list, read by the seed (which writes a `Cadence` row per entry) and by
+ * the box builder (which posts `code` to /api/subscriptions, where the service
+ * resolves it back against those rows). Femi9 does the same, for the same
+ * reason: a picker whose options are typed out separately from the rows they
+ * resolve against drifts, and every subscribe attempt becomes a 400 nobody can
+ * explain.
+ *
+ * Lumi9's codes are its own. Femi9's are period-cycle shaped ('cycle', '4w',
+ * '6w') because that is the product; a diaper refill is not, and the two
+ * brands' rows live in different schemas so the codes need not agree.
+ */
+export interface SubscriptionCadence {
+  /** `Cadence.code` — what the API is posted and what the row is keyed on. */
+  code: string;
+  label: string;
+  sub: string;
+  /** Days until the first delivery, and the interval between renewals. */
+  days: number;
+}
+
+export const CADENCES: SubscriptionCadence[] = [
+  { code: "2w", label: "Every 2 weeks", sub: "For newborns and heavy days", days: 14 },
+  { code: "4w", label: "Every 4 weeks", sub: "The steady four-week refill", days: 28 },
+  { code: "6w", label: "Every 6 weeks", sub: "For lighter use or bigger packs", days: 42 },
+];
+
+/*
+ * SUBSCRIPTION_DISCOUNT lived here as `0.2`, and the box builder priced its
+ * summary from it — "You save 20% every delivery".
+ *
+ * The renewal orders `generateDueOrders()` actually creates are discounted by
+ * `Settings.subscribeSavePct`, which the console owns and which defaults to 15.
+ * So the page promised 20% and the second delivery would have charged a 15%
+ * discount, with no code path connecting the two. The builder reads the real
+ * value from the server now; see `subscriptionPrice` below.
+ */
 
 export function getSize(code: string | undefined | null): ProductSize | undefined {
   if (!code) return undefined;
@@ -150,15 +208,16 @@ export function inr(amount: number) {
   return `₹${inrFormat.format(Math.round(amount))}`;
 }
 
-export function subscriptionPrice(price: number) {
-  return Math.round(price * (1 - SUBSCRIPTION_DISCOUNT));
+/**
+ * A subscription price at `savePct` off. The percentage is NOT a constant here:
+ * it comes from Settings, through /api/checkout/quote's sibling on the
+ * subscription page, so what is shown is what a renewal is charged.
+ */
+export function subscriptionPrice(price: number, savePct: number) {
+  return Math.round((price * (100 - savePct)) / 100);
 }
 
-/** Free over ₹999 (and for an empty basket), otherwise the flat standard fee. */
-export function standardShipping(subtotal: number) {
-  return subtotal >= FREE_SHIPPING_THRESHOLD || subtotal === 0 ? 0 : STANDARD_SHIPPING_FEE;
-}
-
+/** Render a server-computed delivery fee. Does not decide one. */
 export function shippingLabel(fee: number) {
   return fee === 0 ? "Free" : inr(fee);
 }

@@ -204,3 +204,22 @@ order.
 database is unreachable). That is what makes a bad rollout stall with the old
 tasks still serving. The console's is excluded from the guard in `proxy.ts`,
 because a load balancer has no session and never will.
+
+**The scheduled jobs live in `infra/terraform/cron.tf`.** EventBridge rule →
+API Destination → the app's own `/api/cron/*` route, authenticated by
+`CRON_SECRET` in an `x-cron-secret` header (`@femi9/core/cron-auth` compares it
+in constant time and treats Terraform's `TODO-` placeholder as unset). Four jobs
+for Femi9, two for Lumi9.
+
+Two things about it are worth knowing before you touch it. **Setting the real
+secret out of band does not reach the EventBridge connection** — the connection
+holds the value, not a reference, so `put-secret-value` must be followed by
+`terraform apply` or every scheduled call presents the placeholder and is
+refused. And **an unscheduled cron fails silently and expensively**: without
+`renew-subscriptions` a subscription ships one box and then nothing forever,
+while the customer's account page keeps showing a next-delivery date; without
+`reconcile` an order whose webhook was missed sits `pending` indefinitely,
+holding its stock, with the money already taken. Nothing on any dashboard looks
+wrong in either case. The health probes report a missing `CRON_SECRET` as a
+warning for that reason, and failed runs land in the `cron_dead_letter_queue`
+output — an empty queue is the healthy state.

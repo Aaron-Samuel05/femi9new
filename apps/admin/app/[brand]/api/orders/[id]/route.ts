@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { auditConsole } from '@/lib/audit'
 import {
   getOrder,
   updateOrderStatus,
@@ -44,9 +45,9 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ brand: s
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const auth = await requireConsoleApi((await props.params).brand)
+    const auth = await requireConsoleApi((await props.params).brand, 'manager')
     if (!auth.ok) return auth.response
-    const { brand } = auth
+    const { brand, session } = auth
 
     const raw = await req.json().catch(() => null)
     const parsed = PatchSchema.safeParse(raw)
@@ -56,6 +57,12 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
       try {
         const refunded = await refundOrder(brand, params.id)
         if (!refunded) return notFound('Order not found')
+        // The single most disputable action this console takes. Recorded after
+        // the gateway reversal succeeds, keyed on the order NUMBER rather than
+        // the row id so the log reads the same way the customer's email does.
+        await auditConsole(session, req, 'order.refund', refunded.orderNo, {
+          total: refunded.total,
+        })
         return ok(refunded)
       } catch (err) {
         if (err instanceof NotRefundableError) return badRequest(err.message)
@@ -65,6 +72,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
     const updated = await updateOrderStatus(brand, params.id, parsed.data.status)
     if (!updated) return notFound('Order not found')
+    await auditConsole(session, req, 'order.status', updated.orderNo, {
+      status: parsed.data.status,
+    })
     return ok(updated)
   })
 }
