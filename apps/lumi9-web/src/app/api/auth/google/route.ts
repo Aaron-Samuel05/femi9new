@@ -8,6 +8,7 @@ import {
 import { rateLimit, clientIp, tooManyRequests } from "@femi9/core/rate-limit";
 import { mockProvidersAllowed } from "@femi9/core/runtime-mode";
 import { safeNextPath } from "@/lib/safe-next";
+import { authMethodEnabled } from "@/lib/auth-methods";
 import {
   OAUTH_NEXT_COOKIE,
   OAUTH_STATE_COOKIE,
@@ -44,6 +45,22 @@ export async function GET(req: NextRequest) {
    * would send the shopper to an unroutable host instead of the login page.
    */
   const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim() || new URL(req.url).origin;
+
+  /*
+   * Switched off, or never configured.
+   *
+   * `authMethodEnabled` covers BOTH, and the first is the one that matters
+   * here: `googleConfigured()` is true whenever a client id and secret exist,
+   * which they do today — while `GOOGLE_REDIRECT_URI` still names Femi9's host,
+   * so the consent screen answers `redirect_uri_mismatch`. Detection cannot see
+   * that; `AUTH_GOOGLE_ENABLED=false` can.
+   *
+   * Hiding the button on /login is not enough on its own: this is a plain GET
+   * that anyone who kept the URL can reach.
+   */
+  if (!authMethodEnabled("google")) {
+    return NextResponse.redirect(new URL("/login?error=google-config", origin), 307);
+  }
 
   if (!googleConfigured() && !mockProvidersAllowed()) {
     return NextResponse.redirect(new URL("/login?error=google-config", origin), 307);

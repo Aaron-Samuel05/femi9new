@@ -4,6 +4,7 @@ import { requestMagicLink, InvalidEmailError, normalizeEmail } from "@femi9/core
 import { rateLimit, clientIp, tooManyRequests } from "@femi9/core/rate-limit";
 import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
 import { safeNextPath } from "@/lib/safe-next";
+import { authMethodEnabled } from "@/lib/auth-methods";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,6 +24,13 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {
+    // Presentation hides the button; this is what actually closes the door.
+    // A method switched off in the environment must not still be reachable by
+    // anyone who kept the URL or read the bundle.
+    if (!authMethodEnabled("email")) {
+      return serviceUnavailable("Email sign-in is not available right now.");
+    }
+
     const body = (await req.json().catch(() => ({}))) as { email?: unknown; next?: unknown };
     const email = typeof body.email === "string" ? body.email : "";
     // Validated here as well as on the way back in — this is about to be baked

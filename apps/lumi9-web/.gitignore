@@ -32,6 +32,11 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...except the CONTRACT. `.env.example` holds no values, only the variable
+# names and what breaks without each one, and it is the only record of them —
+# `.env` itself is never committed. femi9-web tracks its equivalent for the
+# same reason.
+!.env.example
 
 # vercel
 .vercel

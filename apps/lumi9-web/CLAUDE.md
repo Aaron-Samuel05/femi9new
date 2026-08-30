@@ -22,7 +22,7 @@ So right now:
 | Manageable in the console | ✅ `/lumi9/products` |
 | **Read by THIS app** | ✅ **live — a console price change shows without a rebuild** |
 | Cart | ✅ server-side, in `lumi9.Cart`, priced by the server, **opens in a drawer** |
-| Sign-in | ✅ **phone OTP (primary) · Google · emailed link** — no passwords on this platform |
+| Sign-in | ✅ **phone OTP (primary) · Google · emailed link** — no passwords; each method appears only where its provider is configured |
 | Onboarding | ✅ `/welcome` captures name + email + verified mobile |
 | Checkout + payment | ✅ real orders (`LM-00001`), Razorpay, brand-routed webhook · **sign-in required** |
 | Checkout prefill | ✅ signed-in shoppers get their saved name, contact and address |
@@ -114,6 +114,30 @@ returns the cart or null, and the caller toasts.
 means each response carries a different snapshot of the same cart and the one
 that lands LAST wins — not necessarily the one that saw every line. A three-line
 reorder could leave the basket showing one item while the server held three.
+
+**The login card offers only what the deployment can honour.**
+`src/lib/auth-methods.ts` probes each provider — `GOOGLE_CLIENT_ID`,
+`MSG91_AUTH_KEY` + `MSG91_TEMPLATE_ID`, `RESEND_API_KEY` — treating Terraform's
+`TODO-` values as unset, and `/login` renders only the methods that pass. In
+production today **all three fail that probe**: the placeholders are unreplaced,
+and Lumi9 is not given `MSG91_TEMPLATE_ID` at all (`ecs.tf` sets it for femi9
+only, because the original plan was "Lumi9 signs in by emailed link and sends no
+SMS"). Configure a provider and its method appears; no code change, no flag.
+
+`AUTH_GOOGLE_ENABLED` / `AUTH_PHONE_ENABLED` / `AUTH_EMAIL_ENABLED` override the
+probe, and ONLY the exact string `false` disables — a typo must not quietly
+remove a sign-in method from a live storefront. They exist for what detection
+cannot see: credentials that are present while the setup is still wrong, which
+is exactly Google's situation locally. In Terraform they are
+`var.lumi9_disabled_auth_methods`, which emits an entry per listed method and
+nothing at all when empty.
+
+**Turning off the last method is refused.** Checkout is gated behind sign-in
+here, so no working method means nobody can buy — a full outage produced by a
+config change, on a site that still looks healthy. When everything resolves to
+off, the emailed link is forced back on and `/api/health` warns
+`NO_AUTH_PROVIDER`. The probe belongs to a route handler as well as the page:
+hiding a button is presentation, and `/api/auth/google` is a plain GET.
 
 **⚠️ Checkout requires an account HERE and does not on Femi9.** This is the one
 place the two brands deliberately diverge, so do not "align" it without asking.
@@ -309,17 +333,26 @@ balancer and turn a degraded feature into an outage.
 
 ## Things that will bite
 
-**⚠️ Google sign-in needs its OWN `GOOGLE_REDIRECT_URI` here, and the URI must
-be registered on the OAuth client.** `@femi9/core/google-oauth` reads the three
-`GOOGLE_*` variables straight out of the environment, and `GOOGLE_REDIRECT_URI`
-is a single value that wins over everything else — Google compares it
-byte-for-byte with what is registered. Both apps sharing one OAuth client is
-fine; both inheriting one redirect URI is not. The local `.env` in this app
-currently carries Femi9's, pointing at a CloudFront distribution, so the mock
-path never fires (credentials ARE configured) and the live one dies at Google
-with `redirect_uri_mismatch`. Set it to `https://<this app's host>/api/auth/google/callback`
-and add that exact string to the client's authorised redirect URIs, or the
-button reaches Google and bounces.
+**⚠️ Google's redirect URI is wrong LOCALLY and right in PRODUCTION — do not
+"fix" the one by copying the other.** `callbackUrl()` in
+`@femi9/core/google-oauth` prefers `GOOGLE_REDIRECT_URI`, then
+`NEXT_PUBLIC_SITE_URL`, and Google compares the result byte-for-byte with a URI
+registered on the OAuth client.
+
+`infra/terraform/ecs.tf` sets `GOOGLE_REDIRECT_URI` for **femi9 only**, so this
+app's task falls through to its own `NEXT_PUBLIC_SITE_URL` and builds the
+correct callback by itself. Nothing needs adding there. What DOES need doing
+before the button works in production is registering
+`https://<this app's host>/api/auth/google/callback` on the OAuth client, and
+replacing the `TODO-` placeholders on `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+(both shared with Femi9 — one client, two redirect URIs, which is fine).
+
+The **local** `.env` is the broken one: it carries Femi9's literal
+`GOOGLE_REDIRECT_URI`, pointing at a CloudFront distribution. Because real
+credentials are present, `googleConfigured()` is true, the mock path never
+fires, and the live one dies at Google with `redirect_uri_mismatch`. Either
+point it at `http://localhost:3001/api/auth/google/callback` (and register that
+too) or set `AUTH_GOOGLE_ENABLED=false` and use the other methods.
 
 The handshake cookies are this app's own — `lumi9_oauth_state` /
 `lumi9_oauth_next` in `src/lib/oauth-cookies.ts`, not core's `femi9_oauth_*`.

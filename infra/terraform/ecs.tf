@@ -193,6 +193,15 @@ locals {
       { name = "CARE_INBOX_EMAIL_LUMI9", value = var.lumi9_care_inbox_email },
       { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
+      ],
+      # Sign-in kill switches, emitted ONLY for the methods actually listed —
+      # an unset variable means "follow the provider probe", so writing an empty
+      # value here would be a third state the app has to interpret. See
+      # var.lumi9_disabled_auth_methods for when this is the right tool and when
+      # configuring the provider is.
+      [
+        for m in var.lumi9_disabled_auth_methods :
+        { name = "AUTH_${upper(m)}_ENABLED", value = "false" }
     ])
 
     admin = concat(local.base_environment, [

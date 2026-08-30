@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import type { AuthMethods } from "@/lib/auth-methods";
 import { safeNextPath } from "@/lib/safe-next";
 
 /**
@@ -98,7 +99,7 @@ function str(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-export function AuthCard() {
+export function AuthCard({ methods }: { methods: AuthMethods }) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -107,7 +108,13 @@ export function AuthCard() {
   const redirectError = REDIRECT_ERRORS[searchParams.get("error") ?? ""] ?? null;
 
   const [mode, setMode] = useState<Mode>("login");
-  const [method, setMethod] = useState<Method>("phone");
+  /*
+   * Mobile is preferred when it is available, because a delivery address needs
+   * a number anyway — but only when the deployment can actually send an SMS.
+   * Defaulting to a method whose provider is off would open the card on a form
+   * that answers 503 the moment it is submitted.
+   */
+  const [method, setMethod] = useState<Method>(methods.phone ? "phone" : "email");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -312,50 +319,61 @@ export function AuthCard() {
         )}
 
         {/* GOOGLE — a real navigation, not a fetch: the OAuth handshake is a
-            top-level redirect and cannot be done from inside the page. */}
-        <a
-          href={googleHref}
-          className="mb-5 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-chip border-[1.5px] border-moss-tint bg-canvas px-3 text-[clamp(14px,1.3vw,15px)] font-semibold text-midnight transition-colors hover:border-moss-soft"
-        >
-          <GoogleMark />
-          Continue with Google
-        </a>
-
-        <div className="mb-5 flex items-center gap-3.5 text-[12px] tracking-[0.06em] text-muted uppercase">
-          <span className="h-px flex-1 bg-moss-tint" />
-          or continue with
-          <span className="h-px flex-1 bg-moss-tint" />
-        </div>
-
-        {/* METHOD */}
-        <div className="mb-5 flex gap-2" role="group" aria-label="Sign-in method">
-          {(
-            [
-              { key: "phone", label: "Mobile", icon: "phone" },
-              { key: "email", label: "Email", icon: "mail" },
-            ] as const
-          ).map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              aria-pressed={method === option.key}
-              onClick={() => {
-                setMethod(option.key);
-                setError(null);
-              }}
-              className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-chip border-[1.5px] text-[14px] font-semibold transition-colors ${
-                method === option.key
-                  ? "border-midnight bg-midnight text-butter"
-                  : "border-moss-tint text-midnight hover:border-moss-soft"
-              }`}
+            top-level redirect and cannot be done from inside the page.
+            Rendered only where the provider is set up AND switched on. */}
+        {methods.google && (
+          <>
+            <a
+              href={googleHref}
+              className="mb-5 flex min-h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-chip border-[1.5px] border-moss-tint bg-canvas px-3 text-[clamp(14px,1.3vw,15px)] font-semibold text-midnight transition-colors hover:border-moss-soft"
             >
-              <Icon name={option.icon} size={16} strokeWidth={1.7} />
-              {option.label}
-            </button>
-          ))}
-        </div>
+              <GoogleMark />
+              Continue with Google
+            </a>
 
-        {method === "phone" ? (
+            {/* The divider only reads as a divider when there is something on
+                both sides of it. With Google off it would sit at the very top
+                of the card announcing an alternative to nothing. */}
+            <div className="mb-5 flex items-center gap-3.5 text-[12px] tracking-[0.06em] text-muted uppercase">
+              <span className="h-px flex-1 bg-moss-tint" />
+              or continue with
+              <span className="h-px flex-1 bg-moss-tint" />
+            </div>
+          </>
+        )}
+
+        {/* METHOD — a choice, and therefore only shown when there IS one. A
+            single-option toggle is a control that cannot do anything. */}
+        {methods.phone && methods.email && (
+          <div className="mb-5 flex gap-2" role="group" aria-label="Sign-in method">
+            {(
+              [
+                { key: "phone", label: "Mobile", icon: "phone" },
+                { key: "email", label: "Email", icon: "mail" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.key}
+                type="button"
+                aria-pressed={method === option.key}
+                onClick={() => {
+                  setMethod(option.key);
+                  setError(null);
+                }}
+                className={`flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-chip border-[1.5px] text-[14px] font-semibold transition-colors ${
+                  method === option.key
+                    ? "border-midnight bg-midnight text-butter"
+                    : "border-moss-tint text-midnight hover:border-moss-soft"
+                }`}
+              >
+                <Icon name={option.icon} size={16} strokeWidth={1.7} />
+                {option.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {methods.phone && method === "phone" ? (
           phoneStep === "enter" ? (
             <form
               className="flex flex-col gap-3.5"

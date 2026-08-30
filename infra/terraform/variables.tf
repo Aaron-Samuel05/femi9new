@@ -509,3 +509,44 @@ variable "existing_uploads_bucket" {
     error_message = "Refusing a bucket whose name contains \"prod\". This stack rewrites the bucket policy of whatever it is given."
   }
 }
+
+variable "lumi9_disabled_auth_methods" {
+  description = <<-EOT
+    Sign-in methods to switch OFF on the Lumi9 storefront, e.g. ["google", "phone"].
+
+    Each entry emits AUTH_<METHOD>_ENABLED=false, which src/lib/auth-methods.ts
+    reads. Leave EMPTY in almost every case: the app already probes whether each
+    provider is configured (GOOGLE_CLIENT_ID, MSG91_AUTH_KEY + MSG91_TEMPLATE_ID,
+    RESEND_API_KEY) and hides what is not, treating a Terraform `TODO-` value as
+    unset. Configure a provider and its method turns itself on; this list is not
+    needed for that.
+
+    It exists for what detection CANNOT see — a provider whose credentials are
+    present and whose setup is still wrong. Google is the standing example: a
+    client id and secret make googleConfigured() true, while the flow only works
+    once this app's callback URL is registered on the OAuth client, which
+    nothing here can check.
+
+    Note that Lumi9 gets no MSG91_TEMPLATE_ID (see service_environment in
+    ecs.tf), so "phone" is already off in this stack by construction.
+
+    Turning off the LAST remaining method is refused by the app: the emailed link
+    is forced back on and /api/health warns NO_AUTH_PROVIDER, because checkout is
+    gated behind sign-in and a storefront nobody can sign into is one nobody can
+    buy from — while still looking perfectly healthy.
+  EOT
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = alltrue([
+      for m in var.lumi9_disabled_auth_methods : contains(["google", "phone", "email"], m)
+    ])
+    error_message = "Valid methods are: google, phone, email."
+  }
+
+  validation {
+    condition     = length(var.lumi9_disabled_auth_methods) < 3
+    error_message = "Refusing to disable every sign-in method: checkout is gated, so nobody could complete an order."
+  }
+}

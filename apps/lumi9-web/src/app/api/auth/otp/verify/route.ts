@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { ok, badRequest, handle } from "@femi9/core/api";
+import { ok, badRequest, handle , serviceUnavailable } from "@femi9/core/api";
 import {
   verifyOtp,
   InvalidOtpError,
@@ -11,6 +11,7 @@ import { createSession, sessionCookieName, SESSION_MAX_AGE } from "@femi9/core/a
 import { rateLimit, clientIp, tooManyRequests } from "@femi9/core/rate-limit";
 import { mergeGuestCartIntoUser } from "@femi9/core/services/cart";
 import { GUEST_COOKIE } from "@/lib/session";
+import { authMethodEnabled } from "@/lib/auth-methods";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,13 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {
+    // Presentation hides the button; this is what actually closes the door.
+    // A method switched off in the environment must not still be reachable by
+    // anyone who kept the URL or read the bundle.
+    if (!authMethodEnabled("phone")) {
+      return serviceUnavailable("Mobile sign-in is not available right now.");
+    }
+
     const body = (await req.json().catch(() => ({}))) as { phone?: unknown; code?: unknown };
     const phone = typeof body.phone === "string" ? body.phone : "";
     const code = typeof body.code === "string" ? body.code : "";

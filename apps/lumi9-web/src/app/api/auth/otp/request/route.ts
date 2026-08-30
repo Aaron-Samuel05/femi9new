@@ -3,6 +3,7 @@ import { ok, badRequest, handle, serviceUnavailable } from "@femi9/core/api";
 import { requestOtp, InvalidPhoneError, normalizePhone } from "@femi9/core/services/auth";
 import { rateLimit, clientIp, tooManyRequests } from "@femi9/core/rate-limit";
 import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
+import { authMethodEnabled } from "@/lib/auth-methods";
 
 // node:crypto (through the OTP seam) needs the Node runtime; cookies and the
 // database make it dynamic.
@@ -30,6 +31,13 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {
+    // Presentation hides the button; this is what actually closes the door.
+    // A method switched off in the environment must not still be reachable by
+    // anyone who kept the URL or read the bundle.
+    if (!authMethodEnabled("phone")) {
+      return serviceUnavailable("Mobile sign-in is not available right now.");
+    }
+
     const body = (await req.json().catch(() => ({}))) as { phone?: unknown };
     const phone = typeof body.phone === "string" ? body.phone : "";
 
