@@ -14,8 +14,19 @@ import { sessionCookieName, verifySession } from "@femi9/core/customer-session";
  * Still the FIRST gate, not the only one: /account re-reads the session
  * server-side, because a matcher is a routing rule and not an authorisation.
  */
+/**
+ * `/welcome` is guarded too, and it has to be: it is the onboarding step that
+ * writes a name, an email and a phone onto the SESSION's user. An anonymous
+ * request reaching it would render a form with nobody to save to.
+ *
+ * `/order/:path*` is NOT here on purpose. An order confirmation is reachable by
+ * a guest through the unguessable `?t=` capability token minted when the order
+ * was placed — a shopper who checked out without an account must still be able
+ * to open her own confirmation from the email. That page authorises itself, by
+ * the token OR by a session that owns the order.
+ */
 export const config = {
-  matcher: ["/account/:path*"],
+  matcher: ["/account/:path*", "/welcome"],
 };
 
 export async function proxy(req: NextRequest) {

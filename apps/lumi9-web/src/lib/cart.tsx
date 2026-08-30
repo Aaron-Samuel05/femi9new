@@ -10,6 +10,7 @@ import {
 } from "react";
 import { inr, packImage, type SizeCode } from "@/lib/catalog";
 import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
+import { useCartUI } from "@/lib/cart-ui";
 
 /**
  * The cart — now a real one, on the server.
@@ -169,59 +170,132 @@ export function resolveLine(catalog: CatalogData, line: CartLine): ResolvedLine 
 export function useCart() {
   const catalog = useCatalogData();
   const { cart, ready, setCart } = useCartState();
+  const { openCart, notify } = useCartUI();
 
-  /** Every mutation returns the WHOLE cart, so the server stays authoritative
-   *  and nothing here has to guess what a write did to the totals. */
+  /**
+   * Every mutation returns the WHOLE cart, so the server stays authoritative
+   * and nothing here has to guess what a write did to the totals.
+   *
+   * A failure used to be swallowed here in total silence. The line kept its old
+   * number, the badge kept its old count, and the shopper was left pressing a
+   * control that looked broken — indistinguishable, from the outside, from a
+   * write that worked. It now reports, and returns whether it succeeded so the
+   * caller can decide what else to say.
+   */
   const send = useCallback(
-    async (path: string, init: RequestInit) => {
+    async (path: string, init: RequestInit, failure: string): Promise<CartDTO | null> => {
       try {
         const res = await fetch(path, { ...init, cache: "no-store" });
-        if (!res.ok) return;
-        setCart((await res.json()) as CartDTO);
+        if (!res.ok) {
+          notify(failure, "error");
+          return null;
+        }
+        const next = (await res.json()) as CartDTO;
+        setCart(next);
+        return next;
       } catch {
         // Offline or a dropped request: leave the cart as it was rather than
-        // showing a basket that disagrees with the server.
+        // showing a basket that disagrees with the server, but say so.
+        notify(failure, "error");
+        return null;
       }
     },
-    [setCart],
+    [setCart, notify],
   );
 
+  /** POST one line. Shared by `add`, `addVariant` and `addMany`. */
+  const post = useCallback(
+    (variantId: string, qty: number) =>
+      send(
+        "/api/cart",
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ variantId, qty }),
+        },
+        "Sorry, we could not add that to your bag.",
+      ),
+    [send],
+  );
+
+  /**
+   * Add by size + pack.
+   *
+   * Returns whether the line actually reached the server. Every add used to
+   * return `void`, which is why the "+" control on a product card flipped to a
+   * tick the instant it was pressed: it had nothing to wait for and nothing to
+   * branch on, so it congratulated the shopper on a request that had not been
+   * made yet — and stayed a tick even when the toast beside it said the add had
+   * failed. A button can only tell the truth about a write if the write tells
+   * it what happened.
+   */
   const add = useCallback(
-    async (size: SizeCode, packCount: number, qty = 1) => {
+    async (size: SizeCode, packCount: number, qty = 1): Promise<boolean> => {
       const entry = catalog.getSize(size);
       const pack = entry?.packs.find((p) => p.count === packCount);
-      // No variant means the catalogue moved under us; adding nothing is the
-      // honest outcome.
-      if (!pack) return;
-      await send("/api/cart", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ variantId: pack.variantId, qty }),
-      });
+      // No variant means the catalogue moved under us. Adding nothing is the
+      // honest outcome, but saying nothing is not: the click has to land.
+      if (!pack) {
+        notify("That pack is no longer available.", "error");
+        return false;
+      }
+      // Open FIRST, so a slow cart request cannot make a successful click look
+      // unresponsive. The server response is still what fills the panel.
+      openCart();
+      const next = await post(pack.variantId, qty);
+      if (next) notify(`${entry?.name ?? "Item"} added to your bag`);
+      return next !== null;
     },
-    [catalog, send],
+    [catalog, post, openCart, notify],
   );
 
   /** Add an exact variant. "Buy again" knows the id the order was placed with,
    *  so it should not have to find it back through size and pack count. */
   const addVariant = useCallback(
-    async (variantId: string, qty = 1) => {
-      await send("/api/cart", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ variantId, qty }),
-      });
+    async (variantId: string, qty = 1): Promise<boolean> => {
+      openCart();
+      const next = await post(variantId, qty);
+      if (next) notify("Added to your bag");
+      return next !== null;
     },
-    [send],
+    [post, openCart, notify],
+  );
+
+  /**
+   * Put several lines in the bag as one action — "buy again" over a whole order.
+   *
+   * SEQUENTIAL on purpose. Firing one POST per line concurrently means each
+   * response carries a different snapshot of the same cart, and the one that
+   * lands last wins — which is not necessarily the one that saw every line. The
+   * basket then shows fewer items than the server holds until the next reload.
+   */
+  const addMany = useCallback(
+    async (lines: { variantId: string; qty: number }[]): Promise<boolean> => {
+      if (lines.length === 0) return false;
+      openCart();
+      let added = 0;
+      for (const line of lines) {
+        const next = await post(line.variantId, line.qty);
+        if (!next) return false; // `post` has already reported; stop rather than pile on.
+        added += 1;
+      }
+      notify(added === 1 ? "Added to your bag" : `${added} items added to your bag`);
+      return true;
+    },
+    [post, openCart, notify],
   );
 
   const setQty = useCallback(
     async (key: string, qty: number) => {
-      await send(`/api/cart/items/${key}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ qty }),
-      });
+      await send(
+        `/api/cart/items/${key}`,
+        {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ qty }),
+        },
+        "Sorry, we could not update that quantity.",
+      );
     },
     [send],
   );
@@ -240,7 +314,11 @@ export function useCart() {
 
   const remove = useCallback(
     async (key: string) => {
-      await send(`/api/cart/items/${key}`, { method: "DELETE" });
+      await send(
+        `/api/cart/items/${key}`,
+        { method: "DELETE" },
+        "Sorry, we could not remove that item.",
+      );
     },
     [send],
   );
@@ -274,6 +352,7 @@ export function useCart() {
     zone: cart.zone,
     add,
     addVariant,
+    addMany,
     increment,
     decrement,
     remove,

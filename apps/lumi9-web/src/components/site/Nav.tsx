@@ -5,15 +5,26 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
+import { useCartUI } from "@/lib/cart-ui";
+import { firstNameOf, useSession } from "@/lib/auth-context";
 import { Icon } from "@/components/ui/Icon";
 
 export type NavLink = { label: string; href: string };
 
+/*
+ * "Account" is deliberately NOT in these lists any more.
+ *
+ * It was a static label pointing at /account whether or not anybody was signed
+ * in, so a signed-out shopper who tapped it was bounced to /login by the guard
+ * with no explanation. The account control in the bar resolves the session and
+ * points at the right one of the two — a label that adapts cannot be a constant
+ * in an array.
+ */
 export const PRIMARY_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
   { label: "Technology", href: "/#tech" },
+  { label: "Subscribe", href: "/subscription" },
   { label: "Journal", href: "/journal" },
-  { label: "Account", href: "/account" },
 ];
 
 export const HOME_LINKS: NavLink[] = [
@@ -21,7 +32,6 @@ export const HOME_LINKS: NavLink[] = [
   { label: "Technology", href: "/#tech" },
   { label: "Find your size", href: "/#sizes" },
   { label: "Journal", href: "/journal" },
-  { label: "Account", href: "/account" },
 ];
 
 export const SUPPORT_LINKS: NavLink[] = [
@@ -84,17 +94,25 @@ function Logo() {
   );
 }
 
-function CartLink({ strong = false, compact = false }: { strong?: boolean; compact?: boolean }) {
+/**
+ * The bag control. A BUTTON that opens the drawer, not a link to /cart.
+ *
+ * /cart is still a real page — it owns the promo box and the roomier review
+ * layout, and the drawer links to it — but "open the bag" should not cost a
+ * navigation away from the product a shopper is looking at. That round trip is
+ * what made adding a second size feel like starting over.
+ *
+ * On the /cart page itself the control links instead: opening a slide-over copy
+ * of the page you are already reading is a dead end.
+ */
+function CartButton({ compact = false }: { compact?: boolean }) {
   const { count, ready } = useCart();
+  const { openCart } = useCartUI();
+  const pathname = usePathname();
+  const onCartPage = pathname === "/cart";
 
-  return (
-    <Link
-      href="/cart"
-      className={`flex shrink-0 items-center gap-[7px] text-[clamp(13px,1.1vw,14px)] coarse:min-h-11 ${
-        strong ? "font-bold text-moss-deep" : "font-semibold text-midnight hover:text-moss-deep"
-      }`}
-      aria-label={`Cart, ${ready ? count : 0} items`}
-    >
+  const inner = (
+    <>
       <Icon name="cart" size={compact ? 22 : 19} strokeWidth={1.6} />
       {/* Beside the burger the word is redundant — the icon and the count badge
           carry it, and the row has to stay one line at 320px. */}
@@ -102,7 +120,99 @@ function CartLink({ strong = false, compact = false }: { strong?: boolean; compa
       <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-xs font-bold text-midnight">
         {ready ? count : 0}
       </span>
+    </>
+  );
+
+  const shell = `flex shrink-0 cursor-pointer items-center gap-[7px] text-[clamp(13px,1.1vw,14px)] coarse:min-h-11 ${
+    onCartPage ? "font-bold text-moss-deep" : "font-semibold text-midnight hover:text-moss-deep"
+  }`;
+  const label = `${onCartPage ? "Your bag" : "Open bag"}, ${ready ? count : 0} items`;
+
+  return onCartPage ? (
+    <Link href="/cart" className={shell} aria-label={label}>
+      {inner}
     </Link>
+  ) : (
+    <button type="button" onClick={openCart} className={shell} aria-label={label}>
+      {inner}
+    </button>
+  );
+}
+
+/**
+ * The account entry point — the thing the site had no way to reach.
+ *
+ * /login and /account both existed and neither was linked from the bar: the
+ * only route to either was typing the URL, or being bounced to /login by the
+ * guard. The destination follows the session, exactly as Femi9's does, and an
+ * unresolved or failed /api/auth/me leaves it pointing at /login — the harmless
+ * wrong answer.
+ */
+function AccountLink({ compact = false }: { compact?: boolean }) {
+  const { user, ready } = useSession();
+  const pathname = usePathname();
+  const signedIn = ready && user !== null;
+  const href = signedIn ? "/account" : "/login";
+  const name = firstNameOf(user);
+  const active = pathname === href;
+
+  return (
+    <Link
+      href={href}
+      className={`flex shrink-0 items-center gap-[7px] text-[clamp(13px,1.1vw,14px)] coarse:min-h-11 ${
+        active ? "font-bold text-moss-deep" : "font-semibold text-midnight hover:text-moss-deep"
+      }`}
+      aria-label={signedIn ? (name ? `My account, signed in as ${name}` : "My account") : "Sign in"}
+    >
+      <Icon name="user" size={compact ? 22 : 19} strokeWidth={1.6} />
+      <span className={compact ? "sr-only" : "max-lg:sr-only"}>
+        {signedIn ? (name ?? "Account") : "Sign in"}
+      </span>
+    </Link>
+  );
+}
+
+/** The signed-in / signed-out rows at the foot of the mobile sheet. */
+function AccountSheetLinks({ onNavigate }: { onNavigate: () => void }) {
+  const { user, ready, signOut } = useSession();
+  const [busy, setBusy] = useState(false);
+  const name = firstNameOf(user);
+
+  const row =
+    "flex min-h-12 items-center gap-3 border-b border-moss-tint/60 text-[16px] font-medium text-midnight";
+
+  // Hold still until the session resolves: flashing "Sign in" at somebody who
+  // is signed in, then swapping it for their name, reads as a logout.
+  if (!ready) return <span className={`${row} text-muted`} aria-hidden />;
+
+  if (!user) {
+    return (
+      <Link href="/login" onClick={onNavigate} className={row}>
+        <Icon name="user" size={19} strokeWidth={1.7} />
+        Sign in
+      </Link>
+    );
+  }
+
+  return (
+    <>
+      <Link href="/account" onClick={onNavigate} className={row}>
+        <Icon name="user" size={19} strokeWidth={1.7} />
+        {name ? `Hi, ${name}` : "My account"}
+      </Link>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => {
+          setBusy(true);
+          void signOut();
+        }}
+        className={`${row} cursor-pointer text-left text-muted disabled:opacity-60`}
+      >
+        <Icon name="logout" size={19} strokeWidth={1.7} />
+        {busy ? "Signing out…" : "Sign out"}
+      </button>
+    </>
   );
 }
 
@@ -233,13 +343,23 @@ export function Nav({
             journal, help, about, login — left a shopper with items in the
             basket no way to reach it without going back to the home page. */}
         {cta !== "none" && (
-          <span className="md:hidden">
-            <CartLink strong={pathname === "/cart"} compact />
+          <span className="flex items-center gap-1 md:hidden">
+            <AccountLink compact />
+            <CartButton compact />
+          </span>
+        )}
+        {/* The account control is on EVERY desktop variant, not gated behind
+            `cta`. `cta` decides whether the bar sells; reaching your own orders
+            is not a merchandising decision, and gating it is how /account ended
+            up unreachable from most of the site. */}
+        {cta !== "none" && (
+          <span className="max-md:hidden">
+            <AccountLink />
           </span>
         )}
         {(cta === "cart" || cta === "both") && (
           <span className="max-md:hidden">
-            <CartLink strong={pathname === "/cart"} />
+            <CartButton />
           </span>
         )}
         {(cta === "shop" || cta === "both") && (
@@ -288,6 +408,10 @@ export function Nav({
               </Link>
             );
           })}
+          {/* The session block. Signing out had no control anywhere in the
+              storefront — /api/auth/logout existed with exactly one caller, on
+              a page you had to already be signed in to reach. */}
+          <AccountSheetLinks onNavigate={() => setOpen(false)} />
           <Link href="/shop" onClick={() => setOpen(false)} className="btn btn-dark my-3 w-full">
             Shop baby diapers →
           </Link>

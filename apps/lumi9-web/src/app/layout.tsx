@@ -4,7 +4,11 @@ import "./globals.css";
 import { loadCatalog } from "@/lib/catalog.server";
 import { CatalogProvider } from "@/lib/catalog-context";
 import { CartProvider } from "@/lib/cart";
+import { CartUIProvider } from "@/lib/cart-ui";
 import { CartQuoteProvider } from "@/lib/quote";
+import { SessionProvider } from "@/lib/auth-context";
+import { CartDrawer } from "@/components/cart/CartDrawer";
+import { Toast } from "@/components/ui/Toast";
 import {
   DEFAULT_OG_IMAGE,
   IS_CANONICAL_HOST,
@@ -179,12 +183,29 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             rather than restating the publisher on each page. */}
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(organizationSchema())} />
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(websiteSchema())} />
-        <CatalogProvider catalog={catalog}>
-          <CartProvider>
-            {/* Totals come from the server, once, for both the cart and checkout. */}
-            <CartQuoteProvider>{children}</CartQuoteProvider>
-          </CartProvider>
-        </CatalogProvider>
+        {/* Provider order is load-bearing.
+            · SessionProvider is outermost and independent — one /api/auth/me for
+              the whole tree, so the nav, the account entry and checkout cannot
+              disagree about who is signed in.
+            · CartUIProvider sits ABOVE CartProvider because the cart calls the
+              chrome ("open me", "say this") and never the other way round.
+            · The drawer and the toast are siblings of `children`, INSIDE
+              CartQuoteProvider: the drawer shows the server's total and the
+              free-shipping threshold, so it needs the quote. */}
+        <SessionProvider>
+          <CatalogProvider catalog={catalog}>
+            <CartUIProvider>
+              <CartProvider>
+                {/* Totals come from the server, once, for both the cart and checkout. */}
+                <CartQuoteProvider>
+                  {children}
+                  <CartDrawer />
+                  <Toast />
+                </CartQuoteProvider>
+              </CartProvider>
+            </CartUIProvider>
+          </CatalogProvider>
+        </SessionProvider>
       </body>
     </html>
   );

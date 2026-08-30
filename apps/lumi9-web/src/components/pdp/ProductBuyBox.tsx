@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { Accordion } from "@/components/ui/Accordion";
+import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
@@ -158,13 +159,12 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
         {/* QTY + ADD */}
         <div className="mb-4 flex flex-wrap items-stretch gap-[clamp(10px,1.4vw,14px)]">
           <QtyStepper qty={qty} onChange={setQty} />
-          <button
-            type="button"
-            onClick={() => add(size.size, pack.count, qty)}
+          <AddToCartButton
+            onAdd={() => add(size.size, pack.count, qty)}
             className="btn btn-dark min-w-[60%] flex-1 font-bold"
           >
             Add to cart — {inr(pack.price * qty)}
-          </button>
+          </AddToCartButton>
         </div>
         <Link
           href="/subscription"

@@ -35,7 +35,7 @@ export default async function ConfirmationPage({
       <MinimalNav />
       <main>
         {order ? (
-          <ConfirmationView order={order} />
+          <ConfirmationView order={order} token={t} />
         ) : (
           <section className="px-safe mx-auto max-w-[760px] py-section text-center">
             <h1 className="m-0 mb-3 font-display text-[clamp(27px,7vw,54px)] font-normal">

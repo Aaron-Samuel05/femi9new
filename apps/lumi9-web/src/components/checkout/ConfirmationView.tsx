@@ -24,7 +24,15 @@ const TIMELINE = [
   { dot: "#c7cdb4", title: "Out for delivery", body: "We’ll text you tracking as soon as it moves." },
 ];
 
-export async function ConfirmationView({ order }: { order: OrderConfirmation }) {
+export async function ConfirmationView({
+  order,
+  /** The capability token this page was opened with, so "Track my order" works
+   *  for a GUEST as well as for a signed-in shopper. */
+  token,
+}: {
+  order: OrderConfirmation;
+  token?: string;
+}) {
   // variantId → pack photo, built once for the whole line list.
   const { sizes } = await loadCatalog();
   const photos = new Map(
@@ -142,7 +150,14 @@ export async function ConfirmationView({ order }: { order: OrderConfirmation }) 
       </div>
 
       <div className="flex flex-wrap justify-center gap-3.5">
-        <Link href="/account" className="btn btn-dark font-bold">
+        {/* Points at the ORDER, carrying the same capability token, rather than
+            at /account. A guest has no session, so "Track my order" used to
+            bounce her through the guard to a sign-in form for an account she
+            does not have — one click after paying. */}
+        <Link
+          href={`/order/${order.orderNo}${token ? `?t=${encodeURIComponent(token)}` : ""}`}
+          className="btn btn-dark font-bold"
+        >
           Track my order
         </Link>
         <Link href="/shop" className="btn btn-ghost">

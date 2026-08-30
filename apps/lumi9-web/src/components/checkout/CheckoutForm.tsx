@@ -24,14 +24,52 @@ function Fieldset({ step, title, children }: { step: number; title: string; chil
   );
 }
 
-export function CheckoutForm() {
+/**
+ * What the server already knows about a signed-in shopper. Every field is
+ * optional: a guest gets an empty form, and so does a signed-in shopper whose
+ * account has nothing saved yet.
+ */
+export interface CheckoutPrefill {
+  name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  line?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
+}
+
+/**
+ * Split a stored full name into the two boxes this form asks for.
+ *
+ * The LAST word is the surname and everything before it is the first name —
+ * not the reverse. "Priya Ramachandran Iyer" is a person with a two-word given
+ * name far more often than a two-word surname, and either way she can correct
+ * it; the point is that she is correcting a field rather than filling an empty
+ * one. A single-word name leaves the surname blank rather than duplicating it.
+ */
+function splitName(full: string | null | undefined): { first: string; last: string } {
+  const parts = (full ?? "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { first: "", last: "" };
+  if (parts.length === 1) return { first: parts[0]!, last: "" };
+  return { first: parts.slice(0, -1).join(" "), last: parts[parts.length - 1]! };
+}
+
+export function CheckoutForm({
+  prefill,
+  signedIn = false,
+}: {
+  prefill?: CheckoutPrefill;
+  signedIn?: boolean;
+}) {
   const router = useRouter();
   const { lines, subtotal, ready } = useCart();
   // The same quote the cart showed, from the same provider — including any
   // coupon the shopper applied there. Nothing on this screen computes a total.
   const { quote } = useQuote();
-  const [firstName, setFirstName] = useState("");
-  const [city, setCity] = useState("");
+  const prefilled = splitName(prefill?.name);
+  const [firstName, setFirstName] = useState(prefilled.first);
+  const [city, setCity] = useState(prefill?.city ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -160,11 +198,34 @@ export function CheckoutForm() {
       <div>
         <h1 className="m-0 mb-8.5 font-display text-[clamp(26px,7vw,42px)] md:text-[clamp(28px,3.4vw,42px)] font-normal">Checkout</h1>
 
+        {/* A guest gets one line offering the shortcut, and `next` brings her
+            straight back here with the form already filled. It is a link, not a
+            wall: making an account has never been required to buy, and adding
+            that requirement at the payment step is how a basket is abandoned. */}
+        {!signedIn && (
+          <p className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-chip bg-moss-tint px-4 py-3 text-[14px] text-midnight">
+            Already have an account?
+            <Link href="/login?next=%2Fcheckout" className="font-bold underline underline-offset-2">
+              Sign in
+            </Link>
+            <span className="text-muted">— we will fill this in for you.</span>
+          </p>
+        )}
+
         <Fieldset step={1} title="Contact">
           <label htmlFor="email" className="sr-only">
             Email address
           </label>
-          <input id="email" name="email" type="email" required placeholder="Email address" className="field" autoComplete="email" />
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            placeholder="Email address"
+            className="field"
+            autoComplete="email"
+            defaultValue={prefill?.email ?? ""}
+          />
         </Fieldset>
 
         <Fieldset step={2} title="Shipping address">
@@ -178,13 +239,22 @@ export function CheckoutForm() {
               onChange={(event) => setFirstName(event.target.value)}
               className="field"
             />
-            <input name="lastName" aria-label="Last name" placeholder="Last name" required autoComplete="family-name" className="field" />
+            <input
+              name="lastName"
+              aria-label="Last name"
+              placeholder="Last name"
+              required
+              autoComplete="family-name"
+              className="field"
+              defaultValue={prefilled.last}
+            />
             <input
               name="line" aria-label="Address"
               placeholder="Address"
               required
               autoComplete="address-line1"
               className="field min-[420px]:col-span-2"
+              defaultValue={prefill?.line ?? ""}
             />
             <input
               name="line2" aria-label="Apartment, suite (optional)"
@@ -201,7 +271,15 @@ export function CheckoutForm() {
               onChange={(event) => setCity(event.target.value)}
               className="field"
             />
-            <input name="state" aria-label="State" placeholder="State" required autoComplete="address-level1" className="field" />
+            <input
+              name="state"
+              aria-label="State"
+              placeholder="State"
+              required
+              autoComplete="address-level1"
+              className="field"
+              defaultValue={prefill?.state ?? ""}
+            />
             <input
               name="pincode" aria-label="PIN code"
               placeholder="PIN code"
@@ -209,8 +287,18 @@ export function CheckoutForm() {
               inputMode="numeric"
               autoComplete="postal-code"
               className="field"
+              defaultValue={prefill?.pincode ?? ""}
             />
-            <input name="phone" aria-label="Phone" placeholder="Phone" required inputMode="tel" autoComplete="tel" className="field" />
+            <input
+              name="phone"
+              aria-label="Phone"
+              placeholder="Phone"
+              required
+              inputMode="tel"
+              autoComplete="tel"
+              className="field"
+              defaultValue={prefill?.phone ?? ""}
+            />
           </div>
         </Fieldset>
 

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { verifyMagicLink } from "@femi9/core/services/auth";
+import { missingProfileFields } from "@femi9/core/services/account";
 import { createSession, sessionCookieName, SESSION_MAX_AGE } from "@femi9/core/auth";
 import { clientIp } from "@femi9/core/rate-limit";
 import { mergeGuestCartIntoUser } from "@femi9/core/services/cart";
@@ -44,7 +45,20 @@ export async function GET(req: NextRequest) {
       name: user.name ?? undefined,
     });
 
-    const res = NextResponse.redirect(new URL(next, base));
+    /*
+     * A magic-link signup captures an email and NOTHING else — no name, no
+     * number. Sending her straight to /account rendered a page greeting "Hi,
+     * there" with no way to deliver anything to her, and checkout then had to
+     * ask for all of it again as if she were a guest. Route through /welcome
+     * while the profile is incomplete, carrying the original destination so the
+     * detour ends where she was going.
+     */
+    const incomplete = missingProfileFields(user).length > 0;
+    const target = incomplete
+      ? `/welcome${next !== "/account" ? `?next=${encodeURIComponent(next)}` : ""}`
+      : next;
+
+    const res = NextResponse.redirect(new URL(target, base));
     res.cookies.set(sessionCookieName("lumi9"), jwt, {
       httpOnly: true,
       sameSite: "lax",

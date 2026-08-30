@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
+import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { Em, SectionHeading } from "@/components/ui/bits";
 import { useCart } from "@/lib/cart";
 import { defaultPack, type SizeCode } from "@/lib/catalog";
@@ -67,13 +68,12 @@ export function SizeFinder() {
           </div>
           {recommended ? (
             <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={() => add(recommended.size, defaultPack(recommended).count)}
+              <AddToCartButton
+                onAdd={() => add(recommended.size, defaultPack(recommended).count)}
                 className="btn btn-dark w-full"
               >
                 Add {recommended.size} to cart
-              </button>
+              </AddToCartButton>
               <Link
                 href={`/product/${recommended.size.toLowerCase()}`}
                 className="inline-flex items-center coarse:min-h-11 justify-center text-sm font-semibold text-moss-deep hover:text-midnight"

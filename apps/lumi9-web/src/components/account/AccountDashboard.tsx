@@ -5,21 +5,26 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
+import { useSession } from "@/lib/auth-context";
 import { inr } from "@/lib/catalog";
 import type {
+  AccountUser,
   AccountOrder,
   AccountAddress,
   AccountSubscription,
 } from "@femi9/core/services/account";
+import { AddressBook } from "@/components/account/AddressBook";
+import { ProfilePanel } from "@/components/account/ProfilePanel";
 
 const TABS: { key: Tab; label: string; icon: IconName }[] = [
   { key: "overview", label: "Overview", icon: "grid" },
   { key: "orders", label: "Orders", icon: "list" },
   { key: "subscription", label: "Subscription", icon: "grow" },
   { key: "addresses", label: "Addresses", icon: "pin" },
+  { key: "profile", label: "Profile", icon: "user" },
 ];
 
-type Tab = "overview" | "orders" | "subscription" | "addresses";
+type Tab = "overview" | "orders" | "subscription" | "addresses" | "profile";
 
 /**
  * Shown wherever a panel has nothing to list.
@@ -41,17 +46,26 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
   const initial = title.replace(/^Cloud Soft — /, "").charAt(0).toUpperCase();
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-moss-tint py-4">
-      <div className="flex items-center gap-4">
+      {/* `order.href` has been on the DTO all along and nothing rendered it, so
+          an order number on this page was a dead label — there was no way to see
+          what was in an order, what it cost to ship, or where it went. */}
+      <Link
+        href={order.href}
+        className="group flex items-center gap-4 no-underline"
+        aria-label={`Order ${order.id}, ${order.status}`}
+      >
         <div className="flex size-11 shrink-0 items-center justify-center rounded-chip bg-moss-tint font-display font-bold text-moss-deep">
           {initial}
         </div>
         <div>
-          <div className="text-[clamp(14px,1.3vw,15px)] font-bold">{title}</div>
+          <div className="text-[clamp(14px,1.3vw,15px)] font-bold text-midnight group-hover:text-moss-deep">
+            {title}
+          </div>
           <div className="text-[13px] text-muted">
             {order.id} · {order.date}
           </div>
         </div>
-      </div>
+      </Link>
       <div className="flex flex-wrap items-center gap-[clamp(10px,1.4vw,18px)]">
         <span className="rounded-pill bg-moss-tint px-3 py-1.25 text-xs font-semibold text-moss-deep">
           {order.status}
@@ -146,13 +160,16 @@ function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
   );
 }
 
-/** Sidebar tabs (overview / orders / subscription / addresses) switching the panel. */
+/** Sidebar tabs switching the panel: overview / orders / subscription /
+ *  addresses / profile. */
 export function AccountDashboard({
+  user,
   orders,
   addresses,
   subscriptions,
   pointsBalance,
 }: {
+  user: AccountUser;
   orders: AccountOrder[];
   addresses: AccountAddress[];
   subscriptions: AccountSubscription[];
@@ -165,7 +182,9 @@ export function AccountDashboard({
   const [tab, setTab] = useState<Tab>(
     TABS.some((t) => t.key === requested) ? (requested as Tab) : "overview",
   );
-  const { addVariant } = useCart();
+  const { addMany } = useCart();
+  const { signOut } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
 
   /**
    * The customer's own figures.
@@ -190,31 +209,23 @@ export function AccountDashboard({
   const plan = subscriptions[0] ?? null;
   const upcoming = subscriptions.find((s) => s.status === "active") ?? null;
 
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    /*
-     * A hard navigation, deliberately.
-     *
-     * The session cookie has just been cleared underneath a router cache that
-     * still holds the signed-in render of this page. Both router.push("/") and
-     * refresh()-then-push were tried here and neither left /account: the
-     * customer stayed looking at their own orders after signing out. Reloading
-     * throws the cache away, which is the whole point of signing out.
-     */
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign("/");
-  }
-
   /**
    * Put the exact lines back in the bag.
    *
-   * The order carries the variant ids it was placed with, so this no longer has
+   * The order carries the variant ids it was placed with, so this does not have
    * to parse "54 pcs" out of a title and hope the catalogue still has that pack
    * — and a size discontinued since is simply not re-added rather than silently
    * becoming a different one.
+   *
+   * It used to fire one POST per line in a bare `for` loop, unawaited. Each
+   * request returns the WHOLE cart, so the response that landed last won — and
+   * that was not necessarily the one that had seen every line. A three-line
+   * reorder could leave the basket showing one item while the server held
+   * three, with nothing on screen to say so. `addMany` sends them in order and
+   * opens the drawer, so the result is both correct and visible.
    */
   function reorder(order: AccountOrder) {
-    for (const item of order.items) void addVariant(item.variantId, item.qty);
+    void addMany(order.items.map((item) => ({ variantId: item.variantId, qty: item.qty })));
   }
 
   return (
@@ -242,11 +253,15 @@ export function AccountDashboard({
             sign-out and wasn't one. */}
         <button
           type="button"
-          onClick={signOut}
-          className="flex cursor-pointer items-center gap-3 rounded-chip px-4 py-3.5 text-left text-[clamp(14px,1.3vw,15px)] font-semibold text-muted hover:text-midnight"
+          disabled={signingOut}
+          onClick={() => {
+            setSigningOut(true);
+            void signOut();
+          }}
+          className="flex cursor-pointer items-center gap-3 rounded-chip px-4 py-3.5 text-left text-[clamp(14px,1.3vw,15px)] font-semibold text-muted hover:text-midnight disabled:opacity-60"
         >
           <Icon name="logout" size={19} strokeWidth={1.7} />
-          Sign out
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </aside>
 
@@ -396,39 +411,13 @@ export function AccountDashboard({
           </div>
         )}
 
-        {tab === "addresses" && (
-          <div className="panel p-card">
-            <div className="mb-5.5 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="m-0 font-display text-[clamp(21px,2.6vw,26px)] font-normal">Saved addresses</h2>
-            </div>
-            <div className="grid grid-cols-1 gap-[clamp(12px,1.6vw,18px)] md:grid-cols-2">
-              {addresses.length === 0 && (
-                <Empty>
-                  No saved addresses yet — the address you enter at checkout is saved here.
-                </Empty>
-              )}
-              {addresses.map((address) => (
-                <div key={address.id} className="rounded-chip border-[1.5px] border-moss-tint p-[clamp(16px,2vw,24px)]">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-[15px] font-bold">{address.label}</span>
-                    {address.primary && (
-                      <span className="rounded-pill bg-moss-tint px-2.5 py-1 text-[12px] font-semibold text-moss-deep">
-                        Default
-                      </span>
-                    )}
-                  </div>
-                  <p className="m-0 text-sm leading-[1.6] text-muted">
-                    {address.name}
-                    <br />
-                    {address.line}
-                    <br />
-                    {address.city}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Both panels write. The address book used to be a read-only list and
+            the profile did not exist at all, which meant the only way to fix a
+            wrong pincode or add a missing phone number was to place another
+            order. */}
+        {tab === "addresses" && <AddressBook addresses={addresses} />}
+
+        {tab === "profile" && <ProfilePanel user={user} />}
       </div>
     </section>
   );

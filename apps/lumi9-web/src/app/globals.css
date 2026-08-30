@@ -358,6 +358,132 @@
       transition: none;
     }
   }
+
+  /* ─────────────────────────── Add to cart ────────────────────────────────
+     The confirmation on every add-to-cart control.
+
+     What this replaced: `{added ? "✓" : "+"}`. An instant glyph swap, with no
+     transition to soften it and two characters of different width and optical
+     weight, so the button visibly jerked — and because it fired in the click
+     handler it also lied, showing a tick for a request still in flight and
+     keeping it even when the write had failed.
+
+     Three ideas, and the first is what makes the rest safe:
+
+       1. The states are STACKED IN ONE GRID CELL. Every layer sits at
+          `grid-area: 1/1`, so the button is always as wide as its widest state
+          and swapping between them can never reflow the row it lives in. On a
+          product card that row is a price and a title; a button that grows by
+          12px when pressed shifts them both.
+
+       2. The tick DRAWS. `stroke-dasharray` and `stroke-dashoffset` on a single
+          path, animated to 0 — the line travels the way a tick is written. That
+          is what reads as confirmation rather than as a character appearing;
+          a faded-in tick is still a swap, just a slower one.
+
+       3. The button gives ONE small pop. 1 -> 1.04 -> 1, no overshoot below 1
+          and no bounce, so it acknowledges the press without turning a purchase
+          into a toy.
+
+     Under `prefers-reduced-motion` the layers cross-fade and nothing moves,
+     draws or scales. The tick still appears — the information is not the
+     animation, and removing it would leave those users with no confirmation at
+     all. */
+
+  .a2c {
+    display: grid;
+    align-items: center;
+    justify-items: center;
+  }
+  .a2c > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity 0.18s var(--ease-reveal),
+      transform 0.24s var(--ease-reveal);
+  }
+  /* Only the active layer is hit-testable, so a faded-out label cannot swallow
+     the click meant for the button. */
+  .a2c > [data-on="false"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .a2c > [data-on="true"] {
+    opacity: 1;
+  }
+
+  /* Outgoing layers leave in the direction the incoming one arrives from, so
+     the swap reads as one movement rather than two unrelated fades. */
+  .a2c-label[data-on="false"] {
+    transform: translateY(-6px);
+  }
+  .a2c-done[data-on="false"] {
+    transform: translateY(6px) scale(0.9);
+  }
+  .a2c-done[data-on="true"] {
+    transform: none;
+  }
+
+  /* The plus becomes the tick: it rotates a quarter turn out as the tick draws
+     in, which is the same gesture read twice rather than two glyphs trading
+     places. */
+  .a2c-plus[data-on="false"] {
+    transform: rotate(90deg) scale(0.6);
+  }
+
+  /* The round control has no spinner layer — a ring inside a 44px circle reads
+     as a second, smaller button. Instead the plus itself recedes while the
+     write is in flight, which says "working" without introducing a new shape.
+     Declared after `[data-on="true"]` because the two selectors have the same
+     specificity and this one has to win. */
+  [data-a2c="pending"] .a2c-plus {
+    opacity: 0.45;
+    transform: scale(0.82);
+  }
+
+  .a2c-check path {
+    stroke-dasharray: 22;
+    stroke-dashoffset: 22;
+  }
+  [data-a2c="added"] .a2c-check path {
+    animation: a2c-draw 0.34s var(--ease-reveal) 0.04s forwards;
+  }
+
+  [data-a2c="added"] {
+    animation: a2c-pop 0.34s var(--ease-reveal);
+  }
+
+  @keyframes a2c-draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  @keyframes a2c-pop {
+    40% {
+      transform: scale(1.04);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .a2c > * {
+      transition: opacity 0.12s linear;
+      transform: none !important;
+    }
+    [data-a2c="added"] {
+      animation: none;
+    }
+    /* No draw — but the tick must still be VISIBLE, so the dash is undone
+       rather than left at its full offset (which would render nothing). */
+    .a2c-check path {
+      stroke-dasharray: none;
+      stroke-dashoffset: 0;
+    }
+    [data-a2c="added"] .a2c-check path {
+      animation: none;
+    }
+  }
 }
 
 @utility no-scrollbar {

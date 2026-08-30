@@ -21,10 +21,13 @@ So right now:
 | Catalogue in the database | ✅ 5 sizes · 12 pack variants · price zones |
 | Manageable in the console | ✅ `/lumi9/products` |
 | **Read by THIS app** | ✅ **live — a console price change shows without a rebuild** |
-| Cart | ✅ server-side, in `lumi9.Cart`, priced by the server |
-| Sign-in | ✅ emailed link — no passwords on this platform |
+| Cart | ✅ server-side, in `lumi9.Cart`, priced by the server, **opens in a drawer** |
+| Sign-in | ✅ **phone OTP (primary) · Google · emailed link** — no passwords on this platform |
+| Onboarding | ✅ `/welcome` captures name + email + verified mobile |
 | Checkout + payment | ✅ real orders (`LM-00001`), Razorpay, brand-routed webhook |
-| Account orders | ✅ real |
+| Checkout prefill | ✅ signed-in shoppers get their saved name, contact and address |
+| Account orders | ✅ real, with an order page at `/order/[orderNo]` |
+| Account profile + addresses | ✅ editable — name, email, mobile, full address CRUD |
 | Coupons | ✅ the cart's promo box validates against the real `Coupon` rows |
 | Subscriptions | ✅ real plans, skip/pause/resume/cancel, renewed by a scheduled job |
 | Newsletter + contact | ✅ persisted / delivered — both used to discard the input |
@@ -70,6 +73,81 @@ marketing copy and for nothing else.
 Same shape, same fix, for `subscribeSavePct`: the page promised a hardcoded 20%
 while `generateDueOrders()` discounts renewals by the console's value (default
 15). It rides along on the catalogue payload now — `useCatalogData()` returns it.
+
+## The signed-in surface, and how a shopper reaches it
+
+Femi9's storefront flow, on this app's tokens. Nothing about Femi9's palette or
+its hand-written CSS came across — only the shape of the journey.
+
+```
+add to cart ──▶ CartUIProvider.openCart()   drawer opens BEFORE the request
+            ──▶ POST /api/cart              server prices and stores the line
+            ──▶ CartDrawer + Toast          what landed, or why it did not
+            ──▶ /cart (promo box) ──▶ /checkout ──▶ /confirmation ──▶ /order/[no]
+```
+
+**Provider order in `app/layout.tsx` is load-bearing.** `SessionProvider` is
+outermost and independent; `CartUIProvider` sits ABOVE `CartProvider` because
+the cart calls the chrome ("open me", "say this") and never the reverse; the
+drawer and toast are siblings of `children` INSIDE `CartQuoteProvider`, because
+the drawer shows the server's total and the server's free-shipping threshold.
+
+**The chrome state is deliberately NOT in `lib/cart.tsx`.** Femi9 keeps both in
+one reducer, which is fine there because almost nothing subscribes to its cart.
+Here `useCart()` is read by the quote provider, the checkout form and the nav
+badge, and all four would re-render on a drawer toggle or a toast timer.
+
+**`useSession()` is the ONE client-side answer to "who is this".** The session
+cookie is httpOnly, so a client component can only ask the server; three
+components each running their own `/api/auth/me` is three answers that can
+disagree mid-render. `null` is the safe default — an unresolved or failed read
+leaves the account control pointing at `/login`, which is the harmless wrong
+answer. It is never an authorisation: every guarded surface re-reads the session
+server-side.
+
+**Cart writes report their failures.** `send()` used to catch every error and
+return, so a 500 on "Add to cart", a dropped quantity change and a successful
+write were the same thing from the shopper's side — nothing moved. It now
+returns the cart or null, and the caller toasts.
+
+**"Buy again" is SEQUENTIAL (`addMany`).** One POST per line fired concurrently
+means each response carries a different snapshot of the same cart and the one
+that lands LAST wins — not necessarily the one that saw every line. A three-line
+reorder could leave the basket showing one item while the server held three.
+
+**Every sign-in path mints a session before it knows who the shopper is.** OTP
+writes a number, the magic link writes an address, Google writes a name and an
+address but never a number. `/welcome` is what closes that, and
+`missingProfileFields` in `@femi9/core` is the ONE definition of "complete" —
+`/account`'s gate, `/welcome`'s field list, `/api/auth/me` and the OTP verify
+response all read it, so the gate and the screen it gates cannot disagree and
+strand somebody in a loop between them.
+
+**A phone is never written unverified.** `/api/account/complete-profile` and
+`PATCH /api/account/profile` both refuse: the first only STARTS the challenge,
+the second answers 400 with `code: "phone_requires_verification"` and the panel
+switches to the OTP step. That column is where a parcel and every delivery SMS
+go.
+
+**`IdentityConflictError`'s message names Femi9.** The shared class builds its
+sentence eagerly in the constructor and Femi9's tests assert on that copy, so
+the fix lives at this app's boundary: `src/lib/identity-copy.ts`. Never forward
+`err.message` from it — forward `err.field` and render the sentence from there.
+
+**`/order/[orderNo]` is authorised by token OR session, never by the URL alone.**
+It shows a name, a full address and a phone number, and `LM-00042` is a guess
+away from `LM-00041`. Either the unguessable `?t=` capability token (how a GUEST
+reaches her own confirmation from the email) or a session that owns the order;
+anything else gets the same `notFound()` a non-existent order gets, so the page
+never confirms whether an order number is real. It is deliberately absent from
+`proxy.ts`'s matcher for that reason — guarding it would lock guests out of
+their own receipts.
+
+**Apple sign-in was REMOVED, not left inert.** It was a `<button>` with no
+handler beside a Google one that also had none. Sign in with Apple needs a
+developer team, a Services ID, a key and a server-side client secret that
+expires every six months — a project, not a button, and a dead control that
+looks live costs more trust than an absent one.
 
 ## Subscriptions
 
@@ -204,6 +282,24 @@ balancer and turn a degraded feature into an outage.
 
 ## Things that will bite
 
+**⚠️ Google sign-in needs its OWN `GOOGLE_REDIRECT_URI` here, and the URI must
+be registered on the OAuth client.** `@femi9/core/google-oauth` reads the three
+`GOOGLE_*` variables straight out of the environment, and `GOOGLE_REDIRECT_URI`
+is a single value that wins over everything else — Google compares it
+byte-for-byte with what is registered. Both apps sharing one OAuth client is
+fine; both inheriting one redirect URI is not. The local `.env` in this app
+currently carries Femi9's, pointing at a CloudFront distribution, so the mock
+path never fires (credentials ARE configured) and the live one dies at Google
+with `redirect_uri_mismatch`. Set it to `https://<this app's host>/api/auth/google/callback`
+and add that exact string to the client's authorised redirect URIs, or the
+button reaches Google and bounces.
+
+The handshake cookies are this app's own — `lumi9_oauth_state` /
+`lumi9_oauth_next` in `src/lib/oauth-cookies.ts`, not core's `femi9_oauth_*`.
+Same reasoning as `sessionCookieName`: separate hosts already isolate cookies,
+and distinct names mean a Femi9 handshake cannot be completed as a Lumi9 one if
+the two are ever served from one domain.
+
 **`Product.flow` is Femi9's word.** It means "Heavy · Night + Day" over there;
 there is no period flow on a diaper. Lumi9 uses the same column for what the
 product is rated for (`7–12 kg · up to 12h dryness`). Renaming the column to
@@ -223,6 +319,16 @@ the casts in `src/components/three/` stop compiling.
 warns you to turn it off; that warning is stale. Leave it off — the cart screens
 are reviewable by adding an item, and a basket pre-filled with phantom lines is
 worse than an empty one now that the prices beside them are real.
+
+**"Account" is not a nav LINK any more.** It was a static label pointing at
+`/account` whether or not anybody was signed in, so a signed-out shopper who
+tapped it was bounced to `/login` by the guard with no explanation — and it was
+missing from `SUPPORT_LINKS` and the login page's own list entirely, which is
+how `/account` and `/login` ended up reachable only by typing the URL. The
+control in the bar resolves the session and points at the right one of the two;
+a label that adapts cannot be a constant in an array. It renders on every
+variant except `cta="none"`, deliberately: `cta` decides whether the bar SELLS,
+and reaching your own orders is not a merchandising decision.
 
 **The nav is ONE row below `md`, and `--nav-h` is load-bearing.** The links live
 behind a burger in a slide-down sheet; the bar used to wrap them onto a second
