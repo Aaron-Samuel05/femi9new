@@ -7,7 +7,7 @@ import { JournalGrid } from "@/components/journal/JournalGrid";
 import { MosaicTile } from "@/components/journal/JournalCards";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
 import { Em } from "@/components/ui/bits";
-import { listCategories, listPosts } from "@/lib/journal";
+import { listJournalCategories, listJournalPosts } from "@/lib/journal.server";
 import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const DESCRIPTION =
@@ -36,9 +36,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function JournalPage() {
-  const posts = listPosts();
-  const categories = listCategories();
+export default async function JournalPage() {
+  const [posts, allCategories] = await Promise.all([listJournalPosts(), listJournalCategories()]);
+  // Only chip a topic that has something behind it. The query returns every
+  // category the brand has, including one the console created for an article
+  // that is still a draft — and a filter that reliably yields "No posts in this
+  // topic yet" is a dead control.
+  const used = new Set(posts.map((post) => post.category));
+  const categories = allCategories.filter((category) => used.has(category.name));
   const [lead, ...companions] = posts;
 
   /**
@@ -61,7 +66,7 @@ export default function JournalPage() {
       headline: post.title,
       url: absoluteUrl(`/journal/${post.slug}`),
       datePublished: post.published,
-      image: absoluteUrl(post.image),
+      ...(post.image ? { image: absoluteUrl(post.image) } : {}),
       author: { "@type": "Organization", name: post.author },
     })),
   };

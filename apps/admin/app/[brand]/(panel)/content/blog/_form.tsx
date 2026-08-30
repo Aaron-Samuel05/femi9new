@@ -26,8 +26,19 @@ export interface BlogFormValues {
   image: string
   featured: boolean
   status: 'pending' | 'approved' | 'hidden'
-  // Already newline-joined from the DB String[] by the edit page.
+  // Already joined from the DB String[] by the edit page — with joinBody, which
+  // separates blocks by a BLANK line. Joining with a single newline instead
+  // collapses the whole article into one block on the next save.
   body: string
+  // ── The <head> layer ───────────────────────────────────────────────────
+  // Optional everywhere: a post saved without them renders exactly as before,
+  // because the storefront falls back to the title and the excerpt.
+  metaTitle: string
+  imageAlt: string
+  /** Comma-separated in the form; a string[] column in the database. */
+  keywords: string
+  cta: string
+  faqs: { question: string; answer: string }[]
 }
 
 interface Category {
@@ -35,7 +46,24 @@ interface Category {
   name: string
 }
 
+interface FaqRow {
+  _key: string
+  question: string
+  answer: string
+}
+
 type FieldErrors = Record<string, string[] | undefined>
+
+/** Blocks are separated by a BLANK line - see splitBody in blog-admin.ts. */
+const PLACEHOLDER_BODY = [
+  'One block per blank-line-separated chunk.',
+  '## Two hashes start a heading',
+  '> A chevron starts a pull-quote',
+  '\u2022 A bullet\n\u2022 and another, in the SAME block',
+].join('\n\n')
+
+let faqKeySeq = 0
+const nextKey = () => `faq-${++faqKeySeq}`
 
 export default function PostForm({
   mode,
@@ -68,6 +96,31 @@ export default function PostForm({
     initial?.status ?? 'approved',
   )
   const [body, setBody] = useState(initial?.body ?? '')
+  const [metaTitle, setMetaTitle] = useState(initial?.metaTitle ?? '')
+  const [imageAlt, setImageAlt] = useState(initial?.imageAlt ?? '')
+  const [keywords, setKeywords] = useState(initial?.keywords ?? '')
+  const [cta, setCta] = useState(initial?.cta ?? '')
+  // Rows carry a stable key so React does not reorder inputs by index when one
+  // is removed — the same reason the product form's variant rows have one.
+  const [faqs, setFaqs] = useState<FaqRow[]>(
+    (initial?.faqs ?? []).map((faq) => ({ _key: nextKey(), ...faq })),
+  )
+
+  function updateFaq(key: string, patch: Partial<FaqRow>) {
+    setFaqs((rows) => rows.map((row) => (row._key === key ? { ...row, ...patch } : row)))
+  }
+
+  /** Order is what `position` persists, so moving a row IS the edit. */
+  function moveFaq(key: string, delta: number) {
+    setFaqs((rows) => {
+      const i = rows.findIndex((row) => row._key === key)
+      const j = i + delta
+      if (i < 0 || j < 0 || j >= rows.length) return rows
+      const next = [...rows]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
 
   const [errors, setErrors] = useState<FieldErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -134,6 +187,15 @@ export default function PostForm({
       status,
       // Raw textarea text — the service splits it into the String[] column.
       body,
+      metaTitle: metaTitle.trim(),
+      imageAlt: imageAlt.trim(),
+      // Sent as typed; the service splits, trims and de-duplicates. One
+      // definition of "what a keyword list is", on the side that enforces it.
+      keywords,
+      cta: cta.trim(),
+      // Half-filled rows are dropped by the service rather than refused — an
+      // editor mid-thought should not be blocked from saving the rest.
+      faqs: faqs.map((row) => ({ question: row.question, answer: row.answer })),
     }
 
     try {
@@ -330,6 +392,24 @@ export default function PostForm({
               Optional. PNG, JPEG or WebP up to 5MB, stored in S3 and served through the CDN.
             </span>
           </div>
+
+          {/* Beside the upload it describes, not in the SEO card: alt text is a
+              property of THIS picture, and an editor who replaces the cover has
+              to be looking at the sentence that no longer matches it. */}
+          <div className="adm-field" style={{ marginTop: 16, marginBottom: 0 }}>
+            <label className="adm-label" htmlFor="b-image-alt">Cover alt text</label>
+            <input
+              id="b-image-alt"
+              className="adm-input"
+              value={imageAlt}
+              onChange={(e) => setImageAlt(e.target.value)}
+              placeholder="What the photograph shows"
+            />
+            <span className="adm-help">
+              Read aloud in place of the image. Falls back to the title - never to an empty
+              string, which would tell a screen reader the cover is decorative.
+            </span>
+          </div>
         </section>
 
         <section className="adm-card">
@@ -416,14 +496,155 @@ export default function PostForm({
             className="adm-textarea"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={'One block per line.\n## Start a line with two hashes for a heading\n> Start a line with a chevron for a pull-quote'}
+            placeholder={PLACEHOLDER_BODY}
             style={{ minHeight: 260, fontFamily: 'var(--sans)' }}
           />
           <span className="adm-help">
-            Each line is one paragraph. Prefix a line with “## ” for a heading or “&gt; ” for a
-            pull-quote. Blank lines are ignored.
+            Separate blocks with a BLANK LINE. Prefix a block with “## ” for a heading, “### ”
+            for a sub-heading or “&gt; ” for a pull-quote. A bullet list is ONE block: put every
+            “• ” on its own line with no blank line between them, or the storefront renders
+            each bullet as a list of its own.
           </span>
         </div>
+      </section>
+
+      {/* SEO - drives <title>, Open Graph and JSON-LD, never the card */}
+      <section className="adm-card" style={{ marginTop: 16 }}>
+        <div className="adm-card-head">
+          <h2 className="adm-card-title">Search &amp; social</h2>
+        </div>
+
+        <div className="adm-field">
+          <label className="adm-label" htmlFor="b-meta-title">Meta title</label>
+          <input
+            id="b-meta-title"
+            className="adm-input"
+            value={metaTitle}
+            onChange={(e) => setMetaTitle(e.target.value)}
+            placeholder="Leave blank to use the post title"
+          />
+          <span className="adm-help">
+            The &lt;title&gt; and the Open Graph headline. Write it to carry the brand - the
+            storefront does not append one to this field.
+          </span>
+          {err('metaTitle') && <span className="adm-error">{err('metaTitle')}</span>}
+        </div>
+
+        <div className="adm-field">
+          <label className="adm-label" htmlFor="b-keywords">Keywords</label>
+          <textarea
+            id="b-keywords"
+            className="adm-textarea"
+            value={keywords}
+            onChange={(e) => setKeywords(e.target.value)}
+            placeholder="baby diapers, breathable baby diapers, diaper pants for baby"
+            style={{ minHeight: 72 }}
+          />
+          <span className="adm-help">
+            Comma- or line-separated. Emitted as the keywords meta tag and in the article&rsquo;s
+            JSON-LD. Duplicates and blanks are dropped on save.
+          </span>
+        </div>
+
+        <div className="adm-field" style={{ marginBottom: 0 }}>
+          <label className="adm-label" htmlFor="b-cta">Closing call-to-action</label>
+          <textarea
+            id="b-cta"
+            className="adm-textarea"
+            value={cta}
+            onChange={(e) => setCta(e.target.value)}
+            placeholder="Leave blank to use the site's standard closing paragraph"
+            style={{ minHeight: 72 }}
+          />
+          <span className="adm-help">
+            The paragraph in the block at the foot of the article, above the shop buttons.
+          </span>
+        </div>
+      </section>
+
+      {/* FAQs - rendered on the page AND emitted as FAQPage structured data */}
+      <section className="adm-card" style={{ marginTop: 16 }}>
+        <div className="adm-card-head">
+          <h2 className="adm-card-title">Frequently asked questions</h2>
+          <button
+            type="button"
+            className="adm-btn adm-btn--secondary adm-btn--sm"
+            onClick={() => setFaqs((rows) => [...rows, { _key: nextKey(), question: '', answer: '' }])}
+          >
+            Add question
+          </button>
+        </div>
+
+        {faqs.length === 0 ? (
+          <span className="adm-help">
+            No questions. Any you add appear under the article AND as FAQPage structured data -
+            which is why they are always visible on the page: markup for an answer a crawler
+            cannot find in the document is a manual-action risk, not a shortcut to a rich result.
+          </span>
+        ) : (
+          <div style={{ display: 'grid', gap: 12 }}>
+            {faqs.map((faq, i) => (
+              <div
+                key={faq._key}
+                style={{
+                  display: 'grid',
+                  gap: 8,
+                  padding: 12,
+                  border: '1px solid rgba(52,32,78,.13)',
+                  borderRadius: 8,
+                }}
+              >
+                <input
+                  className="adm-input"
+                  value={faq.question}
+                  onChange={(e) => updateFaq(faq._key, { question: e.target.value })}
+                  placeholder={`Question ${i + 1}`}
+                  aria-label={`Question ${i + 1}`}
+                />
+                <textarea
+                  className="adm-textarea"
+                  value={faq.answer}
+                  onChange={(e) => updateFaq(faq._key, { answer: e.target.value })}
+                  placeholder="Answer"
+                  aria-label={`Answer ${i + 1}`}
+                  style={{ minHeight: 72 }}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveFaq(faq._key, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move question ${i + 1} earlier`}
+                  >
+                    &uarr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveFaq(faq._key, 1)}
+                    disabled={i === faqs.length - 1}
+                    aria-label={`Move question ${i + 1} later`}
+                  >
+                    &darr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => setFaqs((rows) => rows.filter((row) => row._key !== faq._key))}
+                    aria-label={`Remove question ${i + 1}`}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <span className="adm-help" style={{ marginTop: 8 }}>
+          A row missing its question or its answer is dropped on save.
+        </span>
       </section>
 
       {/* Actions */}

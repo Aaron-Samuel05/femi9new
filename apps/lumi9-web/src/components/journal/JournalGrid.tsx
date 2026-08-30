@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { ArticleCard } from "@/components/journal/JournalCards";
-import type { JournalCategory, JournalPost } from "@/lib/journal";
+import type { JournalArticle, JournalCategoryDTO } from "@/lib/journal.server";
 
 /**
  * "The latest" — category chips over a filterable grid.
@@ -13,7 +13,7 @@ import type { JournalCategory, JournalPost } from "@/lib/journal";
  * matching tabpanel makes a screen reader announce "tab 3 of 5" and then find
  * nothing to move into, which is worse than no ARIA at all.
  */
-export function JournalGrid({ posts, categories }: { posts: JournalPost[]; categories: JournalCategory[] }) {
+export function JournalGrid({ posts, categories }: { posts: JournalArticle[]; categories: JournalCategoryDTO[] }) {
   const [filter, setFilter] = useState<string>("All");
 
   const filtered = useMemo(

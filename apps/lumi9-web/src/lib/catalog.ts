@@ -193,6 +193,16 @@ export function getPack<P extends { count: number }>(
   return size.packs.find((p) => p.count === count) ?? defaultPack(size);
 }
 
+/**
+ * The BUNDLED pack photo — the seed's input, and the storefront's last resort.
+ *
+ * Not what a page renders any more. `catalog.server.ts` reads `ProductImage`
+ * from the database (which is what the console's uploader writes, into the S3
+ * uploads bucket) and only falls back here for a product that has no image row
+ * at all. Calling this from a component would pin that surface to a file inside
+ * the container and make a console upload invisible again — which is exactly
+ * the bug it used to have.
+ */
 export function packImage(size: SizeCode, count: number) {
   return `/assets/products/${size}-${count}.jpeg`;
 }

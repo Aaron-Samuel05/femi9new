@@ -191,6 +191,11 @@ locals {
       # visitor to email us — deliberately, because the form it replaced showed a
       # green tick and discarded the message.
       { name = "CARE_INBOX_EMAIL_LUMI9", value = var.lumi9_care_inbox_email },
+      # Whether /welcome stops a shopper for a mobile number. Stated explicitly
+      # for the same reason THARA_ENABLED is on the femi9 service: the app reads
+      # an absent variable as REQUIRED, so "off" only exists if it is written
+      # here. Only the literal "false" turns it off - see profilePhoneRequired().
+      { name = "REQUIRE_PROFILE_PHONE", value = var.lumi9_require_profile_phone ? "true" : "false" },
       { name = "UPLOADS_BUCKET", value = local.uploads_bucket_name },
       { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
       ],

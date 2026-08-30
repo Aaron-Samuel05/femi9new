@@ -398,6 +398,12 @@ variable "lumi9_email_from" {
   default     = ""
 }
 
+variable "lumi9_require_profile_phone" {
+  description = "Whether /welcome stops a signed-in Lumi9 shopper until she supplies a mobile number. Google and magic-link sign-in never carry one, so leaving this ON puts a second screen, an OTP round trip and an SMS bill between signing in and reaching /account - worth it only where the brand actually sends delivery SMS. OFF by default here: Lumi9 has no MSG91_TEMPLATE_ID of its own (ecs.tf sets it for femi9 only), so the OTP that screen asks for cannot be delivered in the first place. Turning it off loses no numbers - checkout still asks for and validates one, /account still offers the field, and a phone sign-in still writes it. Femi9 is unaffected: its task sets no such variable and an unset one means required."
+  type        = bool
+  default     = false
+}
+
 variable "lumi9_care_inbox_email" {
   description = "Where /contact messages are delivered for Lumi9, e.g. care@lumi9.in. The contact form FAILS CLOSED without it — it tells the visitor to email us directly rather than showing a confirmation for a message nobody will read, which is the defect it replaced. Not a secret: it is printed at the bottom of every page."
   type        = string

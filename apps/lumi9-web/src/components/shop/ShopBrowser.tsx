@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AddButton } from "@/components/product/AddButton";
-import { defaultPack, inr, packImage } from "@/lib/catalog";
+import { defaultPack, inr } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 
 const SIZE_FILTERS = ["All", "NB", "S", "M", "L", "XL"] as const;
@@ -108,8 +108,8 @@ export function ShopBrowser() {
               >
                 <Link href={href} className="relative mb-4 block aspect-4/5 overflow-hidden rounded-chip bg-shell">
                   <Image
-                    src={packImage(size.size, pack.count)}
-                    alt={`Cloud Soft ${size.name} — ${pack.count} pack`}
+                    src={pack.image}
+                    alt={pack.imageAlt}
                     fill
                     sizes="(max-width: 560px) 46vw, (max-width: 1024px) 30vw, 280px"
                     className="object-cover"

@@ -31,30 +31,50 @@
  * would show as two grey smears the moment that background changed.
  */
 
-import { PARENT_REVIEWS } from "@/lib/content";
+import { listReviews } from "@femi9/core/services/products";
 import { Doodle } from "@/components/ui/Doodles";
 import { Reveal } from "@/components/motion/Reveal";
 
-const TONES: Record<string, string> = {
-  moss: "bg-moss-tint text-moss-deep",
-  gold: "bg-butter text-[#7a6500]",
-  clay: "bg-[#f3e0d4] text-[#8a4f2c]",
-  sky: "bg-[#dfe8ee] text-[#3d5c72]",
-  plum: "bg-[#ece0ee] text-[#6d4276]",
-};
+/**
+ * The rail reads the console's moderation queue.
+ *
+ * `PARENT_REVIEWS` in `content.ts` was eight invented quotes under a "Verified
+ * buyer" badge — a claim about people who did not exist, on a surface the
+ * console has a moderation queue for. Approved rows only, so approving or
+ * hiding a review in the console is what changes this rail.
+ */
+const TONES = [
+  "bg-moss-tint text-moss-deep",
+  "bg-butter text-[#7a6500]",
+  "bg-[#f3e0d4] text-[#8a4f2c]",
+  "bg-[#dfe8ee] text-[#3d5c72]",
+  "bg-[#ece0ee] text-[#6d4276]",
+];
 
-type Review = (typeof PARENT_REVIEWS)[number];
+/** What a card needs, resolved on the server so the rail stays presentational. */
+interface Review {
+  id: string;
+  name: string;
+  initial: string;
+  tone: string;
+  quote: string;
+  rating: number;
+  verified: boolean;
+}
 
-/** Split into two rows that travel in opposite directions. */
-const HALF = Math.ceil(PARENT_REVIEWS.length / 2);
-const ROW_TOP = PARENT_REVIEWS.slice(0, HALF);
-const ROW_BOTTOM = PARENT_REVIEWS.slice(HALF);
-
-function Stars() {
+function Stars({ rating }: { rating: number }) {
+  // Clamped, because a card that renders `rating` stars unclamped turns a bad
+  // row into a broken layout rather than a visible data problem.
+  const filled = Math.max(0, Math.min(5, Math.round(rating)));
   return (
-    <div className="flex gap-[2px]" role="img" aria-label="Rated 5 out of 5">
+    <div className="flex gap-[2px]" role="img" aria-label={`Rated ${filled} out of 5`}>
       {Array.from({ length: 5 }, (_, i) => (
-        <svg key={i} aria-hidden="true" viewBox="0 0 20 20" className="size-[13px] text-gold">
+        <svg
+          key={i}
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          className={`size-[13px] ${i < filled ? "text-gold" : "text-midnight/15"}`}
+        >
           <path
             fill="currentColor"
             d="M10 1.6l2.4 5.1 5.6.6-4.2 3.8 1.2 5.5L10 13.9 4.99 16.6l1.2-5.5L2 7.3l5.6-.6Z"
@@ -73,21 +93,22 @@ function ReviewCard({ r }: { r: Review }) {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className={`grid size-9 shrink-0 place-items-center rounded-full text-[15px] font-extrabold ${
-            TONES[r.tone] ?? TONES.moss
-          }`}
+          className={`grid size-9 shrink-0 place-items-center rounded-full text-[15px] font-800 ${r.tone}`}
         >
           {r.initial}
         </span>
         <div className="min-w-0">
-          <Stars />
-          <figcaption className="truncate text-[13px] font-bold text-midnight">{r.name}</figcaption>
+          <Stars rating={r.rating} />
+          <figcaption className="truncate text-[13px] font-700 text-midnight">{r.name}</figcaption>
         </div>
       </div>
 
       <blockquote className="text-pretty text-[14px] leading-[1.55] text-midnight/75">{r.quote}</blockquote>
 
-      <p className="mt-auto flex items-center gap-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-moss-deep">
+      {/* Printed ONLY for a reviewer whose paid order actually contains the
+          product. It used to be unconditional, over invented names. */}
+      {r.verified && (
+      <p className="mt-auto flex items-center gap-1.5 pt-1 text-[11px] font-700 uppercase tracking-[0.06em] text-moss-deep">
         <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5">
           <path
             fill="currentColor"
@@ -97,6 +118,7 @@ function ReviewCard({ r }: { r: Review }) {
         </svg>
         Verified buyer
       </p>
+      )}
     </figure>
   );
 }
@@ -138,13 +160,13 @@ function MarqueeRow({ items, reverse = false }: { items: readonly Review[]; reve
       >
         {/* Copy 1 — the real list. Copy 2 — the loop's tail, hidden from AT. */}
         <div className="flex gap-4 pr-4">
-          {items.map((r, i) => (
-            <ReviewCard key={`a-${r.name}-${i}`} r={r} />
+          {items.map((r) => (
+            <ReviewCard key={`a-${r.id}`} r={r} />
           ))}
         </div>
         <div className="flex gap-4 pr-4" aria-hidden="true">
-          {items.map((r, i) => (
-            <ReviewCard key={`b-${r.name}-${i}`} r={r} />
+          {items.map((r) => (
+            <ReviewCard key={`b-${r.id}`} r={r} />
           ))}
         </div>
       </div>
@@ -152,7 +174,40 @@ function MarqueeRow({ items, reverse = false }: { items: readonly Review[]; reve
   );
 }
 
-export function Testimonials() {
+export async function Testimonials() {
+  /**
+   * Brand-wide, not per product: this rail is the site's social proof, and a
+   * parent scrolling the home page has not chosen a size yet.
+   *
+   * Capped at twelve because the marquee renders each row TWICE (the second copy
+   * is the loop's tail) — so twelve rows is twenty-four cards, and an uncapped
+   * read would put every review the brand has ever collected into the home
+   * page's HTML.
+   */
+  const rows = await listReviews("lumi9", { limit: 12 });
+
+  // Nothing approved yet: render nothing rather than a heading claiming parents
+  // love us over an empty rail.
+  if (rows.length === 0) return null;
+
+  const reviews: Review[] = rows.map((row, i) => ({
+    id: row.id,
+    name: row.name,
+    // Never the empty string — a blank avatar circle reads as a failed image.
+    initial: row.name.trim().charAt(0).toUpperCase() || "\u2022",
+    // The tint cycles by position rather than being stored: it is decoration,
+    // and a colour column is one more thing for a moderator to have to set.
+    tone: TONES[i % TONES.length],
+    quote: row.body,
+    rating: row.rating,
+    verified: row.verified,
+  }));
+
+  // Two rows travelling in opposite directions.
+  const half = Math.ceil(reviews.length / 2);
+  const rowTop = reviews.slice(0, half);
+  const rowBottom = reviews.slice(half);
+
   return (
     <section aria-labelledby="reviews-heading" className="relative overflow-hidden bg-paper py-section">
       <div className="page-wrap">
@@ -172,7 +227,7 @@ export function Testimonials() {
             />
             <h2
               id="reviews-heading"
-              className="text-balance font-display text-[clamp(26px,3.4vw,40px)] font-bold leading-[1.12] text-moss-deep"
+              className="text-balance font-display text-[clamp(26px,3.4vw,40px)] font-700 leading-[1.12] text-moss-deep"
             >
               Loved by parents, trusted by experts
             </h2>
@@ -184,8 +239,8 @@ export function Testimonials() {
       {/* Full-bleed on purpose: a marquee that stops at the content gutter reads
           as a boxed widget, where one running edge-to-edge reads as a feed. */}
       <div className="mt-9 flex flex-col gap-4">
-        <MarqueeRow items={ROW_TOP} />
-        <MarqueeRow items={ROW_BOTTOM} reverse />
+        <MarqueeRow items={rowTop} />
+        {rowBottom.length > 0 && <MarqueeRow items={rowBottom} reverse />}
       </div>
     </section>
   );

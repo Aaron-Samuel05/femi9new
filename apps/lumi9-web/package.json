@@ -12,6 +12,8 @@
     "test:watch": "vitest",
     "db:seed": "tsx prisma/seed.ts",
     "db:seed-zones": "tsx prisma/seed-zones.ts",
+    "db:seed-journal": "tsx prisma/seed-journal.ts",
+    "db:seed-reviews": "tsx prisma/seed-reviews.ts",
     "db:migrate:deploy": "prisma migrate deploy --schema ../../packages/db/prisma/schema.prisma"
   },
   "dependencies": {

@@ -1,23 +1,67 @@
 import Image from "next/image";
 import Link from "next/link";
-import { categoryMeta, formatPostDate, type JournalPost } from "@/lib/journal";
+import type { JournalArticle } from "@/lib/journal.server";
+
+/**
+ * The cover, or the surface it would have sat on.
+ *
+ * `image` is nullable in the database — the console does not force one — and
+ * next/image throws on an empty src, so an article published without a cover
+ * would take the whole listing down with it. A tinted block is the honest
+ * degradation: the card still reads, and the missing photograph is visible to
+ * whoever has to fix it.
+ */
+function Cover({
+  post,
+  sizes,
+  priority = false,
+  className = "",
+}: {
+  post: JournalArticle;
+  sizes: string;
+  priority?: boolean;
+  className?: string;
+}) {
+  if (!post.image) return null;
+  return (
+    <Image
+      src={post.image}
+      alt={post.imageAlt}
+      fill
+      priority={priority}
+      sizes={sizes}
+      className={className}
+    />
+  );
+}
 
 /** author · date · read time, the byline used on every card and on the article. */
-export function PostMeta({ post, className = "" }: { post: JournalPost; className?: string }) {
+export function PostMeta({ post, className = "" }: { post: JournalArticle; className?: string }) {
   return (
     <span className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-muted ${className}`}>
       <b className="font-semibold text-midnight">{post.author}</b>
       <i aria-hidden className="inline-block size-1 rounded-full bg-moss-soft not-italic" />
-      <time dateTime={post.published}>{formatPostDate(post.published)}</time>
+      <time dateTime={post.published}>{post.date}</time>
       <i aria-hidden className="inline-block size-1 rounded-full bg-moss-soft not-italic" />
       {post.readTime} min read
     </span>
   );
 }
 
-/** Small tinted category label. Colour comes from the category, not the card. */
-export function CategoryChip({ name, className = "" }: { name: string; className?: string }) {
-  const { color, tint } = categoryMeta(name);
+/**
+ * Small tinted category label. The colour comes from the category ROW, carried
+ * on the post — it used to be looked up in a module table keyed by name, so a
+ * category the console renamed or added rendered with the first category's
+ * accent and nothing said so.
+ */
+export function CategoryChip({
+  post,
+  className = "",
+}: {
+  post: Pick<JournalArticle, "category" | "categoryColor" | "categoryTint">;
+  className?: string;
+}) {
+  const { category: name, categoryColor: color, categoryTint: tint } = post;
   return (
     <span
       className={`inline-flex items-center rounded-pill px-3 py-1 text-[11px] font-bold tracking-[0.14em] uppercase ${className}`}
@@ -36,23 +80,21 @@ export function CategoryChip({ name, className = "" }: { name: string; className
  * everything inside is a `span`: an anchor may not contain block-level flow
  * content, and a stray <p> here produces invalid, unpredictably-parsed markup.
  */
-export function ArticleCard({ post, sizes }: { post: JournalPost; sizes?: string }) {
+export function ArticleCard({ post, sizes }: { post: JournalArticle; sizes?: string }) {
   return (
     <Link
       href={`/journal/${post.slug}`}
       className="group flex h-full flex-col overflow-hidden rounded-card border border-moss-tint bg-canvas transition-shadow duration-200 hover:shadow-card"
     >
       <span className="relative block aspect-3/2 overflow-hidden bg-shell">
-        <Image
-          src={post.image}
-          alt={post.imageAlt}
-          fill
+        <Cover
+          post={post}
           sizes={sizes ?? "(max-width: 640px) 94vw, (max-width: 1024px) 46vw, 380px"}
           className="object-cover transition-transform duration-500 ease-[var(--ease-reveal)] group-hover:scale-[1.03]"
         />
       </span>
       <span className="flex flex-1 flex-col p-card">
-        <CategoryChip name={post.category} className="mb-3.5 self-start" />
+        <CategoryChip post={post} className="mb-3.5 self-start" />
         <h3 className="m-0 mb-3 font-display text-[clamp(18px,2vw,22px)] leading-[1.2] font-normal tracking-[-0.01em] text-midnight">
           {post.title}
         </h3>
@@ -74,7 +116,7 @@ export function MosaicTile({
   big = false,
   priority = false,
 }: {
-  post: JournalPost;
+  post: JournalArticle;
   big?: boolean;
   priority?: boolean;
 }) {
@@ -85,10 +127,8 @@ export function MosaicTile({
         big ? "min-h-[clamp(260px,42vw,420px)] md:col-span-2 md:row-span-2" : "min-h-[clamp(180px,26vw,200px)]"
       }`}
     >
-      <Image
-        src={post.image}
-        alt={post.imageAlt}
-        fill
+      <Cover
+        post={post}
         priority={priority}
         sizes={big ? "(max-width: 768px) 94vw, 620px" : "(max-width: 768px) 94vw, 300px"}
         className="object-cover transition-transform duration-700 ease-[var(--ease-reveal)] group-hover:scale-[1.04]"

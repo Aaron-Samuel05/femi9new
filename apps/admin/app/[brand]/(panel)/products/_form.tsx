@@ -43,6 +43,29 @@ export interface ProductFormValues {
   status: 'active' | 'draft' | 'archived'
   images: string[]
   variants: VariantValue[]
+  /**
+   * Key Benefits and the specs table.
+   *
+   * The API has accepted both since it was written and `getAdminProduct` has
+   * always read them, but the FORM never sent them - so a product created here
+   * got neither, and one that had them from a seed lost nothing only because a
+   * PATCH that omits the field is treated as "leave them alone". Lumi9 depends
+   * on the specs in particular: its storefront derives a size's display name and
+   * its weight range from the `Size` and `Fits` rows, so before this the fit
+   * range printed on every card was editable only by re-running a seed.
+   */
+  features: FeatureValue[]
+  specs: SpecValue[]
+}
+
+export interface FeatureValue {
+  title: string
+  body: string
+}
+
+export interface SpecValue {
+  key: string
+  value: string
 }
 
 // ── Internal (string-backed) row shapes with a stable React key ───────────
@@ -63,6 +86,14 @@ interface VariantRow {
 interface ImageRow {
   _key: string
   url: string
+}
+
+interface FeatureRow extends FeatureValue {
+  _key: string
+}
+
+interface SpecRow extends SpecValue {
+  _key: string
 }
 
 type FieldErrors = Record<string, string[] | undefined>
@@ -140,6 +171,12 @@ export default function ProductForm({
   const [images, setImages] = useState<ImageRow[]>(
     (initial?.images ?? []).map((url) => ({ _key: nextKey(), url })),
   )
+  const [features, setFeatures] = useState<FeatureRow[]>(
+    (initial?.features ?? []).map((f) => ({ _key: nextKey(), ...f })),
+  )
+  const [specs, setSpecs] = useState<SpecRow[]>(
+    (initial?.specs ?? []).map((sp) => ({ _key: nextKey(), ...sp })),
+  )
   const [variants, setVariants] = useState<VariantRow[]>(
     (initial?.variants ?? []).map(toVariantRow),
   )
@@ -195,6 +232,26 @@ export default function ProductForm({
       return next
     })
   }
+  /**
+   * Move a keyed row within its list. Generic over the two editors below, which
+   * both persist their ORDER as `position` - so dragging a benefit up is the
+   * edit, not a cosmetic reshuffle.
+   */
+  function moveRow<T extends { _key: string }>(
+    setter: React.Dispatch<React.SetStateAction<T[]>>,
+    key: string,
+    delta: number,
+  ) {
+    setter((rows) => {
+      const i = rows.findIndex((r) => r._key === key)
+      const j = i + delta
+      if (i < 0 || j < 0 || j >= rows.length) return rows
+      const next = [...rows]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
+
   function removeImage(key: string) {
     setImages((rows) => rows.filter((r) => r._key !== key))
   }
@@ -243,6 +300,15 @@ export default function ProductForm({
       tag: tag.trim() || null,
       status,
       images: images.map((i) => i.url.trim()).filter(Boolean),
+      // A row with no title (or no name) is an editor mid-thought; the service
+      // requires one, so send only the complete rows rather than failing the
+      // whole save on a blank line somebody was about to fill in.
+      features: features
+        .map((f) => ({ title: f.title.trim(), body: f.body.trim() }))
+        .filter((f) => f.title),
+      specs: specs
+        .map((sp) => ({ key: sp.key.trim(), value: sp.value.trim() }))
+        .filter((sp) => sp.key),
       variants: variants.map((v) => ({
         id: v.id,
         kind: v.kind,
@@ -566,6 +632,164 @@ export default function ProductForm({
       </section>
 
       {/* Variants — the dynamic pack/size list */}
+      {/* Key Benefits + Specs - both were accepted by the API and read back into
+          this editor long before anything here could SEND them. */}
+      <section className="adm-card" style={{ marginTop: 16 }}>
+        <div className="adm-card-head">
+          <h2 className="adm-card-title">Benefits &amp; specs</h2>
+        </div>
+
+        <div className="adm-field" style={{ marginBottom: 0 }}>
+          <div className="adm-card-head" style={{ marginBottom: 8 }}>
+            <span className="adm-label" style={{ marginBottom: 0 }}>Key benefits</span>
+            <button
+              type="button"
+              className="adm-btn adm-btn--secondary adm-btn--sm"
+              onClick={() => setFeatures((rows) => [...rows, { _key: nextKey(), title: '', body: '' }])}
+            >
+              Add benefit
+            </button>
+          </div>
+
+          {features.length === 0 ? (
+            <span className="adm-help">No benefits yet. These are the panel beside the product photograph; order is what decides which side each one lands on.</span>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {features.map((row, i) => (
+                <div key={row._key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <input
+                    className="adm-input"
+                    value={row.title}
+                    onChange={(e) =>
+                      setFeatures((rows) =>
+                        rows.map((r) => (r._key === row._key ? { ...r, title: e.target.value } : r)),
+                      )
+                    }
+                    placeholder="Title"
+                    aria-label={`benefit ${i + 1} Title`}
+                    style={{ flex: '0 0 34%' }}
+                  />
+                  <input
+                    className="adm-input"
+                    value={row.body}
+                    onChange={(e) =>
+                      setFeatures((rows) =>
+                        rows.map((r) => (r._key === row._key ? { ...r, body: e.target.value } : r)),
+                      )
+                    }
+                    placeholder="Description"
+                    aria-label={`benefit ${i + 1} Description`}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveRow(setFeatures, row._key, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move benefit ${i + 1} earlier`}
+                  >
+                    &uarr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveRow(setFeatures, row._key, 1)}
+                    disabled={i === features.length - 1}
+                    aria-label={`Move benefit ${i + 1} later`}
+                  >
+                    &darr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => setFeatures((rows) => rows.filter((r) => r._key !== row._key))}
+                    aria-label={`Remove benefit ${i + 1}`}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{ height: 16 }} />
+
+        <div className="adm-field" style={{ marginBottom: 0 }}>
+          <div className="adm-card-head" style={{ marginBottom: 8 }}>
+            <span className="adm-label" style={{ marginBottom: 0 }}>Specifications</span>
+            <button
+              type="button"
+              className="adm-btn adm-btn--secondary adm-btn--sm"
+              onClick={() => setSpecs((rows) => [...rows, { _key: nextKey(), key: '', value: '' }])}
+            >
+              Add spec
+            </button>
+          </div>
+
+          {specs.length === 0 ? (
+            <span className="adm-help">No specs yet. On Lumi9 these are load-bearing: the storefront reads the Size and Fits rows for every card, chip and size-guide entry.</span>
+          ) : (
+            <div style={{ display: 'grid', gap: 8 }}>
+              {specs.map((row, i) => (
+                <div key={row._key} style={{ display: 'flex', gap: 8, alignItems: 'flex-start' }}>
+                  <input
+                    className="adm-input"
+                    value={row.key}
+                    onChange={(e) =>
+                      setSpecs((rows) =>
+                        rows.map((r) => (r._key === row._key ? { ...r, key: e.target.value } : r)),
+                      )
+                    }
+                    placeholder="Name"
+                    aria-label={`spec ${i + 1} Name`}
+                    style={{ flex: '0 0 34%' }}
+                  />
+                  <input
+                    className="adm-input"
+                    value={row.value}
+                    onChange={(e) =>
+                      setSpecs((rows) =>
+                        rows.map((r) => (r._key === row._key ? { ...r, value: e.target.value } : r)),
+                      )
+                    }
+                    placeholder="Value"
+                    aria-label={`spec ${i + 1} Value`}
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveRow(setSpecs, row._key, -1)}
+                    disabled={i === 0}
+                    aria-label={`Move spec ${i + 1} earlier`}
+                  >
+                    &uarr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => moveRow(setSpecs, row._key, 1)}
+                    disabled={i === specs.length - 1}
+                    aria-label={`Move spec ${i + 1} later`}
+                  >
+                    &darr;
+                  </button>
+                  <button
+                    type="button"
+                    className="adm-btn adm-btn--secondary adm-btn--sm"
+                    onClick={() => setSpecs((rows) => rows.filter((r) => r._key !== row._key))}
+                    aria-label={`Remove spec ${i + 1}`}
+                  >
+                    &times;
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <section className="adm-card" style={{ marginTop: 16 }}>
         <div className="adm-card-head">
           <h2 className="adm-card-title">Variants</h2>

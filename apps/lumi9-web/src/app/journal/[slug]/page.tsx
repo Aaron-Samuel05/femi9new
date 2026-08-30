@@ -8,22 +8,27 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { ArticleBody, inline } from "@/components/journal/ArticleBody";
 import { ArticleCard, CategoryChip, PostMeta } from "@/components/journal/JournalCards";
-import { categoryMeta, getPost, POSTS, relatedPosts } from "@/lib/journal";
+import { getJournalPost, relatedJournalPosts } from "@/lib/journal.server";
 import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
-/** Prerender-friendly even though the tree is force-dynamic: cheap, and it also
- *  documents the finite slug set for anyone reading the route. */
-export function generateStaticParams() {
-  return POSTS.map((post) => ({ slug: post.slug }));
-}
+/*
+ * `generateStaticParams` used to live here, listing the slugs from the module.
+ * It is GONE and must not come back: the slug set is a database question now,
+ * and Next calls this during `next build` — where, per the workspace CLAUDE.md,
+ * the Docker build stage has NO database credentials. Declaring it would turn
+ * publishing an article into a build failure. The whole tree is force-dynamic
+ * anyway, so it bought nothing but the documentation.
+ */
 
 export async function generateMetadata(props: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await props.params;
-  const post = getPost(slug);
+  const post = await getJournalPost(slug);
   if (!post) return { title: "Article not found", robots: { index: false, follow: true } };
 
   const url = absoluteUrl(`/journal/${post.slug}`);
-  const image = absoluteUrl(post.image);
+  // Nullable in the database, so every consumer below is conditional rather
+  // than resolving absoluteUrl(undefined) into a link to the site root.
+  const image = post.image ? absoluteUrl(post.image) : null;
 
   return {
     // metaTitle already carries the brand, so the layout's "%s · Lumi9"
@@ -40,28 +45,30 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
       title: post.metaTitle,
       description: post.excerpt,
       publishedTime: post.published,
-      modifiedTime: post.updated ?? post.published,
+      modifiedTime: post.updated,
       authors: [post.author],
       section: post.category,
       tags: post.keywords,
-      images: [{ url: image, width: 1800, height: 1204, alt: post.imageAlt }],
+      ...(image ? { images: [{ url: image, width: 1800, height: 1204, alt: post.imageAlt }] } : {}),
     },
     twitter: {
       card: "summary_large_image",
       title: post.metaTitle,
       description: post.excerpt,
-      images: [image],
+      ...(image ? { images: [image] } : {}),
     },
   };
 }
 
 export default async function JournalPostPage(props: { params: Promise<{ slug: string }> }) {
   const { slug } = await props.params;
-  const post = getPost(slug);
+  const post = await getJournalPost(slug);
   if (!post) notFound();
 
-  const related = relatedPosts(slug, 3);
-  const { color } = categoryMeta(post.category);
+  const related = await relatedJournalPosts(slug, 3);
+  // The accent comes from the category ROW now, carried on the post — a module
+  // lookup by name gave a renamed or newly-created category the wrong colour.
+  const color = post.categoryColor;
   const url = absoluteUrl(`/journal/${post.slug}`);
 
   const articleSchema = {
@@ -72,9 +79,9 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
     description: post.excerpt,
     url,
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
-    image: [absoluteUrl(post.image)],
+    ...(post.image ? { image: [absoluteUrl(post.image)] } : {}),
     datePublished: post.published,
-    dateModified: post.updated ?? post.published,
+    dateModified: post.updated,
     author: { "@type": "Organization", name: post.author, url: SITE_URL },
     publisher: { "@id": `${SITE_URL}/#organization` },
     articleSection: post.category,
@@ -99,7 +106,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
       />
       {/* Emitted only when the questions are actually rendered below — FAQ
           markup for content a reader cannot see is a manual-action risk. */}
-      {post.faqs && post.faqs.length > 0 && (
+      {post.faqs.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(post.faqs))} />
       )}
 
@@ -119,7 +126,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
               </Link>
             </nav>
 
-            <CategoryChip name={post.category} className="mb-5" />
+            <CategoryChip post={post} className="mb-5" />
             <h1 className="m-0 mb-5 font-display text-[clamp(28px,7vw,52px)] leading-[1.08] font-normal md:text-[clamp(34px,4.2vw,52px)]">
               {post.title}
             </h1>
@@ -135,16 +142,18 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
             what `prefers-reduced-motion` gets. */}
         <div className="px-safe pb-[clamp(28px,4vw,52px)]">
           <div className="relative mx-auto aspect-3/2 w-full max-w-[1120px] overflow-hidden rounded-media bg-shell shadow-hero sm:aspect-16/9">
-            <Parallax factor={0.18} pointerScale={24} className="absolute inset-x-0 top-[-12%] h-[124%]">
-              <Image
-                src={post.image}
-                alt={post.imageAlt}
-                fill
-                priority
-                sizes="(max-width: 900px) 94vw, 1120px"
-                className="object-cover"
-              />
-            </Parallax>
+            {post.image && (
+              <Parallax factor={0.18} pointerScale={24} className="absolute inset-x-0 top-[-12%] h-[124%]">
+                <Image
+                  src={post.image}
+                  alt={post.imageAlt}
+                  fill
+                  priority
+                  sizes="(max-width: 900px) 94vw, 1120px"
+                  className="object-cover"
+                />
+              </Parallax>
+            )}
           </div>
         </div>
 
@@ -159,7 +168,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
         </div>
 
         {/* FAQ — visible on the page, which is what makes the FAQPage schema honest */}
-        {post.faqs && post.faqs.length > 0 && (
+        {post.faqs.length > 0 && (
           <section className="px-safe pb-[clamp(32px,4vw,56px)]" aria-labelledby="faq-heading">
             <div className="mx-auto max-w-[740px]">
               <h2
@@ -197,7 +206,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
               Discover Lumi9 Baby Diapers
             </h2>
             <p className="m-0 max-w-[52ch] text-[clamp(14px,1.3vw,16px)] leading-[1.6] text-muted">
-              {post.cta ??
+              {post.cta ||
                 "Soft, breathable baby diapers and diaper pants designed around everyday movement, moisture management and practical protection — in sizes from NB to XL."}
             </p>
             <div className="flex flex-wrap justify-center gap-3">

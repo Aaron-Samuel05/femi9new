@@ -29,6 +29,8 @@ export default async function EditProductPage(props: { params: Promise<{ brand: 
     tag: p.tag ?? '',
     status: p.status,
     images: p.images.map((i) => i.url),
+    features: p.features.map((f) => ({ title: f.title, body: f.body })),
+    specs: p.specs.map((sp) => ({ key: sp.key, value: sp.value })),
     variants: p.variants.map((v) => ({
       id: v.id,
       kind: v.kind,

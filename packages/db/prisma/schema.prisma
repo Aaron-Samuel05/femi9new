@@ -202,21 +202,21 @@ model Cadence {
 // Auth.js (NextAuth) core models, extended with Femi9 fields on User.
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  phone         String?   @unique
+  id               String    @id @default(cuid())
+  name             String?
+  email            String?   @unique
+  emailVerified    DateTime?
+  phone            String?   @unique
   // Symmetric with emailVerified. An unverified phone on User is worse than no
   // phone at all — checkout attribution and Thara's anti-self-referral guard both
   // treat phone as an identity — so only a passed OTP challenge stamps this.
-  phoneVerified DateTime?
-  image         String?
-  role          Role      @default(customer)
-  tier          String? // "Bloom member"
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  cycleDataConsent Boolean @default(false)
+  phoneVerified    DateTime?
+  image            String?
+  role             Role      @default(customer)
+  tier             String? // "Bloom member"
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  cycleDataConsent Boolean   @default(false)
 
   accounts      Account[]
   sessions      Session[]
@@ -278,17 +278,17 @@ model VerificationToken {
 }
 
 model Address {
-  id        String  @id @default(cuid())
-  userId    String
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  label     String
-  name      String
-  line      String
-  city      String
-  state     String?
-  pincode   String?
-  phone     String?
-  isPrimary Boolean @default(false)
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label      String
+  name       String
+  line       String
+  city       String
+  state      String?
+  pincode    String?
+  phone      String?
+  isPrimary  Boolean   @default(false)
   // Soft delete. An address referenced by Order.addressId can never be hard
   // deleted without breaking that order, so removing it from the address book
   // stamps this instead; every account read filters on archivedAt IS NULL.
@@ -327,27 +327,27 @@ model CartItem {
 }
 
 model Order {
-  id                 String           @id @default(cuid())
-  orderNo            String           @unique
+  id                 String                    @id @default(cuid())
+  orderNo            String                    @unique
   userId             String?
-  user               User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  status             OrderStatus      @default(pending)
+  user               User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status             OrderStatus               @default(pending)
   subtotal           Int
-  discount           Int              @default(0)
-  shipping           Int              @default(0)
+  discount           Int                       @default(0)
+  shipping           Int                       @default(0)
   total              Int
   addressId          String?
-  address            Address?         @relation(fields: [addressId], references: [id])
+  address            Address?                  @relation(fields: [addressId], references: [id])
   couponId           String?
-  coupon             Coupon?          @relation(fields: [couponId], references: [id])
+  coupon             Coupon?                   @relation(fields: [couponId], references: [id])
   affiliateId        String?
-  affiliate          Affiliate?       @relation(fields: [affiliateId], references: [id])
+  affiliate          Affiliate?                @relation(fields: [affiliateId], references: [id])
   tharaQualifyingFor TharaMembership?          @relation("TharaQualifyingOrder")
   tharaCreditLedger  TharaCreditLedger[]       @relation("TharaCreditLedgerOrder")
   tharaPointsLedger  TharaRewardPointsLedger[] @relation("TharaPointsLedgerOrder")
-  channel            String           @default("web") // web | whatsapp
-  placedAt           DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
+  channel            String                    @default("web") // web | whatsapp
+  placedAt           DateTime                  @default(now())
+  updatedAt          DateTime                  @updatedAt
 
   items    OrderItem[]
   payments Payment[]
@@ -564,27 +564,27 @@ model WallReply {
 }
 
 model Review {
-  id        String           @id @default(cuid())
-  productId String
-  product   Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
-  userId    String?
-  user      User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name      String
-  place     String?
-  rating    Int
+  id          String           @id @default(cuid())
+  productId   String
+  product     Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name        String
+  place       String?
+  rating      Int
   // Optional one-line headline ("Loved this combo"). Nullable because every row
   // written before this column existed has none, and the card falls back to the
   // rating's own wording rather than printing an empty heading.
-  title     String?
-  body      String
-  status    ModerationStatus @default(approved)
+  title       String?
+  body        String
+  status      ModerationStatus @default(approved)
   // Denormalised helpful/unhelpful tallies. Counters rather than a join on
   // ReviewVote because the product page reads them for every card on every
   // render and never needs to know WHO voted — only ReviewVote does, and only
   // to stop one visitor voting twice.
-  helpfulUp   Int @default(0)
-  helpfulDown Int @default(0)
-  createdAt DateTime         @default(now())
+  helpfulUp   Int              @default(0)
+  helpfulDown Int              @default(0)
+  createdAt   DateTime         @default(now())
 
   votes ReviewVote[]
 
@@ -669,7 +669,48 @@ model BlogPost {
   publishedAt DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
+  // ── The <head> layer ──────────────────────────────────────────────────────
+  // These drive <title>, OG tags and JSON-LD, never the rendered card, which is
+  // why the original DTO had no column for them. Lumi9's journal shipped them
+  // in a module and could not move to the database without them: an article
+  // that loses its metaTitle, its keywords and its FAQ block on the way into
+  // Postgres is a downgrade, not a migration.
+  //
+  // All nullable / defaulted, so every existing Femi9 row stays valid and the
+  // storefront falls back to `title` and `excerpt` exactly as it did before.
+  metaTitle String?
+  imageAlt  String?
+  keywords  String[]
+  // The article's own closing call-to-action. Each SEO brief ends on wording
+  // written for that reader; NULL means the page's generic block stands in.
+  cta       String?
+
+  faqs BlogPostFaq[]
+
   @@index([categoryId])
+}
+
+/// A question and answer shown under an article, and emitted as FAQPage
+/// structured data.
+///
+/// A table rather than a JSON column for the same reason ProductSpec is one:
+/// the console edits these as rows with an order, and `position` is what makes
+/// "move this question up" an UPDATE rather than a read-modify-write of a blob
+/// two editors can clobber.
+///
+/// FAQPage markup whose answers a crawler cannot find in the document is a
+/// manual-action risk, so whatever renders these must keep every answer in the
+/// DOM — see the `<dl>` in /journal/[slug], which is deliberately not the
+/// site's Accordion.
+model BlogPostFaq {
+  id       String   @id @default(cuid())
+  postId   String
+  post     BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  question String
+  answer   String
+  position Int      @default(0)
+
+  @@index([postId])
 }
 
 // Both newsletter forms (footer + journal) showed "you're on the list" while
@@ -695,16 +736,16 @@ model EventLog {
 }
 
 model NotificationLog {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   channel   String
   recipient String
   template  String
-  dedupeKey String   @unique
+  dedupeKey String    @unique
   status    String
   error     String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   sentAt    DateTime?
 
   @@index([userId, createdAt])
@@ -890,12 +931,12 @@ enum TharaCycleStatus {
 }
 
 model TharaCycle {
-  id        String            @id @default(cuid())
+  id        String           @id @default(cuid())
   startDate DateTime // inclusive
   endDate   DateTime // inclusive
-  status    TharaCycleStatus  @default(open)
+  status    TharaCycleStatus @default(open)
   closedAt  DateTime?
-  createdAt DateTime          @default(now())
+  createdAt DateTime         @default(now())
 
   points   TharaRewardPointsLedger[]
   vouchers TharaVoucher[]
@@ -931,18 +972,18 @@ enum TharaVoucherStatus {
 }
 
 model TharaVoucher {
-  id             String              @id @default(cuid())
-  userId         String
-  user           User                @relation("TharaVoucherUser", fields: [userId], references: [id], onDelete: Cascade)
-  cycleId        String
-  cycle          TharaCycle          @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  points         Int // snapshot of the total the cycle closed with
-  valuePaise     Int // points × multiplier × 100
-  amazonCode     String?             @unique
-  status         TharaVoucherStatus  @default(available)
-  issuedAt       DateTime            @default(now())
-  claimDeadline  DateTime // hard expiry
-  claimedAt      DateTime?
+  id            String             @id @default(cuid())
+  userId        String
+  user          User               @relation("TharaVoucherUser", fields: [userId], references: [id], onDelete: Cascade)
+  cycleId       String
+  cycle         TharaCycle         @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  points        Int // snapshot of the total the cycle closed with
+  valuePaise    Int // points × multiplier × 100
+  amazonCode    String?            @unique
+  status        TharaVoucherStatus @default(available)
+  issuedAt      DateTime           @default(now())
+  claimDeadline DateTime // hard expiry
+  claimedAt     DateTime?
 
   @@unique([userId, cycleId])
   @@index([status])

@@ -8,8 +8,9 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, QuoteCard, SectionHeading } from "@/components/ui/bits";
 import { ProductBuyBox } from "@/components/pdp/ProductBuyBox";
-import { FEATURE_IMAGES, PDP_REVIEWS } from "@/lib/content";
-import { inr, packImage, type SizeCode } from "@/lib/catalog";
+import { FEATURE_IMAGES } from "@/lib/content";
+import { listReviews } from "@femi9/core/services/products";
+import { inr, type SizeCode } from "@/lib/catalog";
 import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 import { loadCatalog } from "@/lib/catalog.server";
 
@@ -103,7 +104,7 @@ export async function generateMetadata({
       siteName: SITE_NAME,
       title,
       description,
-      images: [{ url: absoluteUrl(packImage(size.size, size.packs[0].count)), alt: `Lumi9 Cloud Soft ${size.name} baby diapers, ${size.fits}` }],
+      images: [{ url: absoluteUrl(size.packs[0].image), alt: `Lumi9 Cloud Soft ${size.name} baby diapers, ${size.fits}` }],
     },
     twitter: { card: "summary_large_image", title, description },
   };
@@ -116,6 +117,16 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
 
   const path = `/product/${size.size.toLowerCase()}`;
   const prices = size.packs.map((pack) => pack.price);
+
+  /**
+   * Real reviews, from the console's moderation queue — `PDP_REVIEWS` in
+   * `content.ts` was three invented quotes that no amount of moderating could
+   * change. Approved rows only, so the queue is the gate it is meant to be.
+   *
+   * Capped at six: this is a rail under the product, not the review page, and an
+   * unbounded read grows with every review ever left.
+   */
+  const reviews = await listReviews("lumi9", { productSlug: size.slug, limit: 6 });
 
   /**
    * One Product with an AggregateOffer over the pack tiers, rather than one
@@ -134,7 +145,13 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
     description: `Lumi9 Cloud Soft baby diapers for ${size.fits}. Aloe Vera-infused cotton-like top sheet, Advanced SAP Core, ADL layer, breathable backsheet, Double Leakage Barrier, 360° protection, soft stretch waistband and a wetness indicator.`,
     sku: `LUMI9-${size.size}`,
     url: absoluteUrl(path),
-    image: size.packs.map((pack) => absoluteUrl(packImage(size.size, pack.count))),
+    // The console's images when there are any, else one per tier from the
+    // bundled fallback. Never the per-tier list directly: a product with fewer
+    // images than tiers repeats one URL, and a duplicate in `image` is a
+    // structured-data warning for nothing.
+    image: (size.images.length ? size.images.map((i) => i.url) : size.packs.map((p) => p.image)).map(
+      absoluteUrl,
+    ),
     brand: { "@type": "Brand", name: "Lumi9" },
     manufacturer: { "@id": `${SITE_URL}/#organization` },
     category: "Baby & Toddler > Diapering > Baby Diapers",
@@ -240,19 +257,32 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
         </div>
       </section>
 
-      {/* REVIEWS */}
-      <section className="px-safe bg-canvas py-section">
-        <div className="mx-auto max-w-[var(--page-max)]">
-          <Reveal className="eyebrow mb-[clamp(26px,4vw,44px)] text-center">Loved by 40,000+ families</Reveal>
-          <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
-            {PDP_REVIEWS.map((review) => (
-              <Reveal key={review.name}>
-                <QuoteCard {...review} surface="bg-paper" quoteSize="text-[clamp(16px,1.5vw,19px)]" />
-              </Reveal>
-            ))}
+      {/* REVIEWS — the whole section is absent when nothing has been approved.
+          An empty grid under "Loved by 40,000+ families" reads as a site that is
+          broken, and the heading is a claim we should not print over nothing. */}
+      {reviews.length > 0 && (
+        <section className="px-safe bg-canvas py-section">
+          <div className="mx-auto max-w-[var(--page-max)]">
+            <Reveal className="eyebrow mb-[clamp(26px,4vw,44px)] text-center">
+              What parents say
+            </Reveal>
+            <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
+              {reviews.map((review) => (
+                <Reveal key={review.id}>
+                  <QuoteCard
+                    quote={`\u201c${review.body}\u201d`}
+                    name={review.name}
+                    role={review.place ?? `${review.rating}/5`}
+                    initial={review.name.trim().charAt(0).toUpperCase() || "\u2022"}
+                    surface="bg-paper"
+                    quoteSize="text-[clamp(16px,1.5vw,19px)]"
+                  />
+                </Reveal>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </PageShell>
   );
 }

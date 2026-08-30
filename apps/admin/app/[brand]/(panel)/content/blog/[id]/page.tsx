@@ -1,14 +1,19 @@
 import { requireConsole } from '@/lib/guard'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getPostAdmin, listCategoriesAdmin } from '@femi9/core/services/admin/blog-admin'
+import { getPostAdmin, joinBody, listCategoriesAdmin } from '@femi9/core/services/admin/blog-admin'
 import PostForm, { type BlogFormValues } from '../_form'
 
 /**
  * Edit-post screen. Server component: loads the post + category list, maps the DB
- * row onto the form's value shape (joining the String[] body back into newline
- * text for the textarea), and hands it to the shared <PostForm/> in edit mode.
- * Next 14.2: `params` is a plain synchronous object.
+ * row onto the form's value shape, and hands it to the shared <PostForm/> in edit
+ * mode.
+ *
+ * The body round-trip goes through `joinBody`, NOT `body.join('\n')`. Blocks are
+ * separated by a blank line, and a bullet list is one block carrying its own
+ * newlines — joining with a single newline and splitting on blank lines turns
+ * the whole article into one enormous paragraph the first time somebody opens a
+ * post and presses Save, with nothing on screen to warn them.
  */
 export const dynamic = 'force-dynamic'
 
@@ -32,8 +37,14 @@ export default async function EditPostPage(props: { params: Promise<{ brand: str
     image: post.image ?? '',
     featured: post.featured,
     status: post.status,
-    // String[] column → one block per line for the textarea.
-    body: post.body.join('\n'),
+    // String[] column → blank-line-separated blocks for the textarea.
+    body: joinBody(post.body),
+    metaTitle: post.metaTitle ?? '',
+    imageAlt: post.imageAlt ?? '',
+    // string[] column → the comma-separated line the single input holds.
+    keywords: post.keywords.join(', '),
+    cta: post.cta ?? '',
+    faqs: post.faqs.map((faq) => ({ question: faq.question, answer: faq.answer })),
   }
 
   return (

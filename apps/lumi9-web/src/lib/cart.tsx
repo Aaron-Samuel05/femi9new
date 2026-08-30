@@ -8,7 +8,7 @@ import {
   useMemo,
   useState,
 } from "react";
-import { inr, packImage, type SizeCode } from "@/lib/catalog";
+import { inr, type SizeCode } from "@/lib/catalog";
 import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
 import { useCartUI } from "@/lib/cart-ui";
 
@@ -147,7 +147,7 @@ function toResolved(catalog: CatalogData, item: CartItemDTO): ResolvedLine {
     fits: size?.fits ?? item.variantLabel,
     price: item.unitPrice,
     lineTotal: item.lineTotal,
-    image: size && pack ? packImage(size.size, pack.count) : item.img,
+    image: pack?.image ?? item.img,
   };
 }
 
@@ -161,7 +161,7 @@ export function resolveLine(catalog: CatalogData, line: CartLine): ResolvedLine 
     fits: size.fits,
     price: pack.price,
     lineTotal: pack.price * line.qty,
-    image: packImage(size.size, pack.count),
+    image: pack.image,
   };
 }
 

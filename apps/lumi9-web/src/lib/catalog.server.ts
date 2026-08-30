@@ -1,7 +1,7 @@
 import 'server-only'
 import { getCatalog } from '@femi9/core/services/products'
 import { getSettings } from '@femi9/core/services/settings'
-import type { ProductSize, SizeCode } from './catalog'
+import { packImage, productName, type ProductSize, type SizeCode } from './catalog'
 
 /**
  * Load Lumi9's catalogue from the database in the shape the storefront already
@@ -16,6 +16,14 @@ import type { ProductSize, SizeCode } from './catalog'
  * Every tier carries its real `variantId`. That is the point of the exercise:
  * the cart used to key lines by `${size}-${count}` because there was nothing
  * else to key them by, and a server-side cart needs the id the database knows.
+ *
+ * It also carries its real PHOTO. Every surface used to call
+ * `packImage(size, count)`, which builds `/assets/products/M-24.jpeg` — a file
+ * shipped inside the container. So the console's image uploader wrote rows into
+ * `ProductImage` (and bytes into the S3 uploads bucket) that this storefront
+ * never read: changing a product photo in the console changed nothing a shopper
+ * saw, and there was no error anywhere to say so. The database is the source
+ * now, and `packImage` survives as the fallback for a product with no rows.
  */
 
 /** A pack tier, now with the id the cart and checkout need. */
@@ -25,12 +33,40 @@ export interface DbPack {
   price: number
   /** Purely so the UI can show "only 3 left"; not a reservation. */
   stock: number
+  /**
+   * The photo this tier shows, already resolved — a `/uploads/…` path the
+   * console uploaded to S3, or the bundled `/assets/…` fallback. Resolved HERE
+   * rather than at each of the eight call sites, so none of them has to know
+   * a product might have no image.
+   */
+  image: string
+  imageAlt: string
 }
 
 export interface DbProductSize extends Omit<ProductSize, 'packs'> {
   productId: string
   slug: string
   packs: DbPack[]
+  /**
+   * Every image on the product, in the console's order. The pack tiers take the
+   * first `packs.length` of them; anything beyond that is extra photography the
+   * gallery shows and no tier owns.
+   */
+  images: { url: string; alt: string }[]
+  /**
+   * The product page's own copy, from the console.
+   *
+   * The PDP accordion used to be `PDP_ACCORDION` in `src/lib/content.ts` — three
+   * hardcoded entries — while the seed wrote the first two of them into
+   * `description` and `longDescription`. So the console had an editor for both
+   * columns, saving one changed the row, and the page went on printing the
+   * module. `specs` is the same story with higher stakes: the size name and the
+   * weight range on every card come from the `Size` and `Fits` rows.
+   */
+  description: string
+  longDescription: string
+  features: { title: string; body: string }[]
+  specs: { key: string; value: string }[]
 }
 
 /** `cloud-soft-m` → `M`. The slug is the stable key; the display name is a spec. */
@@ -68,26 +104,47 @@ export async function loadCatalog(): Promise<CatalogPayload> {
   const sizes = rows
     .map((row) => {
       const fits = spec(row.specs, 'Fits')
+      const code = codeFromSlug(row.slug)
+      const name = spec(row.specs, 'Size') || row.name
       const packs = row.variants
         .filter((v) => v.kind === 'pack' && v.packCount != null)
         .sort((a, b) => (a.packCount ?? 0) - (b.packCount ?? 0))
-        .map((v) => ({
-          variantId: v.id,
-          count: v.packCount as number,
-          price: v.price,
-          stock: v.stock,
-        }))
+        .map((v, index) => {
+          const count = v.packCount as number
+          // Position i of the console's list belongs to pack tier i — the order
+          // the seed writes and the order the console's move-up/move-down
+          // buttons preserve. A product with FEWER images than tiers falls back
+          // to the first (the console calls it the thumbnail), and one with none
+          // at all to the bundled asset.
+          const photo = row.images[index] ?? row.images[0]
+          return {
+            variantId: v.id,
+            count,
+            price: v.price,
+            stock: v.stock,
+            image: photo?.url ?? packImage(code, count),
+            imageAlt: photo?.alt || `${productName({ name })} — ${count} pack`,
+          }
+        })
 
       return {
         productId: row.id,
         slug: row.slug,
-        size: codeFromSlug(row.slug),
-        name: spec(row.specs, 'Size') || row.name,
+        size: code,
+        name,
         fits,
         range: fits,
         // "7–12 kg" → "7–12kg", the compact form the size chips use.
         short: fits.replace(/\s+/g, ''),
         packs,
+        description: row.description,
+        longDescription: row.longDescription ?? '',
+        features: row.features,
+        specs: row.specs,
+        images: row.images.map((image) => ({
+          url: image.url,
+          alt: image.alt || productName({ name }),
+        })),
       }
     })
     .filter((entry) => entry.packs.length > 0)

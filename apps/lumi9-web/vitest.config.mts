@@ -1,3 +1,4 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 // `.mts` so Vite loads it as ESM without the CommonJS-interop warning.
@@ -8,9 +9,17 @@ import { defineConfig } from "vitest/config";
 // `node`, not jsdom — everything under test is a pure function. Nothing mounts,
 // so there is no reason to pay for a DOM or add a second testing library.
 export default defineConfig({
-  resolve: { tsconfigPaths: true },
+  resolve: {
+    tsconfigPaths: true,
+    alias: {
+      // `server-only` throws on import outside a Next server, so a pure helper
+      // that happens to live in a module declaring that boundary cannot be
+      // reached from here without it. femi9-web stubs it the same way.
+      "server-only": fileURLToPath(new URL("./test/stubs/server-only.ts", import.meta.url)),
+    },
+  },
   test: {
     environment: "node",
-    include: ["src/lib/**/*.test.ts"],
+    include: ["src/lib/**/*.test.ts", "test/**/*.test.ts"],
   },
 });

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, SectionHeading } from "@/components/ui/bits";
 import { AddButton } from "@/components/product/AddButton";
-import { defaultPack, getPack, inr, packImage } from "@/lib/catalog";
+import { defaultPack, getPack, inr } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import { LAUNCH_OFFER } from "@/lib/content";
 import type { DbProductSize } from "@/lib/catalog.server";
@@ -25,8 +25,8 @@ function RangeCard({ size }: { size: DbProductSize }) {
         className="relative mb-[clamp(12px,1.8vw,18px)] block aspect-4/5 overflow-hidden rounded-chip bg-shell"
       >
         <Image
-          src={packImage(size.size, pack.count)}
-          alt={`Cloud Soft ${size.name} — ${pack.count} pack`}
+          src={pack.image}
+          alt={pack.imageAlt}
           fill
           sizes="(max-width: 560px) 46vw, (max-width: 1024px) 30vw, 260px"
           className="object-cover"

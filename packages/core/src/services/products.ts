@@ -77,34 +77,108 @@ export interface CatalogEntry {
   longDescription: string | null
   images: { url: string; alt: string | null }[]
   specs: { key: string; value: string }[]
+  /**
+   * Key Benefits, in the console's order.
+   *
+   * Carried here and not only on `getProduct` because a storefront that reads
+   * the catalogue in one query should not have to fetch a product again to find
+   * out what its own product page says about it - which is what forced Lumi9's
+   * PDP copy to live in a module while the console edited rows nothing read.
+   */
+  features: { title: string; body: string }[]
   variants: Variant[]
 }
 
-/** Every active product for a brand, unmapped. Ordered oldest-first, which is
- *  the order the seeds write and therefore the order a size run reads in. */
+/**
+ * Every active product for a brand, unmapped. Ordered oldest-first, which is the
+ * order the seeds write and therefore the order a size run reads in.
+ *
+ * **Every price here is a ZONE price**, exactly as `listProducts` returns — the
+ * zone's custom price for that product or variant when the console set one, else
+ * its percentage discount.
+ *
+ * It did not used to be, and that was a live defect on the brand that reads this
+ * loader for its whole storefront. `cart.ts` and `checkout.ts` have always priced
+ * with `applyZonePrice`, so a shopper in a discounted state was quoted the base
+ * price on the card and on the product page, and charged the regional one at the
+ * basket — the console's own regional pricing, invisible everywhere until the
+ * moment it changed the total. It is the same bug the mapper below this one
+ * carries a comment about; only this entry point was missed, because when it was
+ * written no storefront read it.
+ */
 export async function getCatalog(brand: Brand): Promise<CatalogEntry[]> {
-  const rows = await loadRows(brand)
+  const [rows, zone] = await Promise.all([loadRows(brand), resolveAmbientZone(brand)])
   return rows.map((row) => ({
     id: row.id,
     slug: row.slug,
     name: row.name,
     type: row.type,
-    basePrice: row.basePrice,
+    // Keyed by WHAT it prices, so a zone's custom price for this exact product
+    // is found; without the key it falls back to the zone's percentage.
+    basePrice: applyZonePrice(row.basePrice, zone, { productId: row.id }),
     meta: row.meta,
     flow: row.flow,
     description: row.description,
     longDescription: row.longDescription,
     images: row.images.map((i) => ({ url: i.url, alt: i.alt })),
     specs: row.specs.map((sp) => ({ key: sp.key, value: sp.value })),
+    features: row.features.map((f) => ({ title: f.title, body: f.body })),
     variants: row.variants.map((v) => ({
       id: v.id,
       kind: v.kind,
       label: v.label,
       packCount: v.packCount,
       size: v.size,
-      price: v.price,
+      price: applyZonePrice(v.price, zone, { variantId: v.id }),
       stock: v.stock,
     })),
+  }))
+}
+
+/**
+ * Approved reviews, either for one product or across the whole brand.
+ *
+ * `getProduct` already returns a product's reviews, but two surfaces need them
+ * WITHOUT loading a product: a storefront's testimonial rail, which is
+ * brand-wide, and a product page that has already resolved its row through the
+ * catalogue loader and should not fetch it twice.
+ *
+ * Only `approved` rows, always — the console's moderation queue is the gate
+ * between somebody typing a review and a shopper reading it, and a surface that
+ * reads `pending` makes that queue decorative.
+ *
+ * ⚠️ `verified` is NOT resolved here. Proving a reviewer bought the product is a
+ * second query per product (see `getProduct`), and a brand-wide rail would turn
+ * that into one query per row. The flag is false on every row this returns, and
+ * a caller that renders a "verified buyer" badge must use `getProduct` instead
+ * of promoting an unproven claim to a visible one.
+ */
+export async function listReviews(
+  brand: Brand,
+  options: { productSlug?: string; limit?: number } = {},
+): Promise<ProductReview[]> {
+  const prisma = dbFor(brand)
+  const rows = await prisma.review.findMany({
+    where: {
+      status: 'approved',
+      // Reviews of a retired product are not brand testimony any more.
+      product: { status: 'active', ...(options.productSlug ? { slug: options.productSlug } : {}) },
+    },
+    orderBy: { createdAt: 'desc' },
+    ...(options.limit ? { take: options.limit } : {}),
+  })
+
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    place: r.place,
+    rating: r.rating,
+    title: r.title,
+    body: r.body,
+    helpfulUp: r.helpfulUp,
+    helpfulDown: r.helpfulDown,
+    date: r.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    verified: false,
   }))
 }
 

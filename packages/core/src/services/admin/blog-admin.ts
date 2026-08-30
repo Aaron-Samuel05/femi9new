@@ -12,8 +12,16 @@ import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
  * The one blog-specific twist is `body`: the DB column is String[] (one entry per
  * paragraph, a leading "## " marking a heading and "> " a pull-quote — the same
  * convention the storefront renderer already reads). The editor is a single
- * textarea, so the service is the seam that turns newline-separated text into that
- * array on write and the pages join it back for the textarea on read.
+ * textarea, so the service is the seam that turns the typed text into that array
+ * on write and the pages join it back for the textarea on read.
+ *
+ * **Blocks are separated by a BLANK LINE, not by a single newline.** A bullet or
+ * numbered list is ONE block carrying its own newlines - that is the contract
+ * `ArticleBody` renders against, because a `<p>` per bullet would let HTML
+ * whitespace collapsing eat every separator. Splitting on every newline turned a
+ * five-bullet list into five one-item lists, silently, the first time an editor
+ * opened such a post and pressed Save. `joinBody` below is the matching half,
+ * and the edit page MUST use it rather than joining with a single newline.
  */
 
 // ─────────────────────────── Validation (zod) ───────────────────────────
@@ -42,11 +50,52 @@ export const BlogPostInputSchema = z.object({
     .refine((v) => !v || isManagedImageUrl(v), MANAGED_IMAGE_URL_MESSAGE),
   featured: z.boolean().default(false),
   status: z.enum(['pending', 'approved', 'hidden']).default('approved'),
-  // Raw textarea text — one block per line; split into the String[] column below.
+  // Raw textarea text — one block per BLANK-LINE-separated chunk; split into the
+  // String[] column below.
   body: z.string().default(''),
+
+  // ── The <head> layer ─────────────────────────────────────────────────────
+  // Optional everywhere: a post saved without them renders exactly as it did
+  // before, because the read service falls back to `title` and `excerpt`.
+  metaTitle: z.string().trim().default(''),
+  imageAlt: z.string().trim().default(''),
+  // Accepts the array a JSON client sends OR the comma/newline-separated string
+  // the form's single input yields. One field, two spellings, one column.
+  keywords: z
+    .union([z.array(z.string()), z.string()])
+    .default([])
+    .transform(splitKeywords),
+  cta: z.string().trim().default(''),
+  faqs: z
+    .array(
+      z.object({
+        question: z.string().trim().default(''),
+        answer: z.string().trim().default(''),
+      }),
+    )
+    .default([])
+    // A half-filled row is an editor mid-thought, not an error worth refusing a
+    // save for — and a blank question in FAQPage markup is a validator failure.
+    .transform((rows) => rows.filter((r) => r.question && r.answer)),
 })
 
 export type BlogPostInput = z.infer<typeof BlogPostInputSchema>
+
+/** `'a, b
+c'` → `['a','b','c']`, de-duplicated, order preserved. */
+function splitKeywords(value: string[] | string): string[] {
+  const parts = Array.isArray(value) ? value : value.split(SPLIT_KEYWORDS)
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed)
+      out.push(trimmed)
+    }
+  }
+  return out
+}
 
 // ───────────────────────────── Slug helpers ─────────────────────────────
 
@@ -80,15 +129,37 @@ async function resolveSlug(brand: Brand, source: string, excludeId?: string): Pr
 }
 
 /**
- * Split the textarea into the String[] body column. Each non-empty line is one
- * block; we trim so a stray indent can't hide the "## "/"> " markers the reader
- * keys on, and drop blank lines so they don't become empty paragraphs.
+ * Split the textarea into the String[] body column, on BLANK LINES.
+ *
+ * Each chunk is one block. Every line inside a chunk is trimmed - a stray indent
+ * would otherwise hide the "## " / "> " / "• " marker the renderer keys on - but
+ * the newlines BETWEEN those lines survive, which is what keeps a bullet list one
+ * block instead of one block per bullet.
  */
+const BLANK_LINE = /\r?\n\s*\r?\n/
+const NEWLINE = /\r?\n/
+const SPLIT_KEYWORDS = /[,\n]/
+
 function splitBody(raw: string): string[] {
   return raw
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
+    .split(BLANK_LINE)
+    .map((chunk) =>
+      chunk
+        .split(NEWLINE)
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0)
+        .join('\n'),
+    )
+    .filter((chunk) => chunk.length > 0)
+}
+
+/**
+ * The inverse, for the edit page's textarea. Exported because the two halves
+ * have to agree: joining with a single newline and splitting on blank lines
+ * makes every post one enormous block on the very next save.
+ */
+export function joinBody(blocks: string[]): string {
+  return blocks.join('\n\n')
 }
 
 // ─────────────────────────────── Reads ──────────────────────────────────
@@ -122,7 +193,10 @@ export async function getPostAdmin(brand: Brand, id: string) {
   const prisma = dbFor(brand)
   return prisma.blogPost.findUnique({
     where: { id },
-    include: { category: { select: { id: true, name: true } } },
+    include: {
+      category: { select: { id: true, name: true } },
+      faqs: { orderBy: { position: 'asc' } },
+    },
   })
 }
 
@@ -141,24 +215,50 @@ export async function listCategoriesAdmin(brand: Brand) {
 
 // ─────────────────────────────── Writes ─────────────────────────────────
 
+/**
+ * Every column both writes set, so a field added to one cannot go missing from
+ * the other — which is how `metaTitle` would otherwise end up saveable on create
+ * and silently dropped on edit.
+ *
+ * Empty strings become NULL for the nullable columns: the read service treats
+ * NULL as "fall back to the title", and '' would be a third state that renders
+ * an empty <title>.
+ */
+function postColumns(input: BlogPostInput, slug: string) {
+  return {
+    slug,
+    title: input.title,
+    categoryId: input.categoryId,
+    excerpt: input.excerpt,
+    author: input.author,
+    readTime: input.readTime,
+    tone: input.tone,
+    image: input.image || null,
+    featured: input.featured,
+    status: input.status,
+    body: splitBody(input.body),
+    metaTitle: input.metaTitle || null,
+    imageAlt: input.imageAlt || null,
+    keywords: input.keywords,
+    cta: input.cta || null,
+  }
+}
+
+/** FAQ rows in the order the editor arranged them. */
+function faqRows(input: BlogPostInput) {
+  return input.faqs.map((faq, position) => ({
+    question: faq.question,
+    answer: faq.answer,
+    position,
+  }))
+}
+
 export async function createPost(brand: Brand, input: BlogPostInput) {
   const prisma = dbFor(brand)
   const slug = await resolveSlug(brand, input.slug || input.title)
 
   return prisma.blogPost.create({
-    data: {
-      slug,
-      title: input.title,
-      categoryId: input.categoryId,
-      excerpt: input.excerpt,
-      author: input.author,
-      readTime: input.readTime,
-      tone: input.tone,
-      image: input.image || null,
-      featured: input.featured,
-      status: input.status,
-      body: splitBody(input.body),
-    },
+    data: { ...postColumns(input, slug), faqs: { create: faqRows(input) } },
     select: { id: true },
   })
 }
@@ -167,22 +267,18 @@ export async function updatePost(brand: Brand, id: string, input: BlogPostInput)
   const prisma = dbFor(brand)
   const slug = await resolveSlug(brand, input.slug || input.title, id)
 
-  return prisma.blogPost.update({
-    where: { id },
-    data: {
-      slug,
-      title: input.title,
-      categoryId: input.categoryId,
-      excerpt: input.excerpt,
-      author: input.author,
-      readTime: input.readTime,
-      tone: input.tone,
-      image: input.image || null,
-      featured: input.featured,
-      status: input.status,
-      body: splitBody(input.body),
-    },
-    select: { id: true },
+  // Replaced wholesale rather than diffed: `position` is what orders them, the
+  // set is small, and reconciling by index would renumber every row anyway. In
+  // ONE transaction, so a failure between the delete and the create cannot leave
+  // an article whose FAQ block has vanished but whose FAQPage schema still
+  // claims it — the exact mismatch that earns a manual action.
+  return prisma.$transaction(async (tx) => {
+    await tx.blogPostFaq.deleteMany({ where: { postId: id } })
+    return tx.blogPost.update({
+      where: { id },
+      data: { ...postColumns(input, slug), faqs: { create: faqRows(input) } },
+      select: { id: true },
+    })
   })
 }
 

@@ -1,20 +1,23 @@
 import type { MetadataRoute } from "next";
 import { loadCatalog } from "@/lib/catalog.server";
 import { SIZES } from "@/lib/catalog";
-import { POSTS } from "@/lib/journal";
+import { listJournalPosts } from "@/lib/journal.server";
 import { absoluteUrl } from "@/lib/seo";
 
 /**
  * `/sitemap.xml`.
  *
- * Marketing and journal URLs are known statically; the product routes are a
- * database question, so the catalogue is read the same way the pages read it.
+ * The marketing URLs are known statically; the products AND the journal are
+ * database questions, so both are read the same way the pages read them.
  *
- * That read is wrapped, and the seed's size list is the fallback. A sitemap
- * route that throws returns a 500 to the crawler, and a repeated 500 is treated
- * as "this sitemap is gone" — a transient database blip would quietly cost the
- * whole site its submitted URL set. Serving a slightly stale list is strictly
- * better than serving none.
+ * Both reads are wrapped. A sitemap route that throws returns a 500 to the
+ * crawler, and a repeated 500 is treated as "this sitemap is gone" — a transient
+ * database blip would quietly cost the whole site its submitted URL set. The
+ * catalogue falls back to the seed's size list, which is close enough to be
+ * useful; the journal falls back to NOTHING, because there is no honest static
+ * answer for "which articles exist" once the console can publish one. A sitemap
+ * missing its articles for a minute beats one that 500s, and beats one that
+ * lists five slugs somebody deleted last week.
  *
  * `dynamic` matches the rest of the tree: the build stage has no database.
  */
@@ -41,6 +44,23 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
  * warning on every crawl.
  */
 
+/** The journal's URLs, or an empty list if the database is unreachable. */
+async function journalEntries(): Promise<MetadataRoute.Sitemap> {
+  try {
+    const posts = await listJournalPosts();
+    return posts.map((post) => ({
+      url: absoluteUrl(`/journal/${post.slug}`),
+      // The article's own timestamp, not `now` — telling a crawler that every
+      // post changed today on every fetch is how lastmod stops being believed.
+      lastModified: new Date(post.updated),
+      changeFrequency: "yearly" as const,
+      priority: post.featured ? 0.75 : 0.65,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 async function productPaths(): Promise<string[]> {
   try {
     const { sizes } = await loadCatalog();
@@ -53,7 +73,7 @@ async function productPaths(): Promise<string[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-  const products = await productPaths();
+  const [products, journal] = await Promise.all([productPaths(), journalEntries()]);
 
   return [
     ...STATIC_ROUTES.map((route) => ({
@@ -68,13 +88,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "weekly" as const,
       priority: 0.85,
     })),
-    ...POSTS.map((post) => ({
-      url: absoluteUrl(`/journal/${post.slug}`),
-      // The article's own date, not `now` — telling a crawler that every post
-      // changed today on every fetch is how lastmod stops being believed.
-      lastModified: new Date(`${post.updated ?? post.published}T00:00:00Z`),
-      changeFrequency: "yearly" as const,
-      priority: post.featured ? 0.75 : 0.65,
-    })),
+    ...journal,
   ];
 }

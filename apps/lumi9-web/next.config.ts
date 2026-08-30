@@ -55,6 +55,17 @@ const productionCsp = [
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // Product photos come from the database now, and `isManagedImageUrl` in
+  // @femi9/core admits exactly three shapes: `/uploads/…` (the S3 bucket, via
+  // CloudFront's same-origin behaviour), `/assets/…` (bundled), and Cloudinary
+  // — the upload route's other provider branch. The first two are same-origin
+  // and need nothing here. The third does: next/image THROWS on an
+  // unconfigured host, so a deployment that sets CLOUDINARY_URL instead of
+  // UPLOADS_BUCKET would 500 every page showing a product it had uploaded.
+  images: {
+    remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
+  },
   // `X-Powered-By: Next.js` names the framework and its major version to anyone
   // who asks, which is free reconnaissance and buys nothing.
   poweredByHeader: false,

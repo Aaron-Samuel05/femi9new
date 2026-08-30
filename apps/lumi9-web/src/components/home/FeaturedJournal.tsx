@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Reveal } from "@/components/motion/Reveal";
 import { ArticleCard } from "@/components/journal/JournalCards";
 import { Icon } from "@/components/ui/Icon";
-import { listPosts } from "@/lib/journal";
+import { listJournalPosts } from "@/lib/journal.server";
 
 /**
  * Three journal posts on the home page, where the values bento used to be.
@@ -17,22 +17,21 @@ import { listPosts } from "@/lib/journal";
  * footer pointed at it except a nav link.
  *
  * ── Which three ─────────────────────────────────────────────────────────────
- * `listPosts()` already sorts featured-first, then newest, which is exactly the
+ * The loader already sorts featured-first, then newest, which is exactly the
  * order the /journal listing uses — so the home page shows the same lead
  * articles that page does rather than inventing a second idea of "featured".
- * Mark a post `featured: true` in `src/lib/journal.ts` and it surfaces in both.
+ * Mark a post featured in the console and it surfaces in both.
  *
  * It renders whatever exists up to three: with two posts it lays out two, and
  * with none it renders nothing at all rather than an empty heading over a gap.
- * That matters more than it looks — the posts move to the database eventually
- * (`listPosts('lumi9')` from `@femi9/core/services/blog`, see CLAUDE.md), and
- * the first thing a fresh `lumi9` schema returns is an empty array.
+ * That matters more than it looks — the posts come from the `lumi9` schema now,
+ * and the first thing a freshly migrated one returns is an empty array.
  *
- * A server component: `listPosts()` is a module read today and a database query
- * later, and neither belongs in the client bundle.
+ * A server component, and an async one: this is a database query, which is not
+ * something a client bundle can hold.
  */
-export function FeaturedJournal() {
-  const posts = listPosts().slice(0, 3);
+export async function FeaturedJournal() {
+  const posts = (await listJournalPosts()).slice(0, 3);
   if (posts.length === 0) return null;
 
   return (

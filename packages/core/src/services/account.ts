@@ -32,6 +32,38 @@ import {
 export type ProfileField = 'name' | 'email' | 'phone'
 
 /**
+ * Is a mobile number part of "complete"?
+ *
+ * `/welcome` asks for whatever signing in did not supply, and for a Google or
+ * magic-link shopper that is the phone — a second screen, an OTP round trip and
+ * an SMS bill standing between somebody who has just signed in and the account
+ * they were trying to reach. Whether that is worth it is a deployment decision,
+ * not a code one: it depends on whether the brand sends delivery SMS, and on
+ * whether an OTP provider is even configured.
+ *
+ * Same convention as the sign-in method flags in `auth-methods.ts`: **only the
+ * exact string `false` turns it off.** A typo must not quietly stop collecting
+ * the column a parcel and every delivery SMS are addressed to, so anything else
+ * — unset, empty, "no", "0", a stray space — leaves it required.
+ *
+ * Unset means REQUIRED, which is what Femi9 has always done and what its
+ * identity tests assert. Lumi9 sets `REQUIRE_PROFILE_PHONE=false`.
+ *
+ * Read per call rather than captured at module load: the value is a deployment
+ * setting, and a module-level constant would bake whichever value the process
+ * happened to start with into a long-lived server — and would make it
+ * un-testable without re-importing the module.
+ *
+ * Turning it off never LOSES a number. Checkout still asks for one and still
+ * validates it, `/account` still offers the field, and a phone-OTP sign-in
+ * still writes it — this only decides whether the shopper is stopped at the
+ * door until she supplies one.
+ */
+export function profilePhoneRequired(): boolean {
+  return process.env.REQUIRE_PROFILE_PHONE !== 'false'
+}
+
+/**
  * The ONE definition of "complete". /welcome, the /account and /dashboard gates,
  * /api/auth/me and the OTP verify response all read this — nothing re-implements
  * it, so the gate can never disagree with the screen it is gating.
@@ -45,7 +77,7 @@ export function missingProfileFields(u: {
   const missing: ProfileField[] = []
   if (!u.name?.trim()) missing.push('name')
   if (!u.email) missing.push('email')
-  if (!u.phone) missing.push('phone')
+  if (!u.phone && profilePhoneRequired()) missing.push('phone')
   return missing
 }
 

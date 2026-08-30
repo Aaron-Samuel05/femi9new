@@ -1,16 +1,19 @@
 /**
- * The Lumi9 Journal — editorial content.
+ * The Lumi9 Journal — the SEED's input, not the storefront's source.
  *
- * Shape deliberately mirrors `BlogPostDTO` in `@femi9/core/services/blog`, the
- * brand-agnostic loader Femi9's journal already reads. Lumi9's marketing copy
- * still lives in modules (see CLAUDE.md — only the CATALOGUE is in the database
- * so far), so these posts are served from here. When the journal moves to the
- * `lumi9` schema the page components keep working: swap `listPosts()` for
- * `listPosts('lumi9')` and delete the array, nothing else.
+ * `prisma/seed-journal.ts` reads `POSTS` and `JOURNAL_CATEGORIES` and writes
+ * them into the `lumi9` schema; the storefront reads the database through
+ * `journal.server.ts`, which wraps the brand-agnostic loaders in
+ * `@femi9/core/services/blog`. Editing this file changes what a fresh seed
+ * writes and NOTHING that is already live — a published article is edited in
+ * the console, at /lumi9/content/blog.
  *
- * The extra fields the DTO has no column for — `metaTitle`, `keywords`, `faqs`,
- * `imageAlt`, `updated` — exist because they drive <head> and JSON-LD rather
- * than the rendered card, and they are what the SEO brief asked to be shipped.
+ * The fields the DTO once had no column for — `metaTitle`, `keywords`, `faqs`,
+ * `imageAlt` — are columns now (migration `20260831090000_blog_seo_and_faqs`),
+ * because they drive <head> and JSON-LD and an import that dropped them would
+ * have been a downgrade rather than a migration. `updated` is the one that did
+ * not survive: the row's own `updatedAt` is what `dateModified` reads, so a
+ * hand-maintained second date would only be something to forget.
  *
  * Body blocks use a tiny subset of markdown, rendered by
  * `components/journal/ArticleBody.tsx`:
@@ -709,55 +712,17 @@ export const POSTS: JournalPost[] = [
   },
 ];
 
-/* --------------------------------------------------------------------------
-   Loaders. Same names and return shapes as `@femi9/core/services/blog`, so the
-   pages that call them do not change when the journal moves to the database.
-   -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
 
-/** Featured first, then newest — the order the listing grid expects. */
-function byFeaturedThenNewest(a: JournalPost, b: JournalPost) {
-  if (!!a.featured !== !!b.featured) return a.featured ? -1 : 1;
-  return b.published.localeCompare(a.published);
-}
-
-export function listPosts(): JournalPost[] {
-  return [...POSTS].sort(byFeaturedThenNewest);
-}
-
-export function getPost(slug: string): JournalPost | null {
-  return POSTS.find((post) => post.slug === slug) ?? null;
-}
-
-export function listCategories(): JournalCategory[] {
-  // Only surface a chip that actually has something behind it.
-  const used = new Set(POSTS.map((post) => post.category));
-  return JOURNAL_CATEGORIES.filter((category) => used.has(category.name));
-}
-
-export function categoryMeta(name: string): JournalCategory {
-  return JOURNAL_CATEGORIES.find((category) => category.name === name) ?? JOURNAL_CATEGORIES[0];
-}
-
-/** Up to `n` related reads: same category first, then the most recent others. */
-export function relatedPosts(slug: string, n = 3): JournalPost[] {
-  const current = getPost(slug);
-  if (!current) return [];
-
-  const others = POSTS.filter((post) => post.slug !== slug).sort((a, b) =>
-    b.published.localeCompare(a.published),
-  );
-  const sameCategory = others.filter((post) => post.category === current.category);
-  const rest = others.filter((post) => post.category !== current.category);
-
-  return [...sameCategory, ...rest].slice(0, n);
-}
-
-/** `2026-08-18` → `August 18, 2026`. Fixed locale so SSR and the client agree. */
-export function formatPostDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
-  });
-}
+/*
+ * The loaders that used to live here — listPosts, getPost, listCategories,
+ * categoryMeta, relatedPosts, formatPostDate — are GONE, deliberately.
+ *
+ * Every one of them is now answered by the database: `journal.server.ts` for the
+ * four queries, and the DTO itself for the other two (it carries the formatted
+ * `date` beside the ISO `published`, and each post carries its own category
+ * colour and tint). Leaving a second, module-backed set of readers in place is
+ * how a page ends up rendering the array while the console edits the rows, with
+ * nothing on either side to say the two disagree — which is exactly the bug this
+ * change was made to fix.
+ */

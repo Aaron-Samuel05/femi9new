@@ -21,6 +21,7 @@ So right now:
 | Catalogue in the database | ✅ 5 sizes · 12 pack variants · price zones |
 | Manageable in the console | ✅ `/lumi9/products` |
 | **Read by THIS app** | ✅ **live — a console price change shows without a rebuild** |
+| Product photos | ✅ **from `ProductImage`** — the console uploads to S3; `packImage()` is only the fallback |
 | Cart | ✅ server-side, in `lumi9.Cart`, priced by the server, **opens in a drawer** |
 | Sign-in | ✅ **phone OTP (primary) · Google · emailed link** — no passwords; each method appears only where its provider is configured |
 | Onboarding | ✅ `/welcome` captures name + email + verified mobile |
@@ -31,8 +32,10 @@ So right now:
 | Coupons | ✅ the cart's promo box validates against the real `Coupon` rows |
 | Subscriptions | ✅ real plans, skip/pause/resume/cancel, renewed by a scheduled job |
 | Newsletter + contact | ✅ persisted / delivered — both used to discard the input |
-| Journal | ⛔ still `src/lib/journal.ts`, not the database — see below |
-| Testimonials + ABOUT_STATS | ⛔ invented copy in `src/lib/content.ts`, kept by decision |
+| Journal | ✅ **in the `lumi9` schema** — editable at `/lumi9/content/blog` |
+| Reviews (home rail + PDP) | ✅ **`Review` rows** — the console's moderation queue is the gate |
+| PDP copy | ✅ `description` · `longDescription` · Key Benefits, all from the console |
+| Marketing chrome | ⛔ `src/lib/content.ts` — no table models it, no console page owns it |
 
 ## How the catalogue reaches the page
 
@@ -46,6 +49,34 @@ lumi9 schema ──▶ getCatalog('lumi9')      @femi9/core, brand-agnostic rows
 `useCatalogData()` returns the sizes AND `getSize` / `getSizeOrDefault` as plain
 closures, deliberately — those are called inside event handlers and `useMemo`
 bodies, where a hook cannot go.
+
+**The photos come from the database too, and that is newer than the prices.**
+Every surface used to call `packImage(size, count)` — `/assets/products/M-24.jpeg`,
+a file baked into the container — so the console's image uploader wrote
+`ProductImage` rows and pushed bytes into the S3 uploads bucket that this
+storefront never read. Changing a product photo in the console changed nothing a
+shopper saw, and nothing anywhere reported it: the page rendered a perfectly good
+image, just not the one somebody had just uploaded.
+
+`loadCatalog()` resolves it once, so no call site knows there is a fallback:
+
+```
+ProductImage (console upload → S3)  ──▶ pack.image / pack.imageAlt
+  images[i] for tier i · images[0] when there are fewer · packImage() when none
+```
+
+Image `i` belongs to pack tier `i` — the order the seed writes and the order the
+console's move-up/move-down buttons preserve. Anything beyond `packs.length` is
+photography no tier owns, and the PDP gallery shows it as a view-only thumb;
+dropping it would silently discard most of a six-image product.
+
+**Do not call `packImage()` from a component.** It pins that surface back to a
+file inside the image and makes a console upload invisible again. It survives for
+`prisma/seed.ts` and for the one fallback in `catalog.server.ts`.
+
+The thumb list is keyed by `variantId`, not by `src`: a product with fewer images
+than tiers gives several tiers the same photo, and a src-keyed list collides and
+marks all of them current at once.
 
 **The whole tree is `force-dynamic`.** Two reasons, and the second is the one
 that bites: a console price change must not wait for a rebuild, and the Docker
@@ -226,17 +257,27 @@ layout — hero, featured mosaic, category chips over a filtered grid, then an
 article page of cover + body + FAQ + related reads — rebuilt on this app's
 Tailwind tokens rather than Femi9's hand-written CSS.
 
-**The posts are in `src/lib/journal.ts`, not the database.** Femi9's journal
-reads `@femi9/core/services/blog`, which is brand-agnostic and would work here
-with `listPosts('lumi9')`. It is not wired up yet because the storefront would
-then show nothing until somebody seeded the `lumi9` schema. The module's shape
-mirrors `BlogPostDTO` deliberately, and its loaders carry the same names
-(`listPosts` / `getPost` / `listCategories` / `relatedPosts`), so moving to the
-database is a change of import in two pages and a delete of one array.
+**The posts are in the `lumi9` schema**, read through `src/lib/journal.server.ts`
+— thin brand-bound wrappers over `@femi9/core/services/blog`, so the brand
+literal is written once. `src/lib/journal.ts` is the SEED's input now, the same
+relationship `catalog.ts` has to `catalog.server.ts`: editing it changes what
+`npm run db:seed-journal` writes and nothing that is live.
 
-The fields the DTO has no column for — `metaTitle`, `keywords`, `faqs`,
-`imageAlt` — drive `<head>` and JSON-LD, not the card. A DB migration that adds
-the journal will need them too.
+Migration `20260831090000_blog_seo_and_faqs` added what the DTO had no column
+for: `metaTitle`, `imageAlt`, `keywords[]`, `cta`, and a `BlogPostFaq` table.
+Without them the import would have been a downgrade — an article losing its
+`<title>`, its keywords and its FAQ block on the way into Postgres. `updated` did
+NOT survive: the row's own `updatedAt` is what `dateModified` reads.
+
+**⚠️ `generateStaticParams` is gone from `/journal/[slug]` and must not come
+back.** The slug set is a database question now and Next calls it during
+`next build`, where the Docker build stage has no credentials — declaring it
+turns publishing an article into a build failure.
+
+**Body blocks are separated by a BLANK LINE, in the console too.** `splitBody`
+in `blog-admin.ts` used to split on every newline, which turned a five-bullet
+list into five one-item lists the first time an editor opened such a post and
+pressed Save. `joinBody` is the matching half and the edit page must use it.
 
 **Body blocks are a tiny markdown subset**, rendered by
 `components/journal/ArticleBody.tsx`: `## `, `### `, `> `, `• ` and `1. ` lists,

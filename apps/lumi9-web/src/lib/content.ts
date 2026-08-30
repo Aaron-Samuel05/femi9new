@@ -169,6 +169,27 @@ export const PDP_REVIEWS = [
   },
 ];
 
+/**
+ * Site POLICY, identical on every product and owned by no console page - so it
+ * is appended to each product's own copy rather than stored per row, where five
+ * sizes would mean five places to update one shipping rule.
+ */
+export const PDP_POLICY_ACCORDION = [
+  {
+    q: "Shipping & returns",
+    a: "Free delivery on orders over ₹999, dispatched within 24 hours across India. Unopened packs can be returned within 30 days, no questions asked.",
+  },
+];
+
+/**
+ * The PDP accordion's SEED INPUT, not what the page renders.
+ *
+ * `prisma/seed.ts` reads the Description and Materials & safety entries into
+ * `Product.description` and `Product.longDescription`; `ProductBuyBox` builds the
+ * panel from those columns plus the product's Key Benefits, so editing an entry
+ * in the console changes the page and editing THIS changes only what a fresh
+ * seed writes. The policy entry above is the one part still rendered from here.
+ */
 export const PDP_ACCORDION = [
   {
     q: "Description",
@@ -178,10 +199,7 @@ export const PDP_ACCORDION = [
     q: "Materials & safety",
     a: "Free from lotions, fragrances, chlorine bleaching and harsh irritants. Dermatologist tested and clinically proven safe for sensitive newborn skin. A wetness indicator changes colour when it is time for a change.",
   },
-  {
-    q: "Shipping & returns",
-    a: "Free delivery on orders over ₹999, dispatched within 24 hours across India. Unopened packs can be returned within 30 days, no questions asked.",
-  },
+  ...PDP_POLICY_ACCORDION,
 ];
 
 export const ABOUT_STATS = [

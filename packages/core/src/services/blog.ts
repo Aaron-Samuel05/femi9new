@@ -9,20 +9,55 @@ import { dbFor, type Brand } from '@femi9/db'
  * change. `category` is flattened to the category *name* via the BlogCategory
  * relation, and `date` is a display string derived from `publishedAt` (the DB
  * keeps a real timestamp; the UI only ever showed the formatted label).
+ *
+ * ── The <head> layer ────────────────────────────────────────────────────────
+ * `metaTitle`, `imageAlt`, `keywords`, `cta` and `faqs` drive <title>, Open
+ * Graph and JSON-LD rather than the rendered card. Lumi9's journal shipped them
+ * in a module and could not move here without them; Femi9's rows do not set
+ * them yet, so each one falls back to something the page can render today
+ * (`metaTitle` → `title`, `imageAlt` → `title`, the rest empty). Nothing that
+ * reads this DTO has to branch on which brand wrote the row.
+ *
+ * `date` stays the formatted label the cards print. `published` and `updated`
+ * are the ISO timestamps beside it, because `datePublished` in structured data
+ * and `<time dateTime>` need a machine-readable value and "July 2, 2026" is not
+ * one — a page that fed the display string to both looked right and emitted an
+ * invalid date to every crawler.
  */
+
+export interface BlogFaqDTO {
+  q: string
+  a: string
+}
 
 export interface BlogPostDTO {
   slug: string
   title: string
   category: string
+  /** The category's own accent colour and chip tint, carried on the post so a
+   *  card does not need a second lookup against the category list. */
+  categoryColor: string
+  categoryTint: string
   excerpt: string
   author: string
+  /** Display label, e.g. 'July 2, 2026'. */
   date: string
+  /** ISO 8601 — what structured data and <time dateTime> need. */
+  published: string
+  /** ISO 8601 of the last edit, for `dateModified`. */
+  updated: string
   readTime: number
   tone: string
   image?: string
+  imageAlt: string
   featured?: boolean
   body: string[]
+  /** <title> for the article route. Falls back to `title`. */
+  metaTitle: string
+  keywords: string[]
+  /** The article's own closing call-to-action; empty means "use the generic one". */
+  cta: string
+  faqs: BlogFaqDTO[]
 }
 
 export interface BlogCategoryDTO {
@@ -34,12 +69,19 @@ export interface BlogCategoryDTO {
 // featured first, then newest — the order the storefront grid expects.
 const POST_ORDER = [{ featured: 'desc' }, { publishedAt: 'desc' }] as const
 
+/** Every relation `toPost` reads, in one place so the four queries below cannot
+ *  drift into returning posts with and without their FAQ blocks. */
+const POST_INCLUDE = {
+  category: true,
+  faqs: { orderBy: { position: 'asc' } },
+} as const
+
 function loadRows(brand: Brand) {
   const prisma = dbFor(brand)
   return prisma.blogPost.findMany({
     where: { status: 'approved' },
     orderBy: [...POST_ORDER],
-    include: { category: true },
+    include: POST_INCLUDE,
   })
 }
 
@@ -51,19 +93,33 @@ function toPost(row: Row): BlogPostDTO {
     slug: row.slug,
     title: row.title,
     category: row.category.name,
+    categoryColor: row.category.color,
+    categoryTint: row.category.tint,
     excerpt: row.excerpt,
     author: row.author,
     // e.g. 'July 2, 2026' — matches the display strings the static data shipped.
+    // Fixed locale and UTC so the server and the client render the same string;
+    // a machine-local format would hydrate differently for a reader east of us.
     date: row.publishedAt.toLocaleDateString('en-US', {
       month: 'long',
       day: 'numeric',
       year: 'numeric',
+      timeZone: 'UTC',
     }),
+    published: row.publishedAt.toISOString(),
+    updated: row.updatedAt.toISOString(),
     readTime: row.readTime,
     tone: row.tone,
     image: row.image ?? undefined,
+    // Never the empty string: alt="" tells a screen reader the image is
+    // decorative, and an article's cover photograph is not.
+    imageAlt: row.imageAlt || row.title,
     featured: row.featured,
     body: row.body,
+    metaTitle: row.metaTitle || row.title,
+    keywords: row.keywords,
+    cta: row.cta ?? '',
+    faqs: row.faqs.map((faq) => ({ q: faq.question, a: faq.answer })),
   }
 }
 
@@ -78,7 +134,7 @@ export async function getPost(brand: Brand, slug: string): Promise<BlogPostDTO |
   const prisma = dbFor(brand)
   const row = await prisma.blogPost.findFirst({
       where: { slug, status: 'approved' },
-      include: { category: true },
+      include: POST_INCLUDE,
     })
   return row ? toPost(row) : null
 }
@@ -102,7 +158,7 @@ export async function relatedPosts(brand: Brand, slug: string, n = 3): Promise<B
   const sameCat = await prisma.blogPost.findMany({
     where: { status: 'approved', slug: { not: slug }, categoryId: current.categoryId },
     orderBy: { publishedAt: 'desc' },
-    include: { category: true },
+    include: POST_INCLUDE,
     take: n,
   })
 
@@ -113,7 +169,7 @@ export async function relatedPosts(brand: Brand, slug: string, n = 3): Promise<B
     const others = await prisma.blogPost.findMany({
       where: { status: 'approved', slug: { notIn: excludeSlugs } },
       orderBy: { publishedAt: 'desc' },
-      include: { category: true },
+      include: POST_INCLUDE,
       take: n - picked.length,
     })
     picked.push(...others)

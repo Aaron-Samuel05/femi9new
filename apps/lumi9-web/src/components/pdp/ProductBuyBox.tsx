@@ -8,10 +8,10 @@ import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
-import { defaultPack, getPack, inr, packImage, subscriptionPrice } from "@/lib/catalog";
+import { defaultPack, getPack, inr, subscriptionPrice } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import type { DbProductSize } from "@/lib/catalog.server";
-import { FEATURE_IMAGES, PDP_ACCORDION } from "@/lib/content";
+import { FEATURE_IMAGES, PDP_POLICY_ACCORDION } from "@/lib/content";
 
 const TRUST: { icon: IconName; label: string }[] = [
   { icon: "leaf", label: "Chemical-free" },
@@ -33,18 +33,52 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
   const { add } = useCart();
 
   const pack = getPack(size, packCount);
-  const activeImage = mainImage ?? packImage(size.size, pack.count);
+  const activeImage = mainImage ?? pack.image;
 
+  /**
+   * The accordion, from the console.
+   *
+   * It used to be three constants in `content.ts`, two of which the seed ALSO
+   * wrote into `description` and `longDescription` — so the console had an
+   * editor for both, saving one changed the row, and this panel went on
+   * printing the module. Every entry with a real column behind it now reads it,
+   * and an empty column drops its entry rather than showing a blank panel.
+   *
+   * Shipping & returns stays a constant: it is site policy, the same sentence
+   * on every product, and there is no console page that owns it. It is appended
+   * LAST so the product's own copy always leads.
+   */
+  const accordion = [
+    ...(size.description ? [{ q: "Description", a: size.description }] : []),
+    ...(size.longDescription ? [{ q: "Materials & safety", a: size.longDescription }] : []),
+    ...size.features.filter((f) => f.body).map((f) => ({ q: f.title, a: f.body })),
+    ...PDP_POLICY_ACCORDION,
+  ];
+
+  // Pack thumbs SELECT a tier; the extras only change the picture. `images`
+  // beyond `packs.length` are photography the console uploaded that no tier
+  // owns — dropping them would silently discard most of a six-image product.
   const thumbs = [
     ...size.packs.map((option) => ({
-      src: packImage(size.size, option.count),
-      alt: `Cloud Soft ${size.name} — ${option.count} pack`,
+      // Not `src`: a product with fewer images than tiers gives every tier the
+      // same photo, and a src-keyed list would collide and mark all of them
+      // current at once. The variant id is unique whatever the images do.
+      id: option.variantId,
+      src: option.image,
+      alt: option.imageAlt,
       onSelect: () => {
         setPackCount(option.count);
-        setMainImage(packImage(size.size, option.count));
+        setMainImage(option.image);
       },
     })),
+    ...size.images.slice(size.packs.length).map((extra, i) => ({
+      id: `extra-${size.packs.length + i}`,
+      src: extra.url,
+      alt: extra.alt,
+      onSelect: () => setMainImage(extra.url),
+    })),
     ...FEATURE_THUMBS.map((feature) => ({
+      id: feature.src,
       src: feature.src,
       alt: feature.alt,
       onSelect: () => setMainImage(feature.src),
@@ -73,7 +107,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
         <div className="scroll-row mt-4 gap-[clamp(8px,1vw,12px)] max-md:-mx-[var(--spacing-gutter)] max-md:px-[var(--spacing-gutter)]">
           {thumbs.map((thumb) => (
             <button
-              key={thumb.src}
+              key={thumb.id}
               type="button"
               onClick={thumb.onSelect}
               aria-label={`View ${thumb.alt}`}
@@ -147,7 +181,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
               aria-pressed={option.count === pack.count}
               onClick={() => {
                 setPackCount(option.count);
-                setMainImage(packImage(size.size, option.count));
+                setMainImage(option.image);
               }}
               className="chip"
             >
@@ -186,7 +220,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           ))}
         </div>
 
-        <Accordion items={PDP_ACCORDION} defaultOpen={0} />
+        <Accordion items={accordion} defaultOpen={0} />
       </div>
     </div>
   );

@@ -77,6 +77,37 @@ export async function listReviews(brand: Brand, {
  * Set a review's moderation status. Returns the reconciled row so the queue can
  * update in place, or null when the id no longer exists (P2025 → 404 upstream).
  */
+/**
+ * Recompute `Product.rating` and `Product.reviewCount` from the APPROVED rows.
+ *
+ * Both are denormalised counters the storefront prints beside a product - a star
+ * line and an "(N)" - and nothing recomputed them when a moderator changed what
+ * was approved. So hiding a one-star review left the average it dragged down in
+ * place, and approving a five-star one did not move it: the console's queue
+ * decided which reviews a shopper could READ while the number above them stayed
+ * at whatever a seed last wrote.
+ *
+ * Called after every status change and every delete. It is one aggregate over an
+ * indexed column, on an action a human takes one row at a time.
+ */
+async function refreshProductRating(brand: Brand, productId: string): Promise<void> {
+  const prisma = dbFor(brand)
+  const stats = await prisma.review.aggregate({
+    where: { productId, status: 'approved' },
+    _avg: { rating: true },
+    _count: true,
+  })
+  await prisma.product.update({
+    where: { id: productId },
+    data: {
+      // One decimal, which is what "4.8" on the card is. `_avg` is null when the
+      // last approved review has just been hidden - that is a real 0, not a gap.
+      rating: Math.round((stats._avg.rating ?? 0) * 10) / 10,
+      reviewCount: stats._count,
+    },
+  })
+}
+
 export async function setReviewStatus(brand: Brand, 
   id: string,
   status: ModerationStatus,
@@ -88,6 +119,7 @@ export async function setReviewStatus(brand: Brand,
       data: { status },
       include: { product: { select: { name: true } } },
     })
+    await refreshProductRating(brand, r.productId)
     return toRow(r)
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') return null
@@ -99,7 +131,10 @@ export async function setReviewStatus(brand: Brand,
 export async function deleteReview(brand: Brand, id: string): Promise<{ id: string } | null> {
   const prisma = dbFor(brand)
   try {
-    await prisma.review.delete({ where: { id } })
+    // `delete` returns the row, which is the only way to learn which product to
+    // roll up AFTER the row is gone.
+    const deleted = await prisma.review.delete({ where: { id } })
+    await refreshProductRating(brand, deleted.productId)
     return { id }
   } catch (err) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2025') return null
