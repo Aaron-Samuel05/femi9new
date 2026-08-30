@@ -124,7 +124,16 @@ export const metadata: Metadata = {
     ? { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 } }
     : { index: false, follow: false },
   formatDetection: { telephone: false },
-  icons: { icon: "/favicon.ico" },
+  /*
+   * No `icons` here on purpose.
+   *
+   * The icons are FILE CONVENTIONS — src/app/favicon.ico, icon.svg and
+   * apple-icon.png — which Next discovers and links itself, with a content hash
+   * for cache busting. An explicit `icons` field in metadata OVERRIDES that
+   * discovery rather than adding to it, so the `icon: "/favicon.ico"` that used
+   * to sit here suppressed the SVG and the Apple icon and pointed at
+   * /favicon.ico in `public/`, where no such file has ever existed.
+   */
 };
 
 /**

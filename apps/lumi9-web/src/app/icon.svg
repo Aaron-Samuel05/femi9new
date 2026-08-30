@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Lumi9">
+  <!--
+    The 9 from the wordmark, on the brand's moss.
+
+    Redrawn rather than cropped out of logo-midnight.png: in the real logo the
+    "Happy Day, Every Day" tagline curves straight through the lower half of the
+    9, and the two sleeping babies nestled in its bowl are lovely at 115px and
+    illegible mud at 16. A favicon is read at 16px in a row of other 16px
+    favicons, so it gets the one shape that survives that — the numeral, in the
+    rounded terminals the wordmark is drawn with.
+
+    Filled tile rather than a transparent glyph: browser tabs are light, the
+    brand's midnight is nearly black, and an unbacked dark mark is
+    indistinguishable from every other dark mark at that size. Moss and butter
+    are what make it Lumi9's at a glance.
+  -->
+  <rect width="64" height="64" rx="15" fill="#6e7e3e" />
+  <g fill="none" stroke="#fff0a3" stroke-width="8.5" stroke-linecap="round">
+    <circle cx="33" cy="25" r="11" />
+    <path d="M44 25c0 12-4 20-13 26" />
+  </g>
+</svg>
