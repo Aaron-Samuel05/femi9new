@@ -105,7 +105,13 @@ export default function HomePage() {
           /* full-height hero, except on short viewports (landscape phones, split
              screens) where it just wraps its content instead of overflowing */
           className="px-safe relative flex min-h-[100svh] flex-col items-center gap-[clamp(12px,4vw,32px)] pb-[clamp(32px,6vw,60px)] pt-[calc(var(--nav-h,68px)+clamp(18px,4vw,44px))] md:flex-row md:gap-0 [@media(max-height:560px)]:min-h-0 [@media(max-height:560px)]:pt-[calc(var(--nav-h,68px)+14px)] [@media(max-height:560px)]:pb-8"
-          style={{ background: "radial-gradient(120% 90% at 78% 20%, #eef1e0 0%, #f7f5ea 55%)" }}
+          /* Flat, and it is the CLIP's own backdrop rather than the old green
+             gradient. With the page and the clip on one colour the video has no
+             edge left to hide, so there is no mask, no disc and no blend here —
+             the character simply stands in the page. A gradient cannot do this:
+             it drifts across the clip's footprint, and whatever single colour
+             the clip is flattened to is then wrong everywhere but one line. */
+          style={{ backgroundColor: "#f4eada" }}
         >
           <FloatyBlob
             factor={0.12}
@@ -168,43 +174,19 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
-            {/* The clip's own aspect (516x636 = 43/53), so nothing is ever
-                cropped. The old box was `w-full` — a portrait slot fed a 4:3
-                landscape clip — and `cover` resolved that by scaling up and
-                cutting the character's arms and feet off. */}
-            <div className="relative aspect-[43/53] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
-              {/* A SOLID disc of the clip's own flattened backdrop, blurred at
-                  its edge — not a radial gradient. A radial gradient cannot do
-                  this job: its ellipse reaches a rectangle's corners later than
-                  its edges, so the corners fade out while the clip underneath is
-                  still opaque, and each corner shows as a seam. Blurring a solid
-                  rounded rect covers the whole clip and fades on every side at
-                  once. Sized off the clip in %, so it tracks every breakpoint by
-                  itself.
-
-                  #f4f3e6 is the HERO's own colour behind this spot, measured
-                  with the clip hidden — and the clip is now encoded onto that
-                  same colour rather than onto its own backdrop. That was the
-                  actual bug: the render's cream is warm (#f2e9db) and the hero's
-                  is green (#f4f3e6), 11 values apart in blue, which is exactly
-                  what read as a pale box sitting on the page.
-
-                  The disc still earns its place: the hero gradient drifts about
-                  9 values across the clip's footprint, so no single flat colour
-                  can match it everywhere. The disc absorbs that drift, and its
-                  inset clears the blur radius so it is not already mid-fade
-                  where the clip's edge lands. Values are what a browser PAINTS,
-                  read off a screenshot — limited-range yuv420p is expanded by
-                  about 5 on decode, so the file's own numbers are the wrong
-                  target. */}
-              <div
-                className="absolute inset-[-11%] rounded-[18%]"
-                style={{ background: "#f4f3e6", filter: "blur(30px)" }}
-                aria-hidden
-              />
+            {/* The clip's own aspect (590x670 = 59/67), so nothing is ever
+                cropped. `cover` would scale up to fill the box and throw the
+                overflow away, which is what cut the character's arms off. The
+                crop is wide enough that the character never reaches an edge in
+                any of the 240 frames — verified, not eyeballed. It has to be
+                that wide: the pointing hand swings out to x=316 while the twig
+                prop runs in to x=407, so no vertical crop line separates them.
+                The props are painted out with the backdrop colour BEFORE the
+                crop instead, which is what lets the crop be generous. */}
+            <div className="relative aspect-[59/67] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
               <CursorScrubVideo
-                src="/assets/lumi-scrub-v4.mp4"
-                poster="/assets/lumi-scrub-v4-poster.jpg"
+                src="/assets/lumi-scrub-v6.mp4"
+                poster="/assets/lumi-scrub-v6-poster.jpg"
                 label="Lumi, the Lumi9 avocado, waving hello"
                 hint="Move your cursor"
                 axis="horizontal"
