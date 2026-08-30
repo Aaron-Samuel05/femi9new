@@ -328,3 +328,58 @@ export const FEATURE_IMAGES = {
   builtForBigStep: { src: "/assets/features/built-for-big-step.png", alt: "Built for the big step" },
   perfectFit: { src: "/assets/features/perfect-fit.png", alt: "Lumi9 size chart" },
 };
+
+/* ---------------------------------------------------------------------------
+   Ported from the live storefront at lumi9.in — brand copy, not invented.
+   --------------------------------------------------------------------------- */
+
+/**
+ * The five claims that run under the hero.
+ *
+ * `icon` keys into the stroke table in `components/home/FeatureStrip.tsx`
+ * rather than carrying markup, so the copy stays a plain data file that a
+ * non-engineer can edit without touching a component.
+ */
+export const FEATURE_STRIP = [
+  { icon: "cloud", label: "Cloud-Soft Comfort" },
+  { icon: "drop", label: "Up to 12hrs Absorption" },
+  { icon: "shield", label: "Leakage Protection" },
+  { icon: "air", label: "Breathable & Airy" },
+  { icon: "leaf", label: "Eco Friendly Materials" },
+] as const;
+
+/**
+ * Parent reviews, verbatim from lumi9.in's "Loved by Parents" grid.
+ *
+ * These are real submitted reviews, which is why none of them is a polished
+ * marketing sentence — "doesn't feel bulky" and "perfect for active little
+ * movers" are the kind of thing people actually write, and swapping them for
+ * tidier copy would cost the section the only thing that makes it convincing.
+ *
+ * `initial` drives the avatar chip; `tone` picks its background so the grid
+ * reads as a set of different people rather than one repeated swatch.
+ */
+export const PARENT_REVIEWS = [
+  { name: "Aarthi K.", initial: "A", tone: "moss", quote: "Tried a few brands before. Lumi9 fits well and doesn’t feel bulky." },
+  { name: "Lakshmi T.", initial: "L", tone: "gold", quote: "Finally found a diaper that keeps my baby happy and active." },
+  { name: "Anitha R.", initial: "A", tone: "clay", quote: "As a mom, comfort matters most. Lumi9 gives my baby exactly that." },
+  { name: "Deepika V.", initial: "D", tone: "sky", quote: "My baby smiles more, sleeps better, and stays comfortable longer." },
+  { name: "Meera S.", initial: "M", tone: "plum", quote: "No leaks even through the night. This is the one my baby loves." },
+  { name: "Sharmila N.", initial: "S", tone: "moss", quote: "Perfect for active little movers." },
+  { name: "Harini V.", initial: "H", tone: "gold", quote: "My baby’s skin is quite sensitive. Lumi9 has been gentle and rash-free for us." },
+  { name: "Pavithra N.", initial: "P", tone: "clay", quote: "As a first-time mom, finding the right diaper was stressful. Lumi9 made it easy." },
+] as const;
+
+/**
+ * Launch offer shown on pack cards.
+ *
+ * ONE source of truth: the strike-through price is derived from this rate at
+ * render time, never stored alongside it. Two numbers in the data file is how a
+ * catalogue ends up advertising a discount that no longer matches what the
+ * server charges — and the server is the only thing that actually prices a cart.
+ * Set to `null` to remove every badge and strike-through on the site at once.
+ */
+export const LAUNCH_OFFER: { percent: number; label: string } | null = {
+  percent: 10,
+  label: "Launch offer",
+};

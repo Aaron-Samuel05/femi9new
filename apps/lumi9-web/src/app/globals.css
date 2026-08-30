@@ -21,8 +21,16 @@
   /* neutral photo backdrop used behind product/pack imagery */
   --color-shell: #f4f1e4;
 
-  --font-display: var(--font-abeezee), ui-sans-serif, sans-serif;
-  --font-ui: var(--font-hanken), ui-sans-serif, sans-serif;
+  /* Three roles, the split @lumi9official's own creatives use:
+       display — Fredoka, the heavy rounded punch line
+       ui      — Nunito, everything that is read rather than scanned
+       script  — Caveat, the emphasis fragment inside a heading
+     `--font-ui` stays Nunito because a rounded display face is a poor text
+     face: set a 60-character paragraph in Fredoka and the even stroke weight
+     stops the eye finding word shapes. */
+  --font-display: var(--font-fredoka), ui-rounded, "Segoe UI", ui-sans-serif, sans-serif;
+  --font-ui: var(--font-nunito), ui-rounded, "Segoe UI", ui-sans-serif, sans-serif;
+  --font-script: var(--font-caveat), ui-rounded, "Segoe UI", cursive;
 
   /* Fluid scale — every gap/pad/radius below interpolates with the viewport so
      the 1440px design compresses smoothly instead of snapping at breakpoints. */
@@ -60,6 +68,11 @@
   --ease-reveal: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   --animate-marquee: marquee 26s linear infinite;
+  /* The mirror of `marquee`, for the second row of an opposing pair. Written as
+     its own keyframe rather than `animation-direction: reverse` because reverse
+     also flips the easing curve — harmless on `linear`, but it silently breaks
+     the moment anyone retimes one of these with an ease. */
+  --animate-marquee-rev: marquee-rev 26s linear infinite;
   --animate-floaty: floaty 7s ease-in-out infinite;
   --animate-ring: ring-spin 0.8s linear infinite;
 
@@ -69,6 +82,14 @@
     }
     to {
       transform: translateX(-50%);
+    }
+  }
+  @keyframes marquee-rev {
+    from {
+      transform: translateX(-50%);
+    }
+    to {
+      transform: translateX(0);
     }
   }
   @keyframes floaty {

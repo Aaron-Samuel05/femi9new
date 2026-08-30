@@ -31,8 +31,33 @@ export function SectionHeading({
 }
 
 /** Italic moss-deep emphasis used throughout the display headings. */
+/**
+ * The emphasised fragment inside a heading.
+ *
+ * Was `italic text-moss-deep`. An italicised word inside an otherwise-upright
+ * heading is one of the most reliable generated-design tells — and it was never
+ * how this brand actually writes a headline. @lumi9official sets the same
+ * construction in a brush script against its sans on card after card: "A
+ * Mother's" over "Love in Every Layer", "More Cuddles" over "Less Worries".
+ *
+ * Three details make the swap hold at every size:
+ *   · `font-style: normal` is explicit. Caveat's slant is drawn in; letting a
+ *     browser also shear it produces a doubled, wobbling oblique.
+ *   · Script faces carry a smaller x-height than the sans they sit beside, so
+ *     at matched font-size the emphasis looks SHRUNKEN. `1.12em` restores the
+ *     optical match — it is a correction, not a size change.
+ *   · The baseline shifts a touch because the two faces sit differently in
+ *     their em box; `0.06em` puts the word back on the line of its neighbours.
+ */
 export function Em({ children }: { children: ReactNode }) {
-  return <span className="italic text-moss-deep">{children}</span>;
+  return (
+    <span
+      className="font-script font-700 not-italic text-moss-deep"
+      style={{ fontSize: "1.12em", lineHeight: 1, display: "inline-block", transform: "translateY(0.06em)" }}
+    >
+      {children}
+    </span>
+  );
 }
 
 export function Divider({ className = "" }: { className?: string }) {

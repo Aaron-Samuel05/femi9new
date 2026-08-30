@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { ABeeZee, Hanken_Grotesk } from "next/font/google";
+import { Caveat, Fredoka, Nunito } from "next/font/google";
 import "./globals.css";
 import { loadCatalog } from "@/lib/catalog.server";
 import { CatalogProvider } from "@/lib/catalog-context";
@@ -15,18 +15,65 @@ import {
   websiteSchema,
 } from "@/lib/seo";
 
-const display = ABeeZee({
+/**
+ * ONE family, two roles — the same axis lumi9.in ships.
+ *
+ * The storefront used to pair ABeeZee (display) with Hanken Grotesk (UI). Two
+ * faces is the safer default, but it is not what the brand actually looks like:
+ * lumi9.in sets its whole page in Nunito and leans on WEIGHT for hierarchy,
+ * which is why its headings read warm rather than editorial. A rounded terminal
+ * on a baby-care page is doing real work — Hanken's flat terminals were quietly
+ * making the same copy read like a B2B dashboard.
+ *
+ * Roman only. lumi9.in requests `ital,wght@0,400..0,900` — the `0,` prefix on
+ * every pair means it never loads an italic, and headings must not be italic
+ * anyway (it is one of the most reliable generated-design tells).
+ *
+ * Both `--font-display` and `--font-ui` resolve here so every existing call
+ * site keeps working; the token names are the app's, the family is the brand's.
+ */
+const nunito = Nunito({
   subsets: ["latin"],
-  weight: "400",
-  style: ["normal", "italic"],
-  variable: "--font-abeezee",
+  weight: ["400", "600", "700", "800", "900"],
+  style: ["normal"],
+  variable: "--font-nunito",
   display: "swap",
 });
 
-const ui = Hanken_Grotesk({
+/**
+ * Display — the punch-line face.
+ *
+ * Fredoka's rounded terminals and heavy weights are what @lumi9official's post
+ * creatives set their statements in ("LUMI9 BABY DIAPERS", "Less Worries",
+ * "A BIG HELLO"). Nunito can reach 900 but stays a text face at size; Fredoka
+ * is drawn to be large, so a headline gains weight without gaining primness.
+ */
+const fredoka = Fredoka({
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
-  variable: "--font-hanken",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-fredoka",
+  display: "swap",
+});
+
+/**
+ * Script — the emphasis face, and the reason this variation exists.
+ *
+ * The Instagram grid pairs a brush script against that heavy sans on nearly
+ * every card: "A Mother's" over "Love in Every Layer", "More Cuddles" over
+ * "Less Worries", "The Wait Is Over" over "Meet Lumi9 Baby Diapers". The site
+ * was reaching for the same emphasis with `font-style: italic`, which is a
+ * different gesture entirely — a slanted text face reads as a generated
+ * emphasis tic, where a second, genuinely different face reads as a brand.
+ *
+ * Caveat is NOT loaded as an italic. It is an upright handwriting face; the
+ * slant is drawn into the letterforms rather than sheared onto them, which is
+ * why it holds up at display sizes where a synthesised oblique falls apart.
+ */
+const caveat = Caveat({
+  subsets: ["latin"],
+  weight: ["600", "700"],
+  style: ["normal"],
+  variable: "--font-caveat",
   display: "swap",
 });
 
@@ -121,7 +168,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     // data-scroll-behavior keeps route changes instant while in-page anchors stay smooth
-    <html lang="en-IN" data-scroll-behavior="smooth" className={`${display.variable} ${ui.variable}`}>
+    <html
+      lang="en-IN"
+      data-scroll-behavior="smooth"
+      className={`${nunito.variable} ${fredoka.variable} ${caveat.variable}`}
+    >
       <body className="font-ui antialiased">
         {/* Organization + WebSite, emitted once for the whole site. Every other
             node (BlogPosting, Product, BreadcrumbList) references these by @id

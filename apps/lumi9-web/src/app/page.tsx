@@ -3,15 +3,19 @@ import Image from "next/image";
 import Link from "next/link";
 import { Nav, HOME_LINKS } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { HeroMascot } from "@/components/three/HeroMascot";
+import { CursorScrubVideo } from "@/components/media/CursorScrubVideo";
 import { FloatyBlob, Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { LayerStack } from "@/components/home/LayerStack";
 import { ProductRange } from "@/components/home/ProductRange";
 import { SizeFinder } from "@/components/home/SizeFinder";
 import { WhyLumi9 } from "@/components/home/WhyLumi9";
-import { Em, NumberedCard, QuoteCard, SectionHeading, StatBlock } from "@/components/ui/bits";
-import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS, TESTIMONIALS, VALUES } from "@/lib/content";
+import { FeatureStrip } from "@/components/home/FeatureStrip";
+import { Testimonials } from "@/components/home/Testimonials";
+import { ValueGrid } from "@/components/home/ValueGrid";
+import { Scallop, WaveEdge } from "@/components/ui/Scallop";
+import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
+import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { SIZES } from "@/lib/catalog";
 import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -164,15 +168,36 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
+            {/* Warm, not sage: the glow now matches the video's own #f1e2d2
+                backdrop, so the clip's rectangle dissolves into the hero
+                instead of sitting on it as a visible tile. */}
             <div
-              className="absolute aspect-square w-[min(72vw,560px)] rounded-full md:w-[min(46vw,560px)]"
-              style={{ background: "radial-gradient(circle, #dfe6c6 0%, rgba(223,230,198,0) 68%)" }}
+              className="absolute aspect-square w-[min(78vw,600px)] rounded-full md:w-[min(48vw,600px)]"
+              style={{ background: "radial-gradient(circle, #f1e2d2 0%, rgba(241,226,210,0) 70%)" }}
               aria-hidden
             />
-            <HeroMascot />
+            <CursorScrubVideo
+              src="/assets/lumi-scrub-v1.mp4"
+              poster="/assets/lumi-scrub-v1-poster.jpg"
+              label="Lumi, the Lumi9 avocado, waving hello"
+              hint="Move your cursor"
+              axis="horizontal"
+              /* window, not component: the character answers the moment the
+                 pointer moves anywhere in the hero, so the interaction is found
+                 without having to hover the right rectangle to discover it. */
+              trackingArea="window"
+              smoothing={0.16}
+              objectFit="cover"
+              loom={0.05}
+              feather
+              className="relative z-2 h-[min(52svh,360px)] w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]"
+            />
           </div>
 
         </header>
+
+        {/* CLAIM STRIP — what the product is for, before the first scroll */}
+        <FeatureStrip />
 
         {/* TRUST MARQUEE */}
         <div className="overflow-hidden bg-midnight py-[clamp(14px,1.8vw,20px)] whitespace-nowrap text-butter">
@@ -189,10 +214,26 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+        {/* The marquee's hard bottom edge is the one place the page reads as a
+            stack of bands. The scallop turns that seam into a deliberate trim. */}
+        <Scallop color="var(--color-midnight)" radius={13} />
 
         <WhyLumi9 />
 
+        {/* The moss band is the one place two large colour fields meet twice in
+            a row, and a straight rule on both sides is what makes it read as a
+            slab dropped between two pages. WaveEdge rather than Scallop here:
+            a bump row at this scale competes with the layer cards, whereas one
+            slow curve just softens the seam.
+
+            Both edges are moss, not paper — the fill has to be the colour that
+            is INTRUDING. Above the band the moss rises into the paper; below it
+            the same shape is flipped so the moss dips back down. Filling with
+            paper instead would paint paper onto a paper body and show nothing. */}
+        <WaveEdge color="var(--color-moss)" />
         <LayerStack />
+        <WaveEdge color="var(--color-moss)" flip />
+
         <ProductRange />
         <SizeFinder />
 
@@ -293,43 +334,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* VALUES */}
-        <section className="px-safe bg-canvas py-section">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal
-              as="h2"
-              className="m-0 mb-[clamp(32px,4.6vw,56px)] text-center font-display text-[clamp(28px,3.6vw,46px)] font-normal"
-            >
-              The values behind every Lumi9 baby diaper
-            </Reveal>
-            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-moss-tint bg-moss-tint sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-              {VALUES.map((value) => (
-                <Reveal key={value.n}>
-                  <NumberedCard n={value.n} title={value.title} body={value.body} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* VALUES — bento with a lead card, not five numbered columns.
+            See components/home/ValueGrid.tsx for why the numbering went. */}
+        <ValueGrid />
 
-        {/* TESTIMONIALS */}
-        <section className="px-safe bg-paper py-section">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal className="mb-[clamp(28px,4vw,44px)] text-center">
-              <div className="eyebrow mb-4">Loved by Lumi9 mums</div>
-              <h2 className="m-0 font-display text-[clamp(26px,3.6vw,44px)] leading-[1.06] font-normal">
-                Real parent moments. Everyday cloud-soft comfort.
-              </h2>
-            </Reveal>
-            <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
-              {TESTIMONIALS.map((testimonial) => (
-                <Reveal key={testimonial.name}>
-                  <QuoteCard {...testimonial} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* TESTIMONIALS — eight short reviews in a dense grid rather than three
+            long quote cards; see components/home/Testimonials.tsx for why. */}
+        <Testimonials />
 
         {/* SUBSCRIPTION CTA */}
         <section id="subscribe" className="px-safe py-[clamp(28px,4vw,48px)]">

@@ -4,13 +4,22 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LAYERS, LAYER_COLORS } from "@/lib/content";
 import { usePrefersReducedMotion } from "@/lib/motion";
 
-const AUTO_ADVANCE_MS = 2800;
 const STAGGER_MS = 100;
 
 /**
  * The 5-layer protection system. Cards stagger in when the section is 35% visible,
- * then auto-advance every 2.8s; clicking a card or dot selects it and restarts the
- * timer. Not scroll-jacked — the section scrolls normally.
+ * and the active layer is then driven by SCROLL: the section's travel through the
+ * viewport is divided into five bands, so moving down the page steps through the
+ * layers. Clicking a card or dot still selects one directly, and the next scroll
+ * resumes control.
+ *
+ * This replaced a 2.8s auto-advance rather than joining it. Two drivers cannot
+ * share one index — the timer would advance to n+1 and the very next scroll frame
+ * would snap it back to whatever the scroll position says, which reads as a
+ * flicker rather than as either behaviour.
+ *
+ * Still not scroll-jacked: the page scrolls at its normal rate and nothing is
+ * pinned. The section only maps where it already is to which layer is shown.
  */
 export function LayerStack() {
   const [active, setActive] = useState(0);
@@ -18,11 +27,10 @@ export function LayerStack() {
   const [staggering, setStaggering] = useState(true);
   const sectionRef = useRef<HTMLDivElement>(null);
   const revealedOnce = useRef(false);
-  const [inView, setInView] = useState(false);
   const reducedMotion = usePrefersReducedMotion();
 
-  // The observer both reveals the stack (once, with a stagger) and pauses the
-  // carousel whenever the section leaves the viewport.
+  // Reveals the stack once, with a stagger. It no longer tracks visibility:
+  // nothing runs on a clock any more, so there is no carousel left to pause.
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -32,7 +40,6 @@ export function LayerStack() {
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
-          setInView(entry.isIntersecting);
           if (entry.isIntersecting && !revealedOnce.current) {
             revealedOnce.current = true;
             setRevealed(true);
@@ -50,12 +57,40 @@ export function LayerStack() {
     };
   }, []);
 
-  // Auto-advance. `active` is a dependency so selecting a card restarts the clock.
+  // Scroll drives the active layer.
   useEffect(() => {
-    if (!inView || !revealed || staggering || reducedMotion) return;
-    const timer = setTimeout(() => setActive((current) => (current + 1) % LAYERS.length), AUTO_ADVANCE_MS);
-    return () => clearTimeout(timer);
-  }, [inView, revealed, staggering, active, reducedMotion]);
+    const el = sectionRef.current;
+    if (!el) return;
+
+    let raf = 0;
+    const read = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const vh = window.innerHeight || 1;
+      // 0 when the section's top sits at 90% of the viewport (just arriving),
+      // 1 once its bottom has risen to 10% (all but gone). Measured against the
+      // viewport rather than document offsets so it needs no layout constants
+      // and survives anything above it changing height.
+      const travel = rect.height + vh * 0.8;
+      const progress = (vh * 0.9 - rect.top) / travel;
+      const index = Math.max(0, Math.min(LAYERS.length - 1, Math.floor(progress * LAYERS.length)));
+      setActive((current) => (current === index ? current : index));
+    };
+    // rAF-coalesced: scroll fires far more often than the screen repaints, and
+    // getBoundingClientRect forces layout every time it is called.
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(read);
+    };
+
+    read();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, []);
 
   const select = useCallback((index: number) => setActive(index), []);
   const layer = LAYERS[active];
@@ -73,7 +108,10 @@ export function LayerStack() {
           <div className="mb-1.5 font-display text-[clamp(20px,2vw,26px)] leading-none opacity-60">
             Layer {active + 1} of 5
           </div>
-          <div key={active} className="animate-[layer-in_.45s_var(--ease-reveal)_both]">
+          <div
+            key={active}
+            className={reducedMotion ? "" : "animate-[layer-in_.45s_var(--ease-reveal)_both]"}
+          >
             <h2 className="m-0 mb-5 min-h-[1.1em] font-display text-[clamp(30px,4.6vw,60px)] font-normal leading-[1.02]">
               {layer.title}
             </h2>
