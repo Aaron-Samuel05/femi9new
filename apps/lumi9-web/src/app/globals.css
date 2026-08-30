@@ -35,6 +35,17 @@
   /* Fluid scale — every gap/pad/radius below interpolates with the viewport so
      the 1440px design compresses smoothly instead of snapping at breakpoints. */
   --spacing-gutter: clamp(18px, 3.4vw, 48px); /* page horizontal padding */
+
+  /* THE page column. One number, because there is one page.
+     It used to be five — 1100, 1120, 1180, 1240 and 1280 were all in use for
+     what is conceptually the same container, and the footer had no limit at
+     all — so on a wide screen the nav, the content and the footer each ended at
+     a different x and the site looked ragged down both edges.
+     Narrower containers still exist ON PURPOSE inside this one: a 760px article
+     column is measure control, and an art-directed image is a composition
+     choice. Those are decisions made WITHIN the column, not other opinions
+     about where the page ends. */
+  --page-max: 1240px;
   --spacing-section: clamp(64px, 8.4vw, 120px); /* section vertical rhythm */
   --spacing-section-lg: clamp(72px, 9vw, 130px);
   --spacing-section-sm: clamp(48px, 6vw, 90px);
@@ -496,6 +507,21 @@
 /* Page gutter that also clears a notch/rounded corner in landscape */
 @utility px-safe {
   padding-inline: max(var(--spacing-gutter), env(safe-area-inset-left), env(safe-area-inset-right));
+}
+
+/* The page column: gutter, centred, capped at --page-max.
+   Goes on anything that should share the site's left and right edges — the
+   nav's contents, a page section, each band of the footer. A full-bleed
+   BACKGROUND stays on the outer element and this goes on the child holding the
+   content, which is what lets a coloured band run edge to edge while its text
+   still lines up with the logo above it.
+   It carries the gutter, so never combine it with px-safe or a px-[...] of its
+   own — the padding would be applied twice. */
+@utility page-wrap {
+  padding-inline: max(var(--spacing-gutter), env(safe-area-inset-left), env(safe-area-inset-right));
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--page-max);
 }
 
 /* Horizontally scrollable row (filter chips, tabs, thumbnails) that still lines

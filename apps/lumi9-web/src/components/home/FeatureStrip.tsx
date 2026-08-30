@@ -35,7 +35,7 @@ const ICONS: Record<string, string> = {
 export function FeatureStrip() {
   return (
     <section aria-label="What Cloud Soft does" className="relative z-2 bg-butter/55">
-      <div className="mx-auto grid max-w-[1280px] grid-cols-2 gap-y-6 px-gutter py-7 sm:grid-cols-3 lg:grid-cols-5">
+      <div className="page-wrap grid grid-cols-2 gap-y-6 py-7 sm:grid-cols-3 lg:grid-cols-5">
         {FEATURE_STRIP.map((f) => (
           <div
             key={f.label}

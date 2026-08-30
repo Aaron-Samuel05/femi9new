@@ -25,7 +25,7 @@ export function JournalGrid({ posts, categories }: { posts: JournalPost[]; categ
 
   return (
     <section className="px-safe pb-section" id="latest">
-      <div className="mx-auto max-w-[1180px]">
+      <div className="mx-auto max-w-[var(--page-max)]">
         <div className="mb-8 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <h2 className="m-0 font-display text-[clamp(26px,6.4vw,44px)] leading-[1.05] font-normal md:text-[clamp(30px,3.6vw,44px)]">
             The latest

@@ -40,7 +40,7 @@ export default function SubscriptionPage() {
           className="absolute top-[20%] left-[8%] size-[clamp(70px,10vw,120px)] rounded-full bg-butter opacity-50"
           aria-hidden
         />
-        <div className="relative z-2 mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-block md:grid-cols-[1.1fr_1fr]">
+        <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[1.1fr_1fr]">
           <div>
             <div className="eyebrow mb-4.5">The Lumi9 subscription</div>
             <h1 className="m-0 mb-5.5 font-display text-[clamp(32px,8.6vw,72px)] md:text-[clamp(38px,5vw,72px)] font-normal leading-none">
@@ -72,7 +72,7 @@ export default function SubscriptionPage() {
 
       {/* HOW IT WORKS */}
       <section className="px-safe py-section">
-        <div className="mx-auto max-w-[1180px]">
+        <div className="mx-auto max-w-[var(--page-max)]">
           <h2 className="m-0 mb-[clamp(32px,4.6vw,56px)] text-center font-display text-[clamp(26px,7vw,50px)] font-normal md:text-[clamp(30px,4vw,50px)]">
             How it works
           </h2>
@@ -94,7 +94,7 @@ export default function SubscriptionPage() {
 
       {/* BENEFITS */}
       <section className="px-safe pb-section">
-        <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-[clamp(12px,1.6vw,20px)] min-[420px]:grid-cols-2 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 gap-[clamp(12px,1.6vw,20px)] min-[420px]:grid-cols-2 lg:grid-cols-4">
           {SUBSCRIPTION_BENEFITS.map((benefit) => (
             <div key={benefit.title} className="rounded-card border border-moss-tint bg-canvas p-card text-center">
               <div className="mx-auto mb-4.5 flex size-13 items-center justify-center rounded-[14px] bg-moss-tint text-moss-deep">

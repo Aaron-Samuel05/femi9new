@@ -86,7 +86,7 @@ export function CartView() {
   const { quote } = useQuote();
 
   return (
-    <section className="px-safe mx-auto max-w-[1180px] pt-[clamp(32px,4.4vw,56px)] pb-section">
+    <section className="page-wrap pt-[clamp(32px,4.4vw,56px)] pb-section">
       <h1 className="m-0 mb-2 font-display text-[clamp(28px,8vw,52px)] md:text-[clamp(32px,4vw,52px)] font-normal">Your cart</h1>
       <p className="m-0 mb-10 text-base text-muted">
         {ready ? count : 0} {count === 1 ? "item" : "items"} · free delivery on orders over ₹999

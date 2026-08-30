@@ -28,7 +28,7 @@ const CHANNELS: { icon: IconName; label: string; value: string; href?: string }[
 export default function ContactPage() {
   return (
     <PageShell links={SUPPORT_LINKS}>
-      <section className="px-safe mx-auto grid max-w-[1180px] grid-cols-1 items-start gap-block pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">
+      <section className="page-wrap grid grid-cols-1 items-start gap-block pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">
         <div>
           <div className="eyebrow mb-4">Get in touch</div>
           <h1 className="m-0 mb-5 font-display text-[clamp(29px,7.8vw,58px)] md:text-[clamp(34px,4.4vw,58px)] font-normal leading-[1.02]">

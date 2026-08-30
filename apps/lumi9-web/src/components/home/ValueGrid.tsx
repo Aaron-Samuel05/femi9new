@@ -145,7 +145,7 @@ export function ValueGrid() {
 
   return (
     <section aria-labelledby="values-heading" className="px-safe bg-canvas py-section">
-      <div className="mx-auto max-w-[1180px]">
+      <div className="mx-auto max-w-[var(--page-max)]">
         <Reveal>
           <h2
             id="values-heading"

@@ -155,7 +155,7 @@ function MarqueeRow({ items, reverse = false }: { items: readonly Review[]; reve
 export function Testimonials() {
   return (
     <section aria-labelledby="reviews-heading" className="relative overflow-hidden bg-paper py-section">
-      <div className="mx-auto max-w-[1240px] px-gutter">
+      <div className="page-wrap">
         <Reveal>
           <div className="relative mx-auto max-w-[46ch] text-center">
             <Doodle

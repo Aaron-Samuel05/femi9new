@@ -109,7 +109,7 @@ export default function JournalPage() {
 
       {/* FEATURED MOSAIC — lead tile plus its companions */}
       <section className="px-safe pt-10 pb-[clamp(44px,6vw,80px)]" aria-label="Featured reads">
-        <Reveal className="mx-auto grid max-w-[1180px] grid-cols-1 gap-[clamp(12px,1.6vw,20px)] md:auto-rows-[minmax(0,1fr)] md:grid-cols-4">
+        <Reveal className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 gap-[clamp(12px,1.6vw,20px)] md:auto-rows-[minmax(0,1fr)] md:grid-cols-4">
           {lead && <MosaicTile post={lead} big priority />}
           {companions.slice(0, 4).map((post) => (
             <MosaicTile key={post.slug} post={post} />
@@ -121,7 +121,7 @@ export default function JournalPage() {
 
       {/* NEWSLETTER */}
       <section className="px-safe pt-5 pb-section">
-        <Reveal className="mx-auto max-w-[1180px] rounded-panel bg-midnight px-[clamp(20px,4vw,56px)] py-[clamp(40px,6vw,64px)] text-center">
+        <Reveal className="mx-auto max-w-[var(--page-max)] rounded-panel bg-midnight px-[clamp(20px,4vw,56px)] py-[clamp(40px,6vw,64px)] text-center">
           <div className="eyebrow mb-4 text-gold">Care in your inbox</div>
           <h2 className="m-0 mb-6.5 font-display text-[clamp(23px,6.4vw,44px)] leading-[1.05] font-normal text-butter md:text-[clamp(28px,3.6vw,44px)]">
             One gentle read a week. No spam, ever.

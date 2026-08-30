@@ -108,7 +108,7 @@ export default async function SizeGuidePage() {
 
       {/* FIT TIPS */}
       <section className="px-safe pb-section">
-        <div className="mx-auto max-w-[1100px]">
+        <div className="mx-auto max-w-[var(--page-max)]">
           <h2 className="m-0 mb-[clamp(28px,4vw,44px)] text-center font-display text-[clamp(24px,6.6vw,44px)] font-normal md:text-[clamp(28px,3.4vw,44px)]">
             How to check the fit
           </h2>

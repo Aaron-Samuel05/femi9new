@@ -248,7 +248,7 @@ export function CheckoutForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="px-safe mx-auto grid max-w-[1180px] grid-cols-1 items-start gap-block py-[clamp(28px,4vw,48px)] lg:grid-cols-[1fr_minmax(320px,400px)]"
+      className="page-wrap grid grid-cols-1 items-start gap-block py-[clamp(28px,4vw,48px)] lg:grid-cols-[1fr_minmax(320px,400px)]"
     >
       <div>
         <h1 className="m-0 mb-8.5 font-display text-[clamp(26px,7vw,42px)] md:text-[clamp(28px,3.4vw,42px)] font-normal">Checkout</h1>

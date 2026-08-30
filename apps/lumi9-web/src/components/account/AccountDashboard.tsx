@@ -229,7 +229,7 @@ export function AccountDashboard({
   }
 
   return (
-    <section className="px-safe mx-auto grid max-w-[1240px] grid-cols-1 items-start gap-[clamp(20px,3vw,40px)] pb-section lg:grid-cols-[minmax(210px,250px)_1fr]">
+    <section className="page-wrap grid grid-cols-1 items-start gap-[clamp(20px,3vw,40px)] pb-section lg:grid-cols-[minmax(210px,250px)_1fr]">
       <aside className="flex flex-col gap-1 rounded-card border border-moss-tint bg-canvas p-3.5 lg:sticky lg:top-24">
         <div className="scroll-row gap-1 lg:flex-col" role="tablist" aria-label="Account sections">
           {TABS.map((option) => (

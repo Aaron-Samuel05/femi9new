@@ -171,7 +171,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
           ]),
         )}
       />
-      <section className="px-safe mx-auto max-w-[1240px] pt-8.5 pb-section">
+      <section className="page-wrap pt-8.5 pb-section">
         <nav aria-label="Breadcrumb" className="mb-6.5 text-[clamp(12px,1.1vw,13px)] text-muted">
           <Link href="/" className="inline-flex items-center text-muted coarse:min-h-11 hover:text-midnight">
             Home
@@ -195,7 +195,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
           className="absolute top-[12%] -left-7.5 size-[clamp(100px,14vw,180px)] rounded-full bg-butter/50"
           aria-hidden
         />
-        <div className="relative z-2 mx-auto max-w-[1240px]">
+        <div className="relative z-2 mx-auto max-w-[var(--page-max)]">
           <Reveal className="mx-auto mb-[clamp(32px,5vw,60px)] max-w-[640px] text-center">
             <SectionHeading eyebrow="Why it works" size="sm">
               Comfort, engineered in <Em>layers.</Em>
@@ -242,7 +242,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
 
       {/* REVIEWS */}
       <section className="px-safe bg-canvas py-section">
-        <div className="mx-auto max-w-[1180px]">
+        <div className="mx-auto max-w-[var(--page-max)]">
           <Reveal className="eyebrow mb-[clamp(26px,4vw,44px)] text-center">Loved by 40,000+ families</Reveal>
           <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
             {PDP_REVIEWS.map((review) => (

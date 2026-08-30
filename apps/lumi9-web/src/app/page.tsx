@@ -244,7 +244,7 @@ export default function HomePage() {
             className="absolute top-[10%] right-[6%] size-[clamp(80px,12vw,150px)] rounded-full bg-moss-tint opacity-60"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto grid max-w-[1180px] grid-cols-1 items-center gap-block md:grid-cols-2">
+          <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-2">
             <Reveal className="relative">
               <div className="relative aspect-5/6 overflow-hidden rounded-media shadow-hero">
                 <Parallax factor={0.1} className="absolute inset-x-0 top-[-9%] h-[118%]">
@@ -303,7 +303,7 @@ export default function HomePage() {
             className="absolute right-[4%] bottom-[10%] size-[clamp(70px,10vw,120px)] rounded-full bg-moss-soft opacity-40"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto max-w-[1240px]">
+          <div className="relative z-2 mx-auto max-w-[var(--page-max)]">
             <Reveal className="mx-auto mb-[clamp(36px,5.5vw,66px)] max-w-[680px] text-center">
               <SectionHeading eyebrow="The Lumi9 difference">
                 Designed for every <Em>little</Em> milestone.
@@ -344,7 +344,7 @@ export default function HomePage() {
 
         {/* SUBSCRIPTION CTA */}
         <section id="subscribe" className="px-safe py-[clamp(28px,4vw,48px)]">
-          <Reveal className="relative mx-auto max-w-[1180px] overflow-hidden rounded-panel bg-midnight px-[clamp(22px,4vw,60px)] py-[clamp(40px,6vw,72px)]">
+          <Reveal className="relative mx-auto max-w-[var(--page-max)] overflow-hidden rounded-panel bg-midnight px-[clamp(22px,4vw,60px)] py-[clamp(40px,6vw,72px)]">
             <Parallax
               factor={0.18}
               className="absolute -top-10 right-15 size-[clamp(120px,18vw,220px)] rounded-full bg-butter/10"

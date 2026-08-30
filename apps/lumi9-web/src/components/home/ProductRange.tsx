@@ -108,7 +108,7 @@ export function ProductRange() {
   const { sizes } = useCatalogData();
   return (
     <section id="shop" className="px-safe bg-paper py-section">
-      <div className="mx-auto max-w-[1180px]">
+      <div className="mx-auto max-w-[var(--page-max)]">
         <Reveal className="mb-[clamp(28px,4vw,52px)] flex flex-wrap items-end justify-between gap-5">
           <SectionHeading eyebrow="The Cloud Soft range">
             One baby diaper range for <Em>every</Em> growing stage.

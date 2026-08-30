@@ -388,7 +388,7 @@ export function Nav({
        * still has to run edge to edge, which is why the constraint is on an
        * inner element rather than on <nav> itself.
        */}
-      <div className="px-safe mx-auto flex w-full max-w-[1180px] items-center justify-between gap-x-3 py-2.5 md:py-3.5">
+      <div className="page-wrap flex items-center justify-between gap-x-3 py-2.5 md:py-3.5">
         <Logo />
 
         {/* Desktop link row */}

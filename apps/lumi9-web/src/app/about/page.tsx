@@ -87,7 +87,7 @@ export default function AboutPage() {
       </section>
 
       <section className="px-safe pb-section">
-        <div className="mx-auto grid max-w-[1180px] grid-cols-2 gap-[clamp(10px,1.6vw,22px)] lg:grid-cols-4">
+        <div className="mx-auto grid max-w-[var(--page-max)] grid-cols-2 gap-[clamp(10px,1.6vw,22px)] lg:grid-cols-4">
           {ABOUT_STATS.map((stat) => (
             <Reveal
               key={stat.label}
@@ -101,7 +101,7 @@ export default function AboutPage() {
       </section>
 
       <section className="px-safe pb-section">
-        <div className="mx-auto max-w-[1180px]">
+        <div className="mx-auto max-w-[var(--page-max)]">
           <Reveal as="h2" className="m-0 mb-[clamp(32px,4.6vw,56px)] text-center font-display text-[clamp(26px,6.6vw,46px)] font-normal md:text-[clamp(30px,3.6vw,46px)]">
             What we stand for
           </Reveal>
@@ -116,7 +116,7 @@ export default function AboutPage() {
       </section>
 
       <section className="px-safe pb-section">
-        <Reveal className="mx-auto max-w-[1180px] rounded-panel bg-midnight px-[clamp(20px,4vw,60px)] py-[clamp(44px,6.5vw,72px)] text-center">
+        <Reveal className="mx-auto max-w-[var(--page-max)] rounded-panel bg-midnight px-[clamp(20px,4vw,60px)] py-[clamp(44px,6.5vw,72px)] text-center">
           <h2 className="m-0 mb-5 font-display text-[clamp(25px,6.6vw,50px)] font-normal leading-[1.05] text-butter md:text-[clamp(30px,4vw,50px)]">
             Join 40,000+ families who made the switch.
           </h2>

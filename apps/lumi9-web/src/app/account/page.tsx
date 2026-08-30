@@ -43,7 +43,7 @@ export default async function AccountPage() {
 
   return (
     <PageShell links={PRIMARY_LINKS}>
-      <header className="px-safe mx-auto max-w-[1240px] pt-[clamp(32px,4.4vw,56px)] pb-8.5">
+      <header className="page-wrap pt-[clamp(32px,4.4vw,56px)] pb-8.5">
         <div className="eyebrow mb-3">My account</div>
         <h1 className="m-0 font-display text-[clamp(27px,7.4vw,52px)] md:text-[clamp(32px,4vw,52px)] font-normal leading-[1.02]">
           Hi, {firstName} 👋

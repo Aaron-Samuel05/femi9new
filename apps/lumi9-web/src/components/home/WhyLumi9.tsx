@@ -13,7 +13,7 @@ import { USPS } from "@/lib/content";
 export function WhyLumi9() {
   return (
     <section id="why" className="px-safe bg-paper py-section">
-      <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-block lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+      <div className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 gap-block lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         {/* pins alongside the list from lg up, clearing the fixed nav */}
         <Reveal className="lg:sticky lg:top-[calc(var(--nav-h,68px)+clamp(24px,4vw,56px))] lg:self-start">
           <SectionHeading eyebrow="Why Lumi9">

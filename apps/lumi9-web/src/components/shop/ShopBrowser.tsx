@@ -31,7 +31,7 @@ export function ShopBrowser() {
   }, [sizes, sizeFilter, sort]);
 
   return (
-    <section className="px-safe mx-auto grid max-w-[1240px] grid-cols-1 items-start gap-[clamp(20px,3vw,40px)] pt-6 pb-section md:grid-cols-[minmax(180px,220px)_1fr]">
+    <section className="page-wrap grid grid-cols-1 items-start gap-[clamp(20px,3vw,40px)] pt-6 pb-section md:grid-cols-[minmax(180px,220px)_1fr]">
       <aside className="flex flex-col gap-[clamp(16px,2.4vw,26px)] md:sticky md:top-24">
         <div>
           <h2 className="mb-3 text-[13px] font-bold tracking-[0.1em] text-midnight">SIZE</h2>

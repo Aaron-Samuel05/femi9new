@@ -215,7 +215,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
       {/* KEEP READING */}
       {related.length > 0 && (
         <section className="px-safe pb-section" aria-labelledby="related-heading">
-          <div className="mx-auto max-w-[1180px]">
+          <div className="mx-auto max-w-[var(--page-max)]">
             <h2
               id="related-heading"
               className="m-0 mb-8 font-display text-[clamp(26px,6.4vw,44px)] leading-[1.05] font-normal md:text-[clamp(30px,3.6vw,44px)]"
