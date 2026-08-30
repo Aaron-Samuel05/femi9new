@@ -174,19 +174,26 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
-            {/* The clip's own aspect (590x670 = 59/67), so nothing is ever
+            {/* The clip's own aspect (640x668 = 160/167), so nothing is ever
                 cropped. `cover` would scale up to fill the box and throw the
                 overflow away, which is what cut the character's arms off. The
-                crop is wide enough that the character never reaches an edge in
-                any of the 240 frames — verified, not eyeballed. It has to be
-                that wide: the pointing hand swings out to x=316 while the twig
-                prop runs in to x=407, so no vertical crop line separates them.
-                The props are painted out with the backdrop colour BEFORE the
-                crop instead, which is what lets the crop be generous. */}
-            <div className="relative aspect-[59/67] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
+                crop clears the character on every side, checked frame by frame
+                across all 240 rather than eyeballed: the character's envelope is
+                x 316..886 / y 70..718, the crop is x 300..940 / y 52..720.
+
+                It has to be that generous, and a filled rectangle cannot make
+                room for it. A prop sits at x 276..348 while the pointing hand
+                sweeps out to x=316 — they overlap, so no crop line and no erase
+                box separates them, and the box that tried sliced the hand flat.
+                The props are removed by background SUBTRACTION instead: frame 0
+                has the arm verifiably clear of that band, so it serves as a
+                static plate, and each frame keeps only what differs from it.
+                Props vanish; anything that is the character is kept by
+                construction. */}
+            <div className="relative aspect-[160/167] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
               <CursorScrubVideo
-                src="/assets/lumi-scrub-v6.mp4"
-                poster="/assets/lumi-scrub-v6-poster.jpg"
+                src="/assets/lumi-scrub-v7.mp4"
+                poster="/assets/lumi-scrub-v7-poster.jpg"
                 label="Lumi, the Lumi9 avocado, waving hello"
                 hint="Move your cursor"
                 axis="horizontal"
