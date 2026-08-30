@@ -512,50 +512,32 @@ The single highest-risk module in the plan. **The numbers come from WHO's publis
   - `percentileFor(input: { indicator: GrowthIndicator; sex: BabySex; ageMonths: number; value: number }): { z: number; percentile: number } | { outOfRange: "age" | "extreme" }`
   - `Z_DISPLAY_LIMIT = 5`
 
-- [ ] **Step 1: Obtain the WHO data**
+- [x] **Step 1: Obtain the WHO data — DONE, `growth-standards.data.ts` is committed**
 
-Download the WHO Child Growth Standards "expanded tables" for **weight-for-age** and **length/height-for-age**, boys and girls, 0–60 months, from `who.int/tools/child-growth-standards/standards`. Four files. Each row gives `Month`, `L`, `M`, `S`.
+Downloaded and generated on 2026-08-30. The file is real data, not a template.
+Source files (all four verified 200, ~200 KB each):
 
-Transcribe into `apps/lumi9-web/src/lib/growth-standards.data.ts` in exactly this shape — 61 rows (months 0–60) per array:
-
-```ts
-import type { LmsRow } from "./growth-standards";
-
-/**
- * WHO Child Growth Standards, LMS parameters, 0–60 months.
- *
- * Source: WHO Child Growth Standards, expanded tables.
- * https://www.who.int/tools/child-growth-standards/standards
- * Transcribed: <YYYY-MM-DD by whoever did it>
- *
- * These are reference values, not editable design tokens. If a row looks wrong,
- * check it against the source file — do not adjust it to make a test pass.
- */
-export const WHO_SOURCE = "WHO Child Growth Standards, expanded tables";
-export const WHO_TRANSCRIBED_ON = "<YYYY-MM-DD>";
-
-export const WEIGHT_FOR_AGE_BOYS: LmsRow[] = [
-  { month: 0, l: 0.3487, m: 3.3464, s: 0.14602 },
-  // ... months 1–60, transcribed from the source file
-];
-
-export const WEIGHT_FOR_AGE_GIRLS: LmsRow[] = [
-  { month: 0, l: 0.3809, m: 3.2322, s: 0.14171 },
-  // ... months 1–60
-];
-
-export const HEIGHT_FOR_AGE_BOYS: LmsRow[] = [
-  { month: 0, l: 1, m: 49.8842, s: 0.03795 },
-  // ... months 1–60
-];
-
-export const HEIGHT_FOR_AGE_GIRLS: LmsRow[] = [
-  { month: 0, l: 1, m: 49.1477, s: 0.0379 },
-  // ... months 1–60
-];
+```
+base=https://cdn.who.int/media/docs/default-source/child-growth/child-growth-standards/indicators
+$base/weight-for-age/expanded-tables/wfa-boys-zscore-expanded-tables.xlsx
+$base/weight-for-age/expanded-tables/wfa-girls-zscore-expanded-tables.xlsx
+$base/length-height-for-age/expandable-tables/lhfa-boys-zscore-expanded-tables.xlsx
+$base/length-height-for-age/expandable-tables/lhfa-girls-zscore-expanded-tables.xlsx
 ```
 
-The month-0 rows above are given so you can confirm you are reading the right column in the right file. **Every other row must come from the download.** If the files cannot be reached, stop and report it rather than filling the gap.
+Note the folder differs between indicators — `expanded-tables` for weight-for-age
+but `expandable-tables` for length/height-for-age. Guessing the second from the
+first 404s.
+
+Each file is `Day, L, M, S, SD4neg…` for days 0–1856. One row per whole month is
+kept, at `day = round(month × 30.4375)` — 30.4375 = 365.25/12, the figure the
+standard itself uses — so every stored value is WHO's own at that exact age,
+never interpolated at generation time. Shipping all 1857 days would be 63 KB
+gzipped against 2.5 KB monthly, for precision a percentile readout cannot use.
+
+Verified after generation: 61 rows per table, months 0–60 in order, M strictly
+increasing, and a child on the median returns the 50.00th percentile at months
+0, 6, 24 and 60.
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -724,8 +706,12 @@ export function normalCdf(z: number): number {
 }
 
 /**
- * The LMS transformation. The L = 0 branch is not hypothetical — it occurs in
- * the WHO height-for-age tables, and the general formula divides by zero there.
+ * The LMS transformation.
+ *
+ * The L = 0 branch never fires for the four tables we ship — height-for-age is
+ * L = 1 throughout, weight-for-age runs −0.3531 to 0.3809. It is here because
+ * the general formula divides by zero at L = 0, and that is a real case for
+ * other WHO indicators.
  */
 export function zScore(value: number, row: LmsRow): number {
   if (row.l === 0) return Math.log(value / row.m) / row.s;
@@ -1203,9 +1189,24 @@ git commit -m "feat: add diaper usage, pack and monthly-cost maths"
   - `scheduleFor(input: { dob: IsoDate; today: IsoDate; track: VaccineTrack }): ScheduledDose[]`
   - `UIP_SOURCE`, `IAP_SOURCE`, `SCHEDULE_REVISED_ON` — strings rendered in the UI
 
-- [ ] **Step 1: Obtain the two schedules**
+- [ ] **Step 1: Obtain the two schedules — BLOCKED, needs a file from the user**
 
-Open both:
+Attempted on 2026-08-30 and all failed to yield a schedule table:
+
+| Source | Result |
+| --- | --- |
+| `nhp.gov.in/universal-immunisation-programme_pg` | DNS does not resolve |
+| `iapindia.org/immunization-schedule/` | No table; points at the guidebook page |
+| `iapindia.org/iap-guidebook-on-immunization/` | PDFs only; newest linked is 2018–19 |
+| `iapindia.org/purple-book-2025/` | Page returns no content |
+| `nhm.gov.in` immunization page | Prose only, no schedule table |
+| WHO `immunizationdata.who.int` India schedule | Rendered in headless Chrome — no table in the DOM |
+
+The 2018–19 IAP guidebook PDF does download (5 MB), but a seven-year-old
+schedule shipped as current medical guidance is worse than no tool.
+
+**Do not proceed by transcribing from memory or from a search snippet.** Ask the
+user for the current IAP timetable PDF or the MoHFW schedule, then continue with:
 1. **UIP** — MoHFW National Immunization Schedule (`nhm.gov.in` / `mohfw.gov.in`, "National Immunization Schedule for Infants, Children and Pregnant Women").
 2. **IAP** — Indian Academy of Pediatrics Immunization Timetable, latest published revision (`iapindia.org`).
 
