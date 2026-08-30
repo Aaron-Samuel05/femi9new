@@ -19,14 +19,28 @@ import { sessionCookieName, verifySession } from "@femi9/core/customer-session";
  * writes a name, an email and a phone onto the SESSION's user. An anonymous
  * request reaching it would render a form with nobody to save to.
  *
+ * `/checkout` is guarded BY DECISION, not by necessity. Femi9 does not gate it
+ * — its middleware matcher is `/account`, `/dashboard`, `/welcome`, its
+ * checkout page prefills from a session and shrugs without one, and
+ * `placeOrder` takes `userId: string | null` precisely so a guest can buy.
+ * Lumi9 requires an account instead, so every order has a real identity behind
+ * it from the first request rather than one reverse-engineered from the phone
+ * number typed into the form. The two brands genuinely differ here; do not
+ * "align" this back to Femi9 without asking, and do not assume the shared
+ * services need changing — `placeOrder`'s guest path stays valid for Femi9.
+ *
+ * The cost is a redirect on the busiest click on the site, which is why the
+ * cart CTAs point at /login themselves when the session is known to be absent:
+ * this guard is the floor, not the route a shopper normally takes.
+ *
  * `/order/:path*` is NOT here on purpose. An order confirmation is reachable by
  * a guest through the unguessable `?t=` capability token minted when the order
- * was placed — a shopper who checked out without an account must still be able
- * to open her own confirmation from the email. That page authorises itself, by
- * the token OR by a session that owns the order.
+ * was placed — and orders placed BEFORE this gate existed belong to shoppers
+ * who never had an account. That page authorises itself, by the token OR by a
+ * session that owns the order.
  */
 export const config = {
-  matcher: ["/account/:path*", "/welcome"],
+  matcher: ["/account/:path*", "/welcome", "/checkout"],
 };
 
 export async function proxy(req: NextRequest) {

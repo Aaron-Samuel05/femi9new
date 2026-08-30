@@ -24,7 +24,7 @@ So right now:
 | Cart | ✅ server-side, in `lumi9.Cart`, priced by the server, **opens in a drawer** |
 | Sign-in | ✅ **phone OTP (primary) · Google · emailed link** — no passwords on this platform |
 | Onboarding | ✅ `/welcome` captures name + email + verified mobile |
-| Checkout + payment | ✅ real orders (`LM-00001`), Razorpay, brand-routed webhook |
+| Checkout + payment | ✅ real orders (`LM-00001`), Razorpay, brand-routed webhook · **sign-in required** |
 | Checkout prefill | ✅ signed-in shoppers get their saved name, contact and address |
 | Account orders | ✅ real, with an order page at `/order/[orderNo]` |
 | Account profile + addresses | ✅ editable — name, email, mobile, full address CRUD |
@@ -114,6 +114,33 @@ returns the cart or null, and the caller toasts.
 means each response carries a different snapshot of the same cart and the one
 that lands LAST wins — not necessarily the one that saw every line. A three-line
 reorder could leave the basket showing one item while the server held three.
+
+**⚠️ Checkout requires an account HERE and does not on Femi9.** This is the one
+place the two brands deliberately diverge, so do not "align" it without asking.
+Femi9's matcher is `/account`, `/dashboard`, `/welcome`; its checkout page
+prefills from a session and shrugs without one; and `placeOrder` takes
+`userId: string | null` precisely so a guest can buy. Lumi9 adds `/checkout` to
+`proxy.ts` instead, so every order has a real identity from the first request
+rather than one reverse-engineered from the phone typed into the form. The
+shared service is unchanged — `placeOrder`'s guest path stays valid for Femi9.
+
+The cart CTAs (`components/cart/CheckoutCta.tsx`) resolve the session themselves
+and point at `/login?next=%2Fcheckout` when it is absent, so the guard is the
+floor rather than the route a shopper normally takes: pressing "Checkout" and
+landing on a sign-in form reads as a site that forgot you, where pressing "Sign
+in to check out" is a step you chose. While the session is still resolving they
+point at `/checkout` and let the guard decide — safe in both directions.
+
+**Phone and pincode are digit-filtered AT THE INPUT, not validated on submit.**
+`/api/checkout` takes `/^\d{10}$/` and `/^\d{6}$/`, and this form used to send
+whatever was typed — so `+91 98842 30571` and `641 001`, which is how most
+people write both, came back as a single opaque **"Invalid request"** banner
+over a form with no field marked. Femi9's checkout has always stripped as you
+type (`onDigits`); this one now does too, and the phone keeps the LAST ten
+digits so a pasted country code drops rather than truncating the number. The
+route's `details.fieldErrors` is also bound beside the offending input now —
+never render `body.error` alone for a schema failure, because for a bad field
+that string is literally "Invalid request".
 
 **Every sign-in path mints a session before it knows who the shopper is.** OTP
 writes a number, the magic link writes an address, Google writes a name and an

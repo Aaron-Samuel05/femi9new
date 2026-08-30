@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { CheckoutCta } from "@/components/cart/CheckoutCta";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { useCart, inr } from "@/lib/cart";
 import { useCartUI } from "@/lib/cart-ui";
@@ -281,9 +282,11 @@ export function CartDrawer() {
               </span>
             </div>
 
-            <Link href="/checkout" onClick={closeCart} className="btn btn-dark w-full font-bold">
-              Checkout{quote ? ` · ${inr(quote.total)}` : ""}
-            </Link>
+            <CheckoutCta
+              className="btn btn-dark w-full font-bold"
+              amount={quote ? inr(quote.total) : undefined}
+              onNavigate={closeCart}
+            />
             <div className="mt-3 flex items-center justify-center gap-4 text-[13px]">
               <Link
                 href="/cart"

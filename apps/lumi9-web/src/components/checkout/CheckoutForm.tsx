@@ -13,6 +13,21 @@ import { useCart } from "@/lib/cart";
 import { useQuote } from "@/lib/quote";
 import { inr, shippingLabel } from "@/lib/catalog";
 
+/** Wraps one input so a server-side rejection renders against it rather than as
+ *  a nameless banner at the top of a nine-field form. */
+function FieldError({ error, children }: { error?: string; children: React.ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      {children}
+      {error && (
+        <span className="text-[12px] text-[#b4232c]" role="alert">
+          {error}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function Fieldset({ step, title, children }: { step: number; title: string; children: React.ReactNode }) {
   return (
     <fieldset className="mb-9.5 border-none p-0">
@@ -57,10 +72,8 @@ function splitName(full: string | null | undefined): { first: string; last: stri
 
 export function CheckoutForm({
   prefill,
-  signedIn = false,
 }: {
   prefill?: CheckoutPrefill;
-  signedIn?: boolean;
 }) {
   const router = useRouter();
   const { lines, subtotal, ready } = useCart();
@@ -70,8 +83,26 @@ export function CheckoutForm({
   const prefilled = splitName(prefill?.name);
   const [firstName, setFirstName] = useState(prefilled.first);
   const [city, setCity] = useState(prefill?.city ?? "");
+  /*
+   * Phone and pincode are CONTROLLED and digit-only.
+   *
+   * This is the whole "Invalid request" bug. The server takes `/^\d{10}$/` and
+   * `/^\d{6}$/`, and the form sent whatever was typed — so "+91 98842 30571"
+   * and "641 001", which is how most people write both, were rejected. The
+   * shopper then saw a single opaque banner reading "Invalid request" over a
+   * form with no field marked, having done nothing wrong.
+   *
+   * Stripping as she types is the fix Femi9's checkout has always had
+   * (`onDigits` there). Filtering at the input beats validating on submit: the
+   * field cannot hold a value the server will refuse, so there is no error to
+   * report and nothing to explain.
+   */
+  const [phone, setPhone] = useState(prefill?.phone ?? "");
+  const [pincode, setPincode] = useState(prefill?.pincode ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  /** Server-side field errors, bound beside the input that caused them. */
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [note, setNote] = useState<string | null>(null);
 
   const isEmpty = ready && lines.length === 0;
@@ -95,6 +126,7 @@ export function CheckoutForm({
 
     setSubmitting(true);
     setFormError(null);
+    setFieldErrors({});
     setNote(null);
 
     try {
@@ -118,11 +150,34 @@ export function CheckoutForm({
       });
 
       const body = (await res.json().catch(() => null)) as
-        | { orderNo?: string; token?: string; payment?: PaymentIntent; error?: string }
+        | {
+            orderNo?: string;
+            token?: string;
+            payment?: PaymentIntent;
+            error?: string;
+            details?: { fieldErrors?: Record<string, string[]> };
+          }
         | null;
 
       if (!res.ok || !body?.orderNo || !body.token) {
-        setFormError(body?.error ?? "We could not place your order. Please try again.");
+        /*
+         * The route answers a schema failure with `details.fieldErrors` naming
+         * the exact field and why. The form used to drop that on the floor and
+         * render `body.error` alone — which for a rejected field is the string
+         * "Invalid request", printed above a form with nothing marked and no
+         * way to tell which of nine inputs to look at.
+         *
+         * Bind the field errors where they belong, and only fall back to the
+         * banner for failures that are genuinely about the order rather than a
+         * field: an empty bag, a spent coupon, a line that went out of stock.
+         */
+        const fields = body?.details?.fieldErrors;
+        if (fields && Object.keys(fields).length > 0) {
+          setFieldErrors(fields);
+          setFormError("Check the highlighted fields and try again.");
+        } else {
+          setFormError(body?.error ?? "We could not place your order. Please try again.");
+        }
         setSubmitting(false);
         return;
       }
@@ -198,19 +253,10 @@ export function CheckoutForm({
       <div>
         <h1 className="m-0 mb-8.5 font-display text-[clamp(26px,7vw,42px)] md:text-[clamp(28px,3.4vw,42px)] font-normal">Checkout</h1>
 
-        {/* A guest gets one line offering the shortcut, and `next` brings her
-            straight back here with the form already filled. It is a link, not a
-            wall: making an account has never been required to buy, and adding
-            that requirement at the payment step is how a basket is abandoned. */}
-        {!signedIn && (
-          <p className="mb-7 flex flex-wrap items-center gap-x-1.5 gap-y-1 rounded-chip bg-moss-tint px-4 py-3 text-[14px] text-midnight">
-            Already have an account?
-            <Link href="/login?next=%2Fcheckout" className="font-bold underline underline-offset-2">
-              Sign in
-            </Link>
-            <span className="text-muted">— we will fill this in for you.</span>
-          </p>
-        )}
+        {/* The "already have an account? sign in" line that stood here is gone
+            with the guest path: /checkout is behind the guard now, so everyone
+            who reaches this form is already signed in and the offer would be
+            addressed to nobody. */}
 
         <Fieldset step={1} title="Contact">
           <label htmlFor="email" className="sr-only">
@@ -280,25 +326,36 @@ export function CheckoutForm({
               className="field"
               defaultValue={prefill?.state ?? ""}
             />
-            <input
-              name="pincode" aria-label="PIN code"
-              placeholder="PIN code"
-              required
-              inputMode="numeric"
-              autoComplete="postal-code"
-              className="field"
-              defaultValue={prefill?.pincode ?? ""}
-            />
-            <input
-              name="phone"
-              aria-label="Phone"
-              placeholder="Phone"
-              required
-              inputMode="tel"
-              autoComplete="tel"
-              className="field"
-              defaultValue={prefill?.phone ?? ""}
-            />
+            <FieldError error={fieldErrors.pincode?.[0]}>
+              <input
+                name="pincode" aria-label="PIN code"
+                placeholder="PIN code"
+                required
+                inputMode="numeric"
+                autoComplete="postal-code"
+                maxLength={6}
+                className="field w-full"
+                value={pincode}
+                onChange={(event) => setPincode(event.target.value.replace(/\D/g, "").slice(0, 6))}
+              />
+            </FieldError>
+            <FieldError error={fieldErrors.phone?.[0]}>
+              <input
+                name="phone"
+                aria-label="Phone"
+                placeholder="Phone"
+                required
+                inputMode="tel"
+                autoComplete="tel"
+                maxLength={10}
+                className="field w-full"
+                value={phone}
+                /* Keeps the LAST ten digits, so a pasted "+91 98842 30571"
+                   lands as "9884230571" rather than being truncated to the
+                   country code. */
+                onChange={(event) => setPhone(event.target.value.replace(/\D/g, "").slice(-10))}
+              />
+            </FieldError>
           </div>
         </Fieldset>
 

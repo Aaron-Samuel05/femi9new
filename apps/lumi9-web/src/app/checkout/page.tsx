@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { getSession } from "@femi9/core/auth";
 import { dbFor } from "@femi9/db";
 import { CheckoutNav } from "@/components/site/Nav";
@@ -15,26 +16,20 @@ export const metadata: Metadata = {
 };
 
 /**
- * What we already know about a signed-in shopper: her account details plus her
- * most recent (or default) saved address.
+ * What we already know about the signed-in shopper: her account details plus
+ * her most recent (or default) saved address.
  *
  * Checkout used to ask a returning customer for her name, email, phone and full
  * street address on every single order — the same eight fields she had typed
- * the last time, beside an account page that was showing them back to her. That
- * is also what made the missing /welcome step expensive: a magic-link signup had
- * no phone on file, so the form could not have prefilled it even if it had
- * tried.
+ * the last time, beside an account page that was showing them back to her.
  *
- * Nothing here is required. A guest gets an empty form, and a failure to resolve
- * the prefill degrades to the same thing — the form is the source of truth for
- * what is submitted, and `placeOrder` re-validates all of it regardless.
+ * A failure to resolve the prefill degrades to an empty form rather than an
+ * error: it is a convenience, the form is the source of truth for what is
+ * submitted, and `placeOrder` re-validates all of it regardless.
  */
-async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
-  const session = await getSession("lumi9");
-  if (!session) return undefined;
-
+async function resolvePrefill(userId: string): Promise<CheckoutPrefill | undefined> {
   const user = await dbFor("lumi9").user.findUnique({
-    where: { id: session.sub },
+    where: { id: userId },
     select: {
       name: true,
       email: true,
@@ -66,18 +61,29 @@ async function resolvePrefill(): Promise<CheckoutPrefill | undefined> {
   };
 }
 
+/**
+ * Checkout requires an account on this brand.
+ *
+ * `proxy.ts` already bounced an anonymous request, but this checks again: a
+ * matcher is a routing rule and not an authorisation, and it cannot cover the
+ * case of a cookie that expired between the guard and the render. Guarding
+ * twice is the same rule the account surface follows.
+ *
+ * `next` carries the destination so signing in returns her here with a full
+ * bag, rather than to a generic landing that makes her find the cart again.
+ */
 export default async function CheckoutPage() {
-  const [prefill, session] = await Promise.all([
-    // A prefill is a convenience; it must never be the reason checkout 500s.
-    resolvePrefill().catch(() => undefined),
-    getSession("lumi9").catch(() => null),
-  ]);
+  const session = await getSession("lumi9");
+  if (!session) redirect("/login?next=%2Fcheckout");
+
+  // A prefill is a convenience; it must never be the reason checkout 500s.
+  const prefill = await resolvePrefill(session.sub).catch(() => undefined);
 
   return (
     <>
       <CheckoutNav />
       <main>
-        <CheckoutForm prefill={prefill} signedIn={session !== null} />
+        <CheckoutForm prefill={prefill} />
       </main>
     </>
   );

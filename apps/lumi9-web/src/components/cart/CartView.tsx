@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { QtyStepper } from "@/components/ui/QtyStepper";
+import { CheckoutCta } from "@/components/cart/CheckoutCta";
 import { Icon } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
 import { useQuote } from "@/lib/quote";
@@ -178,9 +179,7 @@ export function CartView() {
               </span>
             </div>
 
-            <Link href="/checkout" className="btn btn-dark w-full font-bold">
-              Checkout →
-            </Link>
+            <CheckoutCta className="btn btn-dark w-full font-bold" />
             <div className="mt-4 flex items-center justify-center gap-2 text-xs text-muted">
               <Icon name="lock" size={14} strokeWidth={1.6} /> Secure checkout · easy 30-day returns
             </div>
