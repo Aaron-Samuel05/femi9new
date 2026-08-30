@@ -266,8 +266,16 @@ function AccountSheetLinks({ onNavigate }: { onNavigate: () => void }) {
 }
 
 /**
- * Sticky site nav. `variant="home"` starts transparent over the hero and picks up
- * the blurred paper background after 30px of scroll.
+ * FIXED site nav — the same bar, in the same place, with the same surface, on
+ * every route and at every scroll position.
+ *
+ * It used to be two bars. On the home page it was fixed and TRANSPARENT over the
+ * hero, then swapped to blurred paper past 30px of scroll; everywhere else it was
+ * `sticky` and always paper. So the chrome you were looking at depended on which
+ * page you were on and how far down it you had scrolled — the bar changed under
+ * the cursor mid-gesture, and a link's contrast changed with it. `variant` now
+ * decides one thing only: whether the page pads itself under the bar (the home
+ * hero does, by `--nav-h`) or gets the spacer below.
  *
  * Below `md` the links collapse behind a burger into a slide-down sheet, so the
  * bar stays ONE ~64px row at every width. It used to wrap them onto a second,
@@ -282,7 +290,6 @@ export function Nav({
   variant?: "solid" | "home";
 }) {
   const pathname = usePathname();
-  const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const isHome = variant === "home";
@@ -290,14 +297,6 @@ export function Nav({
   // scroll-padding-top in globals.css offsets anchor landings by, and the
   // sticky nav on the inner pages is exactly as tall as the fixed one.
   const ref = useMeasuredNavHeight(true);
-
-  useEffect(() => {
-    if (!isHome) return;
-    const onScroll = () => setScrolled(window.scrollY > 30);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, [isHome]);
 
   // A route change has to close the sheet — including navigations the sheet did
   // not start (the cart icon, browser back). Adjusted during render rather than
@@ -343,25 +342,23 @@ export function Nav({
   }, []);
 
   /*
-   * Only the SURFACE changes on scroll now — never the height.
+   * NOTHING about the bar responds to scroll — not its height, not its surface.
    *
-   * The home bar used to transition its padding from 18px to 12px as you
-   * scrolled past 30px, so the whole bar shrank under the cursor and every link
-   * in it moved. That is the "dynamic" feel: nothing was broken, the chrome
-   * simply would not hold still.
+   * The height went first: the home bar used to transition its padding from 18px
+   * to 12px past 30px of scroll, so the whole bar shrank under the cursor and
+   * every link in it moved. That was also quietly wrong — `--nav-h` is published
+   * by a ResizeObserver on this element and is what `scroll-padding-top` in
+   * globals.css offsets every in-page anchor by, so a bar whose height depends on
+   * scroll position gave a different answer depending on where you were standing
+   * when you clicked, and a `#tech` landing missed by 6px.
    *
-   * It was also quietly wrong. `--nav-h` is published by a ResizeObserver on
-   * this element and is what `scroll-padding-top` in globals.css offsets every
-   * in-page anchor by — so a bar whose height depends on scroll position gives
-   * a different answer depending on where you were when you clicked, and a
-   * `#tech` landing lands 6px off. A constant height makes that variable a
-   * constant too.
+   * The surface follows it for the same reason. Paper-over-hero costs a shade of
+   * the gradient at the very top of one page; a bar that is transparent until you
+   * move and opaque after costs you the ability to trust what you are pointing at
+   * — the link you read as dark-on-gradient is dark-on-paper by the time your
+   * finger lands. One constant, everywhere.
    */
-  const chrome = isHome
-    ? scrolled || open
-      ? "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]"
-      : "bg-transparent"
-    : "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]";
+  const chrome = "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]";
 
   const isActive = (href: string) => href === pathname || (href !== "/" && pathname.startsWith(`${href}/`));
 
@@ -373,22 +370,23 @@ export function Nav({
   const bar = (
     <nav
       ref={ref}
-      className={`z-100 transition-[background-color,box-shadow] duration-400 ease-out ${chrome} ${
-        isHome ? "fixed inset-x-0 top-0" : "sticky top-0"
-      }`}
+      className={`fixed inset-x-0 top-0 z-100 ${chrome}`}
     >
       {/*
-       * The bar spans the viewport; its CONTENTS sit in the same 1180px column
-       * every page below uses.
+       * FULL WIDTH, gutter only — logo hard left, account and bag hard right.
        *
-       * Without this the logo was pinned to the far left edge and the cart to
-       * the far right, while the hero, the product grid and the footer all
-       * lined up in a centred column — so on any wide screen the chrome and the
-       * page it belonged to were visibly two different layouts. The background
-       * still has to run edge to edge, which is why the constraint is on an
-       * inner element rather than on <nav> itself.
+       * Not the centred content column. The hero underneath is `px-safe` with
+       * no max-width, so "CloudSoft Baby Diapers" starts one gutter from the
+       * viewport edge; a nav centred in a 1240 column put the logo a further
+       * 48px inside that, which read as the bar being indented from the page
+       * rather than framing it.
+       *
+       * So the two things that flank the page — this bar and the hero — share
+       * the viewport's edges, and the reading column inside is centred within
+       * them. Deliberate, and the reason a section's heading does not line up
+       * with the logo above it.
        */}
-      <div className="page-wrap flex items-center justify-between gap-x-3 py-2.5 md:py-3.5">
+      <div className="px-safe flex items-center justify-between gap-x-3 py-2.5 md:py-3.5">
         <Logo />
 
         {/* Desktop link row */}
@@ -486,6 +484,17 @@ export function Nav({
   return (
     <>
       {bar}
+      {/*
+       * The bar is out of flow on every route now, so every route that does not
+       * deliberately sit UNDER it needs its height back. The home hero pads itself
+       * by `--nav-h` (it wants the gradient to run the full viewport); everything
+       * else gets this.
+       *
+       * The fallbacks are the bar's real closed heights — 44px of control plus
+       * py-2.5 / md:py-3.5 — not a round guess, so the first paint is already
+       * right and the measured `--nav-h` that lands a frame later changes nothing.
+       */}
+      {!isHome && <div aria-hidden className="h-[var(--nav-h,64px)] md:h-[var(--nav-h,72px)]" />}
       {/* Scrim — a tap anywhere off the sheet dismisses it. A SIBLING of the bar,
           not a child: inside the nav its negative z-index put it behind that
           element's backdrop root and it never painted at all. z-90 sits under
