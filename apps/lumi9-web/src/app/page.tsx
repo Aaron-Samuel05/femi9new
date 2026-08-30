@@ -13,7 +13,7 @@ import { WhyLumi9 } from "@/components/home/WhyLumi9";
 import { FeatureStrip } from "@/components/home/FeatureStrip";
 import { Testimonials } from "@/components/home/Testimonials";
 import { ValueGrid } from "@/components/home/ValueGrid";
-import { Scallop } from "@/components/ui/Scallop";
+import { Scallop, WaveEdge } from "@/components/ui/Scallop";
 import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { SIZES } from "@/lib/catalog";
@@ -220,7 +220,20 @@ export default function HomePage() {
 
         <WhyLumi9 />
 
+        {/* The moss band is the one place two large colour fields meet twice in
+            a row, and a straight rule on both sides is what makes it read as a
+            slab dropped between two pages. WaveEdge rather than Scallop here:
+            a bump row at this scale competes with the layer cards, whereas one
+            slow curve just softens the seam.
+
+            Both edges are moss, not paper — the fill has to be the colour that
+            is INTRUDING. Above the band the moss rises into the paper; below it
+            the same shape is flipped so the moss dips back down. Filling with
+            paper instead would paint paper onto a paper body and show nothing. */}
+        <WaveEdge color="var(--color-moss)" />
         <LayerStack />
+        <WaveEdge color="var(--color-moss)" flip />
+
         <ProductRange />
         <SizeFinder />
 
