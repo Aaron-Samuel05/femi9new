@@ -105,13 +105,7 @@ export default function HomePage() {
           /* full-height hero, except on short viewports (landscape phones, split
              screens) where it just wraps its content instead of overflowing */
           className="px-safe relative flex min-h-[100svh] flex-col items-center gap-[clamp(12px,4vw,32px)] pb-[clamp(32px,6vw,60px)] pt-[calc(var(--nav-h,68px)+clamp(18px,4vw,44px))] md:flex-row md:gap-0 [@media(max-height:560px)]:min-h-0 [@media(max-height:560px)]:pt-[calc(var(--nav-h,68px)+14px)] [@media(max-height:560px)]:pb-8"
-          /* Flat, and it is the CLIP's own backdrop rather than the old green
-             gradient. With the page and the clip on one colour the video has no
-             edge left to hide, so there is no mask, no disc and no blend here —
-             the character simply stands in the page. A gradient cannot do this:
-             it drifts across the clip's footprint, and whatever single colour
-             the clip is flattened to is then wrong everywhere but one line. */
-          style={{ backgroundColor: "#f4eada" }}
+          style={{ background: "radial-gradient(120% 90% at 78% 20%, #eef1e0 0%, #f7f5ea 55%)" }}
         >
           <FloatyBlob
             factor={0.12}
@@ -174,47 +168,30 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
-            {/* The clip's own aspect (640x668 = 160/167), so nothing is ever
-                cropped. `cover` would scale up to fill the box and throw the
-                overflow away, which is what cut the character's arms off. The
-                crop clears the character on every side, checked frame by frame
-                across all 240 rather than eyeballed: the character's envelope is
-                x 316..886 / y 70..718, the crop is x 300..940 / y 52..720.
-
-                It has to be that generous, and a filled rectangle cannot make
-                room for it. A prop sits at x 276..348 while the pointing hand
-                sweeps out to x=316 — they overlap, so no crop line and no erase
-                box separates them, and the box that tried sliced the hand flat.
-                The props are removed by background SUBTRACTION instead: frame 0
-                has the arm verifiably clear of that band, so it serves as a
-                static plate, and each frame keeps only what differs from it.
-                Props vanish; anything that is the character is kept by
-                construction. */}
-            <div className="relative aspect-[160/167] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
-              <CursorScrubVideo
-                src="/assets/lumi-scrub-v7.mp4"
-                poster="/assets/lumi-scrub-v7-poster.jpg"
-                label="Lumi, the Lumi9 avocado, waving hello"
-                hint="Move your cursor"
-                axis="horizontal"
-                /* window, not component: the character answers the moment the
-                   pointer moves anywhere in the hero, so the interaction is
-                   found without having to hover the right rectangle first. */
-                trackingArea="window"
-                smoothing={0.16}
-                /* contain, and the box already carries the clip's aspect — so
-                   this crops nothing. No feather either: the backdrop is
-                   flattened at encode time and the disc behind it is the same
-                   colour, so there is no edge left for a mask to hide. */
-                objectFit="contain"
-                loom={0.05}
-                /* The source clip runs the character off the bottom of frame —
-                   there are no feet in the footage to uncover. A short fade
-                   turns a hard slice into the character standing past the edge. */
-                fadeBottom={10}
-                className="relative z-2 size-full"
-              />
-            </div>
+            {/* Warm, not sage: the glow now matches the video's own #f1e2d2
+                backdrop, so the clip's rectangle dissolves into the hero
+                instead of sitting on it as a visible tile. */}
+            <div
+              className="absolute aspect-square w-[min(78vw,600px)] rounded-full md:w-[min(48vw,600px)]"
+              style={{ background: "radial-gradient(circle, #f1e2d2 0%, rgba(241,226,210,0) 70%)" }}
+              aria-hidden
+            />
+            <CursorScrubVideo
+              src="/assets/lumi-scrub-v1.mp4"
+              poster="/assets/lumi-scrub-v1-poster.jpg"
+              label="Lumi, the Lumi9 avocado, waving hello"
+              hint="Move your cursor"
+              axis="horizontal"
+              /* window, not component: the character answers the moment the
+                 pointer moves anywhere in the hero, so the interaction is found
+                 without having to hover the right rectangle to discover it. */
+              trackingArea="window"
+              smoothing={0.16}
+              objectFit="cover"
+              loom={0.05}
+              feather
+              className="relative z-2 h-[min(52svh,360px)] w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]"
+            />
           </div>
 
         </header>
