@@ -19,6 +19,25 @@ const COMPANY_LINKS = [
   { label: "Contact", href: "/contact" },
 ];
 
+/**
+ * Legal row.
+ *
+ * Terms and FAQ point at femi9.in, which is what lumi9.in itself does — the two
+ * storefronts are one company and share one set of published policies, so
+ * hosting a second copy here would mean two documents to keep in step and one
+ * of them going stale. Privacy stays local because this app already ships that
+ * page.
+ *
+ * NOTE FOR LAUNCH: Razorpay requires a merchant to publish Refund/Cancellation
+ * and Shipping policies, and neither site has them at either domain today.
+ * Those two rows want adding before payments go live.
+ */
+const LEGAL_LINKS: { label: string; href: string; external?: boolean }[] = [
+  { label: "Privacy Policy", href: "/privacy" },
+  { label: "Terms & Conditions", href: "https://femi9.in/terms-and-conditions", external: true },
+  { label: "FAQ", href: "https://femi9.in/faq", external: true },
+];
+
 function LinkColumn({ title, links }: { title: string; links: { label: string; href: string }[] }) {
   return (
     <div>
@@ -121,12 +140,46 @@ export function Footer() {
       </div>
 
       {/* Bottom bar */}
-      <div className="px-safe flex flex-wrap justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3">
+      <div className="px-safe flex flex-wrap items-center justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3">
         <span>{BRAND.copyright}</span>
         <span className="max-sm:order-3 max-sm:w-full">{BRAND.legalLine}</span>
-        <Link href="/privacy" className="inline-flex items-center text-butter/75 hover:text-butter coarse:min-h-11">
-          Privacy Policy
-        </Link>
+        <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          {LEGAL_LINKS.map((l) =>
+            l.external ? (
+              <a
+                key={l.label}
+                href={l.href}
+                // These live on the Femi9 domain, which is the same company but a
+                // different origin — so the tab gets `noopener` and the label
+                // gets a marker, rather than silently handing the visitor to
+                // another site mid-checkout-decision with no warning.
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 whitespace-nowrap text-butter/75 hover:text-butter coarse:min-h-11"
+              >
+                {l.label}
+                <svg aria-hidden="true" viewBox="0 0 12 12" className="size-2.5 opacity-60">
+                  <path
+                    d="M4 2h6v6M10 2L2.5 9.5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <span className="sr-only">(opens on femi9.in)</span>
+              </a>
+            ) : (
+              <Link
+                key={l.label}
+                href={l.href}
+                className="inline-flex items-center whitespace-nowrap text-butter/75 hover:text-butter coarse:min-h-11"
+              >
+                {l.label}
+              </Link>
+            ),
+          )}
+        </nav>
       </div>
     </footer>
   );

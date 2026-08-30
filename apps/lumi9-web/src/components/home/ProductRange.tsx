@@ -8,7 +8,10 @@ import { Em, SectionHeading } from "@/components/ui/bits";
 import { AddButton } from "@/components/product/AddButton";
 import { defaultPack, getPack, inr, packImage } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
+import { LAUNCH_OFFER } from "@/lib/content";
 import type { DbProductSize } from "@/lib/catalog.server";
+
+const offer = LAUNCH_OFFER;
 
 function RangeCard({ size }: { size: DbProductSize }) {
   const [packCount, setPackCount] = useState(defaultPack(size).count);
@@ -62,7 +65,32 @@ function RangeCard({ size }: { size: DbProductSize }) {
 
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
         <div>
-          <div className="font-display text-[clamp(19px,2vw,24px)] leading-[1.1] text-midnight">{inr(pack.price)}</div>
+          {/*
+            The offer price leads and the list price is struck through beside it,
+            the way lumi9.in shows it. Both are DERIVED from `pack.price` and the
+            single `LAUNCH_OFFER.percent` — the card never carries a second
+            hard-coded number, so it cannot drift out of step with what the
+            server actually charges at checkout.
+
+            `pack.price` is treated as the list price and the offer comes off it.
+            When `LAUNCH_OFFER` is null the whole treatment disappears and the
+            price renders exactly as it did before.
+          */}
+          {offer ? (
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span className="font-display text-[clamp(19px,2vw,24px)] font-800 leading-[1.1] text-midnight tabular-nums">
+                {inr(pack.price * (1 - offer.percent / 100))}
+              </span>
+              <s className="text-[13px] text-muted/80 tabular-nums decoration-muted/50">{inr(pack.price)}</s>
+              <span className="rounded-full bg-butter px-2 py-[3px] text-[11px] font-800 leading-none text-[#7a6500]">
+                {offer.percent}% off
+              </span>
+            </div>
+          ) : (
+            <div className="font-display text-[clamp(19px,2vw,24px)] leading-[1.1] text-midnight tabular-nums">
+              {inr(pack.price)}
+            </div>
+          )}
           <div className="text-xs text-muted">{pack.count} diapers</div>
         </div>
         <AddButton

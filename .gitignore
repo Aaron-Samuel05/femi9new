@@ -30,3 +30,11 @@ out/
 !/infra/terraform/*.tfvars.example
 /infra/terraform/*.plan
 /infra/terraform/backend.hcl
+
+# Raw 3D source drops. The 22 MB Tripo export at the root is the INPUT to the
+# gltf-transform pipeline; only the optimised result belongs in git, under
+# apps/*/public/assets. Committing the source would pin 22 MB into history.
+/*.glb.txt
+
+# Hallmark design-pass scratch log — tooling output, not project history.
+.hallmark/

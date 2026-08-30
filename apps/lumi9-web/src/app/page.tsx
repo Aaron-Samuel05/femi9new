@@ -10,8 +10,12 @@ import { LayerStack } from "@/components/home/LayerStack";
 import { ProductRange } from "@/components/home/ProductRange";
 import { SizeFinder } from "@/components/home/SizeFinder";
 import { WhyLumi9 } from "@/components/home/WhyLumi9";
-import { Em, NumberedCard, QuoteCard, SectionHeading, StatBlock } from "@/components/ui/bits";
-import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS, TESTIMONIALS, VALUES } from "@/lib/content";
+import { FeatureStrip } from "@/components/home/FeatureStrip";
+import { Testimonials } from "@/components/home/Testimonials";
+import { ValueGrid } from "@/components/home/ValueGrid";
+import { Scallop } from "@/components/ui/Scallop";
+import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
+import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { SIZES } from "@/lib/catalog";
 import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
@@ -174,6 +178,9 @@ export default function HomePage() {
 
         </header>
 
+        {/* CLAIM STRIP — what the product is for, before the first scroll */}
+        <FeatureStrip />
+
         {/* TRUST MARQUEE */}
         <div className="overflow-hidden bg-midnight py-[clamp(14px,1.8vw,20px)] whitespace-nowrap text-butter">
           <div className="inline-flex motion-safe:animate-marquee">
@@ -189,6 +196,9 @@ export default function HomePage() {
             ))}
           </div>
         </div>
+        {/* The marquee's hard bottom edge is the one place the page reads as a
+            stack of bands. The scallop turns that seam into a deliberate trim. */}
+        <Scallop color="var(--color-midnight)" radius={13} />
 
         <WhyLumi9 />
 
@@ -293,43 +303,13 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* VALUES */}
-        <section className="px-safe bg-canvas py-section">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal
-              as="h2"
-              className="m-0 mb-[clamp(32px,4.6vw,56px)] text-center font-display text-[clamp(28px,3.6vw,46px)] font-normal"
-            >
-              The values behind every Lumi9 baby diaper
-            </Reveal>
-            <div className="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-moss-tint bg-moss-tint sm:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(180px,1fr))]">
-              {VALUES.map((value) => (
-                <Reveal key={value.n}>
-                  <NumberedCard n={value.n} title={value.title} body={value.body} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* VALUES — bento with a lead card, not five numbered columns.
+            See components/home/ValueGrid.tsx for why the numbering went. */}
+        <ValueGrid />
 
-        {/* TESTIMONIALS */}
-        <section className="px-safe bg-paper py-section">
-          <div className="mx-auto max-w-[1180px]">
-            <Reveal className="mb-[clamp(28px,4vw,44px)] text-center">
-              <div className="eyebrow mb-4">Loved by Lumi9 mums</div>
-              <h2 className="m-0 font-display text-[clamp(26px,3.6vw,44px)] leading-[1.06] font-normal">
-                Real parent moments. Everyday cloud-soft comfort.
-              </h2>
-            </Reveal>
-            <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
-              {TESTIMONIALS.map((testimonial) => (
-                <Reveal key={testimonial.name}>
-                  <QuoteCard {...testimonial} />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* TESTIMONIALS — eight short reviews in a dense grid rather than three
+            long quote cards; see components/home/Testimonials.tsx for why. */}
+        <Testimonials />
 
         {/* SUBSCRIPTION CTA */}
         <section id="subscribe" className="px-safe py-[clamp(28px,4vw,48px)]">
