@@ -101,6 +101,30 @@ export function addWeeks(iso: IsoDate, weeks: number): IsoDate {
   return addDays(iso, weeks * 7);
 }
 
+/**
+ * Calendar months, not 30.44-day approximations.
+ *
+ * A schedule that says "9 months" means the 9th of the birth month, not 274
+ * days later, and the two differ by several days. Day-of-month is clamped to the
+ * target month's length, so 31 January plus one month is 28 February rather
+ * than spilling into March.
+ */
+export function addMonths(iso: IsoDate, months: number): IsoDate {
+  const parts = parseIsoDate(iso);
+  if (!parts) return iso;
+  const total = parts.y * 12 + (parts.m - 1) + months;
+  const year = Math.floor(total / 12);
+  const month = ((total % 12) + 12) % 12;
+  // Day 0 of the following month is the last day of this one.
+  const lastDay = new Date(Date.UTC(year, month + 1, 0, 12)).getUTCDate();
+  const day = Math.min(parts.d, lastDay);
+  return toIso(new Date(Date.UTC(year, month, day, 12)));
+}
+
+export function addYears(iso: IsoDate, years: number): IsoDate {
+  return addMonths(iso, years * 12);
+}
+
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
