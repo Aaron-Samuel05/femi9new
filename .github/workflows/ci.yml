@@ -273,10 +273,22 @@ jobs:
   # ───────────────────────────────────────────────────────────────────────────
   # Lumi9 — the second storefront.
   #
-  # Deliberately much thinner than the Femi9 job: Lumi9 has no database, no
-  # Prisma and no test suite yet (Phase 4 wires it to the shared backend), so
-  # there is nothing to gate beyond "it lints, it typechecks, it builds".
+  # Deliberately much thinner than the Femi9 job: Lumi9 has no test suite yet,
+  # so there is nothing to gate beyond "it lints, it typechecks, it builds".
   # `next build` runs TypeScript itself, so the build IS the typecheck.
+  #
+  # It DOES have a database now. This job was written when Lumi9 was a static
+  # storefront with no Prisma, and it kept that shape after Phase 4 wired the
+  # app to the shared backend, so it installed and then built against a
+  # `@prisma/client` nothing had generated. The stub exports no models, and
+  # `next build` typechecks the `@femi9/core` source Lumi9 imports, so the job
+  # failed on ~70 errors that all say the same thing twice over — TS2305 for
+  # every model type that does not exist yet and TS7006 for every `tx`/`row`
+  # callback left implicitly `any` once the client type is gone. None of them
+  # were real: the same tree typechecks clean the moment the client exists,
+  # which is why the deploy workflow was green throughout (the image's
+  # Dockerfile runs `prisma generate` at line 78). CI was the only path that
+  # skipped it, so the gate had been red since 26 Aug while every deploy shipped.
   #
   # It runs as a separate job, not a step, so a Lumi9 break is legible on its
   # own and does not mask a Femi9 failure.
@@ -307,6 +319,15 @@ jobs:
         # Same as the Femi9 job: one lockfile, at the workspace root.
         working-directory: .
         run: npm ci
+
+      - name: Generate Prisma Client
+        # Before Lint and Build, because both read `@femi9/core`'s types and
+        # those are only as good as the generated client. The brand client is
+        # the one Lumi9 needs — same schema, same default output path as the
+        # Femi9 job — and the platform client is not, because nothing the
+        # storefront imports reaches admin identity.
+        working-directory: .
+        run: npm run db:generate
 
       - name: Lint
         run: npm run lint
