@@ -168,30 +168,64 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
-            {/* Warm, not sage: the glow now matches the video's own #f1e2d2
-                backdrop, so the clip's rectangle dissolves into the hero
-                instead of sitting on it as a visible tile. */}
-            <div
-              className="absolute aspect-square w-[min(78vw,600px)] rounded-full md:w-[min(48vw,600px)]"
-              style={{ background: "radial-gradient(circle, #f1e2d2 0%, rgba(241,226,210,0) 70%)" }}
-              aria-hidden
-            />
-            <CursorScrubVideo
-              src="/assets/lumi-scrub-v1.mp4"
-              poster="/assets/lumi-scrub-v1-poster.jpg"
-              label="Lumi, the Lumi9 avocado, waving hello"
-              hint="Move your cursor"
-              axis="horizontal"
-              /* window, not component: the character answers the moment the
-                 pointer moves anywhere in the hero, so the interaction is found
-                 without having to hover the right rectangle to discover it. */
-              trackingArea="window"
-              smoothing={0.16}
-              objectFit="cover"
-              loom={0.05}
-              feather
-              className="relative z-2 h-[min(52svh,360px)] w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]"
-            />
+            {/* The clip's own aspect (516x636 = 43/53), so nothing is ever
+                cropped. The old box was `w-full` — a portrait slot fed a 4:3
+                landscape clip — and `cover` resolved that by scaling up and
+                cutting the character's arms and feet off. */}
+            <div className="relative aspect-[43/53] h-[min(52svh,360px)] max-w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]">
+              {/* A SOLID disc of the clip's own flattened backdrop, blurred at
+                  its edge — not a radial gradient. A radial gradient cannot do
+                  this job: its ellipse reaches a rectangle's corners later than
+                  its edges, so the corners fade out while the clip underneath is
+                  still opaque, and each corner shows as a seam. Blurring a solid
+                  rounded rect covers the whole clip and fades on every side at
+                  once. Sized off the clip in %, so it tracks every breakpoint by
+                  itself.
+
+                  #f4f3e6 is the HERO's own colour behind this spot, measured
+                  with the clip hidden — and the clip is now encoded onto that
+                  same colour rather than onto its own backdrop. That was the
+                  actual bug: the render's cream is warm (#f2e9db) and the hero's
+                  is green (#f4f3e6), 11 values apart in blue, which is exactly
+                  what read as a pale box sitting on the page.
+
+                  The disc still earns its place: the hero gradient drifts about
+                  9 values across the clip's footprint, so no single flat colour
+                  can match it everywhere. The disc absorbs that drift, and its
+                  inset clears the blur radius so it is not already mid-fade
+                  where the clip's edge lands. Values are what a browser PAINTS,
+                  read off a screenshot — limited-range yuv420p is expanded by
+                  about 5 on decode, so the file's own numbers are the wrong
+                  target. */}
+              <div
+                className="absolute inset-[-11%] rounded-[18%]"
+                style={{ background: "#f4f3e6", filter: "blur(30px)" }}
+                aria-hidden
+              />
+              <CursorScrubVideo
+                src="/assets/lumi-scrub-v4.mp4"
+                poster="/assets/lumi-scrub-v4-poster.jpg"
+                label="Lumi, the Lumi9 avocado, waving hello"
+                hint="Move your cursor"
+                axis="horizontal"
+                /* window, not component: the character answers the moment the
+                   pointer moves anywhere in the hero, so the interaction is
+                   found without having to hover the right rectangle first. */
+                trackingArea="window"
+                smoothing={0.16}
+                /* contain, and the box already carries the clip's aspect — so
+                   this crops nothing. No feather either: the backdrop is
+                   flattened at encode time and the disc behind it is the same
+                   colour, so there is no edge left for a mask to hide. */
+                objectFit="contain"
+                loom={0.05}
+                /* The source clip runs the character off the bottom of frame —
+                   there are no feet in the footage to uncover. A short fade
+                   turns a hard slice into the character standing past the edge. */
+                fadeBottom={10}
+                className="relative z-2 size-full"
+              />
+            </div>
           </div>
 
         </header>

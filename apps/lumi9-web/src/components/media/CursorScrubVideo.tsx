@@ -31,6 +31,12 @@ export type CursorScrubVideoProps = {
   label: string;
   /** Fade the rectangle's edges out so it sits on a coloured page. */
   feather?: boolean;
+  /**
+   * Fade the bottom edge, as a percentage of height. For clips whose subject
+   * runs off the bottom of the SOURCE frame — no crop can invent the missing
+   * pixels, so the choice is a hard slice or a dissolve.
+   */
+  fadeBottom?: number;
   className?: string;
 };
 
@@ -72,6 +78,7 @@ export function CursorScrubVideo({
   hint,
   label,
   feather = false,
+  fadeBottom = 0,
   className = "",
 }: CursorScrubVideoProps) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -115,6 +122,16 @@ export function CursorScrubVideo({
 
   useLoop(videoRef, loopingRef, loops);
 
+  const masks: string[] = [];
+  if (feather) {
+    masks.push(
+      "radial-gradient(ellipse closest-side at 50% 45%, #000 72%, rgba(0,0,0,0.6) 90%, transparent 100%)",
+    );
+  }
+  if (fadeBottom > 0) {
+    masks.push(`linear-gradient(to bottom, #000 ${100 - fadeBottom}%, transparent 100%)`);
+  }
+
   return (
     <div
       ref={hostRef}
@@ -135,6 +152,8 @@ export function CursorScrubVideo({
         style={{
           objectFit,
           transformOrigin: "50% 55%",
+          maskComposite: masks.length > 1 ? "intersect" : undefined,
+          WebkitMaskComposite: masks.length > 1 ? "source-in" : undefined,
           // The feather lives on the VIDEO, not the wrapper. On the wrapper it
           // fades every overlay with it — the hint pill included — and an
           // affordance you cannot read is worse than none at all.
@@ -143,8 +162,8 @@ export function CursorScrubVideo({
           // is measured against the box, so the fade can still be mid-gradient
           // when it reaches the edge, leaving a soft-looking tile with hard
           // corners. closest-side pins full transparency TO the nearest edge.
-          maskImage: feather ? "radial-gradient(ellipse closest-side at 50% 45%, #000 72%, rgba(0,0,0,0.6) 90%, transparent 100%)" : undefined,
-          WebkitMaskImage: feather ? "radial-gradient(ellipse closest-side at 50% 45%, #000 72%, rgba(0,0,0,0.6) 90%, transparent 100%)" : undefined,
+          maskImage: masks.length ? masks.join(", ") : undefined,
+          WebkitMaskImage: masks.length ? masks.join(", ") : undefined,
         }}
         onCanPlayThrough={() => setReady(true)}
       />
