@@ -6,23 +6,32 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useCart } from "@/lib/cart";
 import { useCartUI } from "@/lib/cart-ui";
-import { firstNameOf, useSession } from "@/lib/auth-context";
+import { firstNameOf, initialsOf, useSession } from "@/lib/auth-context";
 import { Icon } from "@/components/ui/Icon";
 
 export type NavLink = { label: string; href: string };
 
 /*
- * "Account" is deliberately NOT in these lists any more.
+ * THREE lists, and no more.
  *
- * It was a static label pointing at /account whether or not anybody was signed
- * in, so a signed-out shopper who tapped it was bounced to /login by the guard
- * with no explanation. The account control in the bar resolves the session and
- * points at the right one of the two — a label that adapts cannot be a constant
- * in an array.
+ * There used to be seven: these three plus ABOUT_LINKS, HELP_LINKS,
+ * SUBSCRIPTION_LINKS and AUTH_LINKS, each declared in the page that used it and
+ * each a near-copy of the others. That is why /parenting-tools appeared in the
+ * nav on exactly one page — it was added to the one list its author happened to
+ * be looking at — and why three of them still carried a static "Account" link
+ * after it was removed from here. A list per page does not survive contact with
+ * a new destination. Add one here and every page gets it.
+ *
+ * "Account" is deliberately absent. It was a fixed label pointing at /account
+ * whether or not anybody was signed in, so a signed-out shopper who tapped it
+ * was bounced to /login by the guard with no explanation. The avatar in the bar
+ * resolves the session and points at the right one of the two — a control that
+ * adapts cannot be a constant in an array.
  */
 export const PRIMARY_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
   { label: "Technology", href: "/#tech" },
+  { label: "Parenting", href: "/parenting-tools" },
   { label: "Subscribe", href: "/subscription" },
   { label: "Journal", href: "/journal" },
 ];
@@ -31,12 +40,14 @@ export const HOME_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
   { label: "Technology", href: "/#tech" },
   { label: "Find your size", href: "/#sizes" },
+  { label: "Parenting", href: "/parenting-tools" },
   { label: "Journal", href: "/journal" },
 ];
 
+/** The support pages: about, help, contact, privacy, size guide, sign-in. */
 export const SUPPORT_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
-  { label: "Tools", href: "/parenting-tools" },
+  { label: "Parenting", href: "/parenting-tools" },
   { label: "About", href: "/about" },
   { label: "Help", href: "/help" },
   { label: "Contact", href: "/contact" },
@@ -105,29 +116,43 @@ function Logo() {
  * On the /cart page itself the control links instead: opening a slide-over copy
  * of the page you are already reading is a dead end.
  */
-function CartButton({ compact = false }: { compact?: boolean }) {
+function CartButton() {
   const { count, ready } = useCart();
   const { openCart } = useCartUI();
   const pathname = usePathname();
   const onCartPage = pathname === "/cart";
 
+  /*
+   * Icon and count, in the same 44px slot as the avatar. The word "Cart" that
+   * used to sit beside it is gone for the same reason the shopper's name is:
+   * text of unpredictable width in a fixed row pushes everything around it, and
+   * a bag icon with a number on it is not ambiguous.
+   *
+   * The badge is absolutely positioned so the button's box never changes — a
+   * count going from 9 to 10 used to widen the control and shift the burger.
+   * It renders only when there is something in the bag; a permanent "0" is a
+   * notification badge announcing no notifications.
+   */
   const inner = (
-    <>
-      <Icon name="cart" size={compact ? 22 : 19} strokeWidth={1.6} />
-      {/* Beside the burger the word is redundant — the icon and the count badge
-          carry it, and the row has to stay one line at 320px. */}
-      <span className={compact ? "sr-only" : "max-[359px]:sr-only"}>Cart</span>
-      <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1.5 text-xs font-bold text-midnight">
-        {ready ? count : 0}
-      </span>
-    </>
+    <span
+      className={`relative flex size-9 items-center justify-center rounded-full transition-colors ${
+        onCartPage ? "bg-midnight text-butter" : "text-midnight hover:bg-midnight/6"
+      }`}
+    >
+      <Icon name="cart" size={21} strokeWidth={1.6} />
+      {ready && count > 0 && (
+        <span className="absolute -top-0.5 -right-0.5 inline-flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-gold px-1 text-[11px] font-bold text-midnight">
+          {count > 99 ? "99+" : count}
+        </span>
+      )}
+    </span>
   );
 
-  const shell = `flex shrink-0 cursor-pointer items-center gap-[7px] text-[clamp(13px,1.1vw,14px)] coarse:min-h-11 ${
-    onCartPage ? "font-bold text-moss-deep" : "font-semibold text-midnight hover:text-moss-deep"
-  }`;
+  const shell = "flex size-11 shrink-0 cursor-pointer items-center justify-center rounded-full";
   const label = `${onCartPage ? "Your bag" : "Open bag"}, ${ready ? count : 0} items`;
 
+  // On /cart the slide-over would be a copy of the page already open, so the
+  // control links instead of opening it.
   return onCartPage ? (
     <Link href="/cart" className={shell} aria-label={label}>
       {inner}
@@ -148,25 +173,49 @@ function CartButton({ compact = false }: { compact?: boolean }) {
  * unresolved or failed /api/auth/me leaves it pointing at /login — the harmless
  * wrong answer.
  */
-function AccountLink({ compact = false }: { compact?: boolean }) {
+function AccountLink() {
   const { user, ready } = useSession();
   const pathname = usePathname();
   const signedIn = ready && user !== null;
   const href = signedIn ? "/account" : "/login";
   const name = firstNameOf(user);
+  const initials = initialsOf(user);
   const active = pathname === href;
 
+  /*
+   * An initials avatar, the WhatsApp convention — not the shopper's name in
+   * text.
+   *
+   * A name is unbounded: "Lakshminarayanan" is 16 characters that push the
+   * cart, the burger and the whole right-hand group around, and it changes
+   * width the moment /api/auth/me resolves, which is half of what made this bar
+   * feel like it was moving. Two letters in a fixed 36px circle cannot do
+   * either — the slot is the same size signed in, signed out, and while the
+   * session is still loading.
+   *
+   * The name has not gone anywhere; it is the accessible label, and the mobile
+   * sheet still greets her by it.
+   */
   return (
     <Link
       href={href}
-      className={`flex shrink-0 items-center gap-[7px] text-[clamp(13px,1.1vw,14px)] coarse:min-h-11 ${
-        active ? "font-bold text-moss-deep" : "font-semibold text-midnight hover:text-moss-deep"
-      }`}
       aria-label={signedIn ? (name ? `My account, signed in as ${name}` : "My account") : "Sign in"}
+      aria-current={active ? "page" : undefined}
+      className="flex size-11 shrink-0 items-center justify-center rounded-full"
     >
-      <Icon name="user" size={compact ? 22 : 19} strokeWidth={1.6} />
-      <span className={compact ? "sr-only" : "max-lg:sr-only"}>
-        {signedIn ? (name ?? "Account") : "Sign in"}
+      <span
+        className={`flex size-9 items-center justify-center rounded-full text-[13px] font-bold transition-colors ${
+          signedIn
+            ? active
+              ? "bg-midnight text-butter"
+              : "bg-moss-deep text-butter hover:bg-midnight"
+            : "border-[1.5px] border-moss-tint text-midnight hover:border-moss-soft"
+        }`}
+      >
+        {/* Signed in with nothing to spell — a link/OTP account before /welcome
+            — falls back to the outline icon rather than an empty circle, which
+            reads as an avatar that failed to load. */}
+        {signedIn && initials ? initials : <Icon name="user" size={18} strokeWidth={1.7} />}
       </span>
     </Link>
   );
@@ -228,11 +277,9 @@ function AccountSheetLinks({ onNavigate }: { onNavigate: () => void }) {
 export function Nav({
   links = PRIMARY_LINKS,
   variant = "solid",
-  cta = "shop",
 }: {
   links?: NavLink[];
   variant?: "solid" | "home";
-  cta?: "shop" | "cart" | "both" | "none";
 }) {
   const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
@@ -295,11 +342,26 @@ export function Nav({
     return () => query.removeEventListener("change", onChange);
   }, []);
 
+  /*
+   * Only the SURFACE changes on scroll now — never the height.
+   *
+   * The home bar used to transition its padding from 18px to 12px as you
+   * scrolled past 30px, so the whole bar shrank under the cursor and every link
+   * in it moved. That is the "dynamic" feel: nothing was broken, the chrome
+   * simply would not hold still.
+   *
+   * It was also quietly wrong. `--nav-h` is published by a ResizeObserver on
+   * this element and is what `scroll-padding-top` in globals.css offsets every
+   * in-page anchor by — so a bar whose height depends on scroll position gives
+   * a different answer depending on where you were when you clicked, and a
+   * `#tech` landing lands 6px off. A constant height makes that variable a
+   * constant too.
+   */
   const chrome = isHome
     ? scrolled || open
-      ? "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)] md:py-3"
-      : "bg-transparent md:py-[18px]"
-    : "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)] md:py-4";
+      ? "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]"
+      : "bg-transparent"
+    : "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]";
 
   const isActive = (href: string) => href === pathname || (href !== "/" && pathname.startsWith(`${href}/`));
 
@@ -311,74 +373,74 @@ export function Nav({
   const bar = (
     <nav
       ref={ref}
-      className={`px-safe z-100 flex items-center justify-between gap-x-3 py-2.5 transition-[background-color,box-shadow,padding] duration-400 ease-out ${chrome} ${
+      className={`z-100 transition-[background-color,box-shadow] duration-400 ease-out ${chrome} ${
         isHome ? "fixed inset-x-0 top-0" : "sticky top-0"
       }`}
     >
-      <Logo />
+      {/*
+       * The bar spans the viewport; its CONTENTS sit in the same 1180px column
+       * every page below uses.
+       *
+       * Without this the logo was pinned to the far left edge and the cart to
+       * the far right, while the hero, the product grid and the footer all
+       * lined up in a centred column — so on any wide screen the chrome and the
+       * page it belonged to were visibly two different layouts. The background
+       * still has to run edge to edge, which is why the constraint is on an
+       * inner element rather than on <nav> itself.
+       */}
+      <div className="px-safe mx-auto flex w-full max-w-[1180px] items-center justify-between gap-x-3 py-2.5 md:py-3.5">
+        <Logo />
 
-      {/* Desktop link row */}
-      <div className="hidden items-center gap-[clamp(18px,2.5vw,36px)] text-[clamp(13px,1.15vw,15px)] font-medium md:flex">
-        {links.map((link) => {
-          const active = isActive(link.href);
-          return (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={`inline-flex items-center coarse:min-h-11 ${
-                active ? "font-bold text-moss-deep" : "text-midnight hover:text-moss-deep"
-              }`}
-              aria-current={active ? "page" : undefined}
-            >
-              {link.label}
-            </Link>
-          );
-        })}
-      </div>
+        {/* Desktop link row */}
+        <div className="hidden items-center gap-[clamp(16px,2.2vw,32px)] text-[clamp(13px,1.15vw,15px)] font-medium md:flex">
+          {links.map((link) => {
+            const active = isActive(link.href);
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`inline-flex items-center whitespace-nowrap coarse:min-h-11 ${
+                  active ? "font-bold text-moss-deep" : "text-midnight hover:text-moss-deep"
+                }`}
+                aria-current={active ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </div>
 
-      <div className="flex shrink-0 items-center gap-[clamp(10px,1.4vw,16px)]">
-        {/* On a phone the bar is always [logo][cart][burger]: the burger already
-            carries the shop CTA, so `cta` only decides the DESKTOP right-hand
-            side. Under the old rule every `cta="shop"` page — subscription,
-            journal, help, about, login — left a shopper with items in the
-            basket no way to reach it without going back to the home page. */}
-        {cta !== "none" && (
-          <span className="flex items-center gap-1 md:hidden">
-            <AccountLink compact />
-            <CartButton compact />
-          </span>
-        )}
-        {/* The account control is on EVERY desktop variant, not gated behind
-            `cta`. `cta` decides whether the bar sells; reaching your own orders
-            is not a merchandising decision, and gating it is how /account ended
-            up unreachable from most of the site. */}
-        {cta !== "none" && (
-          <span className="max-md:hidden">
-            <AccountLink />
-          </span>
-        )}
-        {(cta === "cart" || cta === "both") && (
-          <span className="max-md:hidden">
-            <CartButton />
-          </span>
-        )}
-        {(cta === "shop" || cta === "both") && (
-          <Link href="/shop" className="btn btn-dark btn-sm whitespace-nowrap max-md:hidden">
-            Shop now
-          </Link>
-        )}
+        {/*
+         * Two controls, at every width: account, then bag.
+         *
+         * The "Shop now" button that used to sit here is gone. It was a fifth
+         * competing target in a bar that already had a Shop LINK two inches to
+         * its left, and being the only filled button on the page it outweighed
+         * both the account and the cart — the two controls a returning shopper
+         * actually comes to the bar for. Selling is what the page is for; the
+         * bar is for navigation.
+         *
+         * Dropping it also removed the reason `cta` existed. That prop decided
+         * which of four combinations the right-hand side showed, and every page
+         * picked one by hand — which is how `cta="shop"` pages ended up with no
+         * route to the basket at all.
+         */}
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <AccountLink />
+          <CartButton />
 
-        {/* Burger — the only route to the nav below md, so it is a full 44px target. */}
-        <button
-          type="button"
-          onClick={() => setOpen((value) => !value)}
-          aria-expanded={open}
-          aria-controls={menuId}
-          aria-label={open ? "Close menu" : "Open menu"}
-          className="-mr-1.5 inline-flex size-11 cursor-pointer items-center justify-center rounded-full text-midnight transition-colors hover:bg-midnight/6 md:hidden"
-        >
-          <Icon name={open ? "close" : "menu"} size={22} strokeWidth={1.8} />
-        </button>
+          {/* Burger — the only route to the nav below md, so a full 44px target. */}
+          <button
+            type="button"
+            onClick={() => setOpen((value) => !value)}
+            aria-expanded={open}
+            aria-controls={menuId}
+            aria-label={open ? "Close menu" : "Open menu"}
+            className="-mr-1.5 inline-flex size-11 cursor-pointer items-center justify-center rounded-full text-midnight transition-colors hover:bg-midnight/6 md:hidden"
+          >
+            <Icon name={open ? "close" : "menu"} size={22} strokeWidth={1.8} />
+          </button>
+        </div>
       </div>
 
       {/* Slide-down sheet. `inert` while closed so its links stay out of the tab

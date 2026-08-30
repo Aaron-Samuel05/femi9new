@@ -42,7 +42,7 @@ const TOOLS = [
 
 export default function ParentingToolsPage() {
   return (
-    <PageShell links={SUPPORT_LINKS} cta="shop">
+    <PageShell links={SUPPORT_LINKS}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd(

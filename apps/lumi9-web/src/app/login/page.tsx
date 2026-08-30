@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getSession } from "@femi9/core/auth";
 import { PageShell } from "@/components/site/PageShell";
+import { SUPPORT_LINKS } from "@/components/site/Nav";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { availableAuthMethods } from "@/lib/auth-methods";
 import { safeNextPath } from "@/lib/safe-next";
@@ -16,12 +17,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-const AUTH_LINKS = [
-  { label: "Shop", href: "/shop" },
-  { label: "About", href: "/about" },
-  { label: "Journal", href: "/journal" },
-  { label: "Help", href: "/help" },
-];
 
 /**
  * /login — the sign-in card, standalone under the standard chrome.
@@ -52,7 +47,7 @@ export default async function LoginPage(props: {
   const methods = availableAuthMethods();
 
   return (
-    <PageShell links={AUTH_LINKS} cta="shop">
+    <PageShell links={SUPPORT_LINKS}>
       <section className="px-safe mx-auto max-w-[1040px] pt-[clamp(28px,4.6vw,60px)] pb-section">
         {/* AuthCard reads `?next` and `?error` with useSearchParams, which needs
             a Suspense boundary above it — without one the whole route opts out

@@ -67,7 +67,7 @@ export default function JournalPage() {
   };
 
   return (
-    <PageShell links={PRIMARY_LINKS} cta="shop">
+    <PageShell links={PRIMARY_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(blogSchema)} />
       <script
         type="application/ld+json"

@@ -159,7 +159,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
   };
 
   return (
-    <PageShell links={HOME_LINKS} cta="cart">
+    <PageShell links={HOME_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(productSchema)} />
       <script
         type="application/ld+json"

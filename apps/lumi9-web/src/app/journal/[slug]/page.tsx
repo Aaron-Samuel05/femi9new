@@ -85,7 +85,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
   };
 
   return (
-    <PageShell links={PRIMARY_LINKS} cta="shop">
+    <PageShell links={PRIMARY_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(articleSchema)} />
       <script
         type="application/ld+json"

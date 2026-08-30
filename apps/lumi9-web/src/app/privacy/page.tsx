@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <PageShell links={SUPPORT_LINKS} cta="shop">
+    <PageShell links={SUPPORT_LINKS}>
       <header className="px-safe mx-auto max-w-[900px] pt-[clamp(40px,6vw,70px)] pb-7.5">
         <div className="eyebrow mb-3.5">Legal</div>
         <h1 className="m-0 mb-2.5 font-display text-[clamp(28px,7.4vw,56px)] md:text-[clamp(34px,4.4vw,56px)] font-normal">Privacy &amp; Terms</h1>

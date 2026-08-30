@@ -96,7 +96,7 @@ export default function HomePage() {
 
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(SIZE_LIST_SCHEMA)} />
 
-      <Nav variant="home" links={HOME_LINKS} cta="both" />
+      <Nav variant="home" links={HOME_LINKS} />
 
       <main>
         {/* HERO — clears the fixed nav by its measured height (--nav-h) */}

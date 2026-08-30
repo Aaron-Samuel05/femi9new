@@ -152,3 +152,43 @@ export function firstNameOf(user: SessionUser | null): string | null {
   if (!name) return null;
   return name.split(/\s+/)[0] ?? null;
 }
+
+/**
+ * Two uppercase letters for the avatar — the WhatsApp/Gmail convention.
+ *
+ * "Priya Raman" → PR. A single-word name takes its first two letters ("Priya" →
+ * PR) rather than one lonely glyph in a circle sized for two. Falls back to the
+ * email, then the phone, because an account that signed in by link or OTP has
+ * no name until /welcome captures one — and a blank circle looks like a failed
+ * image rather than a person.
+ *
+ * Returns null only when there is genuinely nothing, which the caller renders
+ * as the outline user icon instead.
+ */
+export function initialsOf(user: SessionUser | null): string | null {
+  if (!user) return null;
+
+  const name = user.name?.trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return (parts[0]![0]! + parts[parts.length - 1]![0]!).toUpperCase();
+    }
+    if (parts[0]) return parts[0].slice(0, 2).toUpperCase();
+  }
+
+  // Only the local part: the domain is the same for thousands of shoppers and
+  // would make every Gmail account read "GM".
+  const email = user.email?.trim();
+  if (email) {
+    const local = email.split("@")[0]?.replace(/[^a-z0-9]/gi, "");
+    if (local) return local.slice(0, 2).toUpperCase();
+  }
+
+  // The last two digits — the end of a number is what people recognise their
+  // own by, and the leading digits of an Indian mobile are near-constant.
+  const phone = user.phone?.replace(/\D/g, "");
+  if (phone && phone.length >= 2) return phone.slice(-2);
+
+  return null;
+}

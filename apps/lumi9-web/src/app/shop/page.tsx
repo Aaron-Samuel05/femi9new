@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function ShopPage() {
   return (
-    <PageShell links={PRIMARY_LINKS} cta="cart">
+    <PageShell links={PRIMARY_LINKS}>
       <header className="px-safe mx-auto max-w-[1240px] pt-[clamp(36px,5vw,64px)] pb-8.5">
         <div className="eyebrow mb-3.5">Shop Cloud Soft</div>
         <h1 className="m-0 mb-3 font-display text-[clamp(30px,8vw,60px)] md:text-[clamp(34px,4.6vw,60px)] font-normal leading-[1.02]">

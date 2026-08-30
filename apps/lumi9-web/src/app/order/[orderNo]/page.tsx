@@ -90,7 +90,7 @@ export default async function OrderPage(props: {
   });
 
   return (
-    <PageShell links={PRIMARY_LINKS} cta="both">
+    <PageShell links={PRIMARY_LINKS}>
       <section className="px-safe mx-auto max-w-[880px] pt-[clamp(28px,4.4vw,56px)] pb-section">
         <Link
           href={signedIn ? "/account?tab=orders" : "/shop"}

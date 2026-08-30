@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
+import { SUPPORT_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { BoxBuilder } from "@/components/subscription/BoxBuilder";
 import { Em } from "@/components/ui/bits";
@@ -24,16 +25,10 @@ export const metadata: Metadata = {
   openGraph: { type: "website", url: absoluteUrl("/subscription"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
 };
 
-const SUBSCRIPTION_LINKS = [
-  { label: "Shop", href: "/shop" },
-  { label: "About", href: "/about" },
-  { label: "Journal", href: "/journal" },
-  { label: "Account", href: "/account" },
-];
 
 export default function SubscriptionPage() {
   return (
-    <PageShell links={SUBSCRIPTION_LINKS} cta="shop">
+    <PageShell links={SUPPORT_LINKS}>
       {/* HERO */}
       <header
         className="px-safe relative overflow-hidden pt-[clamp(48px,7vw,96px)] pb-[clamp(44px,6vw,80px)]"

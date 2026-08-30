@@ -6,17 +6,15 @@ import { Footer } from "@/components/site/Footer";
 export function PageShell({
   children,
   links,
-  cta = "shop",
   variant = "solid",
 }: {
   children: ReactNode;
   links?: NavLink[];
-  cta?: "shop" | "cart" | "both" | "none";
   variant?: "solid" | "home";
 }) {
   return (
     <>
-      <Nav links={links} cta={cta} variant={variant} />
+      <Nav links={links} variant={variant} />
       <main>{children}</main>
       <Footer />
     </>

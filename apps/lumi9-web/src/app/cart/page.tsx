@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <PageShell links={PRIMARY_LINKS} cta="cart">
+    <PageShell links={PRIMARY_LINKS}>
       <CartView />
     </PageShell>
   );
