@@ -67,12 +67,28 @@ export function LayerStack() {
       raf = 0;
       const rect = el.getBoundingClientRect();
       const vh = window.innerHeight || 1;
-      // 0 when the section's top sits at 90% of the viewport (just arriving),
-      // 1 once its bottom has risen to 10% (all but gone). Measured against the
-      // viewport rather than document offsets so it needs no layout constants
-      // and survives anything above it changing height.
-      const travel = rect.height + vh * 0.8;
-      const progress = (vh * 0.9 - rect.top) / travel;
+
+      /*
+       * Anchored to the CONTENT's centre, not the section's top edge.
+       *
+       * This used to spread the five layers across `height + 0.8vh` of travel,
+       * starting when the top edge reached 90% of the viewport. The section is
+       * taller than the viewport and nothing in it is sticky, so that runway
+       * was far longer than the window in which the copy is actually readable:
+       * layers 1 and 2 landed while the panel was still below the fold, and
+       * layer 5 only landed once it had scrolled off the top. In practice a
+       * visitor saw layers 3 and 4 and nothing else — and then watched "5.
+       * Ultra-Soft Cotton Sheet" light up in the last sliver of green on its
+       * way out, which is where it is of no use to anybody.
+       *
+       * The panel is vertically centred in the section (`items-center`), so the
+       * section's midpoint is where the copy is. Run the whole sequence while
+       * THAT crosses the screen — 85% of the viewport down to 15% — and every
+       * layer is on screen when it becomes active, whatever the section's
+       * height happens to be.
+       */
+      const centre = rect.top + rect.height / 2;
+      const progress = (vh * 0.85 - centre) / (vh * 0.7);
       const index = Math.max(0, Math.min(LAYERS.length - 1, Math.floor(progress * LAYERS.length)));
       setActive((current) => (current === index ? current : index));
     };

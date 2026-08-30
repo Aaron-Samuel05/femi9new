@@ -40,16 +40,19 @@
      It used to be five — 1100, 1120, 1180, 1240 and 1280 were all in use for
      what is conceptually the same container, and the footer had no limit at
      all, so on a wide screen the sections each ended at a different x.
-     1440 is the design canvas width. At 1240 a 1920 screen carried 340px of
-     dead margin on each side and the product row looked stranded in the middle
-     of it; this is the number to change if that judgement moves again.
+     1600. The design canvas is 1440, but a canvas is where a design was drawn,
+     not a ceiling for where it may be shown: at 1440 a 1920 screen still left
+     240px of dead margin per side, with the nav and hero running to the gutter
+     48px outside it — so the column read as inset from its own chrome. 1600
+     closes that to 152 and keeps a hair of margin so the column still reads as
+     a column. This is the number to change if the judgement moves again.
      Full-bleed elements — the nav and the hero — deliberately sit OUTSIDE this
      and run to the gutter, so they frame the column rather than joining it.
      Narrower containers exist on purpose INSIDE it: a 760px article column is
      measure control and an art-directed image is a composition choice. Every
      paragraph is capped in `ch` regardless, so widening the column moves the
      layout without stretching a line of prose past its measure. */
-  --page-max: 1440px;
+  --page-max: 1600px;
   --spacing-section: clamp(64px, 8.4vw, 120px); /* section vertical rhythm */
   --spacing-section-lg: clamp(72px, 9vw, 130px);
   --spacing-section-sm: clamp(48px, 6vw, 90px);
