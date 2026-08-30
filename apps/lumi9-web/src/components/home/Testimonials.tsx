@@ -73,7 +73,7 @@ function ReviewCard({ r }: { r: Review }) {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className={`grid size-9 shrink-0 place-items-center rounded-full text-[15px] font-800 ${
+          className={`grid size-9 shrink-0 place-items-center rounded-full text-[15px] font-extrabold ${
             TONES[r.tone] ?? TONES.moss
           }`}
         >
@@ -81,13 +81,13 @@ function ReviewCard({ r }: { r: Review }) {
         </span>
         <div className="min-w-0">
           <Stars />
-          <figcaption className="truncate text-[13px] font-700 text-midnight">{r.name}</figcaption>
+          <figcaption className="truncate text-[13px] font-bold text-midnight">{r.name}</figcaption>
         </div>
       </div>
 
       <blockquote className="text-pretty text-[14px] leading-[1.55] text-midnight/75">{r.quote}</blockquote>
 
-      <p className="mt-auto flex items-center gap-1.5 pt-1 text-[11px] font-700 uppercase tracking-[0.06em] text-moss-deep">
+      <p className="mt-auto flex items-center gap-1.5 pt-1 text-[11px] font-bold uppercase tracking-[0.06em] text-moss-deep">
         <svg aria-hidden="true" viewBox="0 0 16 16" className="size-3.5">
           <path
             fill="currentColor"
@@ -172,7 +172,7 @@ export function Testimonials() {
             />
             <h2
               id="reviews-heading"
-              className="text-balance font-display text-[clamp(26px,3.4vw,40px)] font-700 leading-[1.12] text-moss-deep"
+              className="text-balance font-display text-[clamp(26px,3.4vw,40px)] font-bold leading-[1.12] text-moss-deep"
             >
               Loved by parents, trusted by experts
             </h2>

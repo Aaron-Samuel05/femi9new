@@ -1189,26 +1189,21 @@ git commit -m "feat: add diaper usage, pack and monthly-cost maths"
   - `scheduleFor(input: { dob: IsoDate; today: IsoDate; track: VaccineTrack }): ScheduledDose[]`
   - `UIP_SOURCE`, `IAP_SOURCE`, `SCHEDULE_REVISED_ON` — strings rendered in the UI
 
-- [ ] **Step 1: Obtain the two schedules — BLOCKED, needs a file from the user**
+- [x] **Step 1: Obtain the two schedules — UIP DONE, IAP still outstanding**
 
-Attempted on 2026-08-30 and all failed to yield a schedule table:
+The UIP (free government) schedule was supplied directly by the site owner on
+2026-08-30 and is transcribed in `immunisation-schedule.data.ts`. 28 doses,
+birth through 16 years.
 
-| Source | Result |
-| --- | --- |
-| `nhp.gov.in/universal-immunisation-programme_pg` | DNS does not resolve |
-| `iapindia.org/immunization-schedule/` | No table; points at the guidebook page |
-| `iapindia.org/iap-guidebook-on-immunization/` | PDFs only; newest linked is 2018–19 |
-| `iapindia.org/purple-book-2025/` | Page returns no content |
-| `nhm.gov.in` immunization page | Prose only, no schedule table |
-| WHO `immunizationdata.who.int` India schedule | Rendered in headless Chrome — no table in the DOM |
+The IAP timetable is still missing. Six sources were tried and none yielded a
+table: nhp.gov.in (DNS fails), iapindia.org/immunization-schedule (no table),
+the IAP guidebook page (PDFs only, newest linked is 2018-19), purple-book-2025
+(no content), nhm.gov.in (prose only), and WHO's immunizationdata portal
+(rendered headless — no table in the DOM).
 
-The 2018–19 IAP guidebook PDF does download (5 MB), but a seven-year-old
-schedule shipped as current medical guidance is worse than no tool.
-
-**Do not proceed by transcribing from memory or from a search snippet.** Ask the
-user for the current IAP timetable PDF or the MoHFW schedule, then continue with:
-1. **UIP** — MoHFW National Immunization Schedule (`nhm.gov.in` / `mohfw.gov.in`, "National Immunization Schedule for Infants, Children and Pregnant Women").
-2. **IAP** — Indian Academy of Pediatrics Immunization Timetable, latest published revision (`iapindia.org`).
+The UI handles this by itself: `availableTracks()` returns only tracks that have
+doses, so no IAP tab is offered. Adding it later is appending entries with
+`track: ["IAP"]` — no code change.
 
 - [ ] **Step 2: Transcribe into the data file**
 

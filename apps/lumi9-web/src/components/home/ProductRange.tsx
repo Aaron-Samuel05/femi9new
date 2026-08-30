@@ -78,11 +78,11 @@ function RangeCard({ size }: { size: DbProductSize }) {
           */}
           {offer ? (
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="font-display text-[clamp(19px,2vw,24px)] font-800 leading-[1.1] text-midnight tabular-nums">
+              <span className="font-display text-[clamp(19px,2vw,24px)] font-extrabold leading-[1.1] text-midnight tabular-nums">
                 {inr(pack.price * (1 - offer.percent / 100))}
               </span>
               <s className="text-[13px] text-muted/80 tabular-nums decoration-muted/50">{inr(pack.price)}</s>
-              <span className="rounded-full bg-butter px-2 py-[3px] text-[11px] font-800 leading-none text-[#7a6500]">
+              <span className="rounded-full bg-butter px-2 py-[3px] text-[11px] font-extrabold leading-none text-[#7a6500]">
                 {offer.percent}% off
               </span>
             </div>

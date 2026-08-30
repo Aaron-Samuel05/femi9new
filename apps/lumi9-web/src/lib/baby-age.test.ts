@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   addDays,
+  addMonths,
   addWeeks,
+  addYears,
   ageInDays,
   ageInMonths,
   correctedAgeInMonths,
@@ -76,6 +78,28 @@ describe("addDays / addWeeks", () => {
   });
   it("adds weeks", () => {
     expect(addWeeks("2026-01-01", 6)).toBe("2026-02-12");
+  });
+});
+
+describe("addMonths / addYears", () => {
+  it("keeps the day of month", () => {
+    expect(addMonths("2026-01-15", 9)).toBe("2026-10-15");
+    expect(addYears("2026-03-09", 5)).toBe("2031-03-09");
+  });
+  it("clamps a day that does not exist in the target month", () => {
+    expect(addMonths("2026-01-31", 1)).toBe("2026-02-28");
+    expect(addMonths("2028-01-31", 1)).toBe("2028-02-29"); // leap year
+    expect(addMonths("2026-03-31", 1)).toBe("2026-04-30");
+  });
+  it("crosses a year boundary", () => {
+    expect(addMonths("2026-11-10", 4)).toBe("2027-03-10");
+  });
+  it("differs from a weeks approximation, which is the reason it exists", () => {
+    // From 1 Jan 2026 the two happen to coincide — nine months is exactly 273
+    // days there. From 1 March they do not, and that drift is why a schedule
+    // stated in months is not stored as weeks.
+    expect(addMonths("2026-03-01", 9)).toBe("2026-12-01");
+    expect(addWeeks("2026-03-01", 39)).toBe("2026-11-29");
   });
 });
 

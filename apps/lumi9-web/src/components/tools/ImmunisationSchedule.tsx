@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useBabyProfile } from "@/lib/baby-profile";
 import {
+  availableTracks,
   hasScheduleData,
   IAP_SOURCE,
   SCHEDULE_REVISED_ON,
@@ -14,7 +15,8 @@ import { ToolDisclaimer } from "./ToolDisclaimer";
 
 export function ImmunisationSchedule() {
   const profile = useBabyProfile();
-  const [track, setTrack] = useState<VaccineTrack>("UIP");
+  const tracks = availableTracks();
+  const [track, setTrack] = useState<VaccineTrack>(tracks[0] ?? "UIP");
   const today = new Date().toISOString().slice(0, 10);
   const ready = hasScheduleData();
 
@@ -39,22 +41,31 @@ export function ImmunisationSchedule() {
         </p>
       ) : (
         <>
-          <div className="mb-5 inline-flex rounded-pill border border-moss-tint p-1" role="tablist">
-            {(["UIP", "IAP"] as VaccineTrack[]).map((option) => (
-              <button
-                key={option}
-                type="button"
-                role="tab"
-                aria-selected={track === option}
-                onClick={() => setTrack(option)}
-                className={`cursor-pointer rounded-pill px-4 py-2 text-sm font-semibold transition-colors ${
-                  track === option ? "bg-midnight text-butter" : "text-muted hover:text-midnight"
-                }`}
-              >
-                {option === "UIP" ? "Government (UIP)" : "IAP"}
-              </button>
-            ))}
-          </div>
+          {/* Only a real choice gets a selector. A tab that opens onto an empty
+              list reads as a broken page rather than as missing data. */}
+          {tracks.length > 1 ? (
+            <div className="mb-5 inline-flex rounded-pill border border-moss-tint p-1" role="tablist">
+              {tracks.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="tab"
+                  aria-selected={track === option}
+                  onClick={() => setTrack(option)}
+                  className={`cursor-pointer rounded-pill px-4 py-2 text-sm font-semibold transition-colors ${
+                    track === option ? "bg-midnight text-butter" : "text-muted hover:text-midnight"
+                  }`}
+                >
+                  {option === "UIP" ? "Government (UIP)" : "IAP"}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="m-0 mb-5 text-[13px] text-muted">
+              Showing the free government schedule. The IAP list of optional vaccines is not
+              included yet.
+            </p>
+          )}
 
           {!profile ? (
             <p className="m-0 text-sm text-muted">
@@ -76,8 +87,13 @@ export function ImmunisationSchedule() {
                   >
                     <span className="text-sm font-semibold text-midnight">
                       {dose.vaccine} <span className="font-normal text-muted">· {dose.dose}</span>
+                      {dose.note ? (
+                        <span className="mt-0.5 block text-[12px] font-normal text-muted">
+                          {dose.note}
+                        </span>
+                      ) : null}
                     </span>
-                    <span className="text-sm text-muted">
+                    <span className="text-sm whitespace-nowrap text-muted">
                       {dose.dueOn}
                       {dose.status === "due" ? " · due now" : ""}
                     </span>

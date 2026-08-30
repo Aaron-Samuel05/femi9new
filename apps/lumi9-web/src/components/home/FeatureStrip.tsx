@@ -63,7 +63,7 @@ export function FeatureStrip() {
             </svg>
             {/* `text-balance` keeps two-word claims from orphaning a word onto
                 its own line at the awkward 2-column phone width. */}
-            <span className="min-w-0 text-pretty text-[13px] font-600 leading-[1.25] text-midnight/85">
+            <span className="min-w-0 text-pretty text-[13px] font-semibold leading-[1.25] text-midnight/85">
               {f.label}
             </span>
           </div>
