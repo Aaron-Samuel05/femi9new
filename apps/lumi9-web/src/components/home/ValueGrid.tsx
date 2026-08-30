@@ -106,7 +106,7 @@ function ValueCard({
 
       <h3
         className={[
-          "font-display font-600 leading-[1.15] text-midnight",
+          "font-display font-semibold leading-[1.15] text-midnight",
           feature ? "text-[clamp(20px,2.2vw,27px)]" : "text-[clamp(16px,1.5vw,19px)]",
         ].join(" ")}
       >
@@ -149,7 +149,7 @@ export function ValueGrid() {
         <Reveal>
           <h2
             id="values-heading"
-            className="m-0 mb-[clamp(32px,4.6vw,56px)] text-balance text-center font-display text-[clamp(28px,3.6vw,46px)] font-700 leading-[1.1]"
+            className="m-0 mb-[clamp(32px,4.6vw,56px)] text-balance text-center font-display text-[clamp(28px,3.6vw,46px)] font-bold leading-[1.1]"
           >
             The values behind every Lumi9 baby diaper
           </h2>

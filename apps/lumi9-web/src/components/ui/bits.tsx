@@ -52,7 +52,7 @@ export function SectionHeading({
 export function Em({ children }: { children: ReactNode }) {
   return (
     <span
-      className="font-script font-700 not-italic text-moss-deep"
+      className="font-script font-bold not-italic text-moss-deep"
       style={{ fontSize: "1.12em", lineHeight: 1, display: "inline-block", transform: "translateY(0.06em)" }}
     >
       {children}
