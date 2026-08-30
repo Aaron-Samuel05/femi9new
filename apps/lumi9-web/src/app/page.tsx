@@ -12,7 +12,7 @@ import { SizeFinder } from "@/components/home/SizeFinder";
 import { WhyLumi9 } from "@/components/home/WhyLumi9";
 import { FeatureStrip } from "@/components/home/FeatureStrip";
 import { Testimonials } from "@/components/home/Testimonials";
-import { ValueGrid } from "@/components/home/ValueGrid";
+import { FeaturedJournal } from "@/components/home/FeaturedJournal";
 import { Scallop, WaveEdge } from "@/components/ui/Scallop";
 import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
@@ -334,9 +334,11 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* VALUES — bento with a lead card, not five numbered columns.
-            See components/home/ValueGrid.tsx for why the numbering went. */}
-        <ValueGrid />
+        {/* FROM THE JOURNAL — three posts where the values bento stood.
+            Those five cards restated claims the hero, the feature strip and the
+            PDP accordion already make, and linked nowhere; see
+            components/home/FeaturedJournal.tsx. */}
+        <FeaturedJournal />
 
         {/* TESTIMONIALS — eight short reviews in a dense grid rather than three
             long quote cards; see components/home/Testimonials.tsx for why. */}
