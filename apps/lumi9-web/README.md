@@ -39,7 +39,8 @@ src/
   app/                     one folder per route; server components by default
   components/
     site/                  Nav (solid · home · checkout · minimal), Footer, PageShell
-    three/                 HeroMascot, FooterMascot, shared model/light rig
+    three/                 FooterMascot, shared model/light rig
+    media/                 CursorScrubVideo (the hero character)
     motion/                Reveal, Parallax, FloatyBlob
     ui/                    Icon set, Accordion, QtyStepper, small display bits
     home|shop|pdp|cart|…   per-screen interactive pieces (client components)

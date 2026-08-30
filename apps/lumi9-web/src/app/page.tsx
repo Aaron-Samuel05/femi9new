@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Nav, HOME_LINKS } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { HeroMascot } from "@/components/three/HeroMascot";
+import { CursorScrubVideo } from "@/components/media/CursorScrubVideo";
 import { FloatyBlob, Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { LayerStack } from "@/components/home/LayerStack";
@@ -168,12 +168,30 @@ export default function HomePage() {
           </div>
 
           <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
+            {/* Warm, not sage: the glow now matches the video's own #f1e2d2
+                backdrop, so the clip's rectangle dissolves into the hero
+                instead of sitting on it as a visible tile. */}
             <div
-              className="absolute aspect-square w-[min(72vw,560px)] rounded-full md:w-[min(46vw,560px)]"
-              style={{ background: "radial-gradient(circle, #dfe6c6 0%, rgba(223,230,198,0) 68%)" }}
+              className="absolute aspect-square w-[min(78vw,600px)] rounded-full md:w-[min(48vw,600px)]"
+              style={{ background: "radial-gradient(circle, #f1e2d2 0%, rgba(241,226,210,0) 70%)" }}
               aria-hidden
             />
-            <HeroMascot />
+            <CursorScrubVideo
+              src="/assets/lumi-scrub-v1.mp4"
+              poster="/assets/lumi-scrub-v1-poster.jpg"
+              label="Lumi, the Lumi9 avocado, waving hello"
+              hint="Move your cursor"
+              axis="horizontal"
+              /* window, not component: the character answers the moment the
+                 pointer moves anywhere in the hero, so the interaction is found
+                 without having to hover the right rectangle to discover it. */
+              trackingArea="window"
+              smoothing={0.16}
+              objectFit="cover"
+              loom={0.05}
+              feather
+              className="relative z-2 h-[min(52svh,360px)] w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]"
+            />
           </div>
 
         </header>
