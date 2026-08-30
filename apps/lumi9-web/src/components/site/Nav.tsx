@@ -26,6 +26,7 @@ export const HOME_LINKS: NavLink[] = [
 
 export const SUPPORT_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
+  { label: "Tools", href: "/parenting-tools" },
   { label: "About", href: "/about" },
   { label: "Help", href: "/help" },
   { label: "Contact", href: "/contact" },
