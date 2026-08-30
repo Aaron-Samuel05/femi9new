@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { OrderConfirmation } from "@femi9/core/services/checkout";
-import { inr, packImage, shippingLabel } from "@/lib/catalog";
+import { inr, shippingLabel } from "@/lib/catalog";
 import { loadCatalog } from "@/lib/catalog.server";
+import { presentStatus } from "@/lib/order-status";
+import { RetryPayment } from "@/components/checkout/RetryPayment";
 
 /**
  * The confirmation, rendered from the ORDER as the database has it.
@@ -18,8 +20,16 @@ import { loadCatalog } from "@/lib/catalog.server";
  * since been retired keeps the plain quantity chip.
  */
 
+/*
+ * The timeline is only true once the money has arrived.
+ *
+ * It used to render unconditionally, so an unpaid order was told "Order
+ * confirmed · Just now · we’ve received your order" and promised dispatch
+ * within 24 hours. Nothing had been received and nothing was going to be
+ * packed.
+ */
 const TIMELINE = [
-  { dot: "#6E7E3E", title: "Order confirmed", body: "Just now · we’ve received your order." },
+  { dot: "#6E7E3E", title: "Payment received", body: "We have your order and the money has cleared." },
   { dot: "#8A9C52", title: "Packed & dispatched", body: "Within 24 hours from our Erode facility." },
   { dot: "#c7cdb4", title: "Out for delivery", body: "We’ll text you tracking as soon as it moves." },
 ];
@@ -36,7 +46,7 @@ export async function ConfirmationView({
   // variantId → pack photo, built once for the whole line list.
   const { sizes } = await loadCatalog();
   const photos = new Map(
-    sizes.flatMap((size) => size.packs.map((pack) => [pack.variantId, packImage(size.size, pack.count)] as const)),
+    sizes.flatMap((size) => size.packs.map((pack) => [pack.variantId, pack.image] as const)),
   );
 
   // The greeting uses the first word of the name on the order.
@@ -45,19 +55,39 @@ export async function ConfirmationView({
     ? [order.address.city, order.address.state].filter(Boolean).join(", ")
     : "your address";
 
+  /* Everything above the receipt now comes from the ORDER, not from the
+     assumption that reaching this URL means the payment worked. */
+  const view = presentStatus(order.status);
+
   return (
     <section className="px-safe mx-auto max-w-[760px] pt-[clamp(40px,6vw,70px)] pb-section">
       <div className="mb-11 text-center">
-        <div className="mx-auto mb-6 flex size-[clamp(60px,8vw,76px)] items-center justify-center rounded-full bg-moss-tint text-[clamp(28px,4vw,38px)] text-moss-deep">
-          ✓
+        <div
+          className={`mx-auto mb-6 flex size-[clamp(60px,8vw,76px)] items-center justify-center rounded-full text-[clamp(28px,4vw,38px)] ${
+            view.tone === "good"
+              ? "bg-moss-tint text-moss-deep"
+              : view.tone === "waiting"
+                ? "bg-butter text-midnight"
+                : "bg-[#fdeceb] text-[#8a2a20]"
+          }`}
+          aria-hidden
+        >
+          {/* A tick is a claim. It is only drawn once one is true. */}
+          {view.tone === "good" ? "✓" : view.tone === "waiting" ? "•••" : "!"}
         </div>
-        <div className="eyebrow mb-3.5">Order confirmed</div>
+        <div className="eyebrow mb-3.5">{view.eyebrow}</div>
         <h1 className="m-0 mb-3.5 font-display text-[clamp(27px,7.6vw,54px)] font-normal leading-[1.04] md:text-[clamp(32px,4.4vw,54px)]">
-          Thank you, {firstName}! 🥑
+          {view.headline(firstName)}
         </h1>
-        <p className="m-0 text-lg text-muted">
-          Your Cloud Soft order is on its way. A confirmation is in your inbox.
-        </p>
+        <p className="m-0 text-lg text-muted">{view.body}</p>
+
+        {/* The cart was consumed when the pending order was created, so without
+            this she has an unpaid order and no route back to paying for it. */}
+        {view.awaitingPayment && (
+          <div className="mt-7">
+            <RetryPayment orderNo={order.orderNo} token={token} amount={order.total} />
+          </div>
+        )}
       </div>
 
       <div className="panel mb-5.5 p-card">
@@ -125,12 +155,19 @@ export async function ConfirmationView({
             <span className="font-semibold text-moss-deep">{shippingLabel(order.shipping)}</span>
           </div>
           <div className="mt-1.5 flex justify-between border-t border-moss-tint pt-3">
-            <span className="text-base font-bold">Total paid</span>
+            {/* "Total paid" is a statement about money that has moved. It had
+                better only be made once it has. */}
+            <span className="text-base font-bold">
+              {view.settled ? "Total paid" : view.awaitingPayment ? "Total due" : "Order total"}
+            </span>
             <span className="font-display text-[clamp(20px,2.2vw,24px)]">{inr(order.total)}</span>
           </div>
         </div>
       </div>
 
+      {/* Only for an order that is actually going somewhere. Promising dispatch
+          within 24 hours on an unpaid order is the same lie as the tick. */}
+      {view.settled && (
       <div className="panel mb-7.5 p-card">
         <h2 className="m-0 mb-6 font-display text-[22px] font-normal">What happens next</h2>
         <ol className="m-0 flex list-none flex-col p-0">
@@ -148,6 +185,7 @@ export async function ConfirmationView({
           ))}
         </ol>
       </div>
+      )}
 
       <div className="flex flex-wrap justify-center gap-3.5">
         {/* Points at the ORDER, carrying the same capability token, rather than

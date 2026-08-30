@@ -9,6 +9,8 @@ import { PageShell } from "@/components/site/PageShell";
 import { PRIMARY_LINKS } from "@/components/site/Nav";
 import { Icon } from "@/components/ui/Icon";
 import { inr } from "@/lib/catalog";
+import { presentStatus } from "@/lib/order-status";
+import { RetryPayment } from "@/components/checkout/RetryPayment";
 import { ReorderButton } from "./ReorderButton";
 
 // Reflects live order state (a status moves from paid to shipped without any
@@ -20,19 +22,13 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** Human labels for every status an order can hold. */
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Awaiting payment confirmation",
-  paid: "Payment received",
-  processing: "Being packed",
-  shipped: "On its way",
-  delivered: "Delivered",
-  cancelled: "Cancelled",
-  refunded: "Refunded",
-};
-
-/** Green only for the states that are actually good news. */
-const GOOD = new Set(["paid", "processing", "shipped", "delivered"]);
+/*
+ * Labels and tone come from `@/lib/order-status`, shared with the confirmation
+ * page. This file used to carry its own STATUS_LABEL map and a GOOD set, which
+ * is how the two pages ended up disagreeing: this one read the real status and
+ * said "Awaiting payment confirmation" while /confirmation was hardcoded to
+ * "Order confirmed" for the very same order.
+ */
 
 /**
  * /order/[orderNo] — one order, in full.
@@ -82,7 +78,7 @@ export default async function OrderPage(props: {
   }
   if (!authorized) notFound();
 
-  const good = GOOD.has(order.status);
+  const view = presentStatus(order.status);
   const placed = order.placedAt.toLocaleDateString("en-IN", {
     day: "numeric",
     month: "short",
@@ -103,15 +99,19 @@ export default async function OrderPage(props: {
         <header className="mb-8">
           <div className="eyebrow mb-3">Order {order.orderNo}</div>
           <h1 className="m-0 mb-3.5 font-display text-[clamp(27px,6vw,44px)] font-normal leading-[1.05]">
-            {STATUS_LABEL[order.status] ?? order.status}
+            {view.label}
           </h1>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
             <span
               className={`rounded-pill px-3 py-1.25 text-[13px] font-semibold ${
-                good ? "bg-[#e4f0df] text-[#2f7d32]" : "bg-moss-tint text-muted"
+                view.tone === "good"
+                  ? "bg-[#e4f0df] text-[#2f7d32]"
+                  : view.tone === "waiting"
+                    ? "bg-butter text-midnight"
+                    : "bg-[#fdeceb] text-[#8a2a20]"
               }`}
             >
-              {STATUS_LABEL[order.status] ?? order.status}
+              {view.label}
             </span>
             <span>Placed {placed}</span>
           </div>
@@ -153,6 +153,14 @@ export default async function OrderPage(props: {
                 </span>
               </div>
             </div>
+
+            {/* An unpaid order needs a way to be paid for, not a way to be
+                ordered again — the lines are already on it. */}
+            {view.awaitingPayment && (
+              <div className="mt-5.5">
+                <RetryPayment orderNo={order.orderNo} token={token} amount={order.total} />
+              </div>
+            )}
 
             <div className="mt-5.5">
               <ReorderButton

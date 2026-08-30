@@ -6,8 +6,12 @@ import { getOrderByNo } from "@femi9/core/services/checkout";
 import { verifyOrderToken } from "@femi9/core/order-token";
 
 export const metadata: Metadata = {
-  title: "Order confirmed",
-  description: "Your Cloud Soft order is on its way.",
+  /* Static metadata cannot know the order's status — it is resolved per request
+     below — so it must not assert one. The tab said "Order confirmed · Lumi9"
+     for an order nobody had paid for, which is the same lie as the tick, just
+     in the window title. */
+  title: "Your order",
+  description: "Your Lumi9 order details.",
   robots: { index: false },
 };
 
