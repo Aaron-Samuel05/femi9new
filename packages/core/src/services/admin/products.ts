@@ -230,17 +230,92 @@ export async function createProduct(brand: Brand, input: ProductInput) {
  * Images are simply replaced (they're a plain ordered URL list). All in one
  * transaction so a partial failure never leaves half-applied edits.
  */
+/**
+ * Keep `basePrice` and the leading pack's price as ONE number.
+ *
+ * ── Why there are two prices at all ─────────────────────────────────────────
+ * The schema serves both brands. Femi9 sells period panties, whose variants are
+ * SIZES that all cost the same (the seed writes `price: source.price` for every
+ * one), so there `basePrice` is the real price and the variants only pick a fit.
+ * Lumi9 sells one product in pack tiers, each with its own price, and its seed
+ * simply copies the default tier's price into `basePrice`.
+ *
+ * So on a pack-tiered product `basePrice` is a DUPLICATE of one tier's price —
+ * and a duplicate that nothing charges. Editing "Base price (₹)" in the console
+ * saved a column no storefront surface renders and no cart line is priced from:
+ * the admin changed a price, the console's own products list agreed with them,
+ * and the shop did not move. Nothing errored, which is the worst version of it.
+ *
+ * ── The rule ────────────────────────────────────────────────────────────────
+ * Whichever of the two the admin actually edited wins, and the other follows:
+ *
+ *   - base price edited  → every pack that was priced at the OLD base price
+ *     moves to the new one. That is the tier the storefront leads with, so the
+ *     edit shows up AND is what the shopper is charged.
+ *   - a pack price edited → `basePrice` follows the leading pack, so the
+ *     console's products list stops disagreeing with the shop.
+ *   - both edited        → the pack wins. It is the more specific field and the
+ *     only one a cart line is priced from; `basePrice` follows it.
+ *
+ * Products with no pack variants (Femi9's panties) are untouched: there
+ * `basePrice` is the genuine price and has nothing to be reconciled against.
+ */
+function syncBasePriceWithPacks(args: {
+  storedBasePrice: number
+  storedVariants: { id: string; kind: string; price: number }[]
+  input: ProductInput
+}): { basePrice: number; repriceVariantIds: string[] } {
+  const { storedBasePrice, storedVariants, input } = args
+
+  const storedById = new Map(storedVariants.map((v) => [v.id, v]))
+  const incomingPacks = input.variants.filter((v) => v.kind === 'pack')
+  if (incomingPacks.length === 0) return { basePrice: input.basePrice, repriceVariantIds: [] }
+
+  // The tiers that carried the old base price — what the storefront leads with.
+  const leaders = incomingPacks.filter(
+    (v) => v.id && storedById.get(v.id)?.price === storedBasePrice,
+  )
+
+  const baseChanged = input.basePrice !== storedBasePrice
+  const leaderPriceChanged = leaders.some(
+    (v) => v.price !== storedById.get(v.id as string)?.price,
+  )
+
+  // A pack edit is the more specific statement, so it wins and base follows.
+  if (leaderPriceChanged) {
+    const winner = leaders.find((v) => v.price !== storedById.get(v.id as string)?.price)
+    return { basePrice: winner?.price ?? input.basePrice, repriceVariantIds: [] }
+  }
+
+  // Base price edited on its own: carry it onto the tiers that mirrored it.
+  if (baseChanged && leaders.length > 0) {
+    return {
+      basePrice: input.basePrice,
+      repriceVariantIds: leaders.map((v) => v.id as string),
+    }
+  }
+
+  return { basePrice: input.basePrice, repriceVariantIds: [] }
+}
+
 export async function updateProduct(brand: Brand, id: string, input: ProductInput) {
   const prisma = dbFor(brand)
   const slug = await resolveSlug(brand, input.slug || input.name, id)
 
   const existing = await prisma.productVariant.findMany({
     where: { productId: id },
-    select: { id: true },
+    select: { id: true, kind: true, price: true },
   })
   const existingIds = new Set(existing.map((v) => v.id))
   const keptIds = new Set(input.variants.filter((v) => v.id).map((v) => v.id as string))
   const toDelete = [...existingIds].filter((vid) => !keptIds.has(vid))
+
+  const stored = await prisma.product.findUnique({ where: { id }, select: { basePrice: true } })
+  const sync = syncBasePriceWithPacks({
+    storedBasePrice: stored?.basePrice ?? input.basePrice,
+    storedVariants: existing,
+    input,
+  })
 
   return prisma.$transaction(async (tx) => {
     await tx.product.update({
@@ -249,7 +324,8 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
         name: input.name,
         slug,
         type: input.type,
-        basePrice: input.basePrice,
+        // Reconciled with the pack tiers — see syncBasePriceWithPacks.
+        basePrice: sync.basePrice,
         meta: input.meta,
         flow: input.flow,
         description: input.description,
@@ -303,8 +379,12 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
       await tx.productVariant.deleteMany({ where: { id: { in: toDelete } } })
     }
 
+    const reprice = new Set(sync.repriceVariantIds)
     for (const v of input.variants) {
       const data = cleanVariant(v)
+      // A base-price edit is carried onto the tier that mirrored it, so the
+      // number the admin typed is the number the shopper is charged.
+      if (v.id && reprice.has(v.id)) data.price = sync.basePrice
       if (v.id && existingIds.has(v.id)) {
         await tx.productVariant.update({ where: { id: v.id }, data })
       } else {
