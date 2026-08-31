@@ -66,6 +66,39 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [{ protocol: "https", hostname: "res.cloudinary.com" }],
   },
+
+  /**
+   * Let the SERVER resolve `/uploads/…`, which it otherwise cannot.
+   *
+   * `/uploads/…` is same-origin to a BROWSER — CloudFront has a behaviour that
+   * serves that prefix from the S3 bucket over Origin Access Control, so an
+   * `<img src="/uploads/x.jpeg">` loads fine. The comment above says those need
+   * nothing here, and for a plain img tag that is true.
+   *
+   * next/image is not a plain img tag. The optimizer resolves a relative `src`
+   * against its OWN origin and fetches it server-side — inside the container,
+   * where `/uploads` does not exist, because those bytes are in S3 and only
+   * CloudFront knows to go there. It got the 404 page back and answered
+   * `400 "The requested resource isn't a valid image"`, so every product photo
+   * and journal cover rendered as a broken image the moment the catalogue
+   * stopped pointing at files baked into the image.
+   *
+   * Nothing failed at build time and the direct URL still returns 200 — only
+   * `/_next/image?url=…` breaks, which is the URL the page actually requests.
+   *
+   * This sends the server's own lookup back out to the CDN, which routes it to
+   * S3. It fixes every consumer at once — catalogue, journal, and anything the
+   * console uploads next — without absolute URLs in the database.
+   *
+   * ⚠️ The destination MUST be a host that serves `/uploads/*` from the bucket.
+   * Pointed at the load balancer instead it would resolve to this app again and
+   * proxy to itself.
+   */
+  async rewrites() {
+    const origin = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
+    if (!origin) return [];
+    return [{ source: "/uploads/:path*", destination: `${origin}/uploads/:path*` }];
+  },
   // `X-Powered-By: Next.js` names the framework and its major version to anyone
   // who asks, which is free reconnaissance and buys nothing.
   poweredByHeader: false,
