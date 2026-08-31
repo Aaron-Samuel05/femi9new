@@ -337,7 +337,7 @@ export const LEGAL_UPDATED = "Last updated 17 February 2026";
    instead — see components/account/AccountDashboard. */
 
 export const FEATURE_IMAGES = {
-  softness: { src: "/assets/features/softness.png", alt: "Softness that runs alongside every adventure" },
+  softness: { src: "/assets/features/softness-hd.png", alt: "Softness that runs alongside every adventure" },
   gentleSteps: { src: "/assets/features/gentle-steps.png", alt: "Gentle steps" },
   wetnessLock: { src: "/assets/features/wetness-lock.png", alt: "Wetness lock technology" },
   happinessWrapped: { src: "/assets/features/happiness-wrapped.png", alt: "Happiness wrapped in every big step" },

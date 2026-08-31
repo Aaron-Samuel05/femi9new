@@ -252,6 +252,7 @@ export default function HomePage() {
                     src={FEATURE_IMAGES.softness.src}
                     alt="A peacefully sleeping baby"
                     fill
+                    unoptimized
                     sizes="(max-width: 768px) 92vw, 560px"
                     className="object-cover"
                   />
