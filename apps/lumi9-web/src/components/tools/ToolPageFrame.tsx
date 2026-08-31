@@ -8,7 +8,7 @@ import { breadcrumbSchema, jsonLd } from "@/lib/seo";
 
 /**
  * The scaffold every single-tool page shares: back link to the hub, title, the
- * baby profile (so the tool has data the moment you arrive — it is the same
+ * baby profile (so the tool has data the moment you arrive - it is the same
  * on-device profile the hub reads), then the tool itself.
  */
 export function ToolPageFrame({
@@ -40,7 +40,10 @@ export function ToolPageFrame({
       <header className="px-safe mx-auto max-w-[720px] pt-[clamp(32px,5vw,64px)] pb-8">
         <Link
           href="/parenting-tools"
-          className="inline-flex items-center gap-1.5 text-sm font-semibold text-moss-deep"
+          /* 20px tall on a phone, and it is the only way back out of a tool
+             page - the coarse box gives it a thumb-sized target without
+             changing how it looks with a mouse. */
+          className="inline-flex items-center gap-1.5 text-sm font-semibold text-moss-deep coarse:min-h-11"
         >
           <svg
             width="16"
