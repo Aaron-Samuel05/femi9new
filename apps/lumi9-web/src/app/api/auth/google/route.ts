@@ -19,12 +19,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/auth/google — begin "Continue with Google".
+ * GET /api/auth/google - begin "Continue with Google".
  *
  * The login card has had a Google button since it was written and it was wired
  * to nothing: a `<button type="button">` with no handler, beside an Apple one
  * with no implementation behind it at all. A control that visibly does nothing
- * is worse than an absent one — a shopper presses it twice, then leaves.
+ * is worse than an absent one - a shopper presses it twice, then leaves.
  *
  * Mint an anti-CSRF `state`, stash it in an httpOnly cookie, and 307 to Google.
  * In MOCK mode (no credentials configured) skip the network and bounce straight
@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
    *
    * Behind the load balancer the standalone server binds HOSTNAME=0.0.0.0, so
    * `new URL(req.url).origin` is `http://0.0.0.0:3001`. `callbackUrl()` already
-   * prefers the env var internally so the OAuth redirect_uri was never wrong —
+   * prefers the env var internally so the OAuth redirect_uri was never wrong -
    * but the error redirect below builds on this value, and on the raw origin it
    * would send the shopper to an unroutable host instead of the login page.
    */
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
    *
    * `authMethodEnabled` covers BOTH, and the first is the one that matters
    * here: `googleConfigured()` is true whenever a client id and secret exist,
-   * which they do today — while `GOOGLE_REDIRECT_URI` still names Femi9's host,
+   * which they do today - while `GOOGLE_REDIRECT_URI` still names Femi9's host,
    * so the consent screen answers `redirect_uri_mismatch`. Detection cannot see
    * that; `AUTH_GOOGLE_ENABLED=false` can.
    *
@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
    * It cannot ride on the query string: Google echoes back only `code` and
    * `state`, and `state` is the CSRF nonce compared byte-for-byte, so widening
    * it to carry a payload would weaken that check. Validated on the way in AND
-   * again on the way out — the cookie is httpOnly so a page script cannot forge
+   * again on the way out - the cookie is httpOnly so a page script cannot forge
    * it, but re-checking costs nothing and keeps the guarantee local to the
    * redirect that relies on it.
    */

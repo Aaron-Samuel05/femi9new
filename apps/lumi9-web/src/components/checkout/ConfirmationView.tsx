@@ -10,7 +10,7 @@ import { RetryPayment } from "@/components/checkout/RetryPayment";
  * The confirmation, rendered from the ORDER as the database has it.
  *
  * It used to read a copy the browser kept in localStorage, which meant the
- * screen could disagree with what was actually bought — and showed nothing at
+ * screen could disagree with what was actually bought - and showed nothing at
  * all on another device. This is a server component now: no cart, no
  * catalogue, no "ready" flicker.
  *
@@ -191,7 +191,7 @@ export async function ConfirmationView({
         {/* Points at the ORDER, carrying the same capability token, rather than
             at /account. A guest has no session, so "Track my order" used to
             bounce her through the guard to a sign-in form for an account she
-            does not have — one click after paying. */}
+            does not have - one click after paying. */}
         <Link
           href={`/order/${order.orderNo}${token ? `?t=${encodeURIComponent(token)}` : ""}`}
           className="btn btn-dark font-bold"

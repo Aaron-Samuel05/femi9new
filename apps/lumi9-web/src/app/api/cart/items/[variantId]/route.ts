@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ variantId: string }> };
 // qty <= 0 is a valid "remove this line" signal, so no positive() constraint.
 const QtySchema = z.object({ qty: z.number().int().max(99) });
 
-/** PATCH /api/cart/items/:variantId — set an exact quantity (0 removes the line). */
+/** PATCH /api/cart/items/:variantId - set an exact quantity (0 removes the line). */
 export async function PATCH(req: NextRequest, props: Ctx) {
   const params = await props.params;
   return handle(async () => {
@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest, props: Ctx) {
   });
 }
 
-/** DELETE /api/cart/items/:variantId — drop the line from the cart. */
+/** DELETE /api/cart/items/:variantId - drop the line from the cart. */
 export async function DELETE(_req: NextRequest, props: Ctx) {
   const params = await props.params;
   return handle(async () => {

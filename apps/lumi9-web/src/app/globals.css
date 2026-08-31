@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Touch-vs-mouse, independent of width — a 1024px iPad still needs 44px targets
+/* Touch-vs-mouse, independent of width - a 1024px iPad still needs 44px targets
    while a 900px desktop window keeps the design's compact chrome. */
 @custom-variant coarse (@media (pointer: coarse));
 
@@ -22,9 +22,9 @@
   --color-shell: #f4f1e4;
 
   /* Three roles, the split @lumi9official's own creatives use:
-       display — Fredoka, the heavy rounded punch line
-       ui      — Nunito, everything that is read rather than scanned
-       script  — Caveat, the emphasis fragment inside a heading
+       display - Fredoka, the heavy rounded punch line
+       ui      - Nunito, everything that is read rather than scanned
+       script  - Caveat, the emphasis fragment inside a heading
      `--font-ui` stays Nunito because a rounded display face is a poor text
      face: set a 60-character paragraph in Fredoka and the even stroke weight
      stops the eye finding word shapes. */
@@ -32,21 +32,21 @@
   --font-ui: var(--font-nunito), ui-rounded, "Segoe UI", ui-sans-serif, sans-serif;
   --font-script: var(--font-caveat), ui-rounded, "Segoe UI", cursive;
 
-  /* Fluid scale — every gap/pad/radius below interpolates with the viewport so
+  /* Fluid scale - every gap/pad/radius below interpolates with the viewport so
      the 1440px design compresses smoothly instead of snapping at breakpoints. */
   --spacing-gutter: clamp(18px, 3.4vw, 48px); /* page horizontal padding */
 
   /* THE reading column. One number, because there is one page.
-     It used to be five — 1100, 1120, 1180, 1240 and 1280 were all in use for
+     It used to be five - 1100, 1120, 1180, 1240 and 1280 were all in use for
      what is conceptually the same container, and the footer had no limit at
      all, so on a wide screen the sections each ended at a different x.
      1600. The design canvas is 1440, but a canvas is where a design was drawn,
      not a ceiling for where it may be shown: at 1440 a 1920 screen still left
      240px of dead margin per side, with the nav and hero running to the gutter
-     48px outside it — so the column read as inset from its own chrome. 1600
+     48px outside it - so the column read as inset from its own chrome. 1600
      closes that to 152 and keeps a hair of margin so the column still reads as
      a column. This is the number to change if the judgement moves again.
-     Full-bleed elements — the nav and the hero — deliberately sit OUTSIDE this
+     Full-bleed elements - the nav and the hero - deliberately sit OUTSIDE this
      and run to the gutter, so they frame the column rather than joining it.
      Narrower containers exist on purpose INSIDE it: a 760px article column is
      measure control and an art-directed image is a composition choice. Every
@@ -88,7 +88,7 @@
   --animate-marquee: marquee 26s linear infinite;
   /* The mirror of `marquee`, for the second row of an opposing pair. Written as
      its own keyframe rather than `animation-direction: reverse` because reverse
-     also flips the easing curve — harmless on `linear`, but it silently breaks
+     also flips the easing curve - harmless on `linear`, but it silently breaks
      the moment anyone retimes one of these with an ease. */
   --animate-marquee-rev: marquee-rev 26s linear infinite;
   --animate-floaty: floaty 7s ease-in-out infinite;
@@ -130,7 +130,7 @@
   html {
     scroll-behavior: smooth;
     /* A hash landing (#tech, #sizes, #why, a nav link, a pasted URL) otherwise
-       puts the target flush with the top of the viewport — i.e. underneath the
+       puts the target flush with the top of the viewport - i.e. underneath the
        fixed/sticky nav, which is two rows and ~112px on a phone. Inset the
        scrollport once here instead of repeating scroll-mt on every section.
        --nav-h is published by the Nav's ResizeObserver on every route; the
@@ -217,7 +217,7 @@
 }
 
 @layer components {
-  /* Eyebrow label — 13px / 700 / .18em, moss-deep (tracking eases off on phones
+  /* Eyebrow label - 13px / 700 / .18em, moss-deep (tracking eases off on phones
      so the label still fits one line at 320px) */
   .eyebrow {
     font-family: var(--font-ui);
@@ -289,7 +289,7 @@
 
   .btn-sm {
     /* 44px is the floor, not the ceiling: clamp(40px, 3vw, 44px) only reached
-       44 above a 1467px viewport — every phone got 40. */
+       44 above a 1467px viewport - every phone got 40. */
     min-height: clamp(44px, 3vw, 48px);
     padding: clamp(10px, 0.9vw, 11px) clamp(16px, 1.6vw, 22px);
     font-size: clamp(13px, 1vw, 14px);
@@ -321,7 +321,7 @@
     outline: none;
   }
 
-  /* Selectable chip — size / pack / weight / topic filters */
+  /* Selectable chip - size / pack / weight / topic filters */
   .chip {
     cursor: pointer;
     font-family: var(--font-ui);
@@ -392,7 +392,7 @@
 
      What this replaced: `{added ? "✓" : "+"}`. An instant glyph swap, with no
      transition to soften it and two characters of different width and optical
-     weight, so the button visibly jerked — and because it fired in the click
+     weight, so the button visibly jerked - and because it fired in the click
      handler it also lied, showing a tick for a request still in flight and
      keeping it even when the write had failed.
 
@@ -405,7 +405,7 @@
           12px when pressed shifts them both.
 
        2. The tick DRAWS. `stroke-dasharray` and `stroke-dashoffset` on a single
-          path, animated to 0 — the line travels the way a tick is written. That
+          path, animated to 0 - the line travels the way a tick is written. That
           is what reads as confirmation rather than as a character appearing;
           a faded-in tick is still a swap, just a slower one.
 
@@ -414,7 +414,7 @@
           into a toy.
 
      Under `prefers-reduced-motion` the layers cross-fade and nothing moves,
-     draws or scales. The tick still appears — the information is not the
+     draws or scales. The tick still appears - the information is not the
      animation, and removing it would leave those users with no confirmation at
      all. */
 
@@ -458,7 +458,7 @@
     transform: rotate(90deg) scale(0.6);
   }
 
-  /* The round control has no spinner layer — a ring inside a 44px circle reads
+  /* The round control has no spinner layer - a ring inside a 44px circle reads
      as a second, smaller button. Instead the plus itself recedes while the
      write is in flight, which says "working" without introducing a new shape.
      Declared after `[data-on="true"]` because the two selectors have the same
@@ -502,7 +502,7 @@
     [data-a2c="added"] {
       animation: none;
     }
-    /* No draw — but the tick must still be VISIBLE, so the dash is undone
+    /* No draw - but the tick must still be VISIBLE, so the dash is undone
        rather than left at its full offset (which would render nothing). */
     .a2c-check path {
       stroke-dasharray: none;
@@ -527,13 +527,13 @@
 }
 
 /* The page column: gutter, centred, --page-max of USABLE width.
-   Goes on anything that should share the site's left and right edges — the
+   Goes on anything that should share the site's left and right edges - the
    nav's contents, a page section, each band of the footer. A full-bleed
    BACKGROUND stays on the outer element and this goes on the child holding the
    content, which is what lets a coloured band run edge to edge while its text
    still lines up with the logo above it.
    It carries the gutter, so never combine it with px-safe or a px-[...] of its
-   own — the padding would be applied twice.
+   own - the padding would be applied twice.
 
    The gutter is added ON TOP of --page-max, and that is the whole point.
    `max-width: var(--page-max)` looks right and is not: padding sits INSIDE a
@@ -541,7 +541,7 @@
    gutters. The rest of the site uses `px-safe` on the section with a centred
    `max-w-[var(--page-max)]` child, where the padding is on the OUTER element
    and the child gets the full width. Those two are not equivalent, and while
-   they disagreed the nav sat one gutter — 48px at desktop — inside the content
+   they disagreed the nav sat one gutter - 48px at desktop - inside the content
    it was supposed to line up with. Both now resolve to the same edge. */
 @utility page-wrap {
   --page-pad: max(var(--spacing-gutter), env(safe-area-inset-left), env(safe-area-inset-right));

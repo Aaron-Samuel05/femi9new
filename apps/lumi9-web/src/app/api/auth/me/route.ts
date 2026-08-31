@@ -7,11 +7,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/auth/me — the signed-in shopper, or `{ user: null }`.
+ * GET /api/auth/me - the signed-in shopper, or `{ user: null }`.
  *
  * Always 200, so the client can branch on `user` rather than treating "signed
  * out" as an error. Re-reads the row by the session's subject instead of
- * trusting the JWT's claims, which are a convenience copy and can be stale —
+ * trusting the JWT's claims, which are a convenience copy and can be stale -
  * a name changed on /account would otherwise keep greeting her by the old one
  * until the 30-day token expired.
  *

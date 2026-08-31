@@ -31,7 +31,7 @@ export const metadata: Metadata = {
  */
 
 /**
- * /order/[orderNo] — one order, in full.
+ * /order/[orderNo] - one order, in full.
  *
  * `AccountOrder.href` has pointed at this path since the DTO was written and
  * there was no page at the other end: an order number on the account page was a
@@ -40,14 +40,14 @@ export const metadata: Metadata = {
  *
  * ── Authorisation ───────────────────────────────────────────────────────────
  * This page shows a name, a full address and a phone number, and `orderNo` is
- * sequential — `LM-00042` is a guess away from `LM-00041`. So it is NOT public.
+ * sequential - `LM-00042` is a guess away from `LM-00041`. So it is NOT public.
  * Access is EITHER:
  *
  *   • the unguessable capability token in `?t=`, which is how a GUEST reaches
  *     her own confirmation from the email without having an account, or
  *   • a session that owns the order.
  *
- * Anything else looks like enumeration and gets `notFound()` — the same answer
+ * Anything else looks like enumeration and gets `notFound()` - the same answer
  * an order that does not exist gets, so the page never confirms whether a given
  * order number is real.
  */
@@ -131,7 +131,7 @@ export default async function OrderPage(props: {
                 >
                   <div className="min-w-0">
                     {/* The name and price are SNAPSHOTS taken at purchase. Never
-                        re-derived from today's catalogue — a price change must
+                        re-derived from today's catalogue - a price change must
                         not rewrite what somebody already paid. */}
                     <div className="text-[15px] font-bold">{item.productName}</div>
                     <div className="text-[13px] text-muted">
@@ -155,7 +155,7 @@ export default async function OrderPage(props: {
             </div>
 
             {/* An unpaid order needs a way to be paid for, not a way to be
-                ordered again — the lines are already on it. */}
+                ordered again - the lines are already on it. */}
             {view.awaitingPayment && (
               <div className="mt-5.5">
                 <RetryPayment orderNo={order.orderNo} token={token} amount={order.total} />

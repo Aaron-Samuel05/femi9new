@@ -23,7 +23,7 @@ export function usePrefersReducedMotion() {
 }
 
 /* ---------------------------------------------------------------------------
-   Scroll reveal — one shared IntersectionObserver at threshold .12, matching
+   Scroll reveal - one shared IntersectionObserver at threshold .12, matching
    the design's `[data-reveal]` behaviour (reveal once, then stop observing).
    --------------------------------------------------------------------------- */
 
@@ -66,7 +66,7 @@ export function useRevealRef<T extends HTMLElement>() {
 }
 
 /* ---------------------------------------------------------------------------
-   Viewport proximity — unlike useRevealRef this keeps reporting, because the
+   Viewport proximity - unlike useRevealRef this keeps reporting, because the
    callers use it to STOP work when their element leaves the screen.
    --------------------------------------------------------------------------- */
 
@@ -74,13 +74,13 @@ export function useRevealRef<T extends HTMLElement>() {
  * Reports whether `ref`'s element is within `rootMargin` of the viewport.
  *
  * Returns both readings because callers need different ones:
- *   `near` — live, flips back to false when the element scrolls away. Gate
+ *   `near` - live, flips back to false when the element scrolls away. Gate
  *            ongoing work (a render loop) on this.
- *   `seen` — latches true on first sight and never clears. Gate one-time,
+ *   `seen` - latches true on first sight and never clears. Gate one-time,
  *            expensive setup (mounting a GL context, decoding a model) on this,
  *            so scrolling past does not tear it down and rebuild it.
  *
- * The reveal observer above is one-shot on purpose — a heading animates in once.
+ * The reveal observer above is one-shot on purpose - a heading animates in once.
  * This one keeps reporting: a canvas that has scrolled away has to be TOLD to
  * stop, and a "has been seen" flag alone can never say that.
  */
@@ -106,7 +106,7 @@ export function useNearViewport<T extends HTMLElement>(
     observer.observe(el);
 
     // A backgrounded tab still fires rAF in some browsers, and always does on a
-    // second monitor — the canvas is not "visible" in any sense worth spending
+    // second monitor - the canvas is not "visible" in any sense worth spending
     // a GPU on, but the observer alone would still call it on-screen.
     const onVisibility = () => {
       if (document.hidden) setNear(false);
@@ -124,9 +124,9 @@ export function useNearViewport<T extends HTMLElement>(
 }
 
 /* ---------------------------------------------------------------------------
-   Parallax — a single rAF loop drives every registered node:
+   Parallax - a single rAF loop drives every registered node:
      translate3d(mouseX * f * 60px, -relativeScroll * f * .12 + mouseY * f * 40px, 0)
-   with the pointer offset lerped at .06 per frame (design tokens: factors .06–.35).
+   with the pointer offset lerped at .06 per frame (design tokens: factors .06-.35).
    --------------------------------------------------------------------------- */
 
 type ParallaxNode = { el: HTMLElement; factor: number; pointerScale: number };
@@ -184,7 +184,7 @@ function stop() {
 
 /**
  * @param factor drift strength, ~0.06 (slow column) to ~0.35 (hero confetti)
- * @param pointerScale px of pointer travel at factor 1 — 60 on the home hero, 40 elsewhere
+ * @param pointerScale px of pointer travel at factor 1 - 60 on the home hero, 40 elsewhere
  */
 export function useParallaxRef<T extends HTMLElement>(factor = 0.2, pointerScale = 60) {
   const ref = useRef<T | null>(null);

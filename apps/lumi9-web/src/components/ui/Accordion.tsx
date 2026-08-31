@@ -4,7 +4,7 @@ import { useId, useState } from "react";
 
 export type AccordionItem = { q: string; a: string };
 
-/** Single-open accordion with a +/– indicator. `defaultOpen` = -1 for all closed. */
+/** Single-open accordion with a +/- indicator. `defaultOpen` = -1 for all closed. */
 export function Accordion({
   items,
   defaultOpen = 0,
@@ -45,7 +45,7 @@ export function Accordion({
                   aria-hidden
                   className={`shrink-0 text-moss-deep ${padded ? "text-2xl" : "text-[22px]"}`}
                 >
-                  {isOpen ? "–" : "+"}
+                  {isOpen ? "-" : "+"}
                 </span>
               </button>
             </h3>
@@ -53,7 +53,7 @@ export function Accordion({
                 attribute rather than unmounted. Two reasons: `aria-controls`
                 above pointed at an element that did not exist while collapsed,
                 and an answer absent from the server-rendered HTML is an answer
-                no crawler can read — which is what makes the FAQPage structured
+                no crawler can read - which is what makes the FAQPage structured
                 data on these pages honest. */}
             <p
               id={panelId}

@@ -10,13 +10,13 @@ import { absoluteUrl, IS_CANONICAL_HOST, SITE_URL } from "@/lib/seo";
  * description rather than removing them.
  *
  * The staging guard is the important half. Any origin that is not the canonical
- * one — a preview deployment, the load balancer's own hostname — serves a
+ * one - a preview deployment, the load balancer's own hostname - serves a
  * blanket disallow, because a crawlable copy of the whole storefront on a
  * second domain competes with the real one for its own keywords.
  */
 /**
  * Rendered per request. Prerendered, this file would freeze whatever origin the
- * BUILD saw — and the build has no deploy configuration, so every image would
+ * BUILD saw - and the build has no deploy configuration, so every image would
  * ship a production robots.txt and the staging guard below would never fire.
  */
 export const dynamic = "force-dynamic";

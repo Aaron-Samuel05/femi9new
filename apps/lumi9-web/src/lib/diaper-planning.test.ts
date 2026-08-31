@@ -3,7 +3,7 @@ import { defaultPerDay, planDiapers } from "./diaper-planning";
 import { getSize } from "./catalog";
 
 // SIZES is the seed's input, which makes it a legitimate FIXTURE for a unit
-// test of the arithmetic — but no longer what the page plans against: the
+// test of the arithmetic - but no longer what the page plans against: the
 // planner takes the product now, and the page hands it the database's.
 const product = (code: string) => getSize(code);
 

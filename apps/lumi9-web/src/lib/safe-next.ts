@@ -1,5 +1,5 @@
 /**
- * Validate a `next` destination before it reaches a Location header — or, in the
+ * Validate a `next` destination before it reaches a Location header - or, in the
  * magic-link case, before it is baked into a URL we email out.
  *
  * Accepts only a same-origin absolute path. Protocol-relative (`//evil.com`),

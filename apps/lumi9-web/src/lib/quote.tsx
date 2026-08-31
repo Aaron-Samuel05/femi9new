@@ -38,7 +38,7 @@ export interface Quote {
 }
 
 interface QuoteState {
-  /** Null until the first response lands — render a pending state, not a guess. */
+  /** Null until the first response lands - render a pending state, not a guess. */
   quote: Quote | null;
   /** True while a request is in flight, for the promo button. */
   loading: boolean;
@@ -64,7 +64,7 @@ export function QuoteProvider({
   const [nonce, setNonce] = useState(0);
   // The request this provider is currently answering, and the one it last
   // answered. `loading` is DERIVED from the pair rather than being its own
-  // state set at the top of the effect — a synchronous setState in an effect
+  // state set at the top of the effect - a synchronous setState in an effect
   // body cascades a second render before the first has painted, and
   // react-hooks/set-state-in-effect (which CI runs) rejects it outright.
   const key = `${cartVersion}|${coupon}|${nonce}`;
@@ -115,7 +115,7 @@ export function useQuote(): QuoteState {
 /**
  * What the root layout mounts. The layout is a server component and cannot read
  * `useCart()`, so this thin client wrapper derives the basket signature and
- * hands it down — one place that knows a quote goes stale when a line changes.
+ * hands it down - one place that knows a quote goes stale when a line changes.
  */
 export function CartQuoteProvider({ children }: { children: React.ReactNode }) {
   const { lines } = useCart();

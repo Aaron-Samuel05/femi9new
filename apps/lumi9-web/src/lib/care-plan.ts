@@ -4,7 +4,7 @@ import type { BabySex } from "@/lib/baby-profile";
 
 /**
  * Builds the one-time "care & vaccination plan" email a parent gets after filling
- * in the baby profile. Pure and framework-agnostic — no window, no server-only —
+ * in the baby profile. Pure and framework-agnostic - no window, no server-only -
  * so the API route can call it and a test can assert on it.
  *
  * The care tips are general, age-appropriate guidance, never medical advice; the
@@ -28,19 +28,19 @@ const CARE_TIPS: TipBlock[] = [
     upToMonths: 1,
     heading: "The newborn weeks",
     tips: [
-      "Change often — a newborn goes through 8–12 diapers a day. A dry bottom is the single best guard against rash.",
+      "Change often - a newborn goes through 8-12 diapers a day. A dry bottom is the single best guard against rash.",
       "At each change, wipe front to back, then let the skin air-dry for a minute before the fresh diaper.",
       "Fold the diaper below the umbilical stump until it heals, so it stays dry and open to air.",
-      "Feed on demand (roughly every 2–3 hours) and always place baby on their back to sleep.",
+      "Feed on demand (roughly every 2-3 hours) and always place baby on their back to sleep.",
     ],
   },
   {
     upToMonths: 3,
     heading: "1 to 3 months",
     tips: [
-      "You'll settle into 6–8 diapers a day. A barrier cream at night helps through longer stretches of sleep.",
-      "Tummy time while awake and supervised — a few minutes, several times a day — builds neck and shoulder strength.",
-      "Check the diaper's leg cuffs sit outside, not tucked in — tucked cuffs are the usual cause of leaks.",
+      "You'll settle into 6-8 diapers a day. A barrier cream at night helps through longer stretches of sleep.",
+      "Tummy time while awake and supervised - a few minutes, several times a day - builds neck and shoulder strength.",
+      "Check the diaper's leg cuffs sit outside, not tucked in - tucked cuffs are the usual cause of leaks.",
       "Expect a growth spurt around 6 weeks; more feeds and fussiness for a few days is normal.",
     ],
   },
@@ -48,20 +48,20 @@ const CARE_TIPS: TipBlock[] = [
     upToMonths: 6,
     heading: "3 to 6 months",
     tips: [
-      "Around now most babies move up a diaper size — go up if the current one leaves red marks or leaks overnight.",
+      "Around now most babies move up a diaper size - go up if the current one leaves red marks or leaks overnight.",
       "Rolling starts, so never leave baby unattended on a raised surface, even for a moment.",
       "Keep to a wind-down routine before sleep; predictability helps more than any single trick.",
-      "Solids usually wait until about 6 months — look for sitting with support and interest in food, and ask your paediatrician.",
+      "Solids usually wait until about 6 months - look for sitting with support and interest in food, and ask your paediatrician.",
     ],
   },
   {
     upToMonths: 12,
     heading: "6 to 12 months",
     tips: [
-      "As solids begin, stools change — that's expected. A pants-style diaper is easier once baby is crawling and wriggly.",
+      "As solids begin, stools change - that's expected. A pants-style diaper is easier once baby is crawling and wriggly.",
       "Offer water in a cup with meals; keep introducing one new food at a time and watch for reactions.",
       "Babyproof low: cover sockets, move cords and small objects, and pad sharp corners as baby pulls to stand.",
-      "Night nappies need more absorbency than day ones — a size up just for the night often stops leaks.",
+      "Night nappies need more absorbency than day ones - a size up just for the night often stops leaks.",
     ],
   },
   {
@@ -69,9 +69,9 @@ const CARE_TIPS: TipBlock[] = [
     heading: "The toddler year and beyond",
     tips: [
       "A larger, pants-style diaper suits a walker; change on their feet to keep the pace of the day.",
-      "Watch for early signs of readiness for potty learning — there's no rush, and every child differs.",
+      "Watch for early signs of readiness for potty learning - there's no rush, and every child differs.",
       "Keep meals varied and unhurried; toddlers regulate their own appetite better than we expect.",
-      "Skin still needs the same care — quick changes and a barrier cream when the weather is hot and humid.",
+      "Skin still needs the same care - quick changes and a barrier cream when the weather is hot and humid.",
     ],
   },
 ];
@@ -138,7 +138,7 @@ function cap(s: string) {
 }
 
 function doseLine(d: { vaccine: string; dose: string; dueOn: IsoDate }) {
-  return `${d.vaccine} · ${d.dose} — ${formatMonthYear(d.dueOn)}`;
+  return `${d.vaccine} · ${d.dose} - ${formatMonthYear(d.dueOn)}`;
 }
 
 function buildText(a: {
@@ -163,7 +163,7 @@ function buildText(a: {
     lines.push("");
   }
   lines.push(DISCLAIMER);
-  lines.push("", "— Lumi9");
+  lines.push("", "- Lumi9");
   return lines.join("\n");
 }
 
@@ -206,13 +206,13 @@ function buildHtml(a: {
 </td></tr>
 <tr><td style="padding:28px 28px 8px;">
 <h1 style="margin:0 0 6px;font-size:24px;line-height:1.2;color:#20201c;font-weight:700;">A care &amp; vaccination plan for ${esc(a.babyName)}</h1>
-<p style="margin:0 0 4px;font-size:15px;line-height:1.55;color:#5a5a52;">Here's what tends to matter at this age, and the vaccinations coming up — dated from your baby's birthday.</p>
+<p style="margin:0 0 4px;font-size:15px;line-height:1.55;color:#5a5a52;">Here's what tends to matter at this age, and the vaccinations coming up - dated from your baby's birthday.</p>
 <h3 style="margin:24px 0 8px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#2f4a1e;">${esc(a.block.heading)}</h3>
 <ul style="margin:0;padding:0 0 0 18px;font-size:15px;">${tips}</ul>
 ${section("Due now", a.dueNow, "#b45309")}
 ${section("Coming up", a.upNext, "#2f4a1e")}
 <p style="margin:26px 0 0;padding:14px 16px;background:#f6f4ec;border-radius:12px;font-size:13px;line-height:1.5;color:#6a6a60;">${esc(DISCLAIMER)}</p>
 </td></tr>
-<tr><td style="padding:20px 28px 28px;color:#9a9a90;font-size:12px;">You're getting this because you asked for a plan on the Lumi9 parenting tools. We didn't store your baby's details — they live on your device.</td></tr>
+<tr><td style="padding:20px 28px 28px;color:#9a9a90;font-size:12px;">You're getting this because you asked for a plan on the Lumi9 parenting tools. We didn't store your baby's details - they live on your device.</td></tr>
 </table></td></tr></table></body></html>`;
 }

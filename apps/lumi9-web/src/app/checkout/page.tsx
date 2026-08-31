@@ -6,7 +6,7 @@ import { CheckoutNav } from "@/components/site/Nav";
 import { CheckoutForm, type CheckoutPrefill } from "@/components/checkout/CheckoutForm";
 
 // Reads the session cookie and this shopper's own rows, so it renders per
-// request — never cached and served to somebody else's checkout.
+// request - never cached and served to somebody else's checkout.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
  * her most recent (or default) saved address.
  *
  * Checkout used to ask a returning customer for her name, email, phone and full
- * street address on every single order — the same eight fields she had typed
+ * street address on every single order - the same eight fields she had typed
  * the last time, beside an account page that was showing them back to her.
  *
  * A failure to resolve the prefill degrades to an empty form rather than an
@@ -39,7 +39,7 @@ async function resolvePrefill(userId: string): Promise<CheckoutPrefill | undefin
         // not a place to deliver to.
         where: { archivedAt: null },
         // `Address` carries no createdAt, but cuid() ids are timestamp-prefixed
-        // and therefore sort in creation order — so this really is "her default,
+        // and therefore sort in creation order - so this really is "her default,
         // else her newest".
         orderBy: [{ isPrimary: "desc" }, { id: "desc" }],
         take: 1,

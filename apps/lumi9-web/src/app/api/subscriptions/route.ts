@@ -17,7 +17,7 @@ import {
  * storefront existed; Lumi9 simply had no route. So /subscription advertised
  * "You save 20% every delivery" and "Skip, pause or cancel anytime" behind a
  * `<Link href="/checkout">` that created no subscription, carried none of the
- * chosen size, pack or frequency, and applied no discount — the shopper landed
+ * chosen size, pack or frequency, and applied no discount - the shopper landed
  * on checkout with whatever was already in her cart, at full price.
  *
  * The auth check runs BEFORE the body is read, so an unauthenticated POST is a
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       return created({ subscription });
     } catch (err) {
       // An unknown cadence means the `Cadence` rows were never seeded into this
-      // schema — a deploy problem, not a client one, but a 400 with the reason
+      // schema - a deploy problem, not a client one, but a 400 with the reason
       // is more use to whoever is looking than a 500 with none.
       if (err instanceof CadenceNotFoundError) return badRequest(err.message);
       if (err instanceof VariantNotFoundError) return badRequest(err.message);

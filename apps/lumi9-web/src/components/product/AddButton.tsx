@@ -9,14 +9,14 @@ import type { SizeCode } from "@/lib/catalog";
  * The round add-to-cart control on the product cards.
  *
  * It used to render `{added ? "✓" : "+"}` and flip between them with no
- * transition — an instant character swap, between two glyphs of different width
+ * transition - an instant character swap, between two glyphs of different width
  * and weight, inside a 44px circle where that jump is very visible. It also set
  * `added` in the click handler, so the tick appeared before the request had
  * been made and stayed there even when the write failed.
  *
  * Now: the plus rotates out as the tick draws itself in, the write is awaited,
  * and a failure returns the button to a plus rather than congratulating the
- * shopper on nothing. The circle never changes size — both layers occupy the
+ * shopper on nothing. The circle never changes size - both layers occupy the
  * same grid cell, which matters here because these sit in a card row beside a
  * price.
  */
@@ -49,7 +49,7 @@ export function AddButton({
       {/* Pending deliberately has no separate layer here: at 44px a ring inside
           a circle reads as a second, smaller button. The plus recedes instead
           (see `[data-a2c="pending"] .a2c-plus`), which says "working" without
-          adding a shape — and the control is unclickable while it does. */}
+          adding a shape - and the control is unclickable while it does. */}
       <span className="a2c-plus leading-none" data-on={state !== "added"} aria-hidden>
         +
       </span>
@@ -57,7 +57,7 @@ export function AddButton({
         <AddedCheck size={18} />
       </span>
       <span className="sr-only" aria-live="polite">
-        {state === "added" ? `${label} — added to your bag` : ""}
+        {state === "added" ? `${label} - added to your bag` : ""}
       </span>
     </button>
   );

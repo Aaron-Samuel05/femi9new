@@ -6,7 +6,7 @@ import { ArticleCard } from "@/components/journal/JournalCards";
 import type { JournalArticle, JournalCategoryDTO } from "@/lib/journal.server";
 
 /**
- * "The latest" — category chips over a filterable grid.
+ * "The latest" - category chips over a filterable grid.
  *
  * The chips are a filter, not a tab set: plain buttons carrying `aria-pressed`,
  * inside a labelled group. Declaring `role="tablist"`/`role="tab"` without a
@@ -64,7 +64,7 @@ export function JournalGrid({ posts, categories }: { posts: JournalArticle[]; ca
 
         {filtered.length === 0 && (
           <p className="m-0 py-10 text-center text-base text-muted">
-            No posts in this topic yet — check back soon.
+            No posts in this topic yet - check back soon.
           </p>
         )}
       </div>

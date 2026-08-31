@@ -19,12 +19,12 @@ export const metadata: Metadata = {
 
 
 /**
- * /login — the sign-in card, standalone under the standard chrome.
+ * /login - the sign-in card, standalone under the standard chrome.
  *
  * A shopper who is ALREADY signed in is sent on rather than shown the form.
  * Without that, the nav's account control (which points at /account when a
  * session resolves) and a stale bookmark disagree: one takes her to her orders,
- * the other to a sign-in screen for an account she is already in — which reads
+ * the other to a sign-in screen for an account she is already in - which reads
  * as having been signed out.
  */
 export default async function LoginPage(props: {
@@ -40,7 +40,7 @@ export default async function LoginPage(props: {
    * Resolved on the SERVER and handed down.
    *
    * The probes read `GOOGLE_CLIENT_ID`, `MSG91_AUTH_KEY`, `RESEND_API_KEY` and
-   * the `AUTH_*_ENABLED` switches — none of which may reach the browser, and
+   * the `AUTH_*_ENABLED` switches - none of which may reach the browser, and
    * none of which a client component could read anyway. The card is told what
    * it may offer; it never works it out.
    */
@@ -50,7 +50,7 @@ export default async function LoginPage(props: {
     <PageShell links={NAV_LINKS}>
       <section className="px-safe mx-auto max-w-[1040px] pt-[clamp(28px,4.6vw,60px)] pb-section">
         {/* AuthCard reads `?next` and `?error` with useSearchParams, which needs
-            a Suspense boundary above it — without one the whole route opts out
+            a Suspense boundary above it - without one the whole route opts out
             of static optimisation and Next errors at build. */}
         <Suspense fallback={<div className="min-h-[560px] rounded-panel bg-canvas shadow-deep" />}>
           <AuthCard methods={methods} />

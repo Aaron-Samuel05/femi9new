@@ -7,12 +7,12 @@ import { USPS } from "@/lib/content";
  *
  * The heading keeps its own column and pins while the six claims scroll past
  * it, each led by its index numeral and a hairline. Deliberately no cards, no
- * icon tiles and no fills — the type and the rules carry the section, so it
+ * icon tiles and no fills - the type and the rules carry the section, so it
  * reads as a considered list instead of six interchangeable tiles.
  *
  * The two width caps below are load-bearing, and both fix the same artifact.
- * This is the only home section that is TEXT in both columns — its neighbours
- * pair copy with an image or a widget — so it is the only one where the full
+ * This is the only home section that is TEXT in both columns - its neighbours
+ * pair copy with an image or a widget - so it is the only one where the full
  * --page-max (1600px) is far wider than the content wants. At a 1536 viewport
  * the grid ran 1440px while two readable measures need ~1150, and the surplus
  * landed entirely on the right: the hairline rule carried on for 262px after
@@ -21,7 +21,7 @@ import { USPS } from "@/lib/content";
  *
  * The cap on the rule's own <div> rather than on the <p> inside it is the
  * second half. A measure on the paragraph leaves the BORDER spanning the whole
- * column, which is exactly the dead hairline — and below `lg`, where the grid
+ * column, which is exactly the dead hairline - and below `lg`, where the grid
  * collapses to one wide column, that gap reached 422px. Capping the bordered
  * element instead means the rule can never outrun the words under it.
  */
@@ -48,7 +48,7 @@ export function WhyLumi9() {
               key={usp.title}
               className="grid grid-cols-[auto_1fr] gap-x-[clamp(14px,2vw,28px)] last:[&>div]:pb-0"
             >
-              {/* index is decorative — the list order already conveys it */}
+              {/* index is decorative - the list order already conveys it */}
               <span
                 aria-hidden
                 className="w-[clamp(30px,3.6vw,48px)] pt-[clamp(16px,2.2vw,24px)] font-display text-[clamp(20px,2.2vw,28px)] leading-none tabular-nums text-moss-soft"

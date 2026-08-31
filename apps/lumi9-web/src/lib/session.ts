@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 /**
  * Guest session helpers for Lumi9.
  *
- * Anonymous carts are keyed by an opaque token in an httpOnly cookie — the only
+ * Anonymous carts are keyed by an opaque token in an httpOnly cookie - the only
  * thing tying repeat requests to the same `Cart` row before sign-in.
  *
  * The cookie NAME is brand-specific even though the brands are on different
@@ -20,7 +20,7 @@ export async function getGuestToken(): Promise<string | null> {
 }
 
 /** Mint a token for a first-time visitor. The caller persists it onto the
- *  response cookie — see the cart POST handler. */
+ *  response cookie - see the cart POST handler. */
 export function newGuestToken(): string {
   return crypto.randomUUID();
 }

@@ -20,11 +20,11 @@ export const dynamic = "force-dynamic";
 const Body = z.object({ token: z.string().optional().default("") });
 
 /**
- * POST /api/orders/[orderNo]/payment-intent — reopen the gateway on an order
+ * POST /api/orders/[orderNo]/payment-intent - reopen the gateway on an order
  * that was placed but never paid for.
  *
  * Dismissing the Razorpay modal leaves a `pending` order behind, and the cart
- * was consumed when that order was created — so without this she has an order
+ * was consumed when that order was created - so without this she has an order
  * she cannot pay for and a basket she cannot rebuild. Femi9 has had this route
  * since its retry button was written; Lumi9 had the confirmation page claim the
  * order was confirmed instead, which is why nobody noticed the gap.
@@ -36,7 +36,7 @@ const Body = z.object({ token: z.string().optional().default("") });
  *
  * It creates nothing. `pendingPaymentIntent` returns the intent already
  * recorded against the order and refuses if the amount has drifted from the
- * order total — a retry must never open the gateway for a different number than
+ * order total - a retry must never open the gateway for a different number than
  * the one the order says.
  */
 export async function POST(req: NextRequest, { params }: { params: Promise<{ orderNo: string }> }) {

@@ -18,7 +18,7 @@ export default function GrowthPage() {
   return (
     <ToolPageFrame
       title="Growth percentiles"
-      subtitle="Where your baby sits on the WHO charts for weight and height — the same ones your paediatrician uses."
+      subtitle="Where your baby sits on the WHO charts for weight and height - the same ones your paediatrician uses."
       crumb="Growth percentiles"
       path="/parenting-tools/growth"
     >

@@ -1,7 +1,7 @@
 import type { LmsRow } from "./growth-standards";
 
 /**
- * WHO Child Growth Standards — LMS parameters, birth to 5 years.
+ * WHO Child Growth Standards - LMS parameters, birth to 5 years.
  *
  * NOT hand-written. Generated from WHO's own published z-score expanded tables:
  *
@@ -13,13 +13,13 @@ import type { LmsRow } from "./growth-standards";
  * (base: https://cdn.who.int/media/docs/default-source/child-growth/
  *        child-growth-standards)
  *
- * Those files are indexed by DAY, 0–1856. One row per whole month is kept here,
- * taken at day = round(month × 30.4375) — 30.4375 being 365.25/12, the figure
+ * Those files are indexed by DAY, 0-1856. One row per whole month is kept here,
+ * taken at day = round(month × 30.4375) - 30.4375 being 365.25/12, the figure
  * the standard itself uses. So every value below is WHO's own at that exact age,
  * not an average or a fit. Shipping all 1857 days per table would be 63 KB
  * gzipped against 2.5 KB this way, for precision a percentile readout cannot use.
  *
- * L is never exactly 0 in any of these four tables — height-for-age is L = 1
+ * L is never exactly 0 in any of these four tables - height-for-age is L = 1
  * throughout, weight-for-age runs −0.3531 to 0.3809. The L = 0 branch in
  * zScore() is therefore defensive, not exercised by this data.
  *

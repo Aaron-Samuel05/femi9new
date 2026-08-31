@@ -39,15 +39,15 @@ async function findSize(slug: string) {
  * competing with each other for the same queries.
  *
  * Keyed by SizeCode and looked up with a fallback, so a size added in the
- * console still renders — it simply falls back to generic copy until its terms
+ * console still renders - it simply falls back to generic copy until its terms
  * are added here.
  */
 const SEO_TITLES: Partial<Record<SizeCode, string>> = {
   NB: "Newborn Baby Diapers | NB Tape Diapers Up to 5 kg",
-  S: "Small Baby Diaper Pants | S Size Diapers 4–8 kg",
-  M: "Medium Baby Diaper Pants | M Size Diapers 7–12 kg",
-  L: "Large Baby Diaper Pants | L Size Diapers 9–14 kg",
-  XL: "XL Baby Diaper Pants | Extra Large Diapers 12–17 kg",
+  S: "Small Baby Diaper Pants | S Size Diapers 4-8 kg",
+  M: "Medium Baby Diaper Pants | M Size Diapers 7-12 kg",
+  L: "Large Baby Diaper Pants | L Size Diapers 9-14 kg",
+  XL: "XL Baby Diaper Pants | Extra Large Diapers 12-17 kg",
 };
 
 const SEO_KEYWORDS: Partial<Record<SizeCode, string[]>> = {
@@ -90,8 +90,8 @@ export async function generateMetadata({
   if (!size) return { title: "Product not found" };
 
   const from = inr(Math.min(...size.packs.map((pack) => pack.price)));
-  const title = SEO_TITLES[size.size] ?? `Cloud Soft Baby Diapers — ${size.name} | ${size.fits}`;
-  const description = `Lumi9 Cloud Soft ${size.name.toLowerCase()} baby diapers for ${size.fits} — soft cotton-like top sheet, Advanced SAP Core, breathable backsheet, Double Leakage Barrier, 360° protection and a wetness indicator. From ${from}.`;
+  const title = SEO_TITLES[size.size] ?? `Cloud Soft Baby Diapers - ${size.name} | ${size.fits}`;
+  const description = `Lumi9 Cloud Soft ${size.name.toLowerCase()} baby diapers for ${size.fits} - soft cotton-like top sheet, Advanced SAP Core, breathable backsheet, Double Leakage Barrier, 360° protection and a wetness indicator. From ${from}.`;
 
   return {
     title: { absolute: `${title} | Lumi9` },
@@ -119,7 +119,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
   const prices = size.packs.map((pack) => pack.price);
 
   /**
-   * Real reviews, from the console's moderation queue — `PDP_REVIEWS` in
+   * Real reviews, from the console's moderation queue - `PDP_REVIEWS` in
    * `content.ts` was three invented quotes that no amount of moderating could
    * change. Approved rows only, so the queue is the gate it is meant to be.
    *
@@ -141,7 +141,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
     "@context": "https://schema.org",
     "@type": "Product",
     "@id": `${absoluteUrl(path)}#product`,
-    name: `Lumi9 Cloud Soft Baby ${size.size === "NB" ? "Diapers" : "Diaper Pants"} — ${size.name}`,
+    name: `Lumi9 Cloud Soft Baby ${size.size === "NB" ? "Diapers" : "Diaper Pants"} - ${size.name}`,
     description: `Lumi9 Cloud Soft baby diapers for ${size.fits}. Aloe Vera-infused cotton-like top sheet, Advanced SAP Core, ADL layer, breathable backsheet, Double Leakage Barrier, 360° protection, soft stretch waistband and a wetness indicator.`,
     sku: `LUMI9-${size.size}`,
     url: absoluteUrl(path),
@@ -184,7 +184,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
           breadcrumbSchema([
             { name: "Home", path: "/" },
             { name: "Shop", path: "/shop" },
-            { name: `Cloud Soft — ${size.name}`, path },
+            { name: `Cloud Soft - ${size.name}`, path },
           ]),
         )}
       />
@@ -198,7 +198,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
             Shop
           </Link>
           <span className="px-2">/</span>
-          <span className="text-midnight">Cloud Soft — {size.name}</span>
+          <span className="text-midnight">Cloud Soft - {size.name}</span>
         </nav>
 
         <ProductBuyBox size={size} />
@@ -257,7 +257,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
         </div>
       </section>
 
-      {/* REVIEWS — the whole section is absent when nothing has been approved.
+      {/* REVIEWS - the whole section is absent when nothing has been approved.
           An empty grid under "Loved by 40,000+ families" reads as a site that is
           broken, and the heading is a claim we should not print over nothing. */}
       {reviews.length > 0 && (

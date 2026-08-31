@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/auth/otp/request — { phone } → mint and send a sign-in code.
+ * POST /api/auth/otp/request - { phone } → mint and send a sign-in code.
  *
  * Phone is the PRIMARY sign-in method on this storefront, matching what
  * lumi9.in already asks for: a +91 mobile, an OTP, done. The emailed link
@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
  * value the service uses, or `+91 98842 30571` and `9884230571` would get a
  * bucket each.
  *
- * The buckets are shared with /api/account/phone/request on purpose — the abuse
+ * The buckets are shared with /api/account/phone/request on purpose - the abuse
  * being blunted is messages to one number, and it does not matter which
  * endpoint sent them.
  */

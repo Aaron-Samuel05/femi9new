@@ -14,7 +14,7 @@ import { useQuote } from "@/lib/quote";
  * The bag, as a slide-over.
  *
  * Adding to the cart used to be silent. The line went to the server, the badge
- * in the nav ticked over, and that was the whole acknowledgement — on the PDP
+ * in the nav ticked over, and that was the whole acknowledgement - on the PDP
  * and in the size finder there was not even that, because those controls sit
  * far from the nav. A shopper pressed "Add to cart" and the page did not visibly
  * move, so the reasonable next action was to press it again.
@@ -34,7 +34,7 @@ import { useQuote } from "@/lib/quote";
  *    there, and it is restricted to coarse pointers because that is where the
  *    bug is.
  *
- * Totals are the SERVER's, through `useQuote()` — including the free-shipping
+ * Totals are the SERVER's, through `useQuote()` - including the free-shipping
  * threshold. There is no arithmetic in this file, on purpose: the meter used to
  * be the last place a hardcoded ₹999 could hide.
  */
@@ -121,7 +121,7 @@ export function CartDrawer() {
   }, [open, closeCart]);
 
   // Progress toward free delivery. `quote` is null until the first server
-  // response lands, and the meter simply does not render until then — a bar
+  // response lands, and the meter simply does not render until then - a bar
   // drawn against a guessed threshold is the bug this replaced.
   const threshold = quote?.freeShipThreshold ?? 0;
   const away = threshold - subtotal;
@@ -130,7 +130,7 @@ export function CartDrawer() {
   return (
     <>
       {/* Scrim. Always mounted so it can transition, click-through disabled
-          while closed — a full-screen invisible overlay eats every click on the
+          while closed - a full-screen invisible overlay eats every click on the
           page behind it otherwise. */}
       <div
         onClick={closeCart}
@@ -276,7 +276,7 @@ export function CartDrawer() {
             <div className="mb-4 flex items-center justify-between text-sm">
               <span className="text-muted">Delivery</span>
               <span className="text-muted">
-                {/* Never a number this bundle worked out — either the server's
+                {/* Never a number this bundle worked out - either the server's
                     figure, or an honest "at checkout" while it is unknown. */}
                 {quote ? (quote.shipping === 0 ? "Free" : inr(quote.shipping)) : "Calculated at checkout"}
               </span>

@@ -16,7 +16,7 @@ export const DRACO_DECODER_PATH = "/draco/";
  * Half-extents of the scaled model, expressed as what the camera actually has to
  * cover: the vertical half-height, and the largest horizontal half-width the
  * silhouette can reach while spinning about Y (the radius in the XZ plane).
- * Using the XZ radius — not just half of X — is what keeps the mascot uncropped
+ * Using the XZ radius - not just half of X - is what keeps the mascot uncropped
  * at every point of its idle sway and scroll rotation.
  */
 export type MascotExtents = { halfHeight: number; halfWidth: number };

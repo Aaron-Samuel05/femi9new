@@ -22,7 +22,7 @@ const COMPANY_LINKS = [
 /**
  * Legal row.
  *
- * Terms and FAQ point at femi9.in, which is what lumi9.in itself does — the two
+ * Terms and FAQ point at femi9.in, which is what lumi9.in itself does - the two
  * storefronts are one company and share one set of published policies, so
  * hosting a second copy here would mean two documents to keep in step and one
  * of them going stale. Privacy stays local because this app already ships that
@@ -68,7 +68,7 @@ function LinkColumn({ title, links }: { title: string; links: { label: string; h
 export function Footer() {
   return (
     <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer lg:min-h-[560px] lg:grid-cols-[minmax(220px,330px)_minmax(0,1fr)_minmax(220px,340px)]">
-      {/* Left — cream contact panel */}
+      {/* Left - cream contact panel */}
       <div className="px-safe flex flex-col justify-center bg-butter py-[clamp(36px,6vw,64px)]">
         <Image
           src="/assets/logo-midnight.png"
@@ -101,7 +101,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Center — patterned links + newsletter + socials */}
+      {/* Center - patterned links + newsletter + socials */}
       <div className="blob-pattern px-safe bg-moss-deep py-[clamp(40px,5.5vw,60px)]">
         <div className="mb-[clamp(28px,4vw,44px)] grid grid-cols-2 gap-[clamp(16px,2.4vw,24px)] sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
           <LinkColumn title="Shop" links={SHOP_LINKS} />
@@ -130,7 +130,7 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Right — mascot on brand pattern */}
+      {/* Right - mascot on brand pattern */}
       {/* Height is set directly rather than via aspect-ratio: an aspect-ratio box
           with a capped height derives its *width* from the ratio, so the panel
           stopped stretching across the stacked row and let the page background
@@ -150,7 +150,7 @@ export function Footer() {
                 key={l.label}
                 href={l.href}
                 // These live on the Femi9 domain, which is the same company but a
-                // different origin — so the tab gets `noopener` and the label
+                // different origin - so the tab gets `noopener` and the label
                 // gets a marker, rather than silently handing the visitor to
                 // another site mid-checkout-decision with no warning.
                 target="_blank"

@@ -1,6 +1,6 @@
 import { LAUNCH_OFFER } from "@/lib/content";
 
-/** Mean days per month — a diaper month is not 30 days. */
+/** Mean days per month - a diaper month is not 30 days. */
 const DAYS_PER_MONTH = 30.44;
 const MAX_SANE_PER_DAY = 30;
 
@@ -31,7 +31,7 @@ function launchPrice(price: number): number {
 /**
  * Plan a month for ONE product, which the caller resolves.
  *
- * It used to take a `SizeCode` and call `getSize()` itself — the hardcoded
+ * It used to take a `SizeCode` and call `getSize()` itself - the hardcoded
  * `SIZES` array in `src/lib/catalog.ts`, which is the SEED's input. So the
  * monthly cost this tool quotes a parent was computed from constants (₹349,
  * ₹749) and a console price change never moved it, on the one page whose entire

@@ -7,7 +7,7 @@ import { useCatalogData } from "@/lib/catalog-context";
 import { projectSizeUp, sizeForWeight } from "@/lib/size-projection";
 
 export function SizeUpPredictor() {
-  // Size names come from the catalogue in the DATABASE — `@/lib/catalog` is the
+  // Size names come from the catalogue in the DATABASE - `@/lib/catalog` is the
   // seed's input, so a size renamed in the console never reached this page.
   const { getSize } = useCatalogData();
   const profile = useBabyProfile();
@@ -30,7 +30,7 @@ export function SizeUpPredictor() {
         When will they size up?
       </h2>
       <p className="m-0 mb-5 max-w-[52ch] text-sm text-muted">
-        We follow your baby&apos;s own growth curve, not an average one — so a bigger baby gets a
+        We follow your baby&apos;s own growth curve, not an average one - so a bigger baby gets a
         sooner answer and a smaller one a later answer.
       </p>
 
@@ -52,7 +52,7 @@ export function SizeUpPredictor() {
           <p className="m-0 text-sm text-muted">Enter a weight to see the current size.</p>
         ) : !current ? (
           <p className="m-0 text-sm text-muted">
-            That weight is outside our size range — have a look at the{" "}
+            That weight is outside our size range - have a look at the{" "}
             <Link href="/size-guide" className="underline">
               size guide
             </Link>
@@ -61,7 +61,7 @@ export function SizeUpPredictor() {
         ) : (
           <>
             <div className="font-display text-[clamp(24px,3.4vw,36px)] leading-none">
-              Size {current} — {getSize(current)?.name}
+              Size {current} - {getSize(current)?.name}
             </div>
             {!profile ? (
               <p className="m-0 mt-3 text-sm text-muted">

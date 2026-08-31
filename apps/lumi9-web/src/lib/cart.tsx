@@ -13,7 +13,7 @@ import { useCatalogData, type CatalogData } from "@/lib/catalog-context";
 import { useCartUI } from "@/lib/cart-ui";
 
 /**
- * The cart — now a real one, on the server.
+ * The cart - now a real one, on the server.
  *
  * It used to be a module-level store over localStorage, keyed by
  * `${size}-${count}` because there was nothing else to key it by. Lines now live
@@ -41,7 +41,7 @@ export type CartLine = {
 export type ResolvedLine = CartLine & {
   name: string;
   fits: string;
-  /** What THIS shopper is charged — zone-resolved by the server. */
+  /** What THIS shopper is charged - zone-resolved by the server. */
   price: number;
   lineTotal: number;
   image: string;
@@ -73,8 +73,8 @@ const EMPTY: CartDTO = { items: [], subtotal: 0, baseSubtotal: 0, count: 0, zone
 /*
  * The localStorage "last order" store that lived here is gone.
  *
- * It cached a PlacedOrder — lines, subtotal, shipping, and a `delivery:
- * "standard" | "express"` — so the confirmation screen could render without a
+ * It cached a PlacedOrder - lines, subtotal, shipping, and a `delivery:
+ * "standard" | "express"` - so the confirmation screen could render without a
  * round trip, back when checkout was local. Checkout is real now: the
  * confirmation page reads the order from the database, authorised by the
  * capability token in `?t=`, and nothing has read `lastOrder` since. Leaving it
@@ -99,7 +99,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    // One fetch for the whole tree — the nav badge and the cart page read the
+    // One fetch for the whole tree - the nav badge and the cart page read the
     // same state rather than each asking the server.
     fetch("/api/cart", { cache: "no-store" })
       .then((res) => (res.ok ? (res.json() as Promise<CartDTO>) : EMPTY))
@@ -132,7 +132,7 @@ function useCartState(): CartState {
  * the size code and its fit copy, and the pack photo.
  *
  * Falls back to the server's own name and image when a variant is not in the
- * catalogue — a line for a product retired mid-session must still render, and
+ * catalogue - a line for a product retired mid-session must still render, and
  * showing it wrongly is better than crashing the basket.
  */
 function toResolved(catalog: CatalogData, item: CartItemDTO): ResolvedLine {
@@ -178,7 +178,7 @@ export function useCart() {
    *
    * A failure used to be swallowed here in total silence. The line kept its old
    * number, the badge kept its old count, and the shopper was left pressing a
-   * control that looked broken — indistinguishable, from the outside, from a
+   * control that looked broken - indistinguishable, from the outside, from a
    * write that worked. It now reports, and returns whether it succeeded so the
    * caller can decide what else to say.
    */
@@ -225,7 +225,7 @@ export function useCart() {
    * return `void`, which is why the "+" control on a product card flipped to a
    * tick the instant it was pressed: it had nothing to wait for and nothing to
    * branch on, so it congratulated the shopper on a request that had not been
-   * made yet — and stayed a tick even when the toast beside it said the add had
+   * made yet - and stayed a tick even when the toast beside it said the add had
    * failed. A button can only tell the truth about a write if the write tells
    * it what happened.
    */
@@ -262,11 +262,11 @@ export function useCart() {
   );
 
   /**
-   * Put several lines in the bag as one action — "buy again" over a whole order.
+   * Put several lines in the bag as one action - "buy again" over a whole order.
    *
    * SEQUENTIAL on purpose. Firing one POST per line concurrently means each
    * response carries a different snapshot of the same cart, and the one that
-   * lands last wins — which is not necessarily the one that saw every line. The
+   * lands last wins - which is not necessarily the one that saw every line. The
    * basket then shows fewer items than the server holds until the next reload.
    */
   const addMany = useCallback(
@@ -346,7 +346,7 @@ export function useCart() {
     subtotal,
     /* No `shipping` or `total` here on purpose. Both used to be computed from
        a threshold hardcoded in this bundle, while the server priced the order
-       from editable Settings — two calculations for one number. `useQuote()`
+       from editable Settings - two calculations for one number. `useQuote()`
        in lib/quote.tsx asks the server, and is the only source of either. */
     /** The zone that priced this cart, when it moved a price. Null otherwise. */
     zone: cart.zone,

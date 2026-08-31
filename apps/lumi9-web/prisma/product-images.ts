@@ -5,8 +5,8 @@
  * The console has uploaded to S3 for a while (`/<brand>/api/upload` → the
  * private uploads bucket, served back through CloudFront's `/uploads/*`
  * behavior over Origin Access Control). The SEED did not: it wrote
- * `packImage(size, count)` — `/assets/products/M-24.jpeg`, a file baked into the
- * container — straight into `ProductImage.url`. So every seeded row pointed at
+ * `packImage(size, count)` - `/assets/products/M-24.jpeg`, a file baked into the
+ * container - straight into `ProductImage.url`. So every seeded row pointed at
  * the image rather than at object storage, and `catalog.server.ts` fell back to
  * the same bundled path for a product with no rows at all.
  *
@@ -14,7 +14,7 @@
  * than S3, and neither reports anything: the page renders a perfectly good
  * image, it is just one nobody can replace without a redeploy.
  *
- * Both halves are closed now — the loader has no fallback, and this module is
+ * Both halves are closed now - the loader has no fallback, and this module is
  * how bytes reach the bucket from a script.
  *
  * ── Keys ────────────────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3'
 
-/** Where `public/` is, relative to this file — the seed runs from the app root. */
+/** Where `public/` is, relative to this file - the seed runs from the app root. */
 const PUBLIC_DIR = join(process.cwd(), 'public')
 
 let s3: S3Client | undefined

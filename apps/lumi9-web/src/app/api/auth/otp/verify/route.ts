@@ -17,11 +17,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/auth/otp/verify — { phone, code } → set the session cookie.
+ * POST /api/auth/otp/verify - { phone, code } → set the session cookie.
  *
  * Rate-limited to blunt online brute force: per-IP for the burst and per-number
  * for the sustained attempt. This COMPLEMENTS the per-code failure counter
- * inside `verifyOtp` rather than replacing it — that one is scoped to a single
+ * inside `verifyOtp` rather than replacing it - that one is scoped to a single
  * challenge, and an attacker who can request fresh codes resets it at will.
  *
  * The guest cart is merged into the shopper's account before the response, so a
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     try {
       const user = await verifyOtp("lumi9", phone, code, {
         // Lumi9 has no referral programme, so there is no attribution cookie to
-        // consume — the context is still passed because the service signature
+        // consume - the context is still passed because the service signature
         // takes one, and null is the honest value.
         cookieToken: null,
         ip: clientIp(req),
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       });
 
       /*
-       * A phone signup captures a phone and nothing else — no name to greet
+       * A phone signup captures a phone and nothing else - no name to greet
        * her by, no email to send a receipt to. The client needs to know whether
        * to land on /account or route through /welcome first.
        *

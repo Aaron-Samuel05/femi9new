@@ -4,7 +4,7 @@
  * Opening Razorpay Checkout from the browser.
  *
  * The gateway order is created SERVER-side (`/api/checkout`), which is what
- * makes the amount trustworthy — the widget is handed an order id and a
+ * makes the amount trustworthy - the widget is handed an order id and a
  * publishable key, never a price it could be talked into changing.
  *
  * Two paths, decided by whether the brand has live keys:
@@ -76,7 +76,7 @@ export function loadRazorpayScript(): Promise<boolean> {
   });
 }
 
-/** POST the verify payload — live handles, or `{ mock: true }`. */
+/** POST the verify payload - live handles, or `{ mock: true }`. */
 export async function postVerify(body: Record<string, unknown>): Promise<boolean> {
   const res = await fetch("/api/payments/verify", {
     method: "POST",

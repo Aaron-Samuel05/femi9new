@@ -7,7 +7,7 @@ import { safeNextPath } from "@/lib/safe-next";
 import { WelcomeFlow } from "./WelcomeFlow";
 
 // Reads the session cookie and the shopper's own row, so it must render per
-// request — never statically cached and served to somebody else.
+// request - never statically cached and served to somebody else.
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
@@ -16,20 +16,20 @@ export const metadata: Metadata = {
 };
 
 /**
- * /welcome — the onboarding step that finally captures a name and whichever
+ * /welcome - the onboarding step that finally captures a name and whichever
  * contact channel signing in did not.
  *
  * Every sign-in path mints a session BEFORE it knows who the shopper is: phone
  * OTP writes a number, the magic link writes an address, Google writes a name
  * and an address but never a number. Before this existed, the gap simply stayed
- * open — /account greeted a magic-link shopper as "there", her orders had no
+ * open - /account greeted a magic-link shopper as "there", her orders had no
  * number to deliver to, and checkout asked for the whole lot again as if she
  * were a guest.
  *
  * The gate is resolved on the SERVER so a completed shopper never sees a flash
  * of the form: `proxy.ts` guarantees a session, this page guarantees the step is
  * still needed. Typing the URL does not bypass it, and neither does typing
- * /account — that page redirects here while the profile is incomplete.
+ * /account - that page redirects here while the profile is incomplete.
  */
 export default async function WelcomePage(props: {
   searchParams: Promise<{ next?: string | string[] }>;
@@ -45,7 +45,7 @@ export default async function WelcomePage(props: {
   if (!session) redirect("/login?next=%2Faccount");
 
   const status = await getProfileStatus("lumi9", session.sub);
-  // A valid token whose user row is gone — bounce rather than render half a page.
+  // A valid token whose user row is gone - bounce rather than render half a page.
   if (!status) redirect("/login");
   // A completed shopper can never see this screen again.
   if (status.complete) redirect(next ?? "/account");

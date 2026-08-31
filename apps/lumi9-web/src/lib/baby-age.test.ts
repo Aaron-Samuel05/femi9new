@@ -95,7 +95,7 @@ describe("addMonths / addYears", () => {
     expect(addMonths("2026-11-10", 4)).toBe("2027-03-10");
   });
   it("differs from a weeks approximation, which is the reason it exists", () => {
-    // From 1 Jan 2026 the two happen to coincide — nine months is exactly 273
+    // From 1 Jan 2026 the two happen to coincide - nine months is exactly 273
     // days there. From 1 March they do not, and that drift is why a schedule
     // stated in months is not stored as weeks.
     expect(addMonths("2026-03-01", 9)).toBe("2026-12-01");

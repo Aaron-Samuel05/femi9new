@@ -37,11 +37,11 @@ function RangeCard({ size }: { size: DbProductSize }) {
       </Link>
 
       <Link href={href} className="inline-flex items-center text-[clamp(15px,1.5vw,18px)] font-bold text-midnight coarse:min-h-11 hover:text-moss-deep">
-        Cloud Soft — {size.name}
+        Cloud Soft - {size.name}
       </Link>
       <div className="mt-1 mb-3.5 text-[clamp(12px,1.1vw,13px)] text-muted">Fits {size.fits}</div>
 
-      {/* Two cards share a 390px phone, which leaves ~155px of card interior —
+      {/* Two cards share a 390px phone, which leaves ~155px of card interior -
           three "24 pcs" chips need 208 and used to be cut mid-word by the
           scroller with nothing to say they continued. Below `sm` the unit moves
           out to a single caption and the chips carry the number alone, so the
@@ -68,7 +68,7 @@ function RangeCard({ size }: { size: DbProductSize }) {
           {/*
             The offer price leads and the list price is struck through beside it,
             the way lumi9.in shows it. Both are DERIVED from `pack.price` and the
-            single `LAUNCH_OFFER.percent` — the card never carries a second
+            single `LAUNCH_OFFER.percent` - the card never carries a second
             hard-coded number, so it cannot drift out of step with what the
             server actually charges at checkout.
 
@@ -103,7 +103,7 @@ function RangeCard({ size }: { size: DbProductSize }) {
   );
 }
 
-/** "One diaper. Every stage." — the Cloud Soft range with per-card pack selection. */
+/** "One diaper. Every stage." - the Cloud Soft range with per-card pack selection. */
 export function ProductRange() {
   const { sizes } = useCatalogData();
   return (

@@ -9,7 +9,7 @@ import { listJournalPosts } from "@/lib/journal.server";
  *
  * ── Why this replaced it ────────────────────────────────────────────────────
  * The values grid said "chemical-free", "12-hour dryness", "thoughtful
- * innovation" — the same five claims the hero, the feature strip and the PDP
+ * innovation" - the same five claims the hero, the feature strip and the PDP
  * accordion already make. It was the fourth time a visitor read them before
  * reaching the testimonials, and none of it went anywhere: five cards, no
  * links. The journal is the one thing on this site a new parent might actually
@@ -18,13 +18,13 @@ import { listJournalPosts } from "@/lib/journal.server";
  *
  * ── Which three ─────────────────────────────────────────────────────────────
  * The loader already sorts featured-first, then newest, which is exactly the
- * order the /journal listing uses — so the home page shows the same lead
+ * order the /journal listing uses - so the home page shows the same lead
  * articles that page does rather than inventing a second idea of "featured".
  * Mark a post featured in the console and it surfaces in both.
  *
  * It renders whatever exists up to three: with two posts it lays out two, and
  * with none it renders nothing at all rather than an empty heading over a gap.
- * That matters more than it looks — the posts come from the `lumi9` schema now,
+ * That matters more than it looks - the posts come from the `lumi9` schema now,
  * and the first thing a freshly migrated one returns is an empty array.
  *
  * A server component, and an async one: this is a database query, which is not
@@ -49,7 +49,7 @@ export async function FeaturedJournal() {
               </h2>
             </div>
 
-            {/* Beside the heading on a wide screen, under the cards on a phone —
+            {/* Beside the heading on a wide screen, under the cards on a phone -
                 the same link either way, so it is rendered once and re-ordered
                 rather than duplicated into two hidden copies. */}
             <Link

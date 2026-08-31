@@ -9,7 +9,7 @@ import type { BabySex } from "@/lib/baby-profile";
  * The one place the parenting tools leave the device: a parent who adds an email
  * to the baby profile gets a single care + vaccination plan, built from the same
  * UIP schedule the on-site tool uses. Idempotent per (email, dob, day) so saving
- * the form twice does not send twice; the maths never persists — only the email
+ * the form twice does not send twice; the maths never persists - only the email
  * address reaches us, and only to send this one message.
  */
 

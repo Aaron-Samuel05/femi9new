@@ -7,7 +7,7 @@ import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
 
 const TITLE = "Buy Baby Diapers Online | Lumi9 Cloud Soft NB to XL";
 const DESCRIPTION =
-  "Shop Lumi9 baby diapers and diaper pants online — newborn tape diapers up to 5 kg through to XL pants for 12–17 kg. Soft, breathable, leak-protected comfort. Free delivery over ₹999.";
+  "Shop Lumi9 baby diapers and diaper pants online - newborn tape diapers up to 5 kg through to XL pants for 12-17 kg. Soft, breathable, leak-protected comfort. Free delivery over ₹999.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -30,7 +30,7 @@ export default function ShopPage() {
           One diaper. <Em>Every</Em> stage.
         </h1>
         <p className="m-0 max-w-[56ch] text-body text-muted">
-          Chemical-free, cloud-soft pants and tapes — from newborn to toddler. Free delivery over ₹999.
+          Chemical-free, cloud-soft pants and tapes - from newborn to toddler. Free delivery over ₹999.
         </p>
       </header>
 

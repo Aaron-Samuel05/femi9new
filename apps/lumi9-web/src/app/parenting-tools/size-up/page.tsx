@@ -5,7 +5,7 @@ import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
 
 const TITLE = "When Will My Baby Size Up? Diaper Size Predictor | Lumi9";
 const DESCRIPTION =
-  "An estimate of when your baby moves to the next diaper size, from their current weight — so the next pack is the right one.";
+  "An estimate of when your baby moves to the next diaper size, from their current weight - so the next pack is the right one.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },

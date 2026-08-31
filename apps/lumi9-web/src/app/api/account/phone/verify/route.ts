@@ -18,12 +18,12 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/account/phone/verify — { phone, code } → attach the number to the
+ * POST /api/account/phone/verify - { phone, code } → attach the number to the
  * SIGNED-IN account and stamp `phoneVerified`.
  *
  * `verifyPhoneChallenge` deliberately does not upsert a User the way sign-in
  * does. Keying on the phone here would mint a SECOND row and split the
- * shopper's identity in two — which is exactly what leaves an email-signup
+ * shopper's identity in two - which is exactly what leaves an email-signup
  * customer's orders invisible from her own account page. The challenge is
  * verified; the attachment is a separate, explicit write against the session's
  * user id.

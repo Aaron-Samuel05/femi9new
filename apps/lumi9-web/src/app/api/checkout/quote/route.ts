@@ -6,14 +6,14 @@ import { clientIp, rateLimit, tooManyRequests } from "@femi9/core/rate-limit";
 import { getGuestToken } from "@/lib/session";
 
 /**
- * GET /api/checkout/quote — what this basket will actually cost.
+ * GET /api/checkout/quote - what this basket will actually cost.
  *
  * The checkout summary used to compute its own totals from constants in
  * `src/lib/catalog.ts`: a hardcoded ₹999 free-shipping threshold, a ₹49
  * standard fee, and a ₹79 "Express delivery" the backend had never heard of.
  * The server recomputes everything at placement from `Settings` and the
  * catalogue, so the number beside "Total" and the number Razorpay charged were
- * two independent calculations that happened to agree — until the console moved
+ * two independent calculations that happened to agree - until the console moved
  * the threshold, or the shopper picked express.
  *
  * `?coupon=` also makes the cart's promo box real. That box used to answer

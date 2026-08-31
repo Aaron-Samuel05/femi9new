@@ -11,7 +11,7 @@ import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
 
 const TITLE = "Our Story | Lumi9 by Femi9 Baby Diapers";
 const DESCRIPTION =
-  "The story behind Lumi9 by Femi9 — how a brand built around caring for women grew into breathable, skin-friendly, leak-protected baby diapers for little ones.";
+  "The story behind Lumi9 by Femi9 - how a brand built around caring for women grew into breathable, skin-friendly, leak-protected baby diapers for little ones.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -76,7 +76,7 @@ export default function AboutPage() {
           </Reveal>
           <Reveal as="p" className="m-0 text-body leading-[1.7] text-muted">
             We spent months testing samples, reading ingredient lists, and talking to parents and paediatricians. The
-            goal was one honest product — soft, breathable, free from harsh chemicals — at a price that works for
+            goal was one honest product - soft, breathable, free from harsh chemicals - at a price that works for
             everyday families.
           </Reveal>
           <Reveal as="p" className="m-0 text-body leading-[1.7] text-muted">

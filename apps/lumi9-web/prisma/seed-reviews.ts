@@ -1,8 +1,8 @@
 /**
  * Seed Lumi9's launch reviews into the `lumi9` schema.
  *
- * The storefront's social proof used to be two arrays in `src/lib/content.ts` —
- * `PARENT_REVIEWS` on the home rail and `PDP_REVIEWS` under every product —
+ * The storefront's social proof used to be two arrays in `src/lib/content.ts` -
+ * `PARENT_REVIEWS` on the home rail and `PDP_REVIEWS` under every product -
  * printed under a "Verified buyer" badge and a "Loved by 40,000+ families"
  * heading. The console has had a moderation queue at /lumi9/reviews the whole
  * time, reading `Review` rows that no Lumi9 surface displayed: approving or
@@ -11,7 +11,7 @@
  *   DATABASE_URL_LUMI9=postgresql://…/db?schema=lumi9 npm run db:seed-reviews
  *
  * ⚠️ These are the LAUNCH copy, carried over so the rails are not empty on day
- * one. They are `approved` and they are NOT verified purchases — `userId` is
+ * one. They are `approved` and they are NOT verified purchases - `userId` is
  * null on every one, which is exactly why `listReviews` reports `verified:
  * false` and the badge no longer prints for them. Delete them in the console
  * once real reviews arrive.
@@ -32,14 +32,14 @@ function unquote(text: string): string {
 async function main() {
   const db = dbFor(BRAND)
 
-  // Ordered as the seed wrote them — NB, S, M, L, XL.
+  // Ordered as the seed wrote them - NB, S, M, L, XL.
   const products = await db.product.findMany({
     where: { status: 'active' },
     orderBy: { createdAt: 'asc' },
     select: { id: true, slug: true },
   })
   if (products.length === 0) {
-    throw new Error('No products in the lumi9 schema — run `npm run db:seed` first.')
+    throw new Error('No products in the lumi9 schema - run `npm run db:seed` first.')
   }
 
   /**

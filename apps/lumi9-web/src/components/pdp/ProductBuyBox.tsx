@@ -28,7 +28,7 @@ const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEA
 export function ProductBuyBox({ size }: { size: DbProductSize }) {
   const { sizes, subscribeSavePct } = useCatalogData();
   // Opens on the tier priced at `basePrice`, which is what carries the
-  // console's "Base price (₹)" field onto the product page — it was dropped in
+  // console's "Base price (₹)" field onto the product page - it was dropped in
   // catalog.server.ts and no surface read it, so editing that field moved the
   // console's own products list and nothing a shopper saw. Same pick as the
   // shop grid, so the two cannot quote different prices for one product.
@@ -44,7 +44,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
    * The accordion, from the console.
    *
    * It used to be three constants in `content.ts`, two of which the seed ALSO
-   * wrote into `description` and `longDescription` — so the console had an
+   * wrote into `description` and `longDescription` - so the console had an
    * editor for both, saving one changed the row, and this panel went on
    * printing the module. Every entry with a real column behind it now reads it,
    * and an empty column drops its entry rather than showing a blank panel.
@@ -63,7 +63,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
 
   // Pack thumbs SELECT a tier; the extras only change the picture. `images`
   // beyond `packs.length` are photography the console uploaded that no tier
-  // owns — dropping them would silently discard most of a six-image product.
+  // owns - dropping them would silently discard most of a six-image product.
   const thumbs = [
     ...size.packs.map((option) => ({
       // Not `src`: a product with fewer images than tiers gives every tier the
@@ -144,7 +144,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
         </div>
         {/* `description`, from the console. It was a hardcoded paragraph while
             the same column was rendered lower down as the accordion's
-            "Description" — so editing it in the console changed the panel
+            "Description" - so editing it in the console changed the panel
             nobody opens and never the copy that leads the page. It reads here
             now and the duplicate accordion entry is gone. */}
         <p className="m-0 mb-6.5 max-w-[54ch] text-[clamp(15px,1.4vw,17px)] leading-[1.6] text-muted">
@@ -158,7 +158,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           </div>
         </div>
 
-        {/* SIZE — each option is a real route, so the URL always matches the choice */}
+        {/* SIZE - each option is a real route, so the URL always matches the choice */}
         <div className="mb-3 text-sm font-semibold">
           Size <span className="ml-1 font-normal text-muted">· fits {size.fits}</span>
         </div>
@@ -210,7 +210,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
             onAdd={() => add(size.size, pack.count, qty)}
             className="btn btn-dark min-w-[60%] flex-1 font-bold"
           >
-            Add to cart — {inr(pack.price * qty)}
+            Add to cart - {inr(pack.price * qty)}
           </AddToCartButton>
         </div>
         <Link
@@ -220,7 +220,7 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           {/* The percentage is the console's, not a constant: renewal orders are
               discounted by Settings.subscribeSavePct, and this used to say 20%
               while that defaulted to 15. */}
-          Subscribe &amp; save {subscribeSavePct}% — {inr(subscriptionPrice(pack.price, subscribeSavePct))}/month
+          Subscribe &amp; save {subscribeSavePct}% - {inr(subscriptionPrice(pack.price, subscribeSavePct))}/month
         </Link>
 
         {/* TRUST */}

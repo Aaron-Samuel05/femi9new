@@ -1,15 +1,15 @@
 /**
- * The Lumi9 Journal — the SEED's input, not the storefront's source.
+ * The Lumi9 Journal - the SEED's input, not the storefront's source.
  *
  * `prisma/seed-journal.ts` reads `POSTS` and `JOURNAL_CATEGORIES` and writes
  * them into the `lumi9` schema; the storefront reads the database through
  * `journal.server.ts`, which wraps the brand-agnostic loaders in
  * `@femi9/core/services/blog`. Editing this file changes what a fresh seed
- * writes and NOTHING that is already live — a published article is edited in
+ * writes and NOTHING that is already live - a published article is edited in
  * the console, at /lumi9/content/blog.
  *
- * The fields the DTO once had no column for — `metaTitle`, `keywords`, `faqs`,
- * `imageAlt` — are columns now (migration `20260831090000_blog_seo_and_faqs`),
+ * The fields the DTO once had no column for - `metaTitle`, `keywords`, `faqs`,
+ * `imageAlt` - are columns now (migration `20260831090000_blog_seo_and_faqs`),
  * because they drive <head> and JSON-LD and an import that dropped them would
  * have been a downgrade rather than a migration. `updated` is the one that did
  * not survive: the row's own `updatedAt` is what `dateModified` reads, so a
@@ -20,7 +20,7 @@
  *
  *   "## …"    section heading (h2)          "### …"   sub-heading (h3)
  *   "> …"     pull quote                    "• a\n• b"  bullet list
- *   "1. a\n2. b"  numbered list             anything else — a paragraph
+ *   "1. a\n2. b"  numbered list             anything else - a paragraph
  *
  * Inline, `**bold**` and `[label](href)` are supported everywhere.
  *
@@ -60,7 +60,7 @@ export type JournalPost = {
   slug: string;
   title: string;
   category: JournalCategoryName;
-  /** the approved meta description — also the card/lead excerpt */
+  /** the approved meta description - also the card/lead excerpt */
   excerpt: string;
   author: string;
   /** ISO date; the display string is derived, so it stays machine-readable */
@@ -92,15 +92,15 @@ export const POSTS: JournalPost[] = [
     title: "When Care Grows, So Does the Journey: The Lumi9 Baby Diapers Story",
     category: "Our story",
     excerpt:
-      "Discover the story behind Lumi9 baby diapers — breathable, skin-friendly and leak-proof baby diapers built on the same care behind Femi9, now for your little one.",
+      "Discover the story behind Lumi9 baby diapers - breathable, skin-friendly and leak-proof baby diapers built on the same care behind Femi9, now for your little one.",
     author: "The Lumi9 Team",
     published: "2026-06-02",
     readTime: 6,
     image: "/assets/journal/lumi9-baby-diapers-our-story.webp",
     imageAlt:
-      "Lumi9 baby diapers — a mother holding her baby beside a Lumi9 Cloud Comfort size S pack, with cloud-like softness, breathable comfort, leak-proof protection and wetness indicator highlighted",
+      "Lumi9 baby diapers - a mother holding her baby beside a Lumi9 Cloud Comfort size S pack, with cloud-like softness, breathable comfort, leak-proof protection and wetness indicator highlighted",
     featured: true,
-    metaTitle: "Lumi9 Baby Diapers: Soft, Breathable & Leak-Proof — Our Story",
+    metaTitle: "Lumi9 Baby Diapers: Soft, Breathable & Leak-Proof - Our Story",
     keywords: [
       "baby diapers",
       "diaper pants for baby",
@@ -135,7 +135,7 @@ export const POSTS: JournalPost[] = [
       "The comfort during movement.",
       "The freshness through the day.",
       "The protection through the night.",
-      "And most importantly — the peace of mind that comes from knowing their little one is comfortable.",
+      "And most importantly - the peace of mind that comes from knowing their little one is comfortable.",
       "That understanding became the heart of Lumi9.",
       "Because somewhere between a diaper change at 3 a.m. and a first wobbly step, care simply becomes love in practical form.",
       "## Created Around What Matters",
@@ -151,22 +151,22 @@ export const POSTS: JournalPost[] = [
       "That's why Lumi9 comes in [sizes designed to grow with your baby](/size-guide).",
       "## A New Standard in Baby Care",
       "Lumi9 isn't simply a new product from Femi9.",
-      "It is a new expression of the same belief — better care for every stage of life.",
+      "It is a new expression of the same belief - better care for every stage of life.",
       "The softness of a baby's first days.",
       "The excitement of their first movements.",
       "The joy of their first steps.",
       "The countless little moments parents never want to miss.",
       "Lumi9 is created to be part of them.",
-      "Every small moment a parent almost misses while reaching for a diaper — that's the moment Lumi9 was built to protect.",
-      "## 2026 — The Journey Expands",
+      "Every small moment a parent almost misses while reaching for a diaper - that's the moment Lumi9 was built to protect.",
+      "## 2026 - The Journey Expands",
       "In 2026, Femi9 entered a new chapter with the launch of Lumi9 Baby Diapers.",
       "A journey that began with caring for women has now expanded to caring for little ones.",
       "From her comfort to their comfort.",
       "From women's care to baby care.",
       "From one vision to a growing family.",
       "## What Every Parent Should Know",
-      "Choosing the right diapers is one of those small decisions that quietly shapes a lot of a parent's day — and a baby's comfort.",
-      "If you're comparing baby diapers or looking for baby diapers online, it helps to look past the packaging and check for chemical-free baby diapers that are genuinely baby diapers for sensitive skin — not just marketed as one.",
+      "Choosing the right diapers is one of those small decisions that quietly shapes a lot of a parent's day - and a baby's comfort.",
+      "If you're comparing baby diapers or looking for baby diapers online, it helps to look past the packaging and check for chemical-free baby diapers that are genuinely baby diapers for sensitive skin - not just marketed as one.",
       "Many parents comparing options begin with broad searches such as newborn baby diapers, diapers online, best diapers in India, or Pampers vs Huggies. Lumi9 was built to earn a place in that conversation through thoughtful fit, comfort, and everyday performance rather than shelf presence alone.",
       "Whichever brand you choose, peace of mind and gentle protection should never feel optional. You can explore the full [Lumi9 baby diaper range](/shop) to find the fit that suits your little one best.",
       `For general guidance on baby skin and nappy care, the [NHS has practical, easy-to-follow information worth a read](${NHS_NAPPY_RASH}), and the [WHO offers broader guidance on early childhood care](${WHO_BREASTFEEDING}).`,
@@ -183,7 +183,7 @@ export const POSTS: JournalPost[] = [
     title: "Meet Lumi9 by Femi9: A New Approach to Everyday Baby Diaper Comfort",
     category: "Diaper guide",
     excerpt:
-      "Meet Lumi9 by Femi9 — baby diapers with quick absorption, leak protection, breathable comfort, an Aloe Vera-infused top sheet for skin smoothening and rash-free comfort, ADL for liquid distribution and easy wetness indication.",
+      "Meet Lumi9 by Femi9 - baby diapers with quick absorption, leak protection, breathable comfort, an Aloe Vera-infused top sheet for skin smoothening and rash-free comfort, ADL for liquid distribution and easy wetness indication.",
     author: "The Lumi9 Team",
     published: "2026-06-24",
     readTime: 11,
@@ -212,36 +212,36 @@ export const POSTS: JournalPost[] = [
       "There is a moment most new parents know, even if nobody talks about it before the baby arrives. It is 2:17 in the morning. The room is finally quiet. You have just managed to settle a tiny person who seems capable of sensing the exact second you sit down. Then you notice it: the diaper feels heavy, the bedsheet is damp, or your baby is wriggling again because something just does not feel comfortable.",
       "> You change them gently in the half-dark, trying not to wake them fully. Your hands are tired, your eyes are tired, but the thought in your head is completely awake: “I just want my baby to be comfortable.”",
       "That sentence is where Lumi9 begins.",
-      "Lumi9 by Femi9 was created around an everyday truth of parenting: a diaper may look like a small item on a shopping list, but it becomes part of hundreds of intimate moments — feeds, naps, car rides, first smiles, crawling attempts, sleepy cuddles and those long nights when parents quietly learn their baby one tiny signal at a time.",
+      "Lumi9 by Femi9 was created around an everyday truth of parenting: a diaper may look like a small item on a shopping list, but it becomes part of hundreds of intimate moments - feeds, naps, car rides, first smiles, crawling attempts, sleepy cuddles and those long nights when parents quietly learn their baby one tiny signal at a time.",
       "So rather than treating a diaper as only an absorbent product, Lumi9 approaches it as something that should support movement, manage wetness, help reduce everyday leakage worries and make changing time simpler for the person caring for the baby.",
       "## Because “Comfort” Means More Once You Become a Parent",
       "Before a baby arrives, comfort sounds simple. Soft clothes. A warm blanket. A quiet room. After a baby arrives, comfort becomes a language you learn through observation.",
       "You notice the small red line where a waistband sat too firmly. You notice when your baby keeps reaching toward a bulky diaper. You notice how quickly a crawling baby can twist away during a change. You notice the difference between a peaceful nap and one interrupted by dampness or a leak.",
       "Parents do not experience diaper performance as a technical specification. They experience it as fewer outfit changes, calmer naps, easier outings and one less thing to worry about at 2:17 a.m.",
-      "That is why Lumi9 is designed around everyday comfort and practical protection — not around one dramatic promise.",
-      "## A Baby Does Not Stay Still — and Their Diaper Should Understand That",
+      "That is why Lumi9 is designed around everyday comfort and practical protection - not around one dramatic promise.",
+      "## A Baby Does Not Stay Still - and Their Diaper Should Understand That",
       "One day your baby is lying peacefully during every change. A few weeks later, they are rolling before you have even opened the fresh diaper. Then come the kicks, crawls, pull-to-stand moments and determined little escapes across the bed.",
       "A diaper has to work through all of that movement. Lumi9 uses a soft stretch waistband and 360° all-around coverage to support a comfortable fit as babies move through the day. The aim is not to hold a baby rigidly in place; it is to let the diaper move with them while maintaining coverage around the waist and legs.",
       "For parents trying to choose the right fit as their baby grows, a clear size decision is just as important as absorbency. Use our [Baby Diaper Size Guide](/size-guide) to understand how weight range, waist fit and leg fit can help you choose more confidently as your baby grows.",
-      "## What Is Inside Lumi9 — and Why Each Feature Matters in Real Life",
+      "## What Is Inside Lumi9 - and Why Each Feature Matters in Real Life",
       "Features are useful only when parents can understand what they mean during a normal day. Here is how the Lumi9 design translates from product language into everyday use.",
-      "### 1. Advanced SAP Core — Built to Absorb Moisture Quickly",
+      "### 1. Advanced SAP Core - Built to Absorb Moisture Quickly",
       "Lumi9 uses an Advanced SAP (Super Absorbent Polymer) Core designed to take in moisture efficiently and hold it within the absorbent structure. For a parent, the practical goal is simple: help move wetness away from the surface sooner so the diaper can feel more comfortable during wear.",
-      "### 2. Wetness Lock Technology — Helping the Surface Feel Drier",
+      "### 2. Wetness Lock Technology - Helping the Surface Feel Drier",
       "Wetness Lock Technology is designed to help keep absorbed liquid within the diaper core. It works alongside the absorbent system to support a drier-feeling contact surface after wetness has been drawn inward.",
-      "### 3. Double Leakage Barrier — Extra Support at the Sides",
+      "### 3. Double Leakage Barrier - Extra Support at the Sides",
       "Leaks often happen where movement is greatest: around the legs and sides. Lumi9 includes a Double Leakage Barrier to add another layer of side protection during active daytime use and while babies change sleeping positions at night.",
-      "### 4. 360° All-Around Coverage — Made for Movement",
+      "### 4. 360° All-Around Coverage - Made for Movement",
       "Babies bend, stretch, kick, crawl and sleep in positions no adult would willingly attempt. 360° coverage is designed to maintain comfortable all-around protection as that movement happens.",
-      "### 5. Soft Stretch Waistband — Comfort Without Fighting Movement",
+      "### 5. Soft Stretch Waistband - Comfort Without Fighting Movement",
       "A flexible waistband matters because babies do not move in straight lines. Lumi9's soft stretch waistband is designed to adapt comfortably around the waist while allowing natural movement during play, crawling and rest.",
-      "### 6. Breathable Backsheet — Supporting Airflow",
+      "### 6. Breathable Backsheet - Supporting Airflow",
       "The breathable backsheet is designed to support airflow through the outer layer of the diaper. Breathability is an important comfort consideration, particularly for babies wearing diapers for many hours across a normal day.",
-      "### 7. ADL Layer (Acquisition Distribution Layer) — Helping Liquid Spread Evenly",
+      "### 7. ADL Layer (Acquisition Distribution Layer) - Helping Liquid Spread Evenly",
       "Lumi9 includes an Acquisition Distribution Layer (ADL). The ADL is designed to help distribute liquid across the absorbent area rather than concentrating it in one spot, supporting more even moisture spreading and management.",
-      "### 8. Aloe Vera-Infused Top Sheet — For Skin Smoothening and Rash-Free Comfort",
+      "### 8. Aloe Vera-Infused Top Sheet - For Skin Smoothening and Rash-Free Comfort",
       "Lumi9's top sheet is infused with Aloe Vera to help support skin smoothening and rash-free comfort for your baby's delicate skin during everyday wear and diaper changes.",
-      "### 9. Wetness Indicator — One Less Guess for Parents",
+      "### 9. Wetness Indicator - One Less Guess for Parents",
       "Especially with smaller babies, it is not always easy to know whether a diaper needs changing without disturbing them. Lumi9's Wetness Indicator provides a visible colour-change cue intended to make checking simpler.",
       "### 10. Designed Without Harsh Chemicals",
       "Lumi9 is designed without harsh chemicals, reflecting a parent preference for simpler, skin-conscious everyday baby-care choices. This statement should be supported on the final product page with the brand's approved ingredient/material specification before publication.",
@@ -251,13 +251,13 @@ export const POSTS: JournalPost[] = [
       "It is easy for baby products to sound impressive when they are described in perfect conditions. Parenting rarely happens in perfect conditions.",
       "The real test is the rushed Tuesday morning when you are packing a diaper bag with one hand. It is the long car journey when your baby finally falls asleep five minutes before you reach the destination. It is the afternoon when your crawler has decided that being changed is unacceptable. It is the night when everyone in the house desperately needs one more hour of sleep.",
       "In those moments, parents are not thinking about acronyms. They are thinking: Is my baby dry enough? Is this fitting well? Will it leak? Can they move comfortably? Will I know when it is time to change?",
-      "Lumi9's feature system is built to answer those ordinary questions in an ordinary day — because ordinary days are where baby care actually happens.",
+      "Lumi9's feature system is built to answer those ordinary questions in an ordinary day - because ordinary days are where baby care actually happens.",
       "## For the Parent Who Checks Twice",
       "Maybe you are the parent who runs a finger around the leg cuff after every change. Maybe you check the waistband because you worry it is too tight. Maybe you carry three extra diapers when one would probably be enough. Maybe you read every label because your baby cannot yet tell you what feels wrong.",
-      "That kind of care is not overthinking. It is how many parents learn confidence — one repeated check at a time.",
+      "That kind of care is not overthinking. It is how many parents learn confidence - one repeated check at a time.",
       "Lumi9 is not here to replace that instinct. It is designed to work alongside it: giving parents visible cues, flexible fit, absorbent support and leakage protection so they can spend a little less attention on the diaper and a little more on the baby wearing it.",
       "## Why Femi9 Created Lumi9",
-      "Femi9 has always worked around intimate everyday care — the kind of products people rely on when comfort, absorbency and confidence matter quietly but constantly. Lumi9 extends that care philosophy into baby essentials.",
+      "Femi9 has always worked around intimate everyday care - the kind of products people rely on when comfort, absorbency and confidence matter quietly but constantly. Lumi9 extends that care philosophy into baby essentials.",
       "The connection is not simply a name on the pack. It is a belief that personal-care products deserve thoughtful design because they sit close to the body for long periods and become part of daily routines that people rarely celebrate, but deeply depend on.",
       "With Lumi9, that thinking is centred on babies and the people caring for them: soft everyday comfort, practical moisture management, movement-friendly fit, easier changing cues and dependable protection for day and night.",
       "## Choosing a Diaper Is Also Choosing What You Want to Worry About Less",
@@ -272,9 +272,9 @@ export const POSTS: JournalPost[] = [
       "The internet is full of beautiful baby milestones: the first smile, the first roll, the first crawl, the first birthday. What it rarely shows are the hundreds of diaper changes between those milestones.",
       "Those moments are not glamorous. They are quiet, repetitive and deeply caring. A hand under a sleepy head. A fresh diaper at midnight. A parent checking the waistband one more time. A baby kicking both feet because they are finally comfortable again.",
       "Lumi9 by Femi9 is made for those moments.",
-      "Not because a diaper is the biggest part of parenting — but because when something touches your baby every day, the small details deserve to be thoughtfully considered.",
+      "Not because a diaper is the biggest part of parenting - but because when something touches your baby every day, the small details deserve to be thoughtfully considered.",
       "Softness. Movement. Absorption. Airflow. Leakage protection. Easier changing. Daytime play. Night-time sleep.",
-      "That is the everyday comfort Lumi9 is setting out to support — one change, one cuddle and one ordinary Tuesday at a time.",
+      "That is the everyday comfort Lumi9 is setting out to support - one change, one cuddle and one ordinary Tuesday at a time.",
     ],
     faqs: [
       {
@@ -311,7 +311,7 @@ export const POSTS: JournalPost[] = [
   /* ------------------------------------------------------------------ 03 */
   {
     slug: "what-makes-baby-diaper-breathable",
-    title: "What Makes a Baby Diaper Breathable — and Why Does It Matter?",
+    title: "What Makes a Baby Diaper Breathable - and Why Does It Matter?",
     category: "Diaper guide",
     excerpt:
       "Discover what makes baby diapers breathable, why airflow matters for everyday comfort, and how Lumi9 combines breathability, softness and leak protection.",
@@ -347,7 +347,7 @@ export const POSTS: JournalPost[] = [
       "Your baby cannot say, “Mom, this feels stuffy,” or “I need a little more comfort.”",
       "So you learn to read the smallest signs.",
       "That is where breathable baby diapers become more than another feature on a diaper pack.",
-      "Because when something stays close to your baby's delicate skin for hours every day, airflow, softness and moisture management are not small details. They are part of the quiet comfort every mom keeps trying to give—even when the baby cannot ask for it yet.",
+      "Because when something stays close to your baby's delicate skin for hours every day, airflow, softness and moisture management are not small details. They are part of the quiet comfort every mom keeps trying to give-even when the baby cannot ask for it yet.",
       "But what actually makes a diaper “breathable”? Does better airflow affect leak protection? And are all diapers labelled breathable really designed the same way?",
       "Let's look beyond the packaging and understand what breathability actually means for the little person you spend every day trying to keep comfortable.",
       "## What Does “Breathable Baby Diaper” Actually Mean?",
@@ -359,7 +359,7 @@ export const POSTS: JournalPost[] = [
       "Breathability, however, should never be treated as a replacement for regular diaper changes, correct sizing or good skin-care habits. Think of it as one part of a complete diaper-comfort system.",
       "## Why Does Breathability Matter So Much for Babies?",
       "Adults can feel uncomfortable after sitting in warm, humid clothing for only a short period. Now imagine being a baby.",
-      "You cannot say, “This feels warm.” You cannot loosen the waistband. You cannot change your diaper. You simply wriggle, fuss, cry or become restless—and the mom caring for you has to figure out why.",
+      "You cannot say, “This feels warm.” You cannot loosen the waistband. You cannot change your diaper. You simply wriggle, fuss, cry or become restless-and the mom caring for you has to figure out why.",
       "That is why seemingly small design details matter.",
       "### Babies Wear Diapers for Hours Every Day",
       "A diaper is not something that touches your baby's skin for five minutes. During the diapering years, it becomes part of:",
@@ -374,23 +374,23 @@ export const POSTS: JournalPost[] = [
       "Both matter. Moms should not have to choose between “breathable” or “leak protection.” A thoughtfully constructed diaper should balance several functions together. That is why Lumi9 combines its breathable backsheet with separate moisture-management and leakage-protection features.",
       "## How Does a Breathable Diaper Work?",
       "A modern disposable diaper is not one single sheet of material. It contains several layers, and each has a different job. Understanding these layers makes diaper shopping much easier.",
-      "### 1. The Top Sheet — The Layer Closest to Baby",
+      "### 1. The Top Sheet - The Layer Closest to Baby",
       "The top sheet is the surface that sits closest to your baby's skin. Because your baby feels this layer directly, softness matters.",
       "Lumi9 uses an Aloe Vera-infused top sheet designed to support skin smoothening and rash-free comfort for delicate baby skin during everyday wear and changing.",
       "Importantly, Aloe Vera and breathability are not the same feature. Aloe Vera supports skin smoothening and rash-free comfort, while the breathable backsheet supports airflow through the outer layer. Each has a separate purpose.",
-      "### 2. ADL — Helping Liquid Move and Spread",
+      "### 2. ADL - Helping Liquid Move and Spread",
       "Below the top sheet is another important component: ADL, or Acquisition Distribution Layer.",
       "The ADL helps receive liquid and distribute it more evenly across the absorbent area instead of allowing moisture to concentrate heavily in one location.",
       "Think of pouring water onto a sponge. If all the liquid remains in one small area, that section becomes overloaded. If the liquid spreads across more of the absorbent structure, the diaper can manage moisture more effectively.",
       "For Lumi9, ADL means liquid distribution. It is separate from the Aloe Vera-infused top sheet.",
-      "### 3. Advanced SAP Core — Where Absorption Happens",
+      "### 3. Advanced SAP Core - Where Absorption Happens",
       "SAP stands for Super Absorbent Polymer. Lumi9 uses an Advanced SAP Core designed to absorb and hold moisture within the diaper's absorbent structure.",
       "This matters because a breathable outer layer alone would mean very little if the diaper could not manage wetness effectively.",
       "A comfortable diaper therefore needs different systems working together: receive liquid → distribute liquid → absorb liquid → hold moisture → provide coverage → support airflow.",
-      "### 4. Wetness Lock Technology — Helping Manage Absorbed Moisture",
+      "### 4. Wetness Lock Technology - Helping Manage Absorbed Moisture",
       "Once liquid enters the absorbent core, Lumi9's Wetness Lock Technology is designed to help retain that absorbed moisture within the diaper structure.",
       "Again, notice how different this is from breathability. Breathability does not mean moisture should escape from the diaper. A well-designed leak proof baby diaper needs to help keep liquid contained while still using an outer construction that supports everyday comfort.",
-      "### 5. Breathable Backsheet — Supporting Airflow",
+      "### 5. Breathable Backsheet - Supporting Airflow",
       "Now we reach the feature at the centre of this article. The backsheet is the outer layer of the diaper.",
       "Lumi9's breathable backsheet is designed to support airflow through the outer layer. This is important because the diaper area naturally experiences warmth, moisture and close contact with materials.",
       "A breathable outer design is therefore one factor moms may consider when choosing comfortable everyday diapers.",
@@ -399,7 +399,7 @@ export const POSTS: JournalPost[] = [
       "Breathability works best as part of good overall diaper care.",
       "## What About Leakage? Can a Breathable Diaper Still Protect Well?",
       "This is a very reasonable mom question. If air can move through the outer structure, does that mean urine can leak through too?",
-      "No—not when the diaper has been properly engineered.",
+      "No-not when the diaper has been properly engineered.",
       "Breathable diaper materials can be designed to support vapour movement without simply allowing liquid to pass freely through the diaper. Meanwhile, leakage protection depends on several other factors, including:",
       "• absorbent capacity\n• core construction\n• leg barriers\n• waist fit\n• correct diaper size\n• how quickly liquid is distributed\n• how full the diaper becomes\n• baby's sleeping or movement position",
       "Lumi9 combines breathability with a Double Leakage Barrier and 360° protection designed to support all-around coverage. So moms do not have to think: comfort or protection? The aim is to support both.",
@@ -434,11 +434,11 @@ export const POSTS: JournalPost[] = [
       "Another mom may search “best baby diapers in India.” But the real concern could be: “My baby cried during the last few changes. Am I choosing the wrong diaper?”",
       "Another may search “soft baby diapers for sensitive skin.” What the mom really means is: “I don't want something uncomfortable sitting against my baby's skin all day.”",
       "That is the part product pages sometimes forget. Moms are not buying features. They are trying to protect someone who cannot yet explain what feels uncomfortable.",
-      "## Breathability Matters During the Day—and at Night",
+      "## Breathability Matters During the Day-and at Night",
       "During daytime, babies are constantly moving. At night, the challenge changes. Babies may stay in one sleeping position for longer and the diaper may need to manage wetness across longer stretches depending on age and feeding routine.",
       "This is why moms searching for overnight baby diapers should consider more than maximum absorption. Look for a balance of absorbency, fit, side protection, softness, breathable design and appropriate diaper changes.",
       "Always change a soiled diaper promptly, and follow healthcare guidance appropriate to your baby's age and skin needs.",
-      "## A Breathable Diaper Is Helpful—but It Is Not the Whole Story",
+      "## A Breathable Diaper Is Helpful-but It Is Not the Whole Story",
       "### Change Wet or Soiled Diapers Regularly",
       "Do not rely only on maximum absorbency. Your baby's skin still benefits from regular checking and changing.",
       "### Keep the Diaper Area Gently Clean",
@@ -478,7 +478,7 @@ export const POSTS: JournalPost[] = [
       },
       {
         q: "What is the difference between a breathable backsheet and ADL?",
-        a: "They perform different jobs. The breathable backsheet supports airflow through the diaper's outer layer, while ADL—or Acquisition Distribution Layer—helps distribute liquid across the absorbent area.",
+        a: "They perform different jobs. The breathable backsheet supports airflow through the diaper's outer layer, while ADL-or Acquisition Distribution Layer-helps distribute liquid across the absorbent area.",
       },
       {
         q: "Are Lumi9 diapers suitable for active babies?",
@@ -516,7 +516,7 @@ export const POSTS: JournalPost[] = [
     cta:
       "Looking for newborn baby diapers designed around softness, moisture management, breathable comfort and practical protection? Explore Lumi9 and choose the diaper size suited to your baby's early days.",
     body: [
-      "The first night you bring your newborn home can feel strangely quiet.The hospital bag is still half-unpacked. Someone has left a tiny pair of socks on the sofa. Your baby is finally asleep, and for the first time all day, nobody is telling you what to do next.So you stand there and look at this impossibly small person.Then the questions begin.“Did my baby drink enough?”“Is that breathing normal?”“Should I wake the baby for a feed?”“Is the diaper too tight?”“Why is the baby crying again?”“Am I doing any of this right?”No one hands a first-time mom confidence along with the birth certificate. Most moms build it slowly—one feed, one diaper change, one sleepless night and one tiny lesson at a time.These **newborn baby care tips** are not here to make motherhood feel like another test you must pass. They are here to help you understand the everyday basics: feeding, safe sleep, bathing, umbilical cord care, diaper changes, baby skin, soothing and the moments when you should call a doctor.Because your baby does not need a perfect mom.Your baby needs a cared-for, informed mom who keeps showing up—and you are already doing that.",
+      "The first night you bring your newborn home can feel strangely quiet.The hospital bag is still half-unpacked. Someone has left a tiny pair of socks on the sofa. Your baby is finally asleep, and for the first time all day, nobody is telling you what to do next.So you stand there and look at this impossibly small person.Then the questions begin.“Did my baby drink enough?”“Is that breathing normal?”“Should I wake the baby for a feed?”“Is the diaper too tight?”“Why is the baby crying again?”“Am I doing any of this right?”No one hands a first-time mom confidence along with the birth certificate. Most moms build it slowly-one feed, one diaper change, one sleepless night and one tiny lesson at a time.These **newborn baby care tips** are not here to make motherhood feel like another test you must pass. They are here to help you understand the everyday basics: feeding, safe sleep, bathing, umbilical cord care, diaper changes, baby skin, soothing and the moments when you should call a doctor.Because your baby does not need a perfect mom.Your baby needs a cared-for, informed mom who keeps showing up-and you are already doing that.",
       "## 1. Learn Your Baby Before You Try to Follow Every Rule",
       "In the first few weeks, advice arrives from everywhere. Family members, friends, social media, parenting groups and well-meaning relatives may all tell you the “right” way to feed, burp, bathe, hold or settle your baby.Reliable guidance matters, but so does learning your own baby.Newborns communicate through small signals: turning toward the breast or bottle, opening the mouth, rooting, bringing hands toward the face, fussing, becoming quiet, stiffening, looking away or crying. Over time, you start recognising what different movements may mean.That recognition is not instant. It grows with repetition.Instead of expecting yourself to understand every cry on day one, think of the first weeks as getting to know a new person who does not yet speak your language.",
       "## 2. Feeding: Watch the Baby, Not Only the Clock",
@@ -525,7 +525,7 @@ export const POSTS: JournalPost[] = [
       "## 3. Safe Sleep Is One Area Where Clear Rules Matter",
       `There are many areas of parenting where families can choose what works best. Safe infant sleep is different because the sleep environment affects safety. The [American Academy of Pediatrics](${AAP}) safe-sleep guidance recommends placing babies on their backs for every sleep on a firm, flat, non-inclined surface and keeping pillows, loose blankets, bumper pads and stuffed toys out of the baby's sleep space. A beautifully decorated cot may look comforting to an adult, but a simpler sleep space is safer for a newborn.`,
       "## 4. Your Newborn Does Not Need a Complicated Bath Routine",
-      `That first bath can make even a confident adult suddenly feel as if babies are made of glass. They are slippery, tiny and sometimes deeply unimpressed by the whole idea. [NHS newborn bath](${NHS_BABY})ing guidance explains that plain water is enough for very young newborn skin and recommends gentle washing and careful drying, especially between skin folds. Keep everything you need within reach before you begin, support your baby's head securely, and never leave a baby alone in or near water—even for a moment.`,
+      `That first bath can make even a confident adult suddenly feel as if babies are made of glass. They are slippery, tiny and sometimes deeply unimpressed by the whole idea. [NHS newborn bath](${NHS_BABY})ing guidance explains that plain water is enough for very young newborn skin and recommends gentle washing and careful drying, especially between skin folds. Keep everything you need within reach before you begin, support your baby's head securely, and never leave a baby alone in or near water-even for a moment.`,
       "## 5. Umbilical Cord Care: Keep It Simple",
       `The umbilical cord stump can look intimidating at first, but routine care is usually simple. [NHS guidance for caring for a newborn](${NHS_BABY}) supports keeping the area clean and dry and following the advice given by your maternity team or pediatrician. If the stump becomes dirty with urine or stool, clean gently with water and pat dry. Do not pull it off; let it separate naturally. Contact a healthcare professional if you notice spreading redness, pus, persistent bleeding, a bad smell, fever or if your baby seems unwell.`,
       "## 6. Diaper Changes Become One of Your Most Frequent Care Routines",
@@ -606,7 +606,7 @@ export const POSTS: JournalPost[] = [
     cta:
       "If diaper comfort is one of the things interrupting your baby's night, explore Lumi9 baby diapers designed around softness, breathable comfort, moisture management, flexible fit and leakage protection for everyday and night-time wear.",
     body: [
-      "It is 2:43 a.m. again.You were sure your baby was finally asleep. You lowered the baby into bed as carefully as if you were defusing a tiny, adorable alarm clock. You waited. One minute. Two minutes.Then the cry came.You pick your baby up, check the diaper, offer a feed, walk around the room, whisper the same lullaby you have already sung four times tonight—and somewhere between exhaustion and worry, one thought appears:“Why does my baby keep waking up crying? Am I missing something?”",
+      "It is 2:43 a.m. again.You were sure your baby was finally asleep. You lowered the baby into bed as carefully as if you were defusing a tiny, adorable alarm clock. You waited. One minute. Two minutes.Then the cry came.You pick your baby up, check the diaper, offer a feed, walk around the room, whisper the same lullaby you have already sung four times tonight-and somewhere between exhaustion and worry, one thought appears:“Why does my baby keep waking up crying? Am I missing something?”",
       "If you are asking that question at an hour when the rest of the world seems to be sleeping, you are far from the only mom doing it.Babies wake at night for many ordinary reasons. Sometimes they are hungry. Sometimes a wet or dirty diaper is uncomfortable. Sometimes they are too hot, too cold, overtired, gassy or simply moving between normal sleep cycles. And sometimes crying can signal pain or illness that deserves medical attention.This guide will help you work through the common possibilities without making every wake-up feel like a crisis. Because a crying baby is not proof that you are doing motherhood badly. It is communication from someone who does not yet have words.",
       "## First: Night Waking Is Normal for Babies",
       `One of the most reassuring facts a tired mom can hear is that frequent waking does not automatically mean something is wrong. [NHS baby sleep guidance](${NHS_BABY}) explains that newborns commonly wake during the night to feed, and temperature can also disturb sleep. The American Academy of Pediatrics also notes that babies do not develop regular sleep cycles immediately and that even older babies may wake during the night.`,
@@ -618,14 +618,14 @@ export const POSTS: JournalPost[] = [
       "If your baby is feeding very poorly, is unusually sleepy during feeds, is not gaining weight as expected, or you are worried about hydration or feeding, speak with your pediatrician rather than trying to solve the problem only through sleep routines.",
       "## 2. A Wet or Dirty Diaper May Be Disturbing Sleep",
       `The [NHS guide to soothing a crying baby](${NHS_BABY}) lists a wet or dirty diaper among the common reasons babies cry. Some babies tolerate a wet diaper for a while; others become restless much sooner.`,
-      "This is where many moms develop a familiar midnight routine: touch the diaper, check the waistband, look for fullness and decide whether changing it will make the baby more comfortable—or wake the baby completely.",
+      "This is where many moms develop a familiar midnight routine: touch the diaper, check the waistband, look for fullness and decide whether changing it will make the baby more comfortable-or wake the baby completely.",
       "### Can a Diaper Really Affect Night-Time Comfort?",
       "Yes, diaper comfort can be one part of the picture. A diaper that feels overly full, fits poorly, rubs at the waist or legs, or allows a leak may interrupt sleep. But diaper discomfort is only one possible cause of crying, not the explanation for every wake-up.",
       "If you want to understand how airflow, fit and moisture management work together, read [Lumi9's guide to what makes a baby diaper breathable](/journal/what-makes-baby-diaper-breathable) before choosing an overnight diaper.",
       "## 3. Your Baby May Be Between Sleep Cycles",
       "Babies naturally move between lighter and deeper stages of sleep. A baby may stir, make sounds, open the eyes or cry briefly during a transition.",
       "Sometimes the baby settles again. Sometimes the baby fully wakes and asks for help returning to sleep.",
-      "Before immediately assuming something is wrong, pause long enough to observe—while keeping your baby safe. You may begin noticing a difference between a brief sleep-cycle cry and a cry that becomes stronger because the baby needs feeding, changing or comfort.",
+      "Before immediately assuming something is wrong, pause long enough to observe-while keeping your baby safe. You may begin noticing a difference between a brief sleep-cycle cry and a cry that becomes stronger because the baby needs feeding, changing or comfort.",
       "## 4. Overtired Babies Can Wake More Upset",
       "It sounds unfair, but babies do not always sleep better simply because they are more tired. An overtired or overstimulated baby may have a harder time settling and may wake crying after a shorter stretch of sleep.",
       "An evening full of visitors, bright lights, noise, active play or missed naps can sometimes leave a baby exhausted but unable to settle comfortably.",
@@ -636,11 +636,11 @@ export const POSTS: JournalPost[] = [
       "## 6. Wind, Gas, Reflux or Digestive Discomfort Can Wake a Baby",
       "Some babies wake crying because they are uncomfortable after feeding. Trapped wind, reflux, constipation or other digestive discomfort can make lying down difficult for some babies.",
       "If the crying repeatedly occurs after feeds, your baby arches, vomits frequently, seems distressed while feeding, refuses feeds or is not gaining weight as expected, discuss it with your pediatrician. Do not diagnose reflux or change feeding practices based only on social-media advice.",
-      "## 7. Teething May Disrupt Sleep—but Do Not Blame Every Cry on Teeth",
+      "## 7. Teething May Disrupt Sleep-but Do Not Blame Every Cry on Teeth",
       `As teeth begin to emerge, some babies become more irritable and want to chew. [AAP teething guidance](${AAP}) notes that teething can cause gum tenderness, drooling and mild irritability. However, significant or persistent crying should not automatically be dismissed as “just teething.”`,
       "If your baby seems much more distressed than usual, look for other causes and contact a healthcare professional when needed.",
       "## 8. Sometimes Your Baby Simply Wants You",
-      "There are nights when the diaper is clean, the feed is done, the room is comfortable and nothing obvious is wrong—and your baby still cries the second you put the baby down.",
+      "There are nights when the diaper is clean, the feed is done, the room is comfortable and nothing obvious is wrong-and your baby still cries the second you put the baby down.",
       "That can be exhausting. It can also be developmentally ordinary.",
       `[NHS guidance for helping babies sleep](${NHS_BABY}) notes that young babies commonly fall asleep while being held and then wake when placed in a cot because they want closeness.`,
       "Wanting comfort is not manipulation. A baby does not wake at 3 a.m. to test your patience. Your voice, smell, warmth and touch are part of how the baby feels safe.",
@@ -649,11 +649,11 @@ export const POSTS: JournalPost[] = [
       "This does not mean you created a “bad habit” by comforting your baby. Sleep patterns and attachment behaviours change as development changes.",
       "## 10. A Leak, Tight Fit or Uncomfortable Diaper Can Be Easy to Miss",
       "Sometimes the problem is not that the diaper is obviously soaked. The baby may be reacting to a bulky full diaper, rubbing at the waist, a leg gap, dampness around the skin or a small leak onto clothing or bedding.",
-      "When checking the diaper at night, look at the whole fit—not only whether it feels wet.",
+      "When checking the diaper at night, look at the whole fit-not only whether it feels wet.",
       "• Is the waistband sitting comfortably?\n• Are there deep pressure marks around the legs or waist?\n• Has the diaper become very bulky?\n• Is there moisture around the leg openings?\n• Has the baby recently moved into a different weight or size range?",
       "### How Lumi9 Approaches Night-Time Diaper Comfort",
       "Lumi9's diaper system is designed around several separate functions that work together during wear:",
-      "• Advanced SAP Core — designed to absorb and hold moisture within the diaper structure.\n• Wetness Lock Technology — designed to support moisture management after absorption.\n• Double Leakage Barrier — adds support around areas where side leakage may occur.\n• 360° Protection — designed for all-around coverage as babies change sleeping positions.\n• Soft Stretch Waistband — supports a flexible, comfortable fit around the waist.\n• Breathable Backsheet — supports airflow through the outer layer.\n• ADL (Acquisition Distribution Layer) — helps distribute liquid across the absorbent area.\n• Aloe Vera-Infused Top Sheet — supports skin smoothening and rash-free comfort for delicate baby skin.\n• Wetness Indicator — provides a visible cue that can help moms decide when the diaper needs checking.",
+      "• Advanced SAP Core - designed to absorb and hold moisture within the diaper structure.\n• Wetness Lock Technology - designed to support moisture management after absorption.\n• Double Leakage Barrier - adds support around areas where side leakage may occur.\n• 360° Protection - designed for all-around coverage as babies change sleeping positions.\n• Soft Stretch Waistband - supports a flexible, comfortable fit around the waist.\n• Breathable Backsheet - supports airflow through the outer layer.\n• ADL (Acquisition Distribution Layer) - helps distribute liquid across the absorbent area.\n• Aloe Vera-Infused Top Sheet - supports skin smoothening and rash-free comfort for delicate baby skin.\n• Wetness Indicator - provides a visible cue that can help moms decide when the diaper needs checking.",
       "These features should not be presented as a promise that a baby will sleep through the night. Sleep depends on age, feeding, development, health, routine and many other factors. The diaper's role is much narrower: support comfort, moisture management, fit and leakage protection during wear.",
       "## 11. Congestion or Illness Can Make Sleep Harder",
       "A baby who suddenly starts waking much more often than usual may be uncomfortable because of a cold, blocked nose, ear pain, fever or another illness.",
@@ -678,7 +678,7 @@ export const POSTS: JournalPost[] = [
       "“I should be able to settle my own baby.”",
       "“Why can't I fix this?”",
       "But motherhood is not a puzzle where every cry has one correct answer. Sometimes you will find the reason quickly. Sometimes you will try three things before something helps. Sometimes the baby will simply need time, closeness or medical attention.",
-      "Your baby waking does not mean you failed to create the perfect sleep routine. It means your baby woke—and you are there, learning what the baby needs.",
+      "Your baby waking does not mean you failed to create the perfect sleep routine. It means your baby woke-and you are there, learning what the baby needs.",
       "## Final Thoughts: Not Every Wake-Up Needs a Perfect Answer",
       "One day, this baby who wakes you by crying will walk into your room and call you by name.",
       "One day, the midnight feeds will stop. The diaper bag will disappear. The tiny sleep suit will be packed away, and you may barely remember how many times you walked across the same dark room trying to settle your baby.",
@@ -715,14 +715,14 @@ export const POSTS: JournalPost[] = [
 /* -------------------------------------------------------------------------- */
 
 /*
- * The loaders that used to live here — listPosts, getPost, listCategories,
- * categoryMeta, relatedPosts, formatPostDate — are GONE, deliberately.
+ * The loaders that used to live here - listPosts, getPost, listCategories,
+ * categoryMeta, relatedPosts, formatPostDate - are GONE, deliberately.
  *
  * Every one of them is now answered by the database: `journal.server.ts` for the
  * four queries, and the DTO itself for the other two (it carries the formatted
  * `date` beside the ISO `published`, and each post carries its own category
  * colour and tint). Leaving a second, module-backed set of readers in place is
  * how a page ends up rendering the array while the console edits the rows, with
- * nothing on either side to say the two disagree — which is exactly the bug this
+ * nothing on either side to say the two disagree - which is exactly the bug this
  * change was made to fix.
  */

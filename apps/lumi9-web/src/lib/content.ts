@@ -6,12 +6,12 @@
 import type { IconName } from "@/components/ui/Icon";
 
 export const BRAND = {
-  tagline: "Happy day, every day — for every baby, in every home.",
+  tagline: "Happy day, every day - for every baby, in every home.",
   email: "care@lumi9.in",
   phone: "+91 90429 16499",
   addressLines: ["Thindal, Erode,", "Tamil Nadu 638012"],
   fullAddress: "222/1 Pavizham Nagar, Thindal, Erode, TN 638012",
-  whatsapp: "@lumi9official · 9am–9pm",
+  whatsapp: "@lumi9official · 9am-9pm",
   legalLine: "Chemical-free · Dermatologist tested · Made in India",
   copyright: "© 2026 Lumi9. All rights reserved.",
 };
@@ -113,7 +113,7 @@ export const VALUES = [
   {
     n: "03",
     title: "Safety-conscious care",
-    body: "Designed without harsh chemicals — no parabens, fragrance, latex or phthalates — with soft materials for delicate baby skin.",
+    body: "Designed without harsh chemicals - no parabens, fragrance, latex or phthalates - with soft materials for delicate baby skin.",
   },
   {
     n: "04",
@@ -123,7 +123,7 @@ export const VALUES = [
   {
     n: "05",
     title: "Easy-to-find fit",
-    body: "From NB newborn tape diapers up to 5 kg to XL baby diaper pants for 12–17 kg, clear size options for every growing stage.",
+    body: "From NB newborn tape diapers up to 5 kg to XL baby diaper pants for 12-17 kg, clear size options for every growing stage.",
   },
 ];
 
@@ -224,7 +224,7 @@ export const SUBSCRIPTION_STEPS = [
 ];
 
 export const SUBSCRIPTION_BENEFITS: { icon: IconName; title: string; body: string }[] = [
-  { icon: "save", title: "Save 20%", body: "Every delivery, automatically — no code needed." },
+  { icon: "save", title: "Save 20%", body: "Every delivery, automatically - no code needed." },
   { icon: "grow", title: "Auto size-up", body: "We move up a size when your baby is ready." },
   { icon: "pause", title: "Full control", body: "Skip, pause or cancel in a tap, anytime." },
   { icon: "truck", title: "Free delivery", body: "Always free, delivered to your door on schedule." },
@@ -236,7 +236,7 @@ export const FIT_TIPS = [
   {
     n: "01",
     title: "Check the waistband",
-    body: "It should sit just below the belly button with two fingers of room — no red marks.",
+    body: "It should sit just below the belly button with two fingers of room - no red marks.",
   },
   {
     n: "02",
@@ -246,7 +246,7 @@ export const FIT_TIPS = [
   {
     n: "03",
     title: "Size up when…",
-    body: "You see marks, frequent leaks, or the tabs reach the edge. Babies often size up around 6–8kg.",
+    body: "You see marks, frequent leaks, or the tabs reach the edge. Babies often size up around 6-8kg.",
   },
 ];
 
@@ -257,11 +257,11 @@ export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] =
   {
     topic: "Sizing",
     q: "How do I choose the right size?",
-    a: "Go by your baby’s weight, not age. NB fits up to 5kg, S 4–8kg, M 7–12kg, L 9–14kg and XL 12–17kg. If you see red marks the size is too small; gaps or sagging mean size up. Our size finder on the home page matches you in one tap.",
+    a: "Go by your baby’s weight, not age. NB fits up to 5kg, S 4-8kg, M 7-12kg, L 9-14kg and XL 12-17kg. If you see red marks the size is too small; gaps or sagging mean size up. Our size finder on the home page matches you in one tap.",
   },
   {
     topic: "Sizing",
-    q: "My baby is between two sizes — what should I do?",
+    q: "My baby is between two sizes - what should I do?",
     a: "Choose the larger size for daytime movement and the snugger one for overnight leak protection. Most parents keep both on hand during a transition week.",
   },
   {
@@ -272,12 +272,12 @@ export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] =
   {
     topic: "Subscription",
     q: "Can I change my box before it ships?",
-    a: "Yes — edit size, pack or delivery date up to 48 hours before dispatch from the Subscription tab in your account.",
+    a: "Yes - edit size, pack or delivery date up to 48 hours before dispatch from the Subscription tab in your account.",
   },
   {
     topic: "Shipping",
     q: "How fast is delivery and what does it cost?",
-    a: "Standard delivery is free on orders over ₹999 and arrives in 3–5 business days across India. Express (1–2 days) is ₹79. Orders placed before 2pm ship the same day.",
+    a: "Standard delivery is free on orders over ₹999 and arrives in 3-5 business days across India. Express (1-2 days) is ₹79. Orders placed before 2pm ship the same day.",
   },
   {
     topic: "Shipping",
@@ -296,7 +296,7 @@ export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] =
   },
 ];
 
-/* The journal now lives in `src/lib/journal.ts` — full articles with body,
+/* The journal now lives in `src/lib/journal.ts` - full articles with body,
    SEO metadata and FAQs, rather than the card-only stubs that used to sit
    here. Nothing else read them. */
 
@@ -304,12 +304,12 @@ export const LEGAL_SECTIONS = [
   {
     id: "collect",
     title: "What we collect",
-    body: "We collect the details you provide when you create an account, place an order, or subscribe — your name, contact details, delivery address, and order history. We also collect basic device and usage data to keep the site secure and improve it.",
+    body: "We collect the details you provide when you create an account, place an order, or subscribe - your name, contact details, delivery address, and order history. We also collect basic device and usage data to keep the site secure and improve it.",
   },
   {
     id: "use",
     title: "How we use it",
-    body: "Your information is used to process and deliver orders, manage subscriptions, respond to support requests, and — only if you opt in — send occasional product updates. We never sell your personal data to third parties.",
+    body: "Your information is used to process and deliver orders, manage subscriptions, respond to support requests, and - only if you opt in - send occasional product updates. We never sell your personal data to third parties.",
   },
   {
     id: "cookies",
@@ -334,7 +334,7 @@ export const LEGAL_UPDATED = "Last updated 17 February 2026";
    invented: every signed-in customer saw the same four delivered orders, was told
    they had placed 12 and saved Rs.2,940, and the sample addresses carried
    real-looking names and phone numbers. The account page reads getAccountData()
-   instead — see components/account/AccountDashboard. */
+   instead - see components/account/AccountDashboard. */
 
 export const FEATURE_IMAGES = {
   softness: { src: "/assets/features/softness-hd.png", alt: "Softness that runs alongside every adventure" },
@@ -348,7 +348,7 @@ export const FEATURE_IMAGES = {
 };
 
 /* ---------------------------------------------------------------------------
-   Ported from the live storefront at lumi9.in — brand copy, not invented.
+   Ported from the live storefront at lumi9.in - brand copy, not invented.
    --------------------------------------------------------------------------- */
 
 /**
@@ -370,7 +370,7 @@ export const FEATURE_STRIP = [
  * Parent reviews, verbatim from lumi9.in's "Loved by Parents" grid.
  *
  * These are real submitted reviews, which is why none of them is a polished
- * marketing sentence — "doesn't feel bulky" and "perfect for active little
+ * marketing sentence - "doesn't feel bulky" and "perfect for active little
  * movers" are the kind of thing people actually write, and swapping them for
  * tidier copy would cost the section the only thing that makes it convincing.
  *
@@ -394,7 +394,7 @@ export const PARENT_REVIEWS = [
  * ONE source of truth: the strike-through price is derived from this rate at
  * render time, never stored alongside it. Two numbers in the data file is how a
  * catalogue ends up advertising a discount that no longer matches what the
- * server charges — and the server is the only thing that actually prices a cart.
+ * server charges - and the server is the only thing that actually prices a cart.
  * Set to `null` to remove every badge and strike-through on the site at once.
  */
 export const LAUNCH_OFFER: { percent: number; label: string } | null = {

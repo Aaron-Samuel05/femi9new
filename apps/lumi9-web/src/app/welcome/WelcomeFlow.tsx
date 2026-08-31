@@ -11,7 +11,7 @@ import type { ProfileField } from "@/lib/auth-context";
  * WHICH FIELDS RENDER IS DRIVEN ENTIRELY BY `missing`. There is no per-provider
  * branch anywhere in this file: a Google shopper sees only the mobile step, an
  * OTP shopper sees name and email, a magic-link shopper sees all three. That is
- * the whole reason `missingProfileFields` is one function in `@femi9/core` —
+ * the whole reason `missingProfileFields` is one function in `@femi9/core` -
  * the gate on /account and the screen it gates read the same definition, so
  * they cannot disagree about what "complete" means and strand somebody in a
  * loop between them.
@@ -19,7 +19,7 @@ import type { ProfileField } from "@/lib/auth-context";
  * Two steps, and the split is forced by the data rather than chosen for looks:
  *
  *   A. name + email are written IMMEDIATELY by /api/account/complete-profile.
- *   B. the phone is NOT written — an unverified number on `User` is worse than
+ *   B. the phone is NOT written - an unverified number on `User` is worse than
  *      none, because it is what a parcel and every delivery SMS go to. Step A's
  *      response only STARTS the OTP challenge; /api/account/phone/verify is
  *      what attaches it.
@@ -122,7 +122,7 @@ export function WelcomeFlow({
         return;
       }
 
-      // Partially saved — re-render against whatever is still outstanding
+      // Partially saved - re-render against whatever is still outstanding
       // rather than repeating fields she has already filled in.
       setMissing(Array.isArray(body.missing) ? (body.missing as ProfileField[]) : missing);
     } catch {

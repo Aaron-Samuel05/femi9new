@@ -6,7 +6,7 @@ import type { PerspectiveCamera } from "three";
 import type { MascotExtents } from "./mascot-shared";
 
 /**
- * Keeps the mascot fully framed at any canvas size or ratio — phone, tablet,
+ * Keeps the mascot fully framed at any canvas size or ratio - phone, tablet,
  * desktop, landscape, or a footer panel that's wider than it is tall.
  *
  * Given the model's half-height and its worst-case half-width while spinning
@@ -17,7 +17,7 @@ import type { MascotExtents } from "./mascot-shared";
  *   z = max(halfHeight / tanV, halfWidth / tanH) * padding
  *
  * Taking the max is what stops a tall, narrow phone canvas from slicing the
- * mascot's sides — the aspect-fit idea from the handoff's footer-mascot.js, made
+ * mascot's sides - the aspect-fit idea from the handoff's footer-mascot.js, made
  * exact by measuring the model instead of assuming a square silhouette.
  *
  * `padding` is the breathing room around the model; it eases down towards

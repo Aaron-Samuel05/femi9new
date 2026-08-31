@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/auth/email/request — { email } → mint and send a sign-in link.
+ * POST /api/auth/email/request - { email } → mint and send a sign-in link.
  *
  * Lumi9 has no customer passwords, and neither does Femi9: the platform signs
  * shoppers in with a link or a phone OTP. That is why the login card asks for
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const body = (await req.json().catch(() => ({}))) as { email?: unknown; next?: unknown };
     const email = typeof body.email === "string" ? body.email : "";
-    // Validated here as well as on the way back in — this is about to be baked
+    // Validated here as well as on the way back in - this is about to be baked
     // into a URL we email out, so it must never leave as an off-site link.
     const next = safeNextPath(typeof body.next === "string" ? body.next : null, "/account");
 

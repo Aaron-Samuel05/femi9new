@@ -9,7 +9,7 @@ import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME } from "@/l
 
 const TITLE = "Parenting Tools | Diaper Planner, Growth & Vaccination Chart | Lumi9";
 const DESCRIPTION =
-  "Free parenting tools for Indian families: work out how many diapers you need and what they cost, when your baby sizes up, WHO growth percentiles, and the full vaccination schedule — from your baby's date of birth.";
+  "Free parenting tools for Indian families: work out how many diapers you need and what they cost, when your baby sizes up, WHO growth percentiles, and the full vaccination schedule - from your baby's date of birth.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -77,7 +77,7 @@ export default function ParentingToolsPage() {
         </h1>
         <p className="m-0 text-lead text-muted">
           A few small tools for the nappy years. Tell us about your baby once and every tool just
-          works — the details stay on your device. Add an email and we&apos;ll send a care &amp;
+          works - the details stay on your device. Add an email and we&apos;ll send a care &amp;
           vaccination plan too.
         </p>
       </header>

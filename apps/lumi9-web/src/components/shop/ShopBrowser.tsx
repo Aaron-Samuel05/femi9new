@@ -22,7 +22,7 @@ export function ShopBrowser() {
   const products = useMemo(() => {
     const rows = sizes.filter((size) => sizeFilter === "All" || size.size === sizeFilter).map((size) => ({
       size,
-      // Leads with the tier priced at `basePrice` — the same pick the PDP
+      // Leads with the tier priced at `basePrice` - the same pick the PDP
       // opens on, so the grid and the product page cannot quote different
       // prices. Femi9 chooses its default variant by the same rule
       // (`packVariants.find(v => v.price === price)`).
@@ -64,8 +64,8 @@ export function ShopBrowser() {
             SORT BY
           </h2>
           {/* The three labels need ~440px side by side. In the phone scroller they
-              overflowed with the last option cut at the edge, and — being flat
-              text until selected — they did not read as controls at all. A native
+              overflowed with the last option cut at the edge, and - being flat
+              text until selected - they did not read as controls at all. A native
               select always fits, and hands sorting to the OS picker. */}
           <select
             aria-labelledby="sort-label"
@@ -127,7 +127,7 @@ export function ShopBrowser() {
                   href={href}
                   className="inline-flex items-center text-[clamp(15px,1.5vw,17px)] font-bold text-midnight coarse:min-h-11 hover:text-moss-deep"
                 >
-                  Cloud Soft — {size.name}
+                  Cloud Soft - {size.name}
                 </Link>
                 <div className="mt-1 mb-3.5 text-[clamp(12px,1.1vw,13px)] text-muted">
                   Fits {size.fits} · {pack.count} pants

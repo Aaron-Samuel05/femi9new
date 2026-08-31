@@ -6,7 +6,7 @@ import { AccountDashboard } from "@/components/account/AccountDashboard";
 import { getSession } from "@femi9/core/auth";
 import { getAccountData } from "@femi9/core/services/account";
 
-// Reads the session cookie and per-user rows, so it must render per request —
+// Reads the session cookie and per-user rows, so it must render per request -
 // never statically cached and served to the wrong shopper.
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
  * somebody's order history.
  *
  * It also re-runs the ONBOARDING gate. An account that never captured a name,
- * an email or a number cannot render a member surface honestly — it greets
+ * an email or a number cannot render a member surface honestly - it greets
  * "Hi, there", shows an order history with nowhere to deliver to, and lets
  * checkout ask for all of it again. Typing the URL does not bypass that; the
  * shopper goes to /welcome and comes back here.

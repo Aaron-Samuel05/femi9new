@@ -1,5 +1,5 @@
 /**
- * "Loved by Parents" — two opposing marquee rows.
+ * "Loved by Parents" - two opposing marquee rows.
  *
  * The reviews used to sit in a static 4×2 grid. As a carousel the same eight
  * cards do more work: counter-scrolling rows read as an endless supply of
@@ -13,14 +13,14 @@
  *   · SEAMLESS LOOP. Each track holds the row's cards TWICE and travels exactly
  *     -50%. At that point copy 2 sits precisely where copy 1 started, so the
  *     reset is invisible. Any other distance shows a jump. The duplicate is
- *     `aria-hidden` — it is the same eight reviews, and a screen reader
+ *     `aria-hidden` - it is the same eight reviews, and a screen reader
  *     announcing all sixteen would imply twice the social proof.
  *   · PAUSE ON HOVER AND FOCUS. `group-hover` and `focus-within` both stop the
  *     track, so a mouse user can finish a sentence and a keyboard user tabbing
  *     into a card is not dragged away from it mid-read.
  *   · REDUCED MOTION. The animation is applied through `motion-safe:`, so at
  *     `prefers-reduced-motion: reduce` the tracks simply do not move. The row
- *     stays a horizontally scrollable strip — the content is all still
+ *     stays a horizontally scrollable strip - the content is all still
  *     reachable, it just waits to be asked for.
  *   · NO PAGE OVERFLOW. Tracks are `w-max` inside an `overflow-hidden` rail,
  *     so the wide content never widens the document. This is what keeps the
@@ -39,7 +39,7 @@ import { Reveal } from "@/components/motion/Reveal";
  * The rail reads the console's moderation queue.
  *
  * `PARENT_REVIEWS` in `content.ts` was eight invented quotes under a "Verified
- * buyer" badge — a claim about people who did not exist, on a surface the
+ * buyer" badge - a claim about people who did not exist, on a surface the
  * console has a moderation queue for. Approved rows only, so approving or
  * hiding a review in the console is what changes this rail.
  */
@@ -126,7 +126,7 @@ function ReviewCard({ r }: { r: Review }) {
 /**
  * One rail. `reverse` sends it left-to-right instead of right-to-left.
  *
- * The rail is the scroll container and the track is the moving thing — they
+ * The rail is the scroll container and the track is the moving thing - they
  * cannot be the same element, because animating `transform` on a scroller
  * fights the scroll position.
  */
@@ -144,7 +144,7 @@ function MarqueeRow({ items, reverse = false }: { items: readonly Review[]; reve
         The two copies must be EXACTLY equal in width or -50% lands mid-card and
         the loop visibly jumps once per cycle. That means the outer track carries
         NO gap of its own and each copy owns its internal gaps plus one trailing
-        gap (`pr-4`) — so a copy is `4×card + 4×gap`, both times. Putting the gap
+        gap (`pr-4`) - so a copy is `4×card + 4×gap`, both times. Putting the gap
         on the track instead adds one extra gap to the first copy only, which is
         the version of this bug that survives review because it is a 16px drift
         that only shows on every second lap.
@@ -158,7 +158,7 @@ function MarqueeRow({ items, reverse = false }: { items: readonly Review[]; reve
           "group-focus-within:[animation-play-state:paused]",
         ].join(" ")}
       >
-        {/* Copy 1 — the real list. Copy 2 — the loop's tail, hidden from AT. */}
+        {/* Copy 1 - the real list. Copy 2 - the loop's tail, hidden from AT. */}
         <div className="flex gap-4 pr-4">
           {items.map((r) => (
             <ReviewCard key={`a-${r.id}`} r={r} />
@@ -180,7 +180,7 @@ export async function Testimonials() {
    * parent scrolling the home page has not chosen a size yet.
    *
    * Capped at twelve because the marquee renders each row TWICE (the second copy
-   * is the loop's tail) — so twelve rows is twenty-four cards, and an uncapped
+   * is the loop's tail) - so twelve rows is twenty-four cards, and an uncapped
    * read would put every review the brand has ever collected into the home
    * page's HTML.
    */
@@ -193,7 +193,7 @@ export async function Testimonials() {
   const reviews: Review[] = rows.map((row, i) => ({
     id: row.id,
     name: row.name,
-    // Never the empty string — a blank avatar circle reads as a failed image.
+    // Never the empty string - a blank avatar circle reads as a failed image.
     initial: row.name.trim().charAt(0).toUpperCase() || "\u2022",
     // The tint cycles by position rather than being stored: it is decoration,
     // and a colour column is one more thing for a moderator to have to set.

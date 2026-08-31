@@ -5,7 +5,7 @@ import type { JournalArticle } from "@/lib/journal.server";
 /**
  * The cover, or the surface it would have sat on.
  *
- * `image` is nullable in the database — the console does not force one — and
+ * `image` is nullable in the database - the console does not force one - and
  * next/image throws on an empty src, so an article published without a cover
  * would take the whole listing down with it. A tinted block is the honest
  * degradation: the card still reads, and the missing photograph is visible to
@@ -50,7 +50,7 @@ export function PostMeta({ post, className = "" }: { post: JournalArticle; class
 
 /**
  * Small tinted category label. The colour comes from the category ROW, carried
- * on the post — it used to be looked up in a module table keyed by name, so a
+ * on the post - it used to be looked up in a module table keyed by name, so a
  * category the console renamed or added rendered with the first category's
  * accent and nothing said so.
  */
@@ -73,7 +73,7 @@ export function CategoryChip({
 }
 
 /**
- * Standard editorial card — the listing grid and "Keep reading".
+ * Standard editorial card - the listing grid and "Keep reading".
  *
  * The whole card is one link rather than a card with a link inside it, so the
  * hit area on a phone is the card and not just the headline. That is also why
@@ -108,7 +108,7 @@ export function ArticleCard({ post, sizes }: { post: JournalArticle; sizes?: str
 /**
  * Full-bleed overlay tile for the featured mosaic.
  *
- * `priority` is reserved for the lead tile — it is the listing's LCP element at
+ * `priority` is reserved for the lead tile - it is the listing's LCP element at
  * every viewport, and lazy-loading it costs a visible chunk of that metric.
  */
 export function MosaicTile({

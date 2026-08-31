@@ -8,7 +8,7 @@ import { noindexReason, warnIfNotIndexable } from "@/lib/seo";
  *
  * Fails CLOSED: a task that cannot reach Lumi9's schema, or cannot sign a
  * session, answers 503 and the load balancer takes it out. That is what keeps a
- * broken deployment from replacing working tasks — ECS waits for the new ones
+ * broken deployment from replacing working tasks - ECS waits for the new ones
  * to go healthy, they never do, and the rollout stalls with the old revision
  * still serving.
  *
@@ -25,7 +25,7 @@ export async function GET() {
     const ready = db && blocking.length === 0;
 
     // A WARNING, never blocking. Serving noindex is wrong, but a task that is
-    // otherwise healthy must keep taking traffic — failing the probe over an
+    // otherwise healthy must keep taking traffic - failing the probe over an
     // SEO setting would turn a mis-set variable into an outage. It is reported
     // here because it is otherwise completely silent: the site works, and only
     // crawlers can tell that anything is wrong.
@@ -40,7 +40,7 @@ export async function GET() {
      * task with no auth provider still serves the catalogue perfectly, and
      * failing the probe would turn a missing API key into an outage of the
      * whole storefront. But it is worth reporting loudly, because checkout is
-     * gated behind sign-in here — so no working method means nobody can buy,
+     * gated behind sign-in here - so no working method means nobody can buy,
      * on a site that otherwise looks completely healthy.
      */
     const authMethods = availableAuthMethods();
@@ -61,14 +61,14 @@ export async function GET() {
                 ...(noindex ? [`NOT_INDEXABLE: ${noindex}`] : []),
                 ...(noAuth
                   ? [
-                      "NO_AUTH_PROVIDER: no sign-in method is configured or enabled — " +
+                      "NO_AUTH_PROVIDER: no sign-in method is configured or enabled - " +
                         "checkout is gated, so nobody can complete an order",
                     ]
                   : []),
               ],
             }
           : {}),
-        // Computed per request — a module-level value would freeze at build.
+        // Computed per request - a module-level value would freeze at build.
         time: new Date().toISOString(),
       },
       { status: ready ? 200 : 503 },

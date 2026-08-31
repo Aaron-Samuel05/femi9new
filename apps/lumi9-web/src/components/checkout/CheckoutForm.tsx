@@ -57,7 +57,7 @@ export interface CheckoutPrefill {
 /**
  * Split a stored full name into the two boxes this form asks for.
  *
- * The LAST word is the surname and everything before it is the first name —
+ * The LAST word is the surname and everything before it is the first name -
  * not the reverse. "Priya Ramachandran Iyer" is a person with a two-word given
  * name far more often than a two-word surname, and either way she can correct
  * it; the point is that she is correcting a field rather than filling an empty
@@ -77,7 +77,7 @@ export function CheckoutForm({
 }) {
   const router = useRouter();
   const { lines, subtotal, ready } = useCart();
-  // The same quote the cart showed, from the same provider — including any
+  // The same quote the cart showed, from the same provider - including any
   // coupon the shopper applied there. Nothing on this screen computes a total.
   const { quote } = useQuote();
   const prefilled = splitName(prefill?.name);
@@ -87,7 +87,7 @@ export function CheckoutForm({
    * Phone and pincode are CONTROLLED and digit-only.
    *
    * This is the whole "Invalid request" bug. The server takes `/^\d{10}$/` and
-   * `/^\d{6}$/`, and the form sent whatever was typed — so "+91 98842 30571"
+   * `/^\d{6}$/`, and the form sent whatever was typed - so "+91 98842 30571"
    * and "641 001", which is how most people write both, were rejected. The
    * shopper then saw a single opaque banner reading "Invalid request" over a
    * form with no field marked, having done nothing wrong.
@@ -113,7 +113,7 @@ export function CheckoutForm({
    *
    * The server recomputes every total from the database, so nothing here sends
    * a price. Whatever happens to the payment, the shopper ends up on the order
-   * page, which reads the true status — a verify hiccup shows "pending" rather
+   * page, which reads the true status - a verify hiccup shows "pending" rather
    * than a lie, and the webhook can still finalise it.
    */
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -163,7 +163,7 @@ export function CheckoutForm({
         /*
          * The route answers a schema failure with `details.fieldErrors` naming
          * the exact field and why. The form used to drop that on the floor and
-         * render `body.error` alone — which for a rejected field is the string
+         * render `body.error` alone - which for a rejected field is the string
          * "Invalid request", printed above a form with nothing marked and no
          * way to tell which of nine inputs to look at.
          *
@@ -188,7 +188,7 @@ export function CheckoutForm({
       // No live keys → no gateway to open. Simulate the capture and be honest
       // on screen that it is a test.
       if (!payment?.configured || !payment.razorpayOrderId) {
-        setNote("Test mode — simulating payment…");
+        setNote("Test mode - simulating payment…");
         await postVerify({ orderNo, mock: true });
         done();
         return;
@@ -372,7 +372,7 @@ export function CheckoutForm({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span>
                 <span className="block text-[15px] font-bold text-midnight">Standard delivery</span>
-                <span className="text-[13px] text-muted">3–5 business days, across India</span>
+                <span className="text-[13px] text-muted">3-5 business days, across India</span>
               </span>
               <span className="text-[15px] font-bold text-midnight">
                 {quote ? shippingLabel(quote.shipping) : "Calculated below"}
@@ -390,20 +390,20 @@ export function CheckoutForm({
           Payment is taken by Razorpay, in Razorpay's own window.
           
           What stood here was a mock: three method chips whose selection was
-          never read, and — under "Card" — a card number, expiry and CVC field
+          never read, and - under "Card" - a card number, expiry and CVC field
           with no `name`, never submitted anywhere and never used. They put a
           shopper's PAN and CVC into our DOM, on our origin, for nothing: the
           Razorpay modal opens straight afterwards and asks for the card again.
           Collecting those digits at all drags this origin into PCI-DSS scope,
           and a "Cash on delivery" chip advertised a settlement option that does
-          not exist — selecting it still opened the gateway and demanded payment.
+          not exist - selecting it still opened the gateway and demanded payment.
         */}
         <Fieldset step={4} title="Payment">
           <div className="rounded-[14px] bg-moss-tint px-5 py-4 text-sm text-midnight">
             <p className="m-0 mb-1.5 font-bold">Secure payment by Razorpay</p>
             <p className="m-0 text-muted">
               Card, UPI, net banking and wallets. Placing your order opens
-              Razorpay&apos;s payment window — your card details are entered
+              Razorpay&apos;s payment window - your card details are entered
               there and never touch Lumi9.
             </p>
           </div>
@@ -424,7 +424,7 @@ export function CheckoutForm({
                 </span>
               </div>
               <div className="flex-1">
-                <div className="text-sm font-bold">Cloud Soft — {line.name}</div>
+                <div className="text-sm font-bold">Cloud Soft - {line.name}</div>
                 <div className="text-xs text-muted">{line.count} pants</div>
               </div>
               <div className="text-sm font-bold">{inr(line.lineTotal)}</div>

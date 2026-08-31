@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/account/addresses — save a delivery address.
+ * POST /api/account/addresses - save a delivery address.
  *
  * The account page listed addresses and offered no way to add, edit or remove
  * one; the only writer was checkout, which mints a fresh row per order. So the
@@ -17,8 +17,8 @@ export const dynamic = "force-dynamic";
  *
  * Every message here is written for a person, because the form renders them
  * inline from `details.fieldErrors` rather than throwing six answers away and
- * showing one generic sentence. `label` carries the shopper's own choice —
- * Home / Work / Other, or free text — not a hardcoded one.
+ * showing one generic sentence. `label` carries the shopper's own choice -
+ * Home / Work / Other, or free text - not a hardcoded one.
  */
 const AddressSchema = z.object({
   label: z.string().trim().min(1, "Give this address a label").max(40),

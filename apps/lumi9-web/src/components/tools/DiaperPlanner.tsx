@@ -10,7 +10,7 @@ import { defaultPerDay, planDiapers } from "@/lib/diaper-planning";
 import { sizeForWeight } from "@/lib/size-projection";
 
 export function DiaperPlanner() {
-  // The catalogue from the DATABASE, not the SIZES array in lib/catalog.ts —
+  // The catalogue from the DATABASE, not the SIZES array in lib/catalog.ts -
   // that module is the seed's input, so the monthly cost quoted here was
   // computed from constants a console price change never moved.
   const { sizes, getSize } = useCatalogData();
@@ -33,7 +33,7 @@ export function DiaperPlanner() {
         How many will you need?
       </h2>
       <p className="m-0 mb-5 max-w-[52ch] text-sm text-muted">
-        We start from a typical rate for your baby&apos;s age. Change it to what you actually use —
+        We start from a typical rate for your baby&apos;s age. Change it to what you actually use -
         your number is the accurate one.
       </p>
 
@@ -47,7 +47,7 @@ export function DiaperPlanner() {
           >
             {sizes.map(({ size: code, range }) => (
               <option key={code} value={code}>
-                {code} — {range}
+                {code} - {range}
               </option>
             ))}
           </select>

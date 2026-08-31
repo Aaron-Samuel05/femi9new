@@ -28,7 +28,7 @@ export function parseIsoDate(iso: IsoDate): { y: number; m: number; d: number } 
   return { y, m, d };
 }
 
-/** UTC noon — see the module note on why not local midnight. */
+/** UTC noon - see the module note on why not local midnight. */
 function toUtcNoon(iso: IsoDate): Date | null {
   const parts = parseIsoDate(iso);
   if (!parts) return null;
@@ -65,7 +65,7 @@ const CORRECTION_STOPS_AT_MONTHS = 24;
 /**
  * Corrected age for prematurity, for GROWTH only.
  *
- * Immunisation must never use this — vaccine schedules run on chronological age
+ * Immunisation must never use this - vaccine schedules run on chronological age
  * regardless of gestation, and correcting them would delay real doses.
  */
 export function correctedAgeInMonths(

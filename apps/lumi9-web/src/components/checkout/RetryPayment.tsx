@@ -9,7 +9,7 @@ import { inr } from "@/lib/catalog";
  * "Complete payment" on an order that was placed but never paid for.
  *
  * Dismissing the Razorpay modal calls `ondismiss: done` in CheckoutForm, which
- * navigates here with the order still `pending` — and the cart was consumed
+ * navigates here with the order still `pending` - and the cart was consumed
  * when that order was created, so re-adding the items is not a route back
  * either. Without this the shopper has an unpaid order, an empty basket and
  * nothing to press.
@@ -64,10 +64,10 @@ export function RetryPayment({
 
       const payment = body.payment;
 
-      // No live keys configured — simulate the capture and say so, the same way
+      // No live keys configured - simulate the capture and say so, the same way
       // checkout does, rather than opening a gateway that cannot exist.
       if (!payment.configured || !payment.razorpayOrderId) {
-        setNote("Test mode — simulating payment…");
+        setNote("Test mode - simulating payment…");
         await postVerify({ orderNo, mock: true });
         router.refresh();
         return;

@@ -1,12 +1,12 @@
 /**
  * Seed Lumi9's catalog into the `lumi9` schema.
  *
- * The SHAPE of the data is shared with Femi9 — one `schema.prisma` in
- * packages/db — but the DATA is not, which is why this seed lives with the app
+ * The SHAPE of the data is shared with Femi9 - one `schema.prisma` in
+ * packages/db - but the DATA is not, which is why this seed lives with the app
  * rather than beside the schema. Femi9's seed does the same with its own
  * catalog.
  *
- * `src/lib/catalog.ts` is this seed's INPUT. The storefront no longer reads it —
+ * `src/lib/catalog.ts` is this seed's INPUT. The storefront no longer reads it -
  * it reads the database, through `catalog.server.ts`. So editing that module
  * changes what a fresh seed writes and nothing that is already live; a live
  * catalogue is edited in the console.
@@ -22,18 +22,18 @@ import { PDP_ACCORDION } from '../src/lib/content'
 
 const BRAND = 'lumi9' as const
 
-/** `cloud-soft-nb`, `cloud-soft-m`, … — stable, so reruns update. */
+/** `cloud-soft-nb`, `cloud-soft-m`, … - stable, so reruns update. */
 function slugFor(size: ProductSize): string {
   return `cloud-soft-${size.size.toLowerCase()}`
 }
 
-/** `LUMI9-M-24` — stable per size and pack tier. */
+/** `LUMI9-M-24` - stable per size and pack tier. */
 function skuFor(size: ProductSize, count: number): string {
   return `LUMI9-${size.size}-${count}`
 }
 
 /**
- * `Product.flow` is Femi9's word — "Heavy · Night + Day" — and there is no
+ * `Product.flow` is Femi9's word - "Heavy · Night + Day" - and there is no
  * period flow on a diaper. Rather than migrate a column that Femi9 reads
  * everywhere, Lumi9 uses the same slot for the equivalent idea: what the
  * product is rated for. Renaming it to something brand-neutral is worth doing
@@ -44,12 +44,12 @@ function ratedFor(size: ProductSize): string {
 }
 
 /**
- * Subscription cadences — reference data, not demo content.
+ * Subscription cadences - reference data, not demo content.
  *
  * The box builder posts a `code` to /api/subscriptions and `createSubscription`
  * resolves it against these rows; without them EVERY subscribe attempt is a 400
  * that nothing on the page can explain. Sourced from CADENCES in
- * src/lib/catalog.ts so the picker and the database cannot drift apart — the
+ * src/lib/catalog.ts so the picker and the database cannot drift apart - the
  * same arrangement, and the same reason, as Femi9's seed.
  *
  * The codes are Lumi9's own. Femi9's are period-cycle shaped ('cycle', '4w',
@@ -131,8 +131,8 @@ async function main() {
     // ── Images: replace wholesale, since position matters and the set is small
     //
     // The bytes go to S3 and the row stores the `/uploads/…` URL CloudFront
-    // serves back. This used to write `packImage(...)` — `/assets/products/
-    // M-24.jpeg`, a file baked into the container — so every seeded photo came
+    // serves back. This used to write `packImage(...)` - `/assets/products/
+    // M-24.jpeg`, a file baked into the container - so every seeded photo came
     // from the image rather than from object storage, and could not be changed
     // without a redeploy. Nothing reported it: the page rendered a perfectly
     // good picture, just not one anybody could replace.
@@ -150,13 +150,13 @@ async function main() {
         data: size.packs.map((pack, index) => ({
           productId: product.id,
           url: urls[index]!,
-          alt: `${productName(size)} — ${pack.count} pack`,
+          alt: `${productName(size)} - ${pack.count} pack`,
           position: index,
         })),
       })
     } else {
       console.warn(
-        `  ! UPLOADS_BUCKET unset — no photos seeded for ${size.size}. ` +
+        `  ! UPLOADS_BUCKET unset - no photos seeded for ${size.size}. ` +
           'Upload them in the console, or re-run with a bucket configured.',
       )
     }

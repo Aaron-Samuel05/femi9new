@@ -22,7 +22,7 @@ export function Toast() {
   /*
    * Visibility is DERIVED, not its own state set at the top of an effect.
    *
-   * The obvious shape — `setVisible(true)` in the effect body — cascades a
+   * The obvious shape - `setVisible(true)` in the effect body - cascades a
    * second render before the first has painted, and `react-hooks/
    * set-state-in-effect` (which CI runs) rejects it outright. Holding the id of
    * the last message to time out inverts it: a toast is visible until its own

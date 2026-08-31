@@ -4,12 +4,12 @@ import { webhookConfigured, verifyWebhookSignature } from '@femi9/core/razorpay'
 import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/checkout'
 
 /**
- * POST /api/webhooks/razorpay — the ASYNCHRONOUS capture path, for LUMI9.
+ * POST /api/webhooks/razorpay - the ASYNCHRONOUS capture path, for LUMI9.
  *
  * Each brand has its OWN webhook endpoint, and that is not tidiness. Razorpay
  * signs an event with the secret of the account that raised the charge, so once
  * the brands are on separate merchant accounts a Lumi9 payment verified against
- * Femi9's secret fails its signature check here — the order is never marked
+ * Femi9's secret fails its signature check here - the order is never marked
  * paid, money has been taken, nothing ships, and nobody sees an error. Point
  * each brand's Razorpay dashboard at its own URL.
  *
@@ -17,7 +17,7 @@ import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/c
  * HMAC_SHA256(rawBody, RAZORPAY_WEBHOOK_SECRET) against the x-razorpay-signature
  * header, so the body MUST be read as raw text (a re-serialized JSON would not
  * match the signature byte-for-byte). On a payment.captured / order.paid event
- * we resolve our order from the gateway order id and mark it paid idempotently —
+ * we resolve our order from the gateway order id and mark it paid idempotently -
  * this is the source of truth even if the shopper closed the tab before the sync
  * verify call ran.
  *
@@ -39,7 +39,7 @@ type RazorpayWebhookEvent = {
 
 export async function POST(req: NextRequest) {
   return handle(async () => {
-    // Read the exact bytes ONCE — required for a correct signature check.
+    // Read the exact bytes ONCE - required for a correct signature check.
     const rawBody = await req.text()
 
     // No keys → no genuine webhook and nothing to verify against. Acknowledge so

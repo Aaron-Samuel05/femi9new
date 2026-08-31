@@ -12,7 +12,7 @@ import {
 } from '@femi9/core/services/checkout'
 
 /**
- * POST /api/payments/verify — the SYNCHRONOUS return path from Razorpay Checkout.
+ * POST /api/payments/verify - the SYNCHRONOUS return path from Razorpay Checkout.
  *
  * Two mutually-exclusive modes, chosen by isConfigured('lumi9') (never by the client):
  *
@@ -24,7 +24,7 @@ import {
  *  accept an explicit { mock:true } and capture with a synthetic payment id and
  *  signatureVerified:false. This branch is gated on isConfigured('lumi9')===false, so
  *  once real keys exist a { mock:true } body fails the live schema and is
- *  REJECTED (400) — the mock path can never bypass real payment in production.
+ *  REJECTED (400) - the mock path can never bypass real payment in production.
  *
  * Idempotent (markOrderPaid short-circuits an already-paid order) and always
  * answers { ok:true, status:'paid' } on success.
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       if (!valid) return badRequest('Payment signature verification failed')
 
       // Resolve which order this payment belongs to from the VERIFIED gateway
-      // order id — never from the client-supplied orderNo, which a caller could
+      // order id - never from the client-supplied orderNo, which a caller could
       // swap to a cheaper/other order to claim it paid. The submitted orderNo is
       // only honoured when it matches the order the signed payment actually
       // references.

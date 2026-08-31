@@ -7,7 +7,7 @@ import { CADENCES, inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import type { DbProductSize } from "@/lib/catalog.server";
 
-/** Subscribable pack tiers — the 3-count trial packs aren't offered on subscription. */
+/** Subscribable pack tiers - the 3-count trial packs aren't offered on subscription. */
 function subscribablePacks(size: DbProductSize) {
   return size.packs.filter((pack) => pack.count >= 24);
 }
@@ -34,7 +34,7 @@ export function BoxBuilder() {
    *
    * "Start subscription" was a `<Link href="/checkout">`: it created nothing,
    * carried none of the size, pack or frequency chosen above, and applied no
-   * discount — the shopper arrived at checkout with whatever was already in her
+   * discount - the shopper arrived at checkout with whatever was already in her
    * cart, at full price, having been told she was subscribing at a saving.
    *
    * A subscription belongs to an account (it has to: it recurs, and something
@@ -62,7 +62,7 @@ export function BoxBuilder() {
       const body = (await res.json().catch(() => null)) as { error?: string } | null;
       setError(body?.error ?? "We could not start your subscription. Please try again.");
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error - please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +130,7 @@ export function BoxBuilder() {
 
         <div className="w-full rounded-card bg-midnight p-card text-butter lg:sticky lg:top-24">
           <div className="mb-4 text-xs font-bold tracking-[0.14em] text-gold">YOUR BOX</div>
-          <div className="mb-1.5 font-display text-[clamp(20px,2.2vw,24px)]">Cloud Soft — {size.name}</div>
+          <div className="mb-1.5 font-display text-[clamp(20px,2.2vw,24px)]">Cloud Soft - {size.name}</div>
           <div className="mb-6 text-sm opacity-80">
             {pack.count} pants · {cadence.label.toLowerCase()}
           </div>

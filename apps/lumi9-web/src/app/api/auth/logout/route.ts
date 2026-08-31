@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/auth/logout — clear the session.
+ * POST /api/auth/logout - clear the session.
  *
  * The guest cart cookie goes too. Leaving it would hand the next person at a
  * shared device the previous shopper's basket, which is both a surprise and a

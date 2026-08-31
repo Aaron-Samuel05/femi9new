@@ -40,7 +40,7 @@ const HORIZON_MONTHS = 6;
  * matters for exactly the children this is most useful for: a baby on the 90th
  * centile leaves a size sooner than the median, one on the 10th later.
  *
- * Capped at six months and reported as a month, never a date — precision beyond
+ * Capped at six months and reported as a month, never a date - precision beyond
  * that is invented.
  */
 export function projectSizeUp(input: {

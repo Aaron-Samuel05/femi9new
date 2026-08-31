@@ -8,7 +8,7 @@ import { Icon } from "@/components/ui/Icon";
  *
  * The variant ids come off the ORDER, so this puts back exactly what was
  * bought rather than parsing "54 pcs" out of a title and hoping the catalogue
- * still has that pack. A size retired since is simply not re-added — silently
+ * still has that pack. A size retired since is simply not re-added - silently
  * substituting a neighbouring one is how a shopper ends up with the wrong
  * nappies for her baby.
  *

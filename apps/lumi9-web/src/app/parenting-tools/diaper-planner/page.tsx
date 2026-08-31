@@ -5,7 +5,7 @@ import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
 
 const TITLE = "How Many Diapers Will You Need? Planner & Cost | Lumi9";
 const DESCRIPTION =
-  "Work out how many diapers your baby needs a day, the right pack size, and roughly what a month costs — from your baby's age.";
+  "Work out how many diapers your baby needs a day, the right pack size, and roughly what a month costs - from your baby's age.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -18,7 +18,7 @@ export default function DiaperPlannerPage() {
   return (
     <ToolPageFrame
       title="How many will you need?"
-      subtitle="A realistic diaper count and monthly cost — start from the estimate, then set your baby's actual rate."
+      subtitle="A realistic diaper count and monthly cost - start from the estimate, then set your baby's actual rate."
       crumb="Diaper planner"
       path="/parenting-tools/diaper-planner"
     >

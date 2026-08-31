@@ -8,7 +8,7 @@ import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME 
 
 const TITLE = "Help Centre | Lumi9 Baby Diapers";
 const DESCRIPTION =
-  "Answers on baby diaper sizing, subscriptions, delivery, returns and product safety — everything parents ask us about Lumi9 Cloud Soft diapers.";
+  "Answers on baby diaper sizing, subscriptions, delivery, returns and product safety - everything parents ask us about Lumi9 Cloud Soft diapers.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -21,9 +21,9 @@ export const metadata: Metadata = {
 export default function HelpPage() {
   return (
     <PageShell links={NAV_LINKS}>
-      {/* Every answer below is in the server-rendered HTML — the accordion hides
+      {/* Every answer below is in the server-rendered HTML - the accordion hides
           collapsed panels with the `hidden` attribute rather than unmounting
-          them — so this FAQPage node describes content a crawler can actually
+          them - so this FAQPage node describes content a crawler can actually
           find on the page. */}
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(FAQS))} />
       <script

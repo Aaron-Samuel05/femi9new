@@ -7,7 +7,7 @@ import { useSession } from "@/lib/auth-context";
 import type { AccountUser } from "@femi9/core/services/account";
 
 /**
- * Name, email and mobile — the surface the account page did not have.
+ * Name, email and mobile - the surface the account page did not have.
  *
  * Without it, a shopper who signed in with a link had no way to add a phone
  * number and one who signed in with an OTP had no way to add an email, so
@@ -21,7 +21,7 @@ import type { AccountUser } from "@femi9/core/services/account";
  * with `code: "phone_requires_verification"`, and this panel switches to the
  * OTP challenge instead of showing the shopper an error she cannot act on.
  *
- * That is the same two-step /welcome runs, against the same two endpoints —
+ * That is the same two-step /welcome runs, against the same two endpoints -
  * there is one implementation of "prove you own this number" on the storefront,
  * not two that can drift.
  */

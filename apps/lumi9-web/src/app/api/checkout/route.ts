@@ -15,7 +15,7 @@ import {
 import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
 
 /**
- * POST /api/checkout — turn the guest's cart into a pending order.
+ * POST /api/checkout - turn the guest's cart into a pending order.
  *
  * Money is never taken from the body: `placeOrder` recomputes every total from
  * the database, so a tampered payload cannot buy anything cheaply. Only the
@@ -44,7 +44,7 @@ const CheckoutSchema = z.object({
   addressLabel: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
 });
 
-/** 409 helper — api.ts has no conflict envelope, so build it inline. */
+/** 409 helper - api.ts has no conflict envelope, so build it inline. */
 function conflict(error: string) {
   return NextResponse.json({ error }, { status: 409 });
 }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   if (!rl.ok) return tooManyRequests(rl.retryAfterSec);
 
   return handle(async () => {
-    // No guest cookie means no cart was ever created — treat as empty.
+    // No guest cookie means no cart was ever created - treat as empty.
     const token = await getGuestToken();
     if (!token) return badRequest("Your bag is empty.");
 

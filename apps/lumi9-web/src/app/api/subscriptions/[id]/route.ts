@@ -10,7 +10,7 @@ import { pause, resume, skipNext, cancel } from "@femi9/core/services/subscripti
  *
  * Customer-guarded AND ownership-checked: the service scopes every mutation by
  * { id, userId }, so a request for somebody else's subscription comes back as a
- * 404 — not owned is indistinguishable from missing, which is what keeps the id
+ * 404 - not owned is indistinguishable from missing, which is what keeps the id
  * space from being enumerable.
  *
  * The account page's "Skip or pause a box" used to be a link to /contact, with
@@ -25,7 +25,7 @@ const patchSchema = z.object({
   action: z.enum(["pause", "resume", "skip", "cancel"]),
 });
 
-// Each action to its service call — the handler stays a straight lookup.
+// Each action to its service call - the handler stays a straight lookup.
 const ACTIONS = { pause, resume, skip: skipNext, cancel } as const;
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ id: string }> }) {

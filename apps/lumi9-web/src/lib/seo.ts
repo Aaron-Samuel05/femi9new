@@ -2,15 +2,15 @@
  * Site-wide SEO primitives: the canonical origin, absolute-URL helpers and the
  * structured-data blocks that appear on more than one page.
  *
- * Everything that needs an absolute URL — canonicals, Open Graph images,
- * `sitemap.xml`, JSON-LD `@id`s — goes through `SITE_URL` so a single env var
+ * Everything that needs an absolute URL - canonicals, Open Graph images,
+ * `sitemap.xml`, JSON-LD `@id`s - goes through `SITE_URL` so a single env var
  * moves the whole site between staging and production. Hard-coding the domain
  * in each page is how a staging deploy ends up telling Google its canonical is
  * the production URL, which quietly deindexes the pages you did want crawled.
  *
  * `SITE_URL` is read FIRST and is deliberately not a `NEXT_PUBLIC_` name. Next
  * inlines every `NEXT_PUBLIC_*` reference at build time, and the Docker build
- * stage has no deploy configuration — so a public variable would bake whatever
+ * stage has no deploy configuration - so a public variable would bake whatever
  * the build happened to see into the image, and the staging guard below could
  * never fire at runtime. Nothing in this module is imported by a client
  * component, so a server-only variable is all it needs.
@@ -41,20 +41,20 @@ export const IS_CANONICAL_HOST = SITE_URL === CANONICAL_ORIGIN;
  * The staging guard is correct and load-bearing, and it is also the quietest
  * possible way to launch invisibly. `CANONICAL_ORIGIN` is a constant in this
  * file; `SITE_URL` arrives from the environment. If the site ships on a
- * hostname nobody remembered to write here — `shop.lumi9.in` and `lumi9.in`
+ * hostname nobody remembered to write here - `shop.lumi9.in` and `lumi9.in`
  * are both named elsewhere in this repo, and an un-aliased CloudFront
- * distribution serves a `*.cloudfront.net` name — then every page carries
+ * distribution serves a `*.cloudfront.net` name - then every page carries
  * `noindex` and robots.txt says `Disallow: /`, the site works perfectly for
  * every human who visits it, and no crawler ever comes. Nothing fails, nothing
  * logs, and the first signal is an empty Search Console weeks later.
  *
  * So the mismatch is surfaced: /api/health reports it as a warning (not a
- * failure — a mis-set origin must never pull tasks out of the load balancer),
+ * failure - a mis-set origin must never pull tasks out of the load balancer),
  * and `assertCanonicalHostIntent` logs it once at boot.
  */
 export function noindexReason(): string | null {
   if (IS_CANONICAL_HOST) return null;
-  return `SITE_URL is ${SITE_URL || "(unset)"} but CANONICAL_ORIGIN is ${CANONICAL_ORIGIN} — every page is serving noindex and robots.txt is Disallow: /`;
+  return `SITE_URL is ${SITE_URL || "(unset)"} but CANONICAL_ORIGIN is ${CANONICAL_ORIGIN} - every page is serving noindex and robots.txt is Disallow: /`;
 }
 
 /**
@@ -81,7 +81,7 @@ export function absoluteUrl(path = "/"): string {
   return `${SITE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-/** The default social card — used wherever a page has no image of its own. */
+/** The default social card - used wherever a page has no image of its own. */
 export const DEFAULT_OG_IMAGE = {
   url: absoluteUrl("/assets/journal/lumi9-baby-diapers-our-story.webp"),
   width: 1800,
@@ -116,7 +116,7 @@ export function organizationSchema() {
     url: SITE_URL,
     logo: absoluteUrl("/assets/logo-midnight.png"),
     description:
-      "Lumi9 by Femi9 makes Cloud Soft baby diapers and diaper pants — soft, breathable, leak-protected comfort for newborns and growing babies, in sizes NB to XL.",
+      "Lumi9 by Femi9 makes Cloud Soft baby diapers and diaper pants - soft, breathable, leak-protected comfort for newborns and growing babies, in sizes NB to XL.",
     parentOrganization: { "@type": "Organization", name: "Femi9", url: "https://femi9.in" },
     areaServed: { "@type": "Country", name: "India" },
     contactPoint: {
@@ -156,7 +156,7 @@ export function breadcrumbSchema(crumbs: { name: string; path: string }[]) {
 
 /**
  * FAQPage. Google only honours this when the same questions and answers are
- * visible on the page, so every caller must render the FAQ block too — passing
+ * visible on the page, so every caller must render the FAQ block too - passing
  * schema for hidden content is a manual-action risk, not a shortcut to a rich
  * result.
  */
@@ -184,8 +184,8 @@ export function faqSchema(faqs: { q: string; a: string }[]) {
 /**
  * Serialises a JSON-LD node for `dangerouslySetInnerHTML`.
  *
- * `<` is escaped because a stray `</script>` inside any string field — a
- * product description pasted from the console, say — would otherwise close the
+ * `<` is escaped because a stray `</script>` inside any string field - a
+ * product description pasted from the console, say - would otherwise close the
  * script tag early and inject the rest of the JSON into the document as markup.
  */
 export function jsonLd(data: unknown): { __html: string } {

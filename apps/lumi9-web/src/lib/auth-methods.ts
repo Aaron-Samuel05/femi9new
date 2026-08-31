@@ -13,7 +13,7 @@ import { mockProvidersAllowed } from "@femi9/core/runtime-mode";
  * has credentials but `GOOGLE_REDIRECT_URI` still names Femi9's host, so the
  * consent screen answers `redirect_uri_mismatch`; MSG91 has no key; and
  * `RESEND_API_KEY` is deliberately blank. In production every one of those is a
- * button that takes a shopper somewhere broken — which is worse than a button
+ * button that takes a shopper somewhere broken - which is worse than a button
  * that is not there, because she cannot tell whether the fault is hers.
  *
  * ── The rule ────────────────────────────────────────────────────────────────
@@ -22,15 +22,15 @@ import { mockProvidersAllowed } from "@femi9/core/runtime-mode";
  * an SMS bill). An explicit `AUTH_*_ENABLED=false` overrides both.
  *
  * The kill switch is what the probe cannot replace. Google is the case in
- * point: `googleConfigured()` is TRUE today — the client id and secret are
- * present — and the flow is still broken, because the thing that is wrong is a
+ * point: `googleConfigured()` is TRUE today - the client id and secret are
+ * present - and the flow is still broken, because the thing that is wrong is a
  * redirect URI no probe can validate without asking Google. Detection answers
  * "is it set up?"; the switch answers "do we want it on?", and those are
  * different questions.
  *
  * ── Fail CLOSED, but never to zero ──────────────────────────────────────────
  * `atLeastOne` is the guard that matters. Turning off the last method leaves a
- * storefront nobody can sign into — and since checkout is gated, nobody can buy
+ * storefront nobody can sign into - and since checkout is gated, nobody can buy
  * from either. That is a full outage produced by a config change, and it would
  * look like a working site. When everything resolves to off, the emailed link
  * is forced back on and `disabledEverything` says so, so `/api/health` can warn
@@ -46,7 +46,7 @@ export interface AuthMethods {
 /**
  * `AUTH_GOOGLE_ENABLED` / `AUTH_PHONE_ENABLED` / `AUTH_EMAIL_ENABLED`.
  *
- * Unset means "follow the provider probe" — the useful default, so a deployment
+ * Unset means "follow the provider probe" - the useful default, so a deployment
  * that configures MSG91 gets phone sign-in without also having to remember a
  * second variable. Only the exact string `false` disables; anything else is
  * ignored rather than guessed at, because a typo'd flag must not silently take

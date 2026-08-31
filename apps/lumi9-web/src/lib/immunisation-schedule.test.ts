@@ -74,7 +74,7 @@ describe("scheduleFor", () => {
   });
 
   it("does NOT correct for prematurity", () => {
-    // No gestational parameter exists on this function — that absence is the
+    // No gestational parameter exists on this function - that absence is the
     // safeguard. A preterm baby's birth dose still falls on their birthday.
     expect(scheduleFor({ dob, today: dob, track: "IAP" }, FIXTURE)[0].dueOn).toBe(dob);
   });
@@ -91,12 +91,12 @@ describe("scheduleFor", () => {
 describe("availableTracks", () => {
   it("lists only tracks that actually have doses", () => {
     expect(availableTracks(FIXTURE)).toEqual(["UIP", "IAP"]);
-    // Note the filter must REPLACE the track list, not select on it — every
+    // Note the filter must REPLACE the track list, not select on it - every
     // shared dose lists both, so filtering by "includes UIP" keeps IAP too.
     expect(availableTracks(FIXTURE.map((d) => ({ ...d, track: ["UIP" as const] })))).toEqual(["UIP"]);
     expect(availableTracks([])).toEqual([]);
   });
-  it("reflects the shipped schedule — UIP only until IAP is supplied", () => {
+  it("reflects the shipped schedule - UIP only until IAP is supplied", () => {
     expect(availableTracks()).toEqual(["UIP"]);
   });
 });

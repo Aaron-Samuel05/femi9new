@@ -6,8 +6,8 @@ import { getOrderByNo } from "@femi9/core/services/checkout";
 import { verifyOrderToken } from "@femi9/core/order-token";
 
 export const metadata: Metadata = {
-  /* Static metadata cannot know the order's status — it is resolved per request
-     below — so it must not assert one. The tab said "Order confirmed · Lumi9"
+  /* Static metadata cannot know the order's status - it is resolved per request
+     below - so it must not assert one. The tab said "Order confirmed · Lumi9"
      for an order nobody had paid for, which is the same lie as the tick, just
      in the window title. */
   title: "Your order",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
  * The confirmation reads the REAL order, not a copy kept in the browser.
  *
  * `?t=` is an unguessable capability token minted when the order was placed. It
- * is what lets a guest — who has no session — see her own order without order
+ * is what lets a guest - who has no session - see her own order without order
  * numbers becoming guessable: without a valid token this renders the same
  * "nothing to show" state as an order that does not exist, so the page never
  * confirms whether a given order number is real.

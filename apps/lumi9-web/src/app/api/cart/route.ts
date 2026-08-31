@@ -6,7 +6,7 @@ import { EMPTY_CART, UnknownVariantError, addItem, getCart } from "@femi9/core/s
 
 /**
  * Lumi9's cart. The service is brand-parameterised, so these handlers are a
- * thin wrapper that pins the brand and owns the cookie — the pricing, stock
+ * thin wrapper that pins the brand and owns the cookie - the pricing, stock
  * checks and zone resolution are the same code Femi9 runs.
  */
 
@@ -19,7 +19,7 @@ const AddSchema = z.object({
   qty: z.number().int().positive().max(99).default(1),
 });
 
-/** GET /api/cart — the current guest cart (empty when the visitor has no token). */
+/** GET /api/cart - the current guest cart (empty when the visitor has no token). */
 export async function GET() {
   return handle(async () => {
     const token = await getGuestToken();
@@ -28,7 +28,7 @@ export async function GET() {
   });
 }
 
-/** POST /api/cart — add an item; mints and sets the guest cookie on first use. */
+/** POST /api/cart - add an item; mints and sets the guest cookie on first use. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const raw = await req.json().catch(() => null);

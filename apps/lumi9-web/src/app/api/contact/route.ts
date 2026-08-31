@@ -6,9 +6,9 @@ import { sendEmailNotification } from "@femi9/core/services/notifications";
 import { clientIp, rateLimit, tooManyRequests } from "@femi9/core/rate-limit";
 
 /**
- * POST /api/contact — the "Get in touch" form on /contact.
+ * POST /api/contact - the "Get in touch" form on /contact.
  *
- * That form used to render a green tick and "Thanks for reaching out — we'll be
+ * That form used to render a green tick and "Thanks for reaching out - we'll be
  * in touch shortly" without sending anything anywhere. Its own comment said
  * "Wire `onSubmit` to the care inbox", and nothing ever did. Every sizing
  * question, order problem and wholesale enquiry a visitor typed was discarded
@@ -18,7 +18,7 @@ import { clientIp, rateLimit, tooManyRequests } from "@femi9/core/rate-limit";
  * the care inbox by mail rather than inventing a brand-specific model in a
  * schema both storefronts migrate. `sendEmailNotification` logs every send in
  * `NotificationLog`, so a message that failed to deliver is still recoverable
- * from the database — which is most of what a table would have given us.
+ * from the database - which is most of what a table would have given us.
  *
  * It FAILS CLOSED. With no recipient configured, or with mail unconfigured, the
  * visitor is told to email us directly instead of being shown a confirmation
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const inbox = process.env.CARE_INBOX_EMAIL_LUMI9?.trim() || process.env.CARE_INBOX_EMAIL?.trim();
     if (!inbox) {
       return serviceUnavailable(
-        "Our contact form is unavailable right now — please email care@lumi9.in and we will reply.",
+        "Our contact form is unavailable right now - please email care@lumi9.in and we will reply.",
       );
     }
 
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
     const { sent } = await sendEmailNotification("lumi9", {
       to: inbox,
-      subject: `Lumi9 contact — ${subject} — ${name}`,
+      subject: `Lumi9 contact - ${subject} - ${name}`,
       text: `${name} <${email}>\nTopic: ${subject}\n\n${message}`,
       // The visitor's own words, so every interpolation is escaped before it
       // reaches an inbox that renders HTML.
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     if (!sent) {
       return serviceUnavailable(
-        "We could not send your message — please email care@lumi9.in and we will reply.",
+        "We could not send your message - please email care@lumi9.in and we will reply.",
       );
     }
     return ok({ ok: true });

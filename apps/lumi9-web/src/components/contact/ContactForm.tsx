@@ -7,12 +7,12 @@ const SUBJECTS = ["Sizing help", "An existing order", "Subscription", "Bulk / wh
 /**
  * Contact form.
  *
- * It used to flip `sent` on submit and show "Thanks for reaching out — we'll be
+ * It used to flip `sent` on submit and show "Thanks for reaching out - we'll be
  * in touch shortly" without sending anything: none of the fields even carried a
  * `name`, so there was nothing to send. Its own comment asked for `onSubmit` to
  * be wired to the care inbox. It now POSTs to /api/contact, which mails the
  * message and logs the delivery, and the success panel is shown only once that
- * has actually happened — a form that says "sent" when it has not is worse than
+ * has actually happened - a form that says "sent" when it has not is worse than
  * one that says it is broken.
  */
 export function ContactForm() {
@@ -50,7 +50,7 @@ export function ContactForm() {
       // (email care@lumi9.in), so surface them rather than a generic one.
       setError(body?.error ?? "We could not send your message. Please try again.");
     } catch {
-      setError("Network error — please try again, or email care@lumi9.in.");
+      setError("Network error - please try again, or email care@lumi9.in.");
     } finally {
       setSubmitting(false);
     }
@@ -64,7 +64,7 @@ export function ContactForm() {
             ✓
           </div>
           <h2 className="m-0 mb-2.5 font-display text-[clamp(21px,2.6vw,26px)] font-normal">Message sent!</h2>
-          <p className="m-0 text-base text-muted">Thanks for reaching out — we&apos;ll be in touch shortly.</p>
+          <p className="m-0 text-base text-muted">Thanks for reaching out - we&apos;ll be in touch shortly.</p>
         </div>
       </div>
     );

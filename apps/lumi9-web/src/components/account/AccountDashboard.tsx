@@ -43,11 +43,11 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
     order.items.length === 1
       ? order.items[0]!.name
       : `${order.items.length} items`;
-  const initial = title.replace(/^Cloud Soft — /, "").charAt(0).toUpperCase();
+  const initial = title.replace(/^Cloud Soft - /, "").charAt(0).toUpperCase();
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 border-t border-moss-tint py-4">
       {/* `order.href` has been on the DTO all along and nothing rendered it, so
-          an order number on this page was a dead label — there was no way to see
+          an order number on this page was a dead label - there was no way to see
           what was in an order, what it cost to ship, or where it went. */}
       <Link
         href={order.href}
@@ -80,8 +80,8 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
 /**
  * Skip / pause / resume / cancel, against PATCH /api/subscriptions/[id].
  *
- * Ownership is enforced server-side — the service scopes every mutation by
- * { id, userId } — so nothing here needs to prove the plan is hers; a plan that
+ * Ownership is enforced server-side - the service scopes every mutation by
+ * { id, userId } - so nothing here needs to prove the plan is hers; a plan that
  * is not comes back 404 and the message below says so.
  *
  * `router.refresh()` rather than local state: the row is rendered from a server
@@ -110,7 +110,7 @@ function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
       const body = (await res.json().catch(() => null)) as { error?: string } | null;
       setError(body?.error ?? "That did not work. Please try again.");
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error - please try again.");
     } finally {
       setBusy(null);
     }
@@ -175,7 +175,7 @@ export function AccountDashboard({
   subscriptions: AccountSubscription[];
   pointsBalance: number;
 }) {
-  // `?tab=subscription` so a link can land on a panel — the box builder sends
+  // `?tab=subscription` so a link can land on a panel - the box builder sends
   // the shopper straight to her new plan after starting one. Anything that is
   // not a known tab falls back to overview rather than rendering nothing.
   const requested = useSearchParams().get("tab");
@@ -189,7 +189,7 @@ export function AccountDashboard({
   /**
    * The customer's own figures.
    *
-   * These three tiles used to be a constant — every account was told it had
+   * These three tiles used to be a constant - every account was told it had
    * placed 12 orders and saved Rs.2,940. Cancelled and refunded orders are
    * left out of the total spent, because money that came back is not money
    * spent.
@@ -214,11 +214,11 @@ export function AccountDashboard({
    *
    * The order carries the variant ids it was placed with, so this does not have
    * to parse "54 pcs" out of a title and hope the catalogue still has that pack
-   * — and a size discontinued since is simply not re-added rather than silently
+   * - and a size discontinued since is simply not re-added rather than silently
    * becoming a different one.
    *
    * It used to fire one POST per line in a bare `for` loop, unawaited. Each
-   * request returns the WHOLE cart, so the response that landed last won — and
+   * request returns the WHOLE cart, so the response that landed last won - and
    * that was not necessarily the one that had seen every line. A three-line
    * reorder could leave the basket showing one item while the server held
    * three, with nothing on screen to say so. `addMany` sends them in order and
@@ -374,7 +374,7 @@ export function AccountDashboard({
                       {plan.qty} pants · {plan.frequency}
                     </div>
                   </div>
-                  {/* Colour follows the real status — a paused plan showed a green
+                  {/* Colour follows the real status - a paused plan showed a green
                       "Active" pill, which is the one thing the badge exists to say. */}
                   <span
                     className={`rounded-pill px-3.75 py-1.75 text-[13px] font-semibold ${
@@ -390,7 +390,7 @@ export function AccountDashboard({
 
                 <div className="mb-6.5 grid grid-cols-1 gap-4 min-[420px]:grid-cols-3">
                   {[
-                    { label: "Next delivery", value: plan.status === "active" ? plan.nextDelivery : "—" },
+                    { label: "Next delivery", value: plan.status === "active" ? plan.nextDelivery : "-" },
                     { label: "Every", value: plan.frequency },
                     { label: "Pack size", value: `${plan.qty} pants` },
                   ].map((item) => (
@@ -402,7 +402,7 @@ export function AccountDashboard({
                 </div>
 
                 {/* Real controls now. These were a link to /contact, with a
-                    comment saying the PATCH endpoint did not exist yet — so
+                    comment saying the PATCH endpoint did not exist yet - so
                     "Skip, pause or cancel anytime" on the subscription page was
                     a promise the site could only keep by email. */}
                 <SubscriptionControls plan={plan} />

@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/auth/email/verify?token=…&email=… — where the emailed link lands.
+ * GET /api/auth/email/verify?token=…&email=… - where the emailed link lands.
  *
  * This is a top-level navigation from an inbox, so it must REDIRECT on every
  * path, never return JSON. A failure bounces to /login?error=link rather than
@@ -19,7 +19,7 @@ export const dynamic = "force-dynamic";
  * information about who has an account here.
  *
  * The guest cart is merged into the shopper's before the redirect, so a basket
- * built while signed out survives signing in — otherwise the sign-in link
+ * built while signed out survives signing in - otherwise the sign-in link
  * silently empties it.
  */
 export async function GET(req: NextRequest) {
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
     });
 
     /*
-     * A magic-link signup captures an email and NOTHING else — no name, no
+     * A magic-link signup captures an email and NOTHING else - no name, no
      * number. Sending her straight to /account rendered a page greeting "Hi,
      * there" with no way to deliver anything to her, and checkout then had to
      * ask for all of it again as if she were a guest. Route through /welcome
@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
     });
     return res;
   } catch {
-    // One outcome for every failure — expired, already used, wrong address.
+    // One outcome for every failure - expired, already used, wrong address.
     return NextResponse.redirect(new URL("/login?error=link", base));
   }
 }

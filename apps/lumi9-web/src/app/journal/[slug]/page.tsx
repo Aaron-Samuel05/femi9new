@@ -14,7 +14,7 @@ import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME,
 /*
  * `generateStaticParams` used to live here, listing the slugs from the module.
  * It is GONE and must not come back: the slug set is a database question now,
- * and Next calls this during `next build` — where, per the workspace CLAUDE.md,
+ * and Next calls this during `next build` - where, per the workspace CLAUDE.md,
  * the Docker build stage has NO database credentials. Declaring it would turn
  * publishing an article into a build failure. The whole tree is force-dynamic
  * anyway, so it bought nothing but the documentation.
@@ -32,7 +32,7 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
 
   return {
     // metaTitle already carries the brand, so the layout's "%s · Lumi9"
-    // template would double it — `absolute` opts this page out of the template.
+    // template would double it - `absolute` opts this page out of the template.
     title: { absolute: post.metaTitle },
     description: post.excerpt,
     keywords: post.keywords,
@@ -66,7 +66,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
   if (!post) notFound();
 
   const related = await relatedJournalPosts(slug, 3);
-  // The accent comes from the category ROW now, carried on the post — a module
+  // The accent comes from the category ROW now, carried on the post - a module
   // lookup by name gave a renamed or newly-created category the wrong colour.
   const color = post.categoryColor;
   const url = absoluteUrl(`/journal/${post.slug}`);
@@ -104,7 +104,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
           ]),
         )}
       />
-      {/* Emitted only when the questions are actually rendered below — FAQ
+      {/* Emitted only when the questions are actually rendered below - FAQ
           markup for content a reader cannot see is a manual-action risk. */}
       {post.faqs.length > 0 && (
         <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(faqSchema(post.faqs))} />
@@ -135,10 +135,10 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
           </div>
         </div>
 
-        {/* COVER — the LCP element, so it is eager and carries its own sizes.
+        {/* COVER - the LCP element, so it is eager and carries its own sizes.
             The photograph drifts on scroll inside an over-tall wrapper (top -12%
             / height 124%), so it still covers the frame at the extremes of that
-            drift — and the framing is correct with no transform at all, which is
+            drift - and the framing is correct with no transform at all, which is
             what `prefers-reduced-motion` gets. */}
         <div className="px-safe pb-[clamp(28px,4vw,52px)]">
           <div className="relative mx-auto aspect-3/2 w-full max-w-[1120px] overflow-hidden rounded-media bg-shell shadow-hero sm:aspect-16/9">
@@ -167,7 +167,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
           </div>
         </div>
 
-        {/* FAQ — visible on the page, which is what makes the FAQPage schema honest */}
+        {/* FAQ - visible on the page, which is what makes the FAQPage schema honest */}
         {post.faqs.length > 0 && (
           <section className="px-safe pb-[clamp(32px,4vw,56px)]" aria-labelledby="faq-heading">
             <div className="mx-auto max-w-[740px]">
@@ -179,7 +179,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
               </h2>
               {/* Deliberately NOT the site Accordion: it unmounts every collapsed
                   answer, so only the first one would exist in the server-rendered
-                  HTML — and FAQPage markup whose answers a crawler cannot find in
+                  HTML - and FAQPage markup whose answers a crawler cannot find in
                   the document is exactly what earns a structured-data penalty. A
                   definition list keeps every answer in the DOM and reads correctly
                   to a screen reader. */}
@@ -207,7 +207,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
             </h2>
             <p className="m-0 max-w-[52ch] text-[clamp(14px,1.3vw,16px)] leading-[1.6] text-muted">
               {post.cta ||
-                "Soft, breathable baby diapers and diaper pants designed around everyday movement, moisture management and practical protection — in sizes from NB to XL."}
+                "Soft, breathable baby diapers and diaper pants designed around everyday movement, moisture management and practical protection - in sizes from NB to XL."}
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Link href="/shop" className="btn btn-dark">

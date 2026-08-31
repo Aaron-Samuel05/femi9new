@@ -14,7 +14,7 @@ const STAGGER_MS = 100;
  * resumes control.
  *
  * This replaced a 2.8s auto-advance rather than joining it. Two drivers cannot
- * share one index — the timer would advance to n+1 and the very next scroll frame
+ * share one index - the timer would advance to n+1 and the very next scroll frame
  * would snap it back to whatever the scroll position says, which reads as a
  * flicker rather than as either behaviour.
  *
@@ -77,13 +77,13 @@ export function LayerStack() {
        * was far longer than the window in which the copy is actually readable:
        * layers 1 and 2 landed while the panel was still below the fold, and
        * layer 5 only landed once it had scrolled off the top. In practice a
-       * visitor saw layers 3 and 4 and nothing else — and then watched "5.
+       * visitor saw layers 3 and 4 and nothing else - and then watched "5.
        * Ultra-Soft Cotton Sheet" light up in the last sliver of green on its
        * way out, which is where it is of no use to anybody.
        *
        * The panel is vertically centred in the section (`items-center`), so the
        * section's midpoint is where the copy is. Run the whole sequence while
-       * THAT crosses the screen — 85% of the viewport down to 15% — and every
+       * THAT crosses the screen - 85% of the viewport down to 15% - and every
        * layer is on screen when it becomes active, whatever the section's
        * height happens to be.
        */
@@ -118,7 +118,7 @@ export function LayerStack() {
         aria-hidden
       />
       <div className="mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-2">
-        {/* Copy panel — cross-fades on change */}
+        {/* Copy panel - cross-fades on change */}
         <div>
           <div className="eyebrow mb-4 text-butter opacity-80">5-Layer Protection System</div>
           <div className="mb-1.5 font-display text-[clamp(20px,2vw,26px)] leading-none opacity-60">
@@ -132,7 +132,7 @@ export function LayerStack() {
               {layer.title}
             </h2>
             {/* min-height reserves space for the longest copy so the panel doesn't
-                jump between layers — measured in ch/em so it scales with the type */}
+                jump between layers - measured in ch/em so it scales with the type */}
             <p className="m-0 mb-6.5 max-w-[48ch] text-body leading-[1.6] opacity-90 md:max-w-none md:min-h-[3.2em]">{layer.desc}</p>
             <ul className="m-0 mb-6.5 flex list-none flex-col gap-3 p-0 text-[clamp(14px,1.3vw,16px)]">
               {layer.benefits.map((benefit) => (

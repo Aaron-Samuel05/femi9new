@@ -20,13 +20,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/auth/google/callback — where Google (or, in mock mode, our own start
+ * GET /api/auth/google/callback - where Google (or, in mock mode, our own start
  * route) sends the shopper back.
  *
  * Verify the anti-CSRF state against the cookie, resolve the verified profile,
  * find-or-create the customer, merge her guest bag, set the session cookie, and
  * 307 onward. Any failure bounces to /login?error=google with the same message
- * regardless of cause — the difference between "state mismatch" and "that
+ * regardless of cause - the difference between "state mismatch" and "that
  * address has no account" is information about who shops here.
  *
  * Always a redirect: this is a top-level navigation, never a fetch.
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
   if (oauthError) return fail(`google returned error=${oauthError}`);
 
   try {
-    // 2. Resolve the verified profile — a live exchange, or the mock identity.
+    // 2. Resolve the verified profile - a live exchange, or the mock identity.
     let profile: GoogleProfile;
     if (googleConfigured()) {
       const code = url.searchParams.get("code");
@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
 
     /*
      * Google gives a name and an email and never a phone, so a first-time
-     * Google shopper is still incomplete — and this storefront delivers
+     * Google shopper is still incomplete - and this storefront delivers
      * parcels, which needs a number. She lands on /welcome, where the rendered
      * fields are driven by `missing`, i.e. just the mobile step. Either way the
      * destination she was originally headed for survives the detour.

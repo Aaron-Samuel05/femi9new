@@ -17,7 +17,7 @@ export type BabyProfile = {
   heightCm?: number;
   /** Below 37 triggers corrected age for GROWTH only. Absent means term. */
   gestationalWeeks?: number;
-  /** Optional, informational only — surfaced on the card, never used in maths. */
+  /** Optional, informational only - surfaced on the card, never used in maths. */
   bloodGroup?: BloodGroup;
   /**
    * Optional. Only reason we ever leave the device: if present, saving the
@@ -37,7 +37,7 @@ function read(): BabyProfile | null {
     const raw = window.localStorage.getItem(KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<BabyProfile>;
-    // A stored blob is untrusted input — it survives across deploys and can be
+    // A stored blob is untrusted input - it survives across deploys and can be
     // hand-edited. Anything without the two required fields is discarded rather
     // than handed to the percentile maths.
     if (typeof parsed.dob !== "string") return null;

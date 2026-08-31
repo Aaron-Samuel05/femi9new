@@ -67,7 +67,7 @@ function Heading() {
       </h2>
       <p className="m-0 mb-5 max-w-[52ch] text-sm text-muted">
         Where your baby sits against the WHO growth standards. A percentile is a position, not a
-        grade — healthy babies live at every one of them.
+        grade - healthy babies live at every one of them.
       </p>
     </>
   );
@@ -117,7 +117,7 @@ function Reading({
         <p className="m-0 mt-1 text-sm text-muted">
           {result.outOfRange === "age"
             ? "These standards cover birth to 5 years."
-            : "That measurement is outside the standard range — worth asking your paediatrician."}
+            : "That measurement is outside the standard range - worth asking your paediatrician."}
         </p>
       )}
     </div>

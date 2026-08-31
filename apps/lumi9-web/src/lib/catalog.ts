@@ -1,10 +1,10 @@
 /**
- * Lumi9 product data — now the SEED's input, not the storefront's source.
+ * Lumi9 product data - now the SEED's input, not the storefront's source.
  *
  * `prisma/seed.ts` reads `SIZES` and writes it into the `lumi9` schema; the
  * storefront reads the database through `catalog.server.ts` and hands it to
  * client components via `catalog-context.tsx`. Editing this file changes what a
- * fresh seed writes, and nothing that is already live — the console is where a
+ * fresh seed writes, and nothing that is already live - the console is where a
  * live catalogue is edited.
  *
  * The pure helpers below (pricing, shipping, formatting, image paths) are used
@@ -50,9 +50,9 @@ export const SIZES: ProductSize[] = [
   {
     size: "S",
     name: "Small",
-    fits: "4–8 kg",
-    range: "4–8 kg",
-    short: "4–8kg",
+    fits: "4-8 kg",
+    range: "4-8 kg",
+    short: "4-8kg",
     packs: [
       { count: 3, price: 59, shipWeight: 0.06 },
       { count: 24, price: 399, shipWeight: 0.53 },
@@ -62,9 +62,9 @@ export const SIZES: ProductSize[] = [
   {
     size: "M",
     name: "Medium",
-    fits: "7–12 kg",
-    range: "7–12 kg",
-    short: "7–12kg",
+    fits: "7-12 kg",
+    range: "7-12 kg",
+    short: "7-12kg",
     packs: [
       { count: 24, price: 449, shipWeight: 0.65 },
       { count: 54, price: 949, shipWeight: 1.5 },
@@ -73,9 +73,9 @@ export const SIZES: ProductSize[] = [
   {
     size: "L",
     name: "Large",
-    fits: "9–14 kg",
-    range: "9–14 kg",
-    short: "9–14kg",
+    fits: "9-14 kg",
+    range: "9-14 kg",
+    short: "9-14kg",
     packs: [
       { count: 24, price: 499, shipWeight: 0.7 },
       { count: 54, price: 1049, shipWeight: 1.58 },
@@ -84,9 +84,9 @@ export const SIZES: ProductSize[] = [
   {
     size: "XL",
     name: "Extra Large",
-    fits: "12–17 kg",
-    range: "12–17 kg",
-    short: "12–17kg",
+    fits: "12-17 kg",
+    range: "12-17 kg",
+    short: "12-17kg",
     packs: [
       { count: 24, price: 549, shipWeight: 0.85 },
       { count: 54, price: 1149, shipWeight: 1.85 },
@@ -98,18 +98,18 @@ export const SIZE_CODES = SIZES.map((s) => s.size);
 
 /** Weight chips used by the size finder + size guide. */
 export const WEIGHT_OPTIONS: { label: string; size: SizeCode }[] = [
-  { label: "0–5 kg", size: "NB" },
-  { label: "4–8 kg", size: "S" },
-  { label: "7–12 kg", size: "M" },
-  { label: "9–14 kg", size: "L" },
-  { label: "12–17 kg", size: "XL" },
+  { label: "0-5 kg", size: "NB" },
+  { label: "4-8 kg", size: "S" },
+  { label: "7-12 kg", size: "M" },
+  { label: "9-14 kg", size: "L" },
+  { label: "12-17 kg", size: "XL" },
 ];
 
 /** Preferred default pack tier when one exists for the size. */
 export const DEFAULT_PACK_COUNT = 24;
 
 /**
- * Marketing copy only — "free delivery on orders over ₹999" appears in a
+ * Marketing copy only - "free delivery on orders over ₹999" appears in a
  * handful of sentences and needs a number to interpolate.
  *
  * It is NOT what anybody is charged. `Settings.freeShipThreshold` is, the
@@ -123,16 +123,16 @@ export const FREE_SHIPPING_THRESHOLD = 999;
  * STANDARD_SHIPPING_FEE / EXPRESS_SHIPPING_FEE / standardShipping() used to
  * live here and price the cart and checkout summaries.
  *
- * They were a duplicate of a rule the server owns — so a console change to the
+ * They were a duplicate of a rule the server owns - so a console change to the
  * threshold moved what a shopper was CHARGED without moving what she was SHOWN
- * — and the express tier was worse than duplicated: it existed nowhere but this
+ * - and the express tier was worse than duplicated: it existed nowhere but this
  * file. Picking it added ₹79 to the on-screen total, was never sent to
  * /api/checkout, never reached an Order row, and never changed how the parcel
  * shipped. `shippingFor()` in @femi9/core/services/checkout is the one rule.
  */
 
 /**
- * Subscription cadences — reference data, not marketing copy.
+ * Subscription cadences - reference data, not marketing copy.
  *
  * ONE list, read by the seed (which writes a `Cadence` row per entry) and by
  * the box builder (which posts `code` to /api/subscriptions, where the service
@@ -146,7 +146,7 @@ export const FREE_SHIPPING_THRESHOLD = 999;
  * brands' rows live in different schemas so the codes need not agree.
  */
 export interface SubscriptionCadence {
-  /** `Cadence.code` — what the API is posted and what the row is keyed on. */
+  /** `Cadence.code` - what the API is posted and what the row is keyed on. */
   code: string;
   label: string;
   sub: string;
@@ -162,7 +162,7 @@ export const CADENCES: SubscriptionCadence[] = [
 
 /*
  * SUBSCRIPTION_DISCOUNT lived here as `0.2`, and the box builder priced its
- * summary from it — "You save 20% every delivery".
+ * summary from it - "You save 20% every delivery".
  *
  * The renewal orders `generateDueOrders()` actually creates are discounted by
  * `Settings.subscribeSavePct`, which the console owns and which defaults to 15.
@@ -199,7 +199,7 @@ export function getPack<P extends { count: number }>(
  * This is the whole reason the console's "Base price (₹)" field reaches a
  * shopper. `basePrice` was dropped in `catalog.server.ts` and no Lumi9 surface
  * read it, so editing that field changed the console's own products list and
- * nothing else — while every price a shopper saw came from a pack variant.
+ * nothing else - while every price a shopper saw came from a pack variant.
  *
  * One rule, in one place, because the card and the PDP have to agree: the card
  * prints a price beside a button that adds a pack, and the PDP opens on a tier.
@@ -217,13 +217,13 @@ export function leadPack<P extends { count: number; price: number }>(
 }
 
 /**
- * The BUNDLED pack photo — the seed's input, and the storefront's last resort.
+ * The BUNDLED pack photo - the seed's input, and the storefront's last resort.
  *
  * Not what a page renders any more. `catalog.server.ts` reads `ProductImage`
  * from the database (which is what the console's uploader writes, into the S3
  * uploads bucket) and only falls back here for a product that has no image row
  * at all. Calling this from a component would pin that surface to a file inside
- * the container and make a console upload invisible again — which is exactly
+ * the container and make a console upload invisible again - which is exactly
  * the bug it used to have.
  */
 export function packImage(size: SizeCode, count: number) {
@@ -233,7 +233,7 @@ export function packImage(size: SizeCode, count: number) {
 /**
  * Shown when a product has no photo in the database yet.
  *
- * NOT a product photograph — a plain tinted tile, and deliberately so. It is
+ * NOT a product photograph - a plain tinted tile, and deliberately so. It is
  * the honest rendering of "nobody has uploaded one", which is a state the
  * console exists to fix. `catalog.server.ts` used to fall back to
  * `packImage(size, count)` here, so an un-photographed product borrowed a
@@ -243,12 +243,12 @@ export function packImage(size: SizeCode, count: number) {
  *
  * Bundled rather than in S3 on purpose: it is UI chrome, it must render when
  * object storage is empty or unreachable, and it can never be mistaken for the
- * product's own photograph — which is the thing that must come from S3.
+ * product's own photograph - which is the thing that must come from S3.
  */
 export const PRODUCT_IMAGE_PLACEHOLDER = "/assets/product-placeholder.png";
 
 export function productName(size: { name: string }) {
-  return `Cloud Soft — ${size.name}`;
+  return `Cloud Soft - ${size.name}`;
 }
 
 const inrFormat = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });

@@ -14,7 +14,7 @@ import {
  * `src/lib/journal.ts` used to BE the journal; it is now the seed's input, the
  * same relationship `catalog.ts` has to `catalog.server.ts`. Editing that module
  * changes what `npm run db:seed-journal` writes and nothing that is already
- * live — a published article is edited in the console, at /lumi9/content/blog.
+ * live - a published article is edited in the console, at /lumi9/content/blog.
  *
  * These are thin wrappers over the brand-agnostic loaders in
  * `@femi9/core/services/blog` and exist for one reason: the brand literal is
@@ -24,7 +24,7 @@ import {
  *
  * ⚠️ Every caller must stay `force-dynamic`, which the whole tree already is.
  * The Docker build stage has no database credentials, so anything that reads
- * these at build time — `generateStaticParams`, a prerendered route — turns a
+ * these at build time - `generateStaticParams`, a prerendered route - turns a
  * content query into a build failure. That is why the article route no longer
  * declares its slug set statically.
  */
@@ -49,7 +49,7 @@ export function getJournalPost(slug: string): Promise<JournalArticle | null> {
  *
  * Note this returns EVERY category the brand has, where the module it replaced
  * only returned the ones with a post behind them. That filter belongs to the
- * caller now — it has the posts in hand, and a category the console created for
+ * caller now - it has the posts in hand, and a category the console created for
  * next week's article should not vanish from a listing query.
  */
 export function listJournalCategories(): Promise<JournalCategoryDTO[]> {

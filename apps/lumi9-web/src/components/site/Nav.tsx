@@ -99,8 +99,8 @@ function Logo() {
 /**
  * The bag control. A BUTTON that opens the drawer, not a link to /cart.
  *
- * /cart is still a real page — it owns the promo box and the roomier review
- * layout, and the drawer links to it — but "open the bag" should not cost a
+ * /cart is still a real page - it owns the promo box and the roomier review
+ * layout, and the drawer links to it - but "open the bag" should not cost a
  * navigation away from the product a shopper is looking at. That round trip is
  * what made adding a second size feel like starting over.
  *
@@ -119,7 +119,7 @@ function CartButton() {
    * text of unpredictable width in a fixed row pushes everything around it, and
    * a bag icon with a number on it is not ambiguous.
    *
-   * The badge is absolutely positioned so the button's box never changes — a
+   * The badge is absolutely positioned so the button's box never changes - a
    * count going from 9 to 10 used to widen the control and shift the burger.
    * It renders only when there is something in the bag; a permanent "0" is a
    * notification badge announcing no notifications.
@@ -156,12 +156,12 @@ function CartButton() {
 }
 
 /**
- * The account entry point — the thing the site had no way to reach.
+ * The account entry point - the thing the site had no way to reach.
  *
  * /login and /account both existed and neither was linked from the bar: the
  * only route to either was typing the URL, or being bounced to /login by the
  * guard. The destination follows the session, exactly as Femi9's does, and an
- * unresolved or failed /api/auth/me leaves it pointing at /login — the harmless
+ * unresolved or failed /api/auth/me leaves it pointing at /login - the harmless
  * wrong answer.
  */
 function AccountLink() {
@@ -174,14 +174,14 @@ function AccountLink() {
   const active = pathname === href;
 
   /*
-   * An initials avatar, the WhatsApp convention — not the shopper's name in
+   * An initials avatar, the WhatsApp convention - not the shopper's name in
    * text.
    *
    * A name is unbounded: "Lakshminarayanan" is 16 characters that push the
    * cart, the burger and the whole right-hand group around, and it changes
    * width the moment /api/auth/me resolves, which is half of what made this bar
    * feel like it was moving. Two letters in a fixed 36px circle cannot do
-   * either — the slot is the same size signed in, signed out, and while the
+   * either - the slot is the same size signed in, signed out, and while the
    * session is still loading.
    *
    * The name has not gone anywhere; it is the accessible label, and the mobile
@@ -203,8 +203,8 @@ function AccountLink() {
             : "border-[1.5px] border-moss-tint text-midnight hover:border-moss-soft"
         }`}
       >
-        {/* Signed in with nothing to spell — a link/OTP account before /welcome
-            — falls back to the outline icon rather than an empty circle, which
+        {/* Signed in with nothing to spell - a link/OTP account before /welcome
+            - falls back to the outline icon rather than an empty circle, which
             reads as an avatar that failed to load. */}
         {signedIn && initials ? initials : <Icon name="user" size={18} strokeWidth={1.7} />}
       </span>
@@ -257,13 +257,13 @@ function AccountSheetLinks({ onNavigate }: { onNavigate: () => void }) {
 }
 
 /**
- * FIXED site nav — the same bar, in the same place, with the same surface, on
+ * FIXED site nav - the same bar, in the same place, with the same surface, on
  * every route and at every scroll position.
  *
  * It used to be two bars. On the home page it was fixed and TRANSPARENT over the
  * hero, then swapped to blurred paper past 30px of scroll; everywhere else it was
  * `sticky` and always paper. So the chrome you were looking at depended on which
- * page you were on and how far down it you had scrolled — the bar changed under
+ * page you were on and how far down it you had scrolled - the bar changed under
  * the cursor mid-gesture, and a link's contrast changed with it. `variant` now
  * decides one thing only: whether the page pads itself under the bar (the home
  * hero does, by `--nav-h`) or gets the spacer below.
@@ -289,7 +289,7 @@ export function Nav({
   // sticky nav on the inner pages is exactly as tall as the fixed one.
   const ref = useMeasuredNavHeight(true);
 
-  // A route change has to close the sheet — including navigations the sheet did
+  // A route change has to close the sheet - including navigations the sheet did
   // not start (the cart icon, browser back). Adjusted during render rather than
   // in an effect: an effect would paint the new route with the menu still over
   // it for a frame, and `react-hooks/set-state-in-effect` rejects it outright.
@@ -304,7 +304,7 @@ export function Nav({
   /**
    * While the sheet is open: Escape dismisses it, and the page behind stops
    * scrolling. Without the lock a flick on the backdrop scrolls the page under
-   * the sheet, which — anchored to a fixed bar — then appears to float over
+   * the sheet, which - anchored to a fixed bar - then appears to float over
    * moving content.
    */
   useEffect(() => {
@@ -333,11 +333,11 @@ export function Nav({
   }, []);
 
   /*
-   * NOTHING about the bar responds to scroll — not its height, not its surface.
+   * NOTHING about the bar responds to scroll - not its height, not its surface.
    *
    * The height went first: the home bar used to transition its padding from 18px
    * to 12px past 30px of scroll, so the whole bar shrank under the cursor and
-   * every link in it moved. That was also quietly wrong — `--nav-h` is published
+   * every link in it moved. That was also quietly wrong - `--nav-h` is published
    * by a ResizeObserver on this element and is what `scroll-padding-top` in
    * globals.css offsets every in-page anchor by, so a bar whose height depends on
    * scroll position gave a different answer depending on where you were standing
@@ -346,7 +346,7 @@ export function Nav({
    * The surface follows it for the same reason. Paper-over-hero costs a shade of
    * the gradient at the very top of one page; a bar that is transparent until you
    * move and opaque after costs you the ability to trust what you are pointing at
-   * — the link you read as dark-on-gradient is dark-on-paper by the time your
+   * - the link you read as dark-on-gradient is dark-on-paper by the time your
    * finger lands. One constant, everywhere.
    */
   const chrome = "bg-paper/90 backdrop-blur-[14px] shadow-[0_1px_0_rgb(39_44_5_/_0.08)]";
@@ -364,7 +364,7 @@ export function Nav({
       className={`fixed inset-x-0 top-0 z-100 ${chrome}`}
     >
       {/*
-       * FULL WIDTH, gutter only — logo hard left, account and bag hard right.
+       * FULL WIDTH, gutter only - logo hard left, account and bag hard right.
        *
        * Not the centred content column. The hero underneath is `px-safe` with
        * no max-width, so "CloudSoft Baby Diapers" starts one gutter from the
@@ -372,7 +372,7 @@ export function Nav({
        * 48px inside that, which read as the bar being indented from the page
        * rather than framing it.
        *
-       * So the two things that flank the page — this bar and the hero — share
+       * So the two things that flank the page - this bar and the hero - share
        * the viewport's edges, and the reading column inside is centred within
        * them. Deliberate, and the reason a section's heading does not line up
        * with the logo above it.
@@ -405,20 +405,20 @@ export function Nav({
          * The "Shop now" button that used to sit here is gone. It was a fifth
          * competing target in a bar that already had a Shop LINK two inches to
          * its left, and being the only filled button on the page it outweighed
-         * both the account and the cart — the two controls a returning shopper
+         * both the account and the cart - the two controls a returning shopper
          * actually comes to the bar for. Selling is what the page is for; the
          * bar is for navigation.
          *
          * Dropping it also removed the reason `cta` existed. That prop decided
          * which of four combinations the right-hand side showed, and every page
-         * picked one by hand — which is how `cta="shop"` pages ended up with no
+         * picked one by hand - which is how `cta="shop"` pages ended up with no
          * route to the basket at all.
          */}
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           <AccountLink />
           <CartButton />
 
-          {/* Burger — the only route to the nav below md, so a full 44px target. */}
+          {/* Burger - the only route to the nav below md, so a full 44px target. */}
           <button
             type="button"
             onClick={() => setOpen((value) => !value)}
@@ -433,7 +433,7 @@ export function Nav({
       </div>
 
       {/* Slide-down sheet. `inert` while closed so its links stay out of the tab
-          order and the accessibility tree — a hidden panel a keyboard can still
+          order and the accessibility tree - a hidden panel a keyboard can still
           walk into is worse than no panel at all. */}
       <div
         id={menuId}
@@ -460,7 +460,7 @@ export function Nav({
             );
           })}
           {/* The session block. Signing out had no control anywhere in the
-              storefront — /api/auth/logout existed with exactly one caller, on
+              storefront - /api/auth/logout existed with exactly one caller, on
               a page you had to already be signed in to reach. */}
           <AccountSheetLinks onNavigate={() => setOpen(false)} />
           <Link href="/shop" onClick={() => setOpen(false)} className="btn btn-dark my-3 w-full">
@@ -481,12 +481,12 @@ export function Nav({
        * by `--nav-h` (it wants the gradient to run the full viewport); everything
        * else gets this.
        *
-       * The fallbacks are the bar's real closed heights — 44px of control plus
-       * py-2.5 / md:py-3.5 — not a round guess, so the first paint is already
+       * The fallbacks are the bar's real closed heights - 44px of control plus
+       * py-2.5 / md:py-3.5 - not a round guess, so the first paint is already
        * right and the measured `--nav-h` that lands a frame later changes nothing.
        */}
       {!isHome && <div aria-hidden className="h-[var(--nav-h,64px)] md:h-[var(--nav-h,72px)]" />}
-      {/* Scrim — a tap anywhere off the sheet dismisses it. A SIBLING of the bar,
+      {/* Scrim - a tap anywhere off the sheet dismisses it. A SIBLING of the bar,
           not a child: inside the nav its negative z-index put it behind that
           element's backdrop root and it never painted at all. z-90 sits under
           the bar (z-100) and over the page. */}

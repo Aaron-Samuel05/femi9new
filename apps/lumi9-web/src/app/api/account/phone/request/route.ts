@@ -23,7 +23,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/account/phone/request — { phone } → send a code to a number the
+ * POST /api/account/phone/request - { phone } → send a code to a number the
  * SIGNED-IN shopper wants to attach to her account.
  *
  * A magic-link or Google signup has no reachable number, so her orders have

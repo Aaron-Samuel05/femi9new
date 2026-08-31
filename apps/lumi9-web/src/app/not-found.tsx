@@ -35,7 +35,7 @@ export default function NotFound() {
             This page took a nap.
           </h1>
           <p className="mx-auto m-0 mb-8 max-w-[46ch] text-body text-muted">
-            We couldn&apos;t find what you were looking for — but there&apos;s plenty of soft, dry comfort waiting back
+            We couldn&apos;t find what you were looking for - but there&apos;s plenty of soft, dry comfort waiting back
             home.
           </p>
           <div className="flex flex-wrap justify-center gap-3.5">

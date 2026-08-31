@@ -60,8 +60,8 @@ export const metadata: Metadata = {
  *
  * Read from the DATABASE, like everything else the console owns.
  *
- * It used to be built from the `SIZES` array in `@/lib/catalog` — the seed's
- * input — on the argument that a navigational hint must not make the homepage
+ * It used to be built from the `SIZES` array in `@/lib/catalog` - the seed's
+ * input - on the argument that a navigational hint must not make the homepage
  * fail when the catalogue read is slow. That argument no longer holds: the root
  * layout is `force-dynamic` and already awaits `loadCatalog()` on every
  * request, so this page cannot render without that read succeeding anyway. All
@@ -79,7 +79,7 @@ function sizeListSchema(sizes: { size: string; name: string; fits: string }[]) {
     itemListElement: sizes.map((size, i) => ({
       "@type": "ListItem",
       position: i + 1,
-      name: `Lumi9 Cloud Soft ${size.name} baby diapers — ${size.fits}`,
+      name: `Lumi9 Cloud Soft ${size.name} baby diapers - ${size.fits}`,
       url: absoluteUrl(`/product/${size.size.toLowerCase()}`),
     })),
   };
@@ -111,7 +111,7 @@ export default async function HomePage() {
   return (
     <>
       {/* The hero mascot is above the fold, but useGLTF can only request it after
-          the bundle loads and hydrates — about a second of dead time. Preloading
+          the bundle loads and hydrates - about a second of dead time. Preloading
           starts the model and its decoder while the JS is still downloading. */}
       <link rel="preload" href="/assets/mascot.glb" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossOrigin="anonymous" />
@@ -122,7 +122,7 @@ export default async function HomePage() {
       <Nav variant="home" links={NAV_LINKS} />
 
       <main>
-        {/* HERO — clears the fixed nav by its measured height (--nav-h) */}
+        {/* HERO - clears the fixed nav by its measured height (--nav-h) */}
         <header
           id="top"
           /* full-height hero, except on short viewports (landscape phones, split
@@ -172,7 +172,7 @@ export default async function HomePage() {
             </h1>
             <p className="m-0 mb-[clamp(20px,3.4vw,34px)] max-w-[54ch] text-lead leading-[1.55] text-muted md:leading-[1.6]">
               From sleepy newborn cuddles to crawling, stretching and first little steps, Lumi9 baby diapers are
-              designed to move comfortably with your growing baby — soft cotton-like comfort, quick moisture
+              designed to move comfortably with your growing baby - soft cotton-like comfort, quick moisture
               absorption, breathable protection and a flexible fit for playtime, naps and nighttime rest.
             </p>
             <div className="mb-[clamp(22px,4vw,40px)] flex flex-wrap gap-3">
@@ -219,7 +219,7 @@ export default async function HomePage() {
 
         </header>
 
-        {/* CLAIM STRIP — what the product is for, before the first scroll */}
+        {/* CLAIM STRIP - what the product is for, before the first scroll */}
         <FeatureStrip />
 
         {/* TRUST MARQUEE */}
@@ -249,7 +249,7 @@ export default async function HomePage() {
             a bump row at this scale competes with the layer cards, whereas one
             slow curve just softens the seam.
 
-            Both edges are moss, not paper — the fill has to be the colour that
+            Both edges are moss, not paper - the fill has to be the colour that
             is INTRUDING. Above the band the moss rises into the paper; below it
             the same shape is flipped so the moss dips back down. Filling with
             paper instead would paint paper onto a paper body and show nothing. */}
@@ -270,10 +270,10 @@ export default async function HomePage() {
           <div className="relative z-2 mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
             <Reveal className="relative">
               {/*
-               * SQUARE, and no parallax overscan — both deliberate.
+               * SQUARE, and no parallax overscan - both deliberate.
                *
                * Every /assets/features creative is 1500x1500 with its headline
-               * set INTO the artwork ("Softness — That Runs Alongside Every
+               * set INTO the artwork ("Softness - That Runs Alongside Every
                * Adventure"). This box was aspect-5/6 wrapped in a drift layer
                * of h-[118%], which makes the effective frame 0.706 against a
                * 1:1 source: object-cover then scaled to height and threw away
@@ -318,7 +318,7 @@ export default async function HomePage() {
                 arms to another. And then you check the diaper.
               </p>
               <p className="m-0 mb-7 max-w-[62ch] text-body leading-[1.65] text-muted md:max-w-none">
-                Those small questions are part of everyday parenting, and they are part of what shapes Lumi9 by Femi9 —
+                Those small questions are part of everyday parenting, and they are part of what shapes Lumi9 by Femi9 -
                 soft everyday comfort, moisture-management technology, breathable materials and flexible protection in
                 baby diapers made to support babies as they grow.
               </p>
@@ -390,13 +390,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* FROM THE JOURNAL — three posts where the values bento stood.
+        {/* FROM THE JOURNAL - three posts where the values bento stood.
             Those five cards restated claims the hero, the feature strip and the
             PDP accordion already make, and linked nowhere; see
             components/home/FeaturedJournal.tsx. */}
         <FeaturedJournal />
 
-        {/* TESTIMONIALS — eight short reviews in a dense grid rather than three
+        {/* TESTIMONIALS - eight short reviews in a dense grid rather than three
             long quote cards; see components/home/Testimonials.tsx for why. */}
         <Testimonials />
 
@@ -424,7 +424,7 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap gap-3.5">
                 <Link href="/subscription" className="btn btn-cream max-[520px]:w-full">
-                  Start my box — save 20%
+                  Start my box - save 20%
                 </Link>
                 <Link
                   href="#tech"

@@ -6,7 +6,7 @@ import { useAddToCart } from "@/lib/use-add-to-cart";
  * The self-drawing tick.
  *
  * `pathLength="22"` normalises the geometry so the dash values in `globals.css`
- * are the same number whatever the icon is scaled to — without it the dash
+ * are the same number whatever the icon is scaled to - without it the dash
  * would have to be re-measured for every size this appears at.
  */
 export function AddedCheck({ size = 20 }: { size?: number }) {
@@ -41,15 +41,15 @@ function Spinner({ size = 18 }: { size?: number }) {
 }
 
 /**
- * The primary add-to-cart CTA — the PDP buy button and the size finder's.
+ * The primary add-to-cart CTA - the PDP buy button and the size finder's.
  *
  * Both used to be plain `<button onClick={() => add(...)}>` with no state
  * whatsoever: pressed, and the button sat inert while the request ran. The only
  * thing that moved was the drawer, which on a slow connection arrives well
  * after the shopper has decided the click missed.
  *
- * `children` is the idle label — usually a price, which is why the layers are
- * stacked rather than swapped in place: "Add to cart — ₹1,299" and "Added" are
+ * `children` is the idle label - usually a price, which is why the layers are
+ * stacked rather than swapped in place: "Add to cart - ₹1,299" and "Added" are
  * very different widths, and a CTA that resizes mid-press drags the layout
  * under it.
  */
@@ -72,7 +72,7 @@ export function AddToCartButton({
       type="button"
       data-a2c={state}
       onClick={() => void run()}
-      // Disabled from the FIRST frame, before the pending visual is armed —
+      // Disabled from the FIRST frame, before the pending visual is armed -
       // that is what stops a double-tap adding two, and it is also why the
       // spinner can afford to wait.
       disabled={busy}
@@ -97,7 +97,7 @@ export function AddToCartButton({
       </span>
 
       {/* The animation is visual only. This is what a screen reader is told,
-          and it is announced once the write has actually succeeded — never on
+          and it is announced once the write has actually succeeded - never on
           the press. */}
       <span className="sr-only" aria-live="polite">
         {state === "added" ? addedLabel : ""}

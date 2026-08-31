@@ -1,5 +1,5 @@
 /**
- * The single line-icon set used across Lumi9. 1.7–1.8px strokes on a 24px grid,
+ * The single line-icon set used across Lumi9. 1.7-1.8px strokes on a 24px grid,
  * inheriting `currentColor` so callers control the colour with text utilities.
  */
 

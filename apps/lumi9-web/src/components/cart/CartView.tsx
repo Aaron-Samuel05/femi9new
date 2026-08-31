@@ -14,7 +14,7 @@ import { inr, shippingLabel } from "@/lib/catalog";
  * The promo box, now connected to the coupon system that was already there.
  *
  * It used to answer EVERY code with a hardcoded "isn't a valid code right now"
- * and call nothing — while the console has had a full coupons section, and
+ * and call nothing - while the console has had a full coupons section, and
  * `placeOrder` has had the redemption logic, since before this storefront
  * existed. Every campaign code the team created was unredeemable, and the one
  * screen that would have shown it said so in a sentence that was true by
@@ -60,7 +60,7 @@ function PromoField() {
       </div>
       {applied && (
         <p className="m-0 mt-2 text-xs text-moss-deep">
-          “{applied}” applied — {inr(quote!.discount)} off.{" "}
+          “{applied}” applied - {inr(quote!.discount)} off.{" "}
           <button
             type="button"
             className="cursor-pointer underline"
@@ -81,8 +81,8 @@ function PromoField() {
 
 export function CartView() {
   const { lines, count, subtotal, increment, decrement, remove, ready } = useCart();
-  // Shipping and total come from the server — the same calculation that will
-  // price the order — rather than from a threshold hardcoded in this bundle.
+  // Shipping and total come from the server - the same calculation that will
+  // price the order - rather than from a threshold hardcoded in this bundle.
   const { quote } = useQuote();
 
   return (
@@ -116,7 +116,7 @@ export function CartView() {
                 <div className="flex flex-1 flex-col gap-4">
                   <div className="flex justify-between gap-3">
                     <div>
-                      <div className="text-[clamp(15px,1.5vw,17px)] font-bold">Cloud Soft — {line.name}</div>
+                      <div className="text-[clamp(15px,1.5vw,17px)] font-bold">Cloud Soft - {line.name}</div>
                       <div className="mt-0.75 text-[13px] text-muted">
                         {line.count} pants · fits {line.fits}
                       </div>

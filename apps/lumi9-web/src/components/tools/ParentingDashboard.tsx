@@ -15,11 +15,11 @@ type ActiveSub = { status: string; nextDelivery?: string };
 /**
  * The "at a glance" panel. Everything here is derived from the on-device baby
  * profile, except the subscription line, which needs the signed-in shopper.
- * It renders nothing until there is a profile — the form above is the prompt.
+ * It renders nothing until there is a profile - the form above is the prompt.
  */
 export function ParentingDashboard() {
   // The catalogue from the DATABASE. `WEIGHT_OPTIONS` and `getSizeOrDefault` in
-  // `@/lib/catalog` are the seed's input — the provider derives the same two
+  // `@/lib/catalog` are the seed's input - the provider derives the same two
   // from the live rows, so a size or weight range edited in the console lands
   // here instead of only in the next deploy.
   const { getSizeOrDefault, weightOptions } = useCatalogData();
@@ -62,7 +62,7 @@ export function ParentingDashboard() {
   const sizeCode = (profile.weightKg && sizeForWeight(profile.weightKg)) || null;
   const size = getSizeOrDefault(sizeCode);
   const sizeLabel = weightOptions.find((w) => w.size === size.size)?.label;
-  // `size` is already the catalogue's row, so pass it straight in — the planner
+  // `size` is already the catalogue's row, so pass it straight in - the planner
   // no longer looks a size code up in the hardcoded module.
   const plan = planDiapers({ product: size, perDay });
 
@@ -111,7 +111,7 @@ export function ParentingDashboard() {
               {formatMonthYear(upNext[0].dueOn)}.
             </p>
           ) : (
-            <p className="mt-4 text-sm text-muted">All caught up for now — nothing due.</p>
+            <p className="mt-4 text-sm text-muted">All caught up for now - nothing due.</p>
           )}
 
           <Link href="/parenting-tools/vaccination" className="mt-auto pt-4 text-sm font-semibold text-moss-deep">
@@ -144,7 +144,7 @@ export function ParentingDashboard() {
                 {sub.nextDelivery ? (
                   subDays !== null && subDays <= 14 ? (
                     <>
-                      Your next box ships in about <b>{Math.max(subDays, 0)} days</b> — you&apos;re
+                      Your next box ships in about <b>{Math.max(subDays, 0)} days</b> - you&apos;re
                       covered.
                     </>
                   ) : (

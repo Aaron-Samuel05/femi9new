@@ -133,7 +133,7 @@ export function BabyProfileCard() {
         Tell us about your baby
       </h2>
       <p className="m-0 mb-5 text-sm text-muted">
-        Fill this in once and every tool uses it. Baby&apos;s details stay on this device — the only
+        Fill this in once and every tool uses it. Baby&apos;s details stay on this device - the only
         thing we use is your email, and only to send you a one-time care &amp; vaccination plan. You
         can skip it and use the tools directly.
       </p>

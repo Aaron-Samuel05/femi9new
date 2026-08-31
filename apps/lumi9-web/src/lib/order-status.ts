@@ -5,7 +5,7 @@ import type { OrderConfirmation } from "@femi9/core/services/checkout";
  *
  * ── Why this exists ─────────────────────────────────────────────────────────
  * The confirmation page said "Order confirmed", "Thank you! 🥑", "Your Cloud
- * Soft order is on its way" and "A confirmation is in your inbox" — all four
+ * Soft order is on its way" and "A confirmation is in your inbox" - all four
  * hardcoded, none of them reading `order.status`. Cancelling the Razorpay modal
  * calls `ondismiss: done`, which navigates to that page with the order still
  * `pending`, so dismissing a payment produced a celebration for an order nobody
@@ -20,7 +20,7 @@ import type { OrderConfirmation } from "@femi9/core/services/checkout";
  * different situations that look identical from here: she dismissed the modal,
  * the payment failed, or it succeeded and the webhook has not landed yet. The
  * copy has to be true of all three, which is why it says the order is held and
- * asks her to complete payment rather than announcing a failure — the last of
+ * asks her to complete payment rather than announcing a failure - the last of
  * the three resolves itself within seconds and telling her it failed would be
  * its own lie.
  */
@@ -30,7 +30,7 @@ export type OrderStatus = OrderConfirmation["status"];
 export interface StatusPresentation {
   /** Is this a state worth celebrating? Drives the tick, the confetti copy. */
   settled: boolean;
-  /** True only while money is still outstanding — shows the retry path. */
+  /** True only while money is still outstanding - shows the retry path. */
   awaitingPayment: boolean;
   /** The badge, and the headline on the order page. */
   label: string;
@@ -107,7 +107,7 @@ const PRESENTATION: Record<OrderStatus, StatusPresentation> = {
     label: "Refunded",
     eyebrow: "Order refunded",
     headline: (n) => `${n}, this order was refunded`,
-    body: "The amount is on its way back to the account you paid from — banks usually take 5-7 working days.",
+    body: "The amount is on its way back to the account you paid from - banks usually take 5-7 working days.",
     tone: "bad",
   },
 };

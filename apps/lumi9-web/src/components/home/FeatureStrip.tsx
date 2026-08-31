@@ -9,12 +9,12 @@
  * Two details are load-bearing:
  *
  *   · SEPARATORS, not cards. The obvious build is five rounded boxes in a grid,
- *     and that is exactly what makes a claim row read as generated — five
+ *     and that is exactly what makes a claim row read as generated - five
  *     identical containers with an icon centred in each. Hairline dividers
  *     between free-standing items read as a printed strapline instead.
  *   · The rule is drawn with a `before` pseudo-element that is suppressed on the
  *     first item of each visual row. At three columns that is items 1 and 4, at
- *     two it is 1, 3 and 5 — hence the `nth-child` pairs rather than a single
+ *     two it is 1, 3 and 5 - hence the `nth-child` pairs rather than a single
  *     `first:` rule, which would leave an orphan rule floating at the start of
  *     row two.
  *
@@ -41,7 +41,7 @@ export function FeatureStrip() {
             key={f.label}
             className={[
               "relative flex min-w-0 items-center gap-3 px-3 sm:px-5",
-              // Hairline between items — suppressed at the start of every row.
+              // Hairline between items - suppressed at the start of every row.
               "before:absolute before:left-0 before:top-1/2 before:h-7 before:w-px",
               "before:-translate-y-1/2 before:bg-midnight/15 before:content-['']",
               "nth-[2n+1]:before:hidden",

@@ -2,7 +2,7 @@
  * Scalloped section edges.
  *
  * lumi9.in ends its green bands in a row of half-circles rather than a straight
- * rule. It is the single most recognisable thing about that page's structure —
+ * rule. It is the single most recognisable thing about that page's structure -
  * a hard horizontal edge between two colour fields is what makes a layout read
  * as a stack of generated blocks, and the scallop is what stops it.
  *
@@ -10,7 +10,7 @@
  * reasons that both bite in practice:
  *
  *   1. An `<svg preserveAspectRatio="none">` divider stretches its bumps as the
- *      viewport widens — at 1920px the semicircles become flat ellipses, and on
+ *      viewport widens - at 1920px the semicircles become flat ellipses, and on
  *      a phone they turn into spikes. A mask tiles at a FIXED pixel size, so a
  *      bump is the same bump at every width. That is why the scallop survives
  *      the responsive gates instead of needing a breakpoint per size.
@@ -18,12 +18,12 @@
  *      caller passes and needs no second copy of the palette in an SVG fill.
  *
  * Geometry: the tile is `2r` wide and `r` tall, and the circle has radius `r`
- * anchored on the edge — so consecutive bumps touch exactly, with no sliver of
+ * anchored on the edge - so consecutive bumps touch exactly, with no sliver of
  * background between them and no overlap darkening the seam.
  */
 
 type ScallopProps = {
-  /** Any CSS colour — pass a token, e.g. `var(--color-moss)`. */
+  /** Any CSS colour - pass a token, e.g. `var(--color-moss)`. */
   color: string;
   /** `down` hangs bumps below a band; `up` sits them on top of the next one. */
   direction?: "down" | "up";
@@ -60,13 +60,13 @@ export function Scallop({ color, direction = "down", radius = 14, className = ""
 /**
  * The softer sibling: one long asymmetric curve instead of a row of bumps.
  *
- * Used where a scallop would be too busy — between two large photographic
+ * Used where a scallop would be too busy - between two large photographic
  * sections, where the eye wants a horizon rather than a trim. Asymmetric on
  * purpose: a perfectly symmetrical arc reads as a default shape, and the whole
  * point of the divider is that a human chose where the curve peaks.
  *
  * This one DOES stretch with `preserveAspectRatio="none"`, and that is correct
- * here — a single curve reads as intentional at any aspect, unlike a bump row.
+ * here - a single curve reads as intentional at any aspect, unlike a bump row.
  */
 export function WaveEdge({
   color,

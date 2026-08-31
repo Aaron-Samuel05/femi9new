@@ -38,7 +38,7 @@ export function CartUIProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [toast, setToast] = useState<CartToast | null>(null);
   // A ref rather than derived from `toast`, so `notify` never has to depend on
-  // the value it sets — a changing identity would re-run every consumer's
+  // the value it sets - a changing identity would re-run every consumer's
   // memo on each message.
   const seq = useRef(0);
 

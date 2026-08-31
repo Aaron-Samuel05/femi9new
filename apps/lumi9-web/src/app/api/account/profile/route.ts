@@ -9,11 +9,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * PATCH /api/account/profile — edit name, email or mobile.
+ * PATCH /api/account/profile - edit name, email or mobile.
  *
  * The account page had no profile surface at all: three read-only tabs and a
  * sign-out. A shopper who signed in with a magic link could not add a phone
- * number, and one who signed in with an OTP could not add an email — so
+ * number, and one who signed in with an OTP could not add an email - so
  * checkout asked for the missing half on every single order and nothing was
  * ever kept.
  *
@@ -26,8 +26,8 @@ const ProfileSchema = z
     name: z.string().trim().min(2, "Enter your full name").max(120).optional(),
     email: z.string().trim().toLowerCase().email("Enter a valid email address").optional(),
     /*
-     * Canonicalised exactly as `normalizePhone` does — strip non-digits, keep
-     * the last 10 — so a pasted "+91 98842 30571" compares equal to the stored
+     * Canonicalised exactly as `normalizePhone` does - strip non-digits, keep
+     * the last 10 - so a pasted "+91 98842 30571" compares equal to the stored
      * value instead of reading as a change and being bounced into the OTP
      * challenge the shopper has no reason to expect.
      */

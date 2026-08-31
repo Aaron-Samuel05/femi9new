@@ -3,12 +3,12 @@ import { cronSecretOk } from "@femi9/core/cron-auth";
 import { generateDueOrders } from "@femi9/core/services/subscriptions";
 
 /**
- * POST /api/cron/renew-subscriptions — create a renewal order for every Lumi9
+ * POST /api/cron/renew-subscriptions - create a renewal order for every Lumi9
  * subscription whose `nextDeliveryAt` has passed. Returns { generated: n }.
  *
  * Called on a schedule by EventBridge Scheduler, which presents `CRON_SECRET`
  * in `x-cron-secret`. Without this running, a subscription is a row that never
- * ships anything again after the first box — which is why the storefront's
+ * ships anything again after the first box - which is why the storefront's
  * "Start subscription" button and this route landed in the same change. A
  * recurring promise with no scheduler behind it is a worse defect than a button
  * that does nothing, because the shopper has no way to tell.

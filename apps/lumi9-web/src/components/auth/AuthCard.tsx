@@ -14,16 +14,16 @@ import { safeNextPath } from "@/lib/safe-next";
  * ── What this replaced ──────────────────────────────────────────────────────
  * One email field, plus a Google button and an Apple button that were
  * `<button type="button">` with no `onClick` and nothing behind them. Pressing
- * either did nothing at all — no navigation, no error, no spinner — which is a
+ * either did nothing at all - no navigation, no error, no spinner - which is a
  * worse outcome than not offering them, because the shopper cannot tell
  * whether the site is broken or she is.
  *
  * ── What it is now ──────────────────────────────────────────────────────────
  * The three methods lumi9.in actually asks for, in the order it asks for them:
  *
- *   • Google        — a top-level navigation to /api/auth/google
- *   • Mobile OTP    — +91, 10 digits → "Send code" → 6 digits → "Verify"
- *   • Email link    — address → "Email me a link"
+ *   • Google        - a top-level navigation to /api/auth/google
+ *   • Mobile OTP    - +91, 10 digits → "Send code" → 6 digits → "Verify"
+ *   • Email link    - address → "Email me a link"
  *
  * Mobile is the DEFAULT because this storefront ships parcels: a number is the
  * one contact detail the order needs anyway, and capturing it at sign-in is
@@ -39,7 +39,7 @@ import { safeNextPath } from "@/lib/safe-next";
  * ── Apple ───────────────────────────────────────────────────────────────────
  * Deliberately gone rather than left inert. Sign in with Apple needs an Apple
  * Developer team, a Services ID, a key and a server-side client-secret JWT that
- * expires every six months — none of which exists on this platform. It is a
+ * expires every six months - none of which exists on this platform. It is a
  * project, not a button, and a dead control that looks live costs more trust
  * than an absent one.
  */
@@ -110,7 +110,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
   const [mode, setMode] = useState<Mode>("login");
   /*
    * Mobile is preferred when it is available, because a delivery address needs
-   * a number anyway — but only when the deployment can actually send an SMS.
+   * a number anyway - but only when the deployment can actually send an SMS.
    * Defaulting to a method whose provider is off would open the card on a form
    * that answers 503 the moment it is submitted.
    */
@@ -136,7 +136,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
   const isLogin = mode === "login";
 
   // Tick the resend gate down. One interval for the whole component, cleared on
-  // unmount — a stray timer here would keep the button disabled after a route
+  // unmount - a stray timer here would keep the button disabled after a route
   // change and there is no other way to re-enable it.
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -318,7 +318,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
           </p>
         )}
 
-        {/* GOOGLE — a real navigation, not a fetch: the OAuth handshake is a
+        {/* GOOGLE - a real navigation, not a fetch: the OAuth handshake is a
             top-level redirect and cannot be done from inside the page.
             Rendered only where the provider is set up AND switched on. */}
         {methods.google && (
@@ -342,7 +342,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
           </>
         )}
 
-        {/* METHOD — a choice, and therefore only shown when there IS one. A
+        {/* METHOD - a choice, and therefore only shown when there IS one. A
             single-option toggle is a control that cannot do anything. */}
         {methods.phone && methods.email && (
           <div className="mb-5 flex gap-2" role="group" aria-label="Sign-in method">
@@ -400,7 +400,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
                 />
               </div>
               <p className="m-0 text-[13px] text-muted">
-                We will text you a 6-digit code — no password to remember.
+                We will text you a 6-digit code - no password to remember.
               </p>
               <p className="m-0 min-h-5 text-[13px] text-[#b4232c]" role="alert" aria-live="polite">
                 {error ?? " "}
@@ -523,7 +523,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
                 brands sign shoppers in with an emailed link or a phone OTP, so
                 there is nothing to forget and nothing to breach. */}
             <p className="m-0 text-[13px] text-muted">
-              We will email you a sign-in link — no password to remember.
+              We will email you a sign-in link - no password to remember.
             </p>
             <p className="m-0 min-h-5 text-[13px] text-[#b4232c]" role="alert" aria-live="polite">
               {error ?? " "}

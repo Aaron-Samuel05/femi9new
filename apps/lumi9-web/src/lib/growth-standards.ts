@@ -14,7 +14,7 @@ export const Z_DISPLAY_LIMIT = 5;
 const MAX_MONTH = 60;
 
 /**
- * Abramowitz & Stegun 7.1.26. Maximum error ~1.5e-7 — orders of magnitude
+ * Abramowitz & Stegun 7.1.26. Maximum error ~1.5e-7 - orders of magnitude
  * finer than a displayed percentile needs.
  *
  * Spelled out because JavaScript has no erf and no normal CDF, and this is
@@ -40,7 +40,7 @@ export function normalCdf(z: number): number {
 /**
  * The LMS transformation.
  *
- * The L = 0 branch never fires for the four tables we ship — height-for-age is
+ * The L = 0 branch never fires for the four tables we ship - height-for-age is
  * L = 1 throughout, weight-for-age runs -0.3531 to 0.3809. It is here because
  * the general formula divides by zero at L = 0, and that is a real case for
  * other WHO indicators.

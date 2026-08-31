@@ -40,12 +40,12 @@ export function FooterMascot() {
   const extentsRef = useRef<MascotExtents>(DEFAULT_EXTENTS);
 
   /**
-   * `active` is one-way on purpose — tearing the canvas down would drop the GL
+   * `active` is one-way on purpose - tearing the canvas down would drop the GL
    * context and re-decode the GLB every time the footer scrolled away.
    *
    * `near` is the one that keeps reporting, and it is what gates the frame loop
    * below. Before, reaching the footer once left this canvas rendering at 60fps
-   * for the rest of the session, on EVERY page — the footer is in PageShell.
+   * for the rest of the session, on EVERY page - the footer is in PageShell.
    */
   const { near, seen: active } = useNearViewport(host, "400px");
 

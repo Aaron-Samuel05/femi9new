@@ -3,12 +3,12 @@
 import { useId, useState } from "react";
 
 /**
- * Footer newsletter capture — an outlined pill on the moss panel with a butter
+ * Footer newsletter capture - an outlined pill on the moss panel with a butter
  * "Join" button tucked inside.
  *
  * It used to flip `signedUp` on submit and throw the address away, so every
  * visitor who gave Lumi9 their email was told they were on a list that did not
- * exist. It POSTs to /api/newsletter now, which writes a NewsletterSubscriber —
+ * exist. It POSTs to /api/newsletter now, which writes a NewsletterSubscriber -
  * the model the shared schema has carried since Femi9's two forms had the same
  * defect. The success panel is shown only once the row is written.
  */
@@ -39,7 +39,7 @@ export function NewsletterForm() {
       // address.", and the 429 copy), so surface them rather than a generic one.
       setError(body?.error ?? "We could not sign you up just now. Please try again.");
     } catch {
-      setError("Network error — please try again.");
+      setError("Network error - please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -48,7 +48,7 @@ export function NewsletterForm() {
   if (signedUp) {
     return (
       <p className="mb-[clamp(20px,3vw,30px)] max-w-[440px] rounded-pill border-[1.5px] border-butter/40 bg-butter/15 px-6 py-4 text-[15px] text-butter">
-        You’re on the list — welcome to Lumi9.
+        You’re on the list - welcome to Lumi9.
       </p>
     );
   }

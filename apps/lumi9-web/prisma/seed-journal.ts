@@ -4,7 +4,7 @@
  * `src/lib/journal.ts` is this seed's INPUT, exactly as `src/lib/catalog.ts` is
  * the catalogue seed's. The storefront reads the DATABASE through
  * `@femi9/core/services/blog`, so editing that module changes what a fresh seed
- * writes and nothing that is already live — a published article is edited in the
+ * writes and nothing that is already live - a published article is edited in the
  * console, at /lumi9/content/blog.
  *
  *   DATABASE_URL_LUMI9=postgresql://…/db?schema=lumi9 npm run db:seed-journal
@@ -12,7 +12,7 @@
  * Separate from `db:seed` on purpose, and for the same reason `db:seed-zones` is
  * separate: the catalogue seed REPLACES images, specs and variants wholesale, and
  * editorial content has no business being rewritten every time somebody re-seeds
- * a price. Running this one twice is safe — slugs are stable, so a rerun updates
+ * a price. Running this one twice is safe - slugs are stable, so a rerun updates
  * in place.
  *
  * ⚠️ It DOES overwrite an article the console has since edited. That is the
@@ -29,7 +29,7 @@ async function main() {
   const db = dbFor(BRAND)
 
   // ── Categories ────────────────────────────────────────────────────────────
-  // Upserted by name, which is the unique key — the chips carry a colour and a
+  // Upserted by name, which is the unique key - the chips carry a colour and a
   // tint the article page reads for its accent rule, so a post whose category is
   // missing would render with no accent at all rather than fail loudly.
   for (const category of JOURNAL_CATEGORIES) {
@@ -47,7 +47,7 @@ async function main() {
   // up front rather than inside the loop: the key is derived from the file's
   // content, so a re-seed is free, and doing it here keeps the per-post write
   // to a single round trip. Without a bucket the cover is left null rather than
-  // filled with a container path — the same call the product seed makes, and
+  // filled with a container path - the same call the product seed makes, and
   // for the same reason: `/assets/journal/x.webp` renders a perfectly good
   // picture that the console's uploader can never replace.
   const covers = new Map<string, string>()
@@ -57,7 +57,7 @@ async function main() {
       console.log(`  cover ${path} -> ${covers.get(path)}`)
     }
   } else {
-    console.warn('  ! UPLOADS_BUCKET unset — seeding posts without cover images.')
+    console.warn('  ! UPLOADS_BUCKET unset - seeding posts without cover images.')
   }
 
   for (const post of POSTS) {
@@ -76,7 +76,7 @@ async function main() {
       author: post.author,
       readTime: post.readTime,
       // Femi9's posts carry a one-word mood here. Lumi9's briefs have none, so
-      // the category name stands in — a real value beats an empty NOT NULL column.
+      // the category name stands in - a real value beats an empty NOT NULL column.
       tone: post.category,
       image: covers.get(post.image) ?? '',
       imageAlt: post.imageAlt,
@@ -88,7 +88,7 @@ async function main() {
       cta: post.cta ?? null,
       // The module's date is a plain `YYYY-MM-DD`. Anchored at UTC midnight so
       // the row lands on the day the brief says, whatever the seeding machine's
-      // timezone is — a local-midnight parse in India files an article a day early.
+      // timezone is - a local-midnight parse in India files an article a day early.
       publishedAt: new Date(`${post.published}T00:00:00Z`),
     }
 

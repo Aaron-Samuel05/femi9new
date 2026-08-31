@@ -46,7 +46,7 @@ export function SizeFinder() {
         <Reveal className="rounded-media bg-canvas p-card-lg text-center shadow-card">
           <div className="mb-2 text-sm text-muted">{recommended ? "We recommend" : "Tap a weight to begin"}</div>
           <div className="mb-1.5 font-display text-numeral leading-none text-moss-deep">
-            {recommended ? recommended.size : "—"}
+            {recommended ? recommended.size : "-"}
           </div>
           <div className="mb-6.5 text-[15px] text-midnight">
             {recommended ? `Cloud Soft ${recommended.name}` : "Your perfect fit appears here"}
@@ -56,13 +56,13 @@ export function SizeFinder() {
             <div>
               <div className="text-xs text-muted">Weight range</div>
               <div className="text-[clamp(15px,1.5vw,17px)] font-bold text-midnight">
-                {recommended ? recommended.range : "—"}
+                {recommended ? recommended.range : "-"}
               </div>
             </div>
             <div>
               <div className="text-xs text-muted">Pack sizes</div>
               <div className="text-[clamp(15px,1.5vw,17px)] font-bold text-midnight">
-                {recommended ? recommended.packs.map((pack) => pack.count).join(" / ") : "—"}
+                {recommended ? recommended.packs.map((pack) => pack.count).join(" / ") : "-"}
               </div>
             </div>
           </div>

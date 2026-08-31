@@ -5,9 +5,9 @@ import { dbFor } from "@femi9/db";
 import { clientIp, rateLimit, tooManyRequests } from "@femi9/core/rate-limit";
 
 /**
- * POST /api/newsletter — persist a footer signup.
+ * POST /api/newsletter - persist a footer signup.
  *
- * The footer form was theatre: it swapped itself for "You're on the list —
+ * The footer form was theatre: it swapped itself for "You're on the list -
  * welcome to Lumi9" and threw the address away. Femi9 fixed exactly this and
  * `NewsletterSubscriber` exists in the shared schema because of it; the comment
  * on that model still says "Both newsletter forms showed 'you're on the list'
@@ -15,7 +15,7 @@ import { clientIp, rateLimit, tooManyRequests } from "@femi9/core/rate-limit";
  * land anywhere.
  *
  * Re-subscribing is idempotent (email is @unique) and answers 200 rather than a
- * conflict — from the visitor's side "you are on the list" is simply true, and
+ * conflict - from the visitor's side "you are on the list" is simply true, and
  * a 409 would leak which addresses are already subscribed.
  */
 

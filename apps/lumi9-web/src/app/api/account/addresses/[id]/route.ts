@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 /**
  * Field rules mirror the POST schema exactly, so the same inline errors render
  * whether the shopper is adding an address or editing one. Every message is
- * written for a person to read — `details.fieldErrors` is what the form binds.
+ * written for a person to read - `details.fieldErrors` is what the form binds.
  */
 const PatchSchema = z.object({
   label: z.string().trim().min(1, "Give this address a label").max(40).optional(),
@@ -32,7 +32,7 @@ const PatchSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
-/** Ownership is enforced by the SERVICE — `updateAddress` scopes its `where` to
+/** Ownership is enforced by the SERVICE - `updateAddress` scopes its `where` to
  *  the user id, so a guessed address id belonging to somebody else is a 404
  *  here rather than an edit there. */
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -53,7 +53,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
  * `Address.archivedAt` is why: an order references the address it shipped to
  * forever, so a row that any order points at is ARCHIVED rather than removed
  * (every account read already filters `archivedAt IS NULL`) and the rest are
- * hard-deleted. Both are a 200 — the distinction is the service's business, not
+ * hard-deleted. Both are a 200 - the distinction is the service's business, not
  * something a shopper should have to understand to tidy her address book.
  */
 export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {

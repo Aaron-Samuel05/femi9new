@@ -5,7 +5,7 @@ import { CartView } from "@/components/cart/CartView";
 
 export const metadata: Metadata = {
   title: "Your cart",
-  description: "Review your Cloud Soft basket — free delivery on orders over ₹999.",
+  description: "Review your Cloud Soft basket - free delivery on orders over ₹999.",
   robots: { index: false, follow: true },
 };
 

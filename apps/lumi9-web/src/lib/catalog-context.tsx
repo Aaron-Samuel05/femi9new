@@ -8,7 +8,7 @@ import type { SizeCode } from './catalog'
  * The catalogue, delivered to client components.
  *
  * Twelve client components used to import `SIZES` straight from
- * `lib/catalog.ts` — fine while the catalogue was a hardcoded module, impossible
+ * `lib/catalog.ts` - fine while the catalogue was a hardcoded module, impossible
  * once it lives in the database, because a client component cannot query one.
  *
  * The root layout is a server component: it loads the catalogue once per request
@@ -40,7 +40,7 @@ export interface CatalogData {
   /** One size with a fallback, so a view never renders empty on a bad param. */
   getSizeOrDefault: (code: string | null | undefined, fallback?: SizeCode) => DbProductSize
   /**
-   * The subscription discount, as a percentage, from Settings — the SAME value
+   * The subscription discount, as a percentage, from Settings - the SAME value
    * `generateDueOrders()` discounts a renewal by. Not a constant: the page used
    * to promise 20% from a hardcoded module while renewals applied the console's
    * 15% default.
@@ -56,7 +56,7 @@ export interface CatalogData {
  * a hook cannot go. Returning closures keeps every existing call site intact.
  *
  * Throws when the provider is missing. An empty catalogue and an unwrapped tree
- * look identical on the page — a shop with no products — and one of them is a
+ * look identical on the page - a shop with no products - and one of them is a
  * bug that should be loud.
  */
 export function useCatalogData(): CatalogData {
@@ -81,7 +81,7 @@ export function useCatalogData(): CatalogData {
         // Falls through to the first size rather than a hardcoded 'M', which
         // would throw if that size were ever discontinued.
         const found = getSize(code) ?? sizes.find((s) => s.size === fallback) ?? sizes[0]
-        if (!found) throw new Error('The catalogue is empty — nothing can be rendered.')
+        if (!found) throw new Error('The catalogue is empty - nothing can be rendered.')
         return found
       },
     }

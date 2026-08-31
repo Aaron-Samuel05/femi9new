@@ -28,7 +28,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/account/complete-profile — the onboarding step behind /welcome.
+ * POST /api/account/complete-profile - the onboarding step behind /welcome.
  *
  * Every sign-in path mints a session BEFORE it knows who the shopper is: phone
  * OTP writes a number and nothing else, the magic link writes an address and
@@ -77,12 +77,12 @@ export async function POST(req: NextRequest) {
     const { name, email, phone } = parsed.data;
 
     try {
-      // 1. Name — no uniqueness and no verification concern, so written directly.
+      // 1. Name - no uniqueness and no verification concern, so written directly.
       if (name && name !== current.name) {
         await db.user.update({ where: { id: session.sub }, data: { name } });
       }
 
-      // 2. Email — written UNVERIFIED with a confirmation link dispatched behind
+      // 2. Email - written UNVERIFIED with a confirmation link dispatched behind
       //    it. Safe because checkout adopts the session user, so an address is
       //    not an identity key for attaching an order, and a collision is a
       //    clean 409 rather than a P2002 500.
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
         dispatchEmailVerification("lumi9", session.sub, email);
       }
 
-      // 3. Phone — NOT written here. An unverified number on User is worse than
+      // 3. Phone - NOT written here. An unverified number on User is worse than
       //    none: it is what a parcel and every delivery SMS go to. This only
       //    STARTS the challenge, and ownership is checked first so we never
       //    spend an SMS on a number we are about to refuse.

@@ -11,10 +11,10 @@ import { listJournalCategories, listJournalPosts } from "@/lib/journal.server";
 import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const DESCRIPTION =
-  "Gentle, practical parenting reads from Lumi9 — baby diaper guides, newborn care tips, sleep and skin, written for the ordinary days nobody posts about.";
+  "Gentle, practical parenting reads from Lumi9 - baby diaper guides, newborn care tips, sleep and skin, written for the ordinary days nobody posts about.";
 
 export const metadata: Metadata = {
-  title: "The Lumi9 Journal — Baby Care Guides & Diaper Tips",
+  title: "The Lumi9 Journal - Baby Care Guides & Diaper Tips",
   description: DESCRIPTION,
   keywords: [
     "baby care blog",
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: absoluteUrl("/journal"),
-    title: "The Lumi9 Journal — Baby Care Guides & Diaper Tips",
+    title: "The Lumi9 Journal - Baby Care Guides & Diaper Tips",
     description: DESCRIPTION,
     siteName: SITE_NAME,
   },
@@ -40,7 +40,7 @@ export default async function JournalPage() {
   const [posts, allCategories] = await Promise.all([listJournalPosts(), listJournalCategories()]);
   // Only chip a topic that has something behind it. The query returns every
   // category the brand has, including one the console created for an article
-  // that is still a draft — and a filter that reliably yields "No posts in this
+  // that is still a draft - and a filter that reliably yields "No posts in this
   // topic yet" is a dead control.
   const used = new Set(posts.map((post) => post.category));
   const categories = allCategories.filter((category) => used.has(category.name));
@@ -106,13 +106,13 @@ export default async function JournalPage() {
             Notes for <Em>happy</Em> little days.
           </h1>
           <p className="m-0 mx-auto max-w-[58ch] text-lead leading-[1.6] text-muted">
-            Baby diaper guides, newborn care tips and honest reads on sleep, skin and the days in between — written
+            Baby diaper guides, newborn care tips and honest reads on sleep, skin and the days in between - written
             for the moments nobody posts about.
           </p>
         </div>
       </header>
 
-      {/* FEATURED MOSAIC — lead tile plus its companions */}
+      {/* FEATURED MOSAIC - lead tile plus its companions */}
       <section className="px-safe pt-10 pb-[clamp(44px,6vw,80px)]" aria-label="Featured reads">
         <Reveal className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 gap-[clamp(12px,1.6vw,20px)] md:auto-rows-[minmax(0,1fr)] md:grid-cols-4">
           {lead && <MosaicTile post={lead} big priority />}

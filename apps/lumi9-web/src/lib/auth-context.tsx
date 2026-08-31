@@ -12,7 +12,7 @@ import {
 /**
  * The signed-in shopper, resolved ONCE for the whole client tree.
  *
- * The session cookie is httpOnly, so the browser cannot read it — the only way
+ * The session cookie is httpOnly, so the browser cannot read it - the only way
  * for a client component to know who it is talking to is to ask the server.
  * Femi9's nav does that inline, which is fine for one consumer; here the nav,
  * the checkout prefill and the account entry point all want it, and three
@@ -23,7 +23,7 @@ import {
  * dangerous one is the other way round.
  *
  * Nothing here is an authorisation. Every guarded surface re-reads the session
- * server-side — this only decides what the chrome says.
+ * server-side - this only decides what the chrome says.
  */
 
 /** Which of the three contact fields the account still has no value for. */
@@ -46,7 +46,7 @@ interface SessionState {
   /** False until the first /api/auth/me resolves, so the nav can hold still
    *  rather than flashing "Sign in" at somebody who is signed in. */
   ready: boolean;
-  /** Re-read the session — after sign-in, or after a profile edit. */
+  /** Re-read the session - after sign-in, or after a profile edit. */
   refresh: () => Promise<void>;
   /** Clear the session and hand back the destination to land on. */
   signOut: () => Promise<void>;
@@ -114,7 +114,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
      *
      * The session cookie has just been cleared underneath a router cache that
      * still holds the signed-in render. router.push + refresh was tried on the
-     * account page and did not leave it — the shopper stayed looking at her own
+     * account page and did not leave it - the shopper stayed looking at her own
      * orders after signing out. Reloading throws that cache away, which is the
      * whole point of signing out.
      *
@@ -154,12 +154,12 @@ export function firstNameOf(user: SessionUser | null): string | null {
 }
 
 /**
- * Two uppercase letters for the avatar — the WhatsApp/Gmail convention.
+ * Two uppercase letters for the avatar - the WhatsApp/Gmail convention.
  *
  * "Priya Raman" → PR. A single-word name takes its first two letters ("Priya" →
  * PR) rather than one lonely glyph in a circle sized for two. Falls back to the
  * email, then the phone, because an account that signed in by link or OTP has
- * no name until /welcome captures one — and a blank circle looks like a failed
+ * no name until /welcome captures one - and a blank circle looks like a failed
  * image rather than a person.
  *
  * Returns null only when there is genuinely nothing, which the caller renders
@@ -185,7 +185,7 @@ export function initialsOf(user: SessionUser | null): string | null {
     if (local) return local.slice(0, 2).toUpperCase();
   }
 
-  // The last two digits — the end of a number is what people recognise their
+  // The last two digits - the end of a number is what people recognise their
   // own by, and the leading digits of an Indian mobile are near-constant.
   const phone = user.phone?.replace(/\D/g, "");
   if (phone && phone.length >= 2) return phone.slice(-2);

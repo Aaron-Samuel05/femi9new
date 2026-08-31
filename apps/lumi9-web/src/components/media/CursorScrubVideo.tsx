@@ -8,7 +8,7 @@ export type ScrubTrackingArea = "component" | "window";
 export type ScrubObjectFit = "cover" | "contain" | "fill";
 
 export type CursorScrubVideoProps = {
-  /** Video URL. See ENCODING below — a normal MP4 will stutter. */
+  /** Video URL. See ENCODING below - a normal MP4 will stutter. */
   src: string;
   /** First frame, shown while the file buffers. Keep it small; it is the LCP paint. */
   poster?: string;
@@ -18,7 +18,7 @@ export type CursorScrubVideoProps = {
   reverse?: boolean;
   /** Measure the cursor against this component's box, or the whole viewport. */
   trackingArea?: ScrubTrackingArea;
-  /** 0.02–1. Higher is snappier, lower carries more inertia. */
+  /** 0.02-1. Higher is snappier, lower carries more inertia. */
   smoothing?: number;
   objectFit?: ScrubObjectFit;
   showPoster?: boolean;
@@ -37,7 +37,7 @@ export type CursorScrubVideoProps = {
 /**
  * A video whose playhead follows the cursor instead of a clock.
  *
- * ENCODING — this is the whole trick, and it is not optional. Seeking lands on
+ * ENCODING - this is the whole trick, and it is not optional. Seeking lands on
  * the nearest KEYFRAME, so a normally-encoded video (one keyframe every ~2s)
  * gives you about five distinct stills across the entire travel and a visible
  * lurch between each. Every frame has to be a keyframe:
@@ -46,11 +46,11 @@ export type CursorScrubVideoProps = {
  *     -g 1 -keyint_min 1 -x264-params "scenecut=0" \
  *     -profile:v high -pix_fmt yuv420p -movflags +faststart -an out.mp4
  *
- * That inflates the file — all-intra has no interframe compression to lean on —
+ * That inflates the file - all-intra has no interframe compression to lean on -
  * so pay for it by cropping dead space and dropping resolution rather than by
  * raising CRF, which is what puts banding into flat gradient backgrounds.
  *
- * DEGRADATION — a cursor is not a given, and this is the difference between a
+ * DEGRADATION - a cursor is not a given, and this is the difference between a
  * clever hero and one that is simply broken for half its audience:
  *   - fine pointer          -> scrub (the intended experience)
  *   - coarse/no pointer     -> muted autoplay loop, so touch users see the
@@ -136,7 +136,7 @@ export function CursorScrubVideo({
           objectFit,
           transformOrigin: "50% 55%",
           // The feather lives on the VIDEO, not the wrapper. On the wrapper it
-          // fades every overlay with it — the hint pill included — and an
+          // fades every overlay with it - the hint pill included - and an
           // affordance you cannot read is worse than none at all.
           //
           // `closest-side` is the part that actually works: a percentage radius
@@ -160,7 +160,7 @@ const clamp01 = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
  *
  * `preload="auto"` fetches bytes but does not guarantee a decoded picture, so
  * the first seek can land on nothing. A muted play/pause pair does guarantee it,
- * and muted playback needs no user gesture — which is the only reason this is
+ * and muted playback needs no user gesture - which is the only reason this is
  * allowed to run on mount at all.
  */
 function usePrime(
@@ -174,7 +174,7 @@ function usePrime(
 
     // Set as a PROPERTY, not just the JSX attribute. React's SSR markup carries
     // muted="" but hydration does not reliably reassign it, and an unmuted video
-    // has its play() rejected — which would silently kill the buffer priming
+    // has its play() rejected - which would silently kill the buffer priming
     // below and leave the first scrub landing on an undecoded frame.
     video.muted = true;
     video.load();
@@ -189,8 +189,8 @@ function usePrime(
           video.currentTime = 0;
         })
         .catch(() => {
-          // Autoplay refused outright. Scrubbing still works — seeking is not
-          // playback — so there is nothing to recover from.
+          // Autoplay refused outright. Scrubbing still works - seeking is not
+          // playback - so there is nothing to recover from.
         });
     }
 

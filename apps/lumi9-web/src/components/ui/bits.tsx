@@ -35,7 +35,7 @@ export function SectionHeading({
  * The emphasised fragment inside a heading.
  *
  * Was `italic text-moss-deep`. An italicised word inside an otherwise-upright
- * heading is one of the most reliable generated-design tells — and it was never
+ * heading is one of the most reliable generated-design tells - and it was never
  * how this brand actually writes a headline. @lumi9official sets the same
  * construction in a brush script against its sans on card after card: "A
  * Mother's" over "Love in Every Layer", "More Cuddles" over "Less Worries".
@@ -45,7 +45,7 @@ export function SectionHeading({
  *     browser also shear it produces a doubled, wobbling oblique.
  *   · Script faces carry a smaller x-height than the sans they sit beside, so
  *     at matched font-size the emphasis looks SHRUNKEN. `1.12em` restores the
- *     optical match — it is a correction, not a size change.
+ *     optical match - it is a correction, not a size change.
  *   · The baseline shifts a touch because the two faces sit differently in
  *     their em box; `0.06em` puts the word back on the line of its neighbours.
  */

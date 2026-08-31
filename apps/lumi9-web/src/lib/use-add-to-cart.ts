@@ -18,7 +18,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * `run` awaits the write and only celebrates a `true`.
  *
  * PENDING IS NOT SHOWN IMMEDIATELY. A spinner that appears and vanishes inside
- * 80ms is a flicker, and a local cart write usually resolves that fast — so the
+ * 80ms is a flicker, and a local cart write usually resolves that fast - so the
  * pending state is armed on a short delay and cancelled if the write beats it.
  * The button still disables on the first frame, which is what stops a double
  * add; only the *visual* is deferred.
@@ -65,7 +65,7 @@ export function useAddToCart(perform: () => Promise<boolean>) {
   //
   // Written in an EFFECT, not in the render body. Assigning `.current` during
   // render is rejected by `react-hooks/refs` (which CI runs) and is genuinely
-  // unsafe under a re-render React discards — the ref would keep a closure from
+  // unsafe under a re-render React discards - the ref would keep a closure from
   // a render that never committed. An effect with no dependency array runs
   // after every commit, which is exactly the right moment.
   const performRef = useRef(perform);
@@ -90,7 +90,7 @@ export function useAddToCart(perform: () => Promise<boolean>) {
       clearTimeout(pendingTimer);
       if (mounted.current) {
         setBusy(false);
-        // A failure returns to idle silently. The toast owns the apology — a
+        // A failure returns to idle silently. The toast owns the apology - a
         // button that also turns red says the same bad news twice, and leaves
         // the shopper unsure which control to press next.
         setState(ok ? "added" : "idle");

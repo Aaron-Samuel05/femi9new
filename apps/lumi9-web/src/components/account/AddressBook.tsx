@@ -6,7 +6,7 @@ import { Icon } from "@/components/ui/Icon";
 import type { AccountAddress } from "@femi9/core/services/account";
 
 /**
- * The address book — now with the three verbs it was missing.
+ * The address book - now with the three verbs it was missing.
  *
  * It listed addresses and offered nothing else. The only writer was checkout,
  * which mints a fresh row per order, so the list filled with near-identical
@@ -44,7 +44,7 @@ const BLANK: AddressDraft = {
 };
 
 /** Prefill from the RAW parts the DTO carries, never by re-parsing the composed
- *  "Coimbatore, Tamil Nadu 641001" line — that string is for reading. */
+ *  "Coimbatore, Tamil Nadu 641001" line - that string is for reading. */
 function draftFrom(address: AccountAddress): AddressDraft {
   return {
     label: address.label,
@@ -106,7 +106,7 @@ export function AddressBook({ addresses }: { addresses: AccountAddress[] }) {
       }
       close();
       // The list is rendered by a server component reading the database, so
-      // re-reading it is the only way the new card appears — and the only way
+      // re-reading it is the only way the new card appears - and the only way
       // a changed default demotes the old one on screen.
       router.refresh();
     } catch {
@@ -273,7 +273,7 @@ export function AddressBook({ addresses }: { addresses: AccountAddress[] }) {
       <div className="grid grid-cols-1 gap-[clamp(12px,1.6vw,18px)] md:grid-cols-2">
         {addresses.length === 0 && editing === null && (
           <p className="m-0 py-6 text-[clamp(14px,1.3vw,15px)] text-muted">
-            No saved addresses yet — add one here, or the address you enter at checkout is kept for
+            No saved addresses yet - add one here, or the address you enter at checkout is kept for
             next time.
           </p>
         )}

@@ -11,7 +11,7 @@ import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
 
 const TITLE = "Baby Diaper Size Chart | Find the Right Diaper Size | Lumi9";
 const DESCRIPTION =
-  "Always go by weight, not age. Use the Lumi9 baby diaper size chart — NB up to 5 kg, S 4–8 kg, M 7–12 kg, L 9–14 kg, XL 12–17 kg — and learn when to switch diaper size.";
+  "Always go by weight, not age. Use the Lumi9 baby diaper size chart - NB up to 5 kg, S 4-8 kg, M 7-12 kg, L 9-14 kg, XL 12-17 kg - and learn when to switch diaper size.";
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -55,7 +55,7 @@ export default async function SizeGuidePage() {
         </Reveal>
       </section>
 
-      {/* TABLE — a real table on tablet+, and one card per size on phones, so
+      {/* TABLE - a real table on tablet+, and one card per size on phones, so
           nothing has to scroll sideways or shrink below a readable size */}
       <section className="px-safe pb-section">
         <div className="mx-auto max-w-[900px]">

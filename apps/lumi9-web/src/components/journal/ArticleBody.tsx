@@ -9,7 +9,7 @@ import { Reveal } from "@/components/motion/Reveal";
  *
  *   "## …"        section heading      "### …"     sub-heading
  *   "> …"         pull quote           "• a\n• b"  bullet list
- *   "1. a\n2. b"  numbered list        anything else — a paragraph
+ *   "1. a\n2. b"  numbered list        anything else - a paragraph
  *
  * A list is ONE block whose items are separated by embedded newlines. Rendering
  * that as a paragraph would let HTML whitespace collapsing eat every separator
@@ -17,8 +17,8 @@ import { Reveal } from "@/components/motion/Reveal";
  * the split happens here rather than at authoring time.
  *
  * The numbered branch requires an embedded newline as well as the "N. " marker,
- * so an ordinary paragraph opening with a figure — "2026 marked a new chapter…"
- * — can never be mistaken for a one-item ordered list.
+ * so an ordinary paragraph opening with a figure - "2026 marked a new chapter…"
+ * - can never be mistaken for a one-item ordered list.
  */
 
 const LIST_MARKER = /^\s*(?:•|\d+\.)\s+/;
@@ -34,7 +34,7 @@ function listKind(block: string): "ul" | "ol" | null {
  *
  * Both are matched in one pass so a link inside bold text (or the reverse)
  * cannot be half-parsed. Anything that is not one of the two forms is emitted
- * as plain text — no HTML is ever interpreted, so authored copy cannot inject
+ * as plain text - no HTML is ever interpreted, so authored copy cannot inject
  * markup into the page.
  */
 const INLINE = /\*\*(.+?)\*\*|\[([^\]]+)\]\(([^)\s]+)\)/g;
