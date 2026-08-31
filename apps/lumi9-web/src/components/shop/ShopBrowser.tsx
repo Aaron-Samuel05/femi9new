@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AddButton } from "@/components/product/AddButton";
-import { defaultPack, inr } from "@/lib/catalog";
+import { inr, leadPack } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 
 const SIZE_FILTERS = ["All", "NB", "S", "M", "L", "XL"] as const;
@@ -22,7 +22,11 @@ export function ShopBrowser() {
   const products = useMemo(() => {
     const rows = sizes.filter((size) => sizeFilter === "All" || size.size === sizeFilter).map((size) => ({
       size,
-      pack: defaultPack(size),
+      // Leads with the tier priced at `basePrice` — the same pick the PDP
+      // opens on, so the grid and the product page cannot quote different
+      // prices. Femi9 chooses its default variant by the same rule
+      // (`packVariants.find(v => v.price === price)`).
+      pack: leadPack(size),
     }));
 
     if (sort === "Price: low to high") rows.sort((a, b) => a.pack.price - b.pack.price);

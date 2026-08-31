@@ -194,6 +194,29 @@ export function getPack<P extends { count: number }>(
 }
 
 /**
+ * The tier a surface LEADS with: the one priced at the product's `basePrice`.
+ *
+ * This is the whole reason the console's "Base price (₹)" field reaches a
+ * shopper. `basePrice` was dropped in `catalog.server.ts` and no Lumi9 surface
+ * read it, so editing that field changed the console's own products list and
+ * nothing else — while every price a shopper saw came from a pack variant.
+ *
+ * One rule, in one place, because the card and the PDP have to agree: the card
+ * prints a price beside a button that adds a pack, and the PDP opens on a tier.
+ * If those picked differently, the shop grid and the product page would quote
+ * different prices for the same product.
+ *
+ * Falls back to `defaultPack` when no tier matches, so a `basePrice` that is
+ * not any tier's price shows a price something actually adds rather than a
+ * number the cart will contradict.
+ */
+export function leadPack<P extends { count: number; price: number }>(
+  size: { packs: P[]; basePrice?: number },
+): P {
+  return size.packs.find((p) => p.price === size.basePrice) ?? defaultPack(size);
+}
+
+/**
  * The BUNDLED pack photo — the seed's input, and the storefront's last resort.
  *
  * Not what a page renders any more. `catalog.server.ts` reads `ProductImage`
@@ -206,6 +229,23 @@ export function getPack<P extends { count: number }>(
 export function packImage(size: SizeCode, count: number) {
   return `/assets/products/${size}-${count}.jpeg`;
 }
+
+/**
+ * Shown when a product has no photo in the database yet.
+ *
+ * NOT a product photograph — a plain tinted tile, and deliberately so. It is
+ * the honest rendering of "nobody has uploaded one", which is a state the
+ * console exists to fix. `catalog.server.ts` used to fall back to
+ * `packImage(size, count)` here, so an un-photographed product borrowed a
+ * bundled picture of a DIFFERENT pack and looked finished; the only way to
+ * discover the console's uploader was not the source was to change an image and
+ * watch nothing happen.
+ *
+ * Bundled rather than in S3 on purpose: it is UI chrome, it must render when
+ * object storage is empty or unreachable, and it can never be mistaken for the
+ * product's own photograph — which is the thing that must come from S3.
+ */
+export const PRODUCT_IMAGE_PLACEHOLDER = "/assets/product-placeholder.png";
 
 export function productName(size: { name: string }) {
   return `Cloud Soft — ${size.name}`;

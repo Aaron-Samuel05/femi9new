@@ -8,7 +8,7 @@ import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
-import { defaultPack, getPack, inr, subscriptionPrice } from "@/lib/catalog";
+import { getPack, inr, leadPack, subscriptionPrice } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import type { DbProductSize } from "@/lib/catalog.server";
 import { FEATURE_IMAGES, PDP_POLICY_ACCORDION } from "@/lib/content";
@@ -27,7 +27,12 @@ const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEA
  */
 export function ProductBuyBox({ size }: { size: DbProductSize }) {
   const { sizes, subscribeSavePct } = useCatalogData();
-  const [packCount, setPackCount] = useState(defaultPack(size).count);
+  // Opens on the tier priced at `basePrice`, which is what carries the
+  // console's "Base price (₹)" field onto the product page — it was dropped in
+  // catalog.server.ts and no surface read it, so editing that field moved the
+  // console's own products list and nothing a shopper saw. Same pick as the
+  // shop grid, so the two cannot quote different prices for one product.
+  const [packCount, setPackCount] = useState(leadPack(size).count);
   const [qty, setQty] = useState(1);
   const [mainImage, setMainImage] = useState<string | null>(null);
   const { add } = useCart();

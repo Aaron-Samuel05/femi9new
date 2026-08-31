@@ -1,7 +1,7 @@
 import 'server-only'
 import { getCatalog } from '@femi9/core/services/products'
 import { getSettings } from '@femi9/core/services/settings'
-import { packImage, productName, type ProductSize, type SizeCode } from './catalog'
+import { PRODUCT_IMAGE_PLACEHOLDER, productName, type ProductSize, type SizeCode } from './catalog'
 
 /**
  * Load Lumi9's catalogue from the database in the shape the storefront already
@@ -17,13 +17,24 @@ import { packImage, productName, type ProductSize, type SizeCode } from './catal
  * the cart used to key lines by `${size}-${count}` because there was nothing
  * else to key them by, and a server-side cart needs the id the database knows.
  *
- * It also carries its real PHOTO. Every surface used to call
- * `packImage(size, count)`, which builds `/assets/products/M-24.jpeg` — a file
- * shipped inside the container. So the console's image uploader wrote rows into
- * `ProductImage` (and bytes into the S3 uploads bucket) that this storefront
- * never read: changing a product photo in the console changed nothing a shopper
- * saw, and there was no error anywhere to say so. The database is the source
- * now, and `packImage` survives as the fallback for a product with no rows.
+ * It also carries its real PHOTO, and that photo now comes from S3 and nowhere
+ * else. Every surface used to call `packImage(size, count)` —
+ * `/assets/products/M-24.jpeg`, a file shipped inside the container — so the
+ * console's uploader wrote `ProductImage` rows (and bytes into the S3 uploads
+ * bucket) that this storefront never read: changing a product photo in the
+ * console changed nothing a shopper saw, and there was no error anywhere to say
+ * so.
+ *
+ * Reading the rows fixed that, but left the last bundled path in place as the
+ * fallback — so a product with NO rows still borrowed a picture of a different
+ * pack out of the container and looked photographed. Both halves are closed
+ * now: the row's URL is the only source, and the absence of one renders
+ * `PRODUCT_IMAGE_PLACEHOLDER`, a plain tile that is visibly not a product.
+ *
+ * `prisma/seed.ts` writes to the bucket too — it used to seed the bundled paths
+ * straight into the rows, which is why every seeded product was serving a
+ * container file that no console upload could replace. `prisma/
+ * migrate-images-to-s3.ts` moves the rows that predate this.
  */
 
 /** A pack tier, now with the id the cart and checkout need. */
@@ -34,10 +45,11 @@ export interface DbPack {
   /** Purely so the UI can show "only 3 left"; not a reservation. */
   stock: number
   /**
-   * The photo this tier shows, already resolved — a `/uploads/…` path the
-   * console uploaded to S3, or the bundled `/assets/…` fallback. Resolved HERE
-   * rather than at each of the eight call sites, so none of them has to know
-   * a product might have no image.
+   * The photo this tier shows, already resolved: the `/uploads/…` object the
+   * console (or the seed) put in S3, or `PRODUCT_IMAGE_PLACEHOLDER` when the
+   * product has no photo at all. Resolved HERE rather than at each of the eight
+   * call sites, so none of them has to know a product might have no image —
+   * and so none of them can reintroduce a bundled product picture.
    */
   image: string
   imageAlt: string
@@ -47,6 +59,24 @@ export interface DbProductSize extends Omit<ProductSize, 'packs'> {
   productId: string
   slug: string
   packs: DbPack[]
+  /**
+   * The product's headline price — `Product.basePrice`, already zone-resolved
+   * by `getCatalog`.
+   *
+   * This used to be dropped on the floor here, and NOTHING on the storefront
+   * read it: every price a shopper saw came from a pack variant. The console
+   * meanwhile offers a "Base price (₹)" input and prints this column as THE
+   * price in its products list — so an admin edited it, watched the console's
+   * own list update, and the storefront never moved. There was no error to say
+   * so. Femi9 has never had the bug because its `toProduct` maps
+   * `price: applyZonePrice(row.basePrice, …)`; this is the same field, carried
+   * across the same seam.
+   *
+   * ⚠️ Keep it equal to one of the pack prices. It is the CARD's price while
+   * the card's button adds a pack, so the two contradict each other the moment
+   * they diverge — see the pack pick in ShopBrowser.
+   */
+  basePrice: number
   /**
    * Every image on the product, in the console's order. The pack tiers take the
    * first `packs.length` of them; anything beyond that is extra photography the
@@ -114,15 +144,15 @@ export async function loadCatalog(): Promise<CatalogPayload> {
           // Position i of the console's list belongs to pack tier i — the order
           // the seed writes and the order the console's move-up/move-down
           // buttons preserve. A product with FEWER images than tiers falls back
-          // to the first (the console calls it the thumbnail), and one with none
-          // at all to the bundled asset.
+          // to the first (the console calls it the thumbnail).
           const photo = row.images[index] ?? row.images[0]
           return {
             variantId: v.id,
             count,
             price: v.price,
             stock: v.stock,
-            image: photo?.url ?? packImage(code, count),
+            // S3 only — the `packImage()` fallback is gone. See the header.
+            image: photo?.url ?? PRODUCT_IMAGE_PLACEHOLDER,
             imageAlt: photo?.alt || `${productName({ name })} — ${count} pack`,
           }
         })
@@ -130,6 +160,7 @@ export async function loadCatalog(): Promise<CatalogPayload> {
       return {
         productId: row.id,
         slug: row.slug,
+        basePrice: row.basePrice,
         size: code,
         name,
         fits,
