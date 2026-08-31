@@ -21,6 +21,7 @@
  */
 import { dbFor } from '@femi9/db'
 import { JOURNAL_CATEGORIES, POSTS } from '../src/lib/journal'
+import { uploadPublicFile, uploadsBucket } from './product-images'
 
 const BRAND = 'lumi9' as const
 
@@ -42,6 +43,23 @@ async function main() {
   let created = 0
   let updated = 0
 
+  // Cover images go to S3, exactly like the catalogue's photos. Uploaded ONCE
+  // up front rather than inside the loop: the key is derived from the file's
+  // content, so a re-seed is free, and doing it here keeps the per-post write
+  // to a single round trip. Without a bucket the cover is left null rather than
+  // filled with a container path — the same call the product seed makes, and
+  // for the same reason: `/assets/journal/x.webp` renders a perfectly good
+  // picture that the console's uploader can never replace.
+  const covers = new Map<string, string>()
+  if (uploadsBucket()) {
+    for (const path of new Set(POSTS.map((p) => p.image).filter(Boolean))) {
+      covers.set(path, await uploadPublicFile('lumi9', path))
+      console.log(`  cover ${path} -> ${covers.get(path)}`)
+    }
+  } else {
+    console.warn('  ! UPLOADS_BUCKET unset — seeding posts without cover images.')
+  }
+
   for (const post of POSTS) {
     const category = await db.blogCategory.findUnique({
       where: { name: post.category },
@@ -60,7 +78,7 @@ async function main() {
       // Femi9's posts carry a one-word mood here. Lumi9's briefs have none, so
       // the category name stands in — a real value beats an empty NOT NULL column.
       tone: post.category,
-      image: post.image,
+      image: covers.get(post.image) ?? '',
       imageAlt: post.imageAlt,
       featured: post.featured ?? false,
       status: 'approved' as const,
