@@ -224,3 +224,40 @@
     min-height: 44px;
   }
 }
+
+/* ===== Landing-page featured rail =====
+   `.grid-products` is FOUR columns and is shared with /shop. The homepage rail
+   is the console's featured set — up to five products, and however many fewer
+   the admin actually flagged (see listFeaturedProducts in
+   @femi9/core/services/products). So the column count is driven by `data-cols`,
+   the real card count: three featured products get three even columns, not
+   three cards and two holes.
+
+   Every rule below carries the attribute selector, in every breakpoint. That is
+   deliberate and not decorative: `.grid-products` is ALSO re-declared at <=900px
+   in styles/figma-landing-responsive.css, which the layout imports after this
+   file, so a plain `.grid-products--featured` would lose the cascade there on
+   source order. Two selectors beat one at any position. If you add a breakpoint,
+   keep the `[data-cols]` on it. */
+.grid-products--featured[data-cols]{grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}
+/* A single featured product must not stretch to the full shell — a lone card
+   1500px wide reads as a broken layout, not as an emphasis. */
+.grid-products--featured[data-cols="1"]{grid-template-columns:minmax(0,340px)}
+.grid-products--featured[data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid-products--featured[data-cols="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid-products--featured[data-cols="4"]{grid-template-columns:repeat(4,minmax(0,1fr))}
+
+@media(max-width:1180px){
+  /* Five 1fr tracks below ~1180px puts the card body under 190px and wraps the
+     price away from the Buy button. Three, so five cards break 3 + 2. */
+  .grid-products--featured[data-cols]{grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+  .grid-products--featured[data-cols="1"]{grid-template-columns:minmax(0,340px)}
+  .grid-products--featured[data-cols="2"]{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .grid-products--featured[data-cols]{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .grid-products--featured[data-cols="1"]{grid-template-columns:minmax(0,340px)}
+}
+@media(max-width:620px){
+  .grid-products--featured[data-cols]{grid-template-columns:minmax(0,1fr);gap:16px}
+}

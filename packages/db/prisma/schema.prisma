@@ -120,6 +120,32 @@ model Product {
   rating          Float         @default(0)
   reviewCount     Int           @default(0)
   status          ProductStatus @default(active)
+
+  /// On the landing page's featured rail.
+  ///
+  /// The rail used to be `products.slice(0, 4)` — whatever the catalogue query
+  /// happened to return first, which is creation order. So the one row of cards
+  /// most shoppers ever see was decided by which products were typed in first,
+  /// and there was no way to change it short of re-creating a product.
+  ///
+  /// How many a brand may flag at once is `brandConfig(brand).featuredSlots`,
+  /// NOT a constraint here: Postgres cannot express "at most five rows where
+  /// featured" without a trigger, and the number is a layout decision that
+  /// differs per brand. The cap is enforced in the admin product service, inside
+  /// the transaction that sets the flag, so two admins featuring at the same
+  /// moment cannot both pass the check.
+  ///
+  /// INVARIANT: only an `active` product is ever featured. Archiving or
+  /// un-publishing one clears this — a draft on the landing page would link to a
+  /// 404, and it would hold a slot nobody could see was taken.
+  featured        Boolean       @default(false)
+  /// When it was featured, and therefore its place in the rail (oldest first).
+  ///
+  /// Ordering by `createdAt` instead would mean featuring a new product silently
+  /// reshuffles the four already there; ordering by nothing would leave the row
+  /// order to the planner. NULL exactly when `featured` is false.
+  featuredAt      DateTime?
+
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -130,6 +156,8 @@ model Product {
   reviews    Review[]
   wallPosts  WallPost[]
   zonePrices ZoneProductPrice[]
+
+  @@index([featured, featuredAt])
 }
 
 model ProductVariant {

@@ -5,6 +5,7 @@ import { requireConsoleApi } from '@/lib/api-guard'
 import { auditConsole } from '@/lib/audit'
 import { allowsProductType } from '@femi9/core/brands'
 import {
+  FeaturedError,
   ProductInputSchema,
   archiveProduct,
   getAdminProduct,
@@ -73,9 +74,14 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
         slug: parsed.data.slug || undefined,
         basePrice: parsed.data.basePrice,
         status: parsed.data.status,
+        // Which products the homepage leads with is an editorial decision worth
+        // being able to read back. Omitted when the payload did not touch it.
+        featured: parsed.data.featured,
       })
       return ok(updated)
     } catch (err) {
+      // The featured-rail rules are user-facing messages, not 500s.
+      if (err instanceof FeaturedError) return badRequest(err.message)
       const mapped = mapPrismaError(err)
       if (mapped) return mapped
       throw err

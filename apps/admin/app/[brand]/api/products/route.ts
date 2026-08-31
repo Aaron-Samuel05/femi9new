@@ -5,6 +5,7 @@ import { requireConsoleApi } from '@/lib/api-guard'
 import { auditConsole } from '@/lib/audit'
 import { allowsProductType } from '@femi9/core/brands'
 import {
+  FeaturedError,
   ProductInputSchema,
   createProduct,
   listAdminProducts,
@@ -62,6 +63,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
       })
       return created(product)
     } catch (err) {
+      // "The rail is full" / "a draft cannot be featured" are answers for the
+      // person filling the form in, not 500s. See @femi9/core/services/admin/products.
+      if (err instanceof FeaturedError) return badRequest(err.message)
       const mapped = mapPrismaError(err)
       if (mapped) return mapped
       throw err // let handle() turn anything unexpected into a 500

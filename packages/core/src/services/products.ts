@@ -1,5 +1,6 @@
 import 'server-only'
 import { dbFor, type Brand, type ProductType as DbProductType } from '@femi9/db'
+import { featuredSlots } from '../brands'
 import { applyZonePrice, resolveAmbientZone, type ResolvedZone } from './pricing'
 import type { Product, ProductType } from '../types/catalog'
 import type { ProductExtra } from '../types/catalog'
@@ -190,17 +191,38 @@ export interface FullProduct {
 
 type Row = Awaited<ReturnType<typeof loadRows>>[number]
 
+/**
+ * Everything a `Product` view model needs, in the order the console publishes.
+ * Shared by the two loaders below so a featured card and a catalogue card can
+ * never be built from different columns.
+ */
+const PRODUCT_INCLUDE = {
+  variants: { where: { active: true }, orderBy: { price: 'asc' } },
+  images: { orderBy: { position: 'asc' } },
+  features: { orderBy: { position: 'asc' } },
+  specs: { orderBy: { position: 'asc' } },
+} as const
+
 function loadRows(brand: Brand) {
   const prisma = dbFor(brand)
   return prisma.product.findMany({
     where: { status: 'active' },
     orderBy: { createdAt: 'asc' },
-    include: {
-      variants: { where: { active: true }, orderBy: { price: 'asc' } },
-      images: { orderBy: { position: 'asc' } },
-      features: { orderBy: { position: 'asc' } },
-      specs: { orderBy: { position: 'asc' } },
-    },
+    include: PRODUCT_INCLUDE,
+  })
+}
+
+/** The flagged rows, oldest-featured first — the rail's order. */
+function loadFeaturedRows(brand: Brand, take: number) {
+  const prisma = dbFor(brand)
+  return prisma.product.findMany({
+    where: { status: 'active', featured: true },
+    // `featuredAt` is the slot, so featuring a sixth product never reshuffles
+    // the five already there. `createdAt` only breaks a tie between two rows
+    // flagged in the same millisecond.
+    orderBy: [{ featuredAt: 'asc' }, { createdAt: 'asc' }],
+    take,
+    include: PRODUCT_INCLUDE,
   })
 }
 
@@ -258,6 +280,45 @@ function toExtra(row: Row): ProductExtra {
 export async function listProducts(brand: Brand): Promise<ProductWithVariants[]> {
   const [rows, zone] = await Promise.all([loadRows(brand), resolveAmbientZone(brand)])
   return rows.map((row) => toProduct(row, zone))
+}
+
+/**
+ * The landing page's featured rail — the products an admin flagged, in the
+ * order they flagged them, capped at the brand's slot count.
+ *
+ * ── Why this exists ─────────────────────────────────────────────────────────
+ * The rail was `listProducts(brand).slice(0, 4)` in the Home screen. That is
+ * creation order, so the one row of cards most shoppers ever see was decided by
+ * which products were typed into the catalogue first, and the only way to change
+ * it was to re-create a product. `Product.featured` makes it an editorial choice
+ * the console owns — see `setProductFeatured` in services/admin/products.
+ *
+ * ── The fallback ────────────────────────────────────────────────────────────
+ * With NOTHING flagged this returns the first `limit` active products, which is
+ * exactly what the slice did. That is deliberate and it is not a placeholder:
+ * a brand-new catalogue, a freshly seeded staging database and the live rows on
+ * the day this ships all have zero featured products, and a blank rail on the
+ * homepage is a worse answer than the old one. The moment an admin features a
+ * single product the fallback stops applying and the rail is exactly what they
+ * chose — including a rail of one, which the grid lays out for.
+ *
+ * A brand with no rail (`featuredSlots: 0` — Lumi9) gets an empty array and no
+ * query. Its homepage product section is the size run, not a selection.
+ */
+export async function listFeaturedProducts(
+  brand: Brand,
+  limit: number = featuredSlots(brand),
+): Promise<ProductWithVariants[]> {
+  if (limit <= 0) return []
+
+  const [featured, zone] = await Promise.all([
+    loadFeaturedRows(brand, limit),
+    resolveAmbientZone(brand),
+  ])
+  if (featured.length > 0) return featured.map((row) => toProduct(row, zone))
+
+  const rows = await loadRows(brand)
+  return rows.slice(0, limit).map((row) => toProduct(row, zone))
 }
 
 /** One product by slug, with detail extras and moderated reviews. */

@@ -330,10 +330,25 @@ function Why() {
   )
 }
 
+/**
+ * How many cards the featured rail is laid out for.
+ *
+ * The authority is `brandConfig('femi9').featuredSlots` in @femi9/core/brands,
+ * which is what the console enforces and what `listFeaturedProducts` takes. It
+ * is repeated here rather than imported because this screen is a CLIENT
+ * component and that module reaches `@femi9/db` — importing it would pull the
+ * Prisma client into the browser bundle. Keep the two in step; the grid's
+ * column counts in components/Products.css are the third place this number
+ * shows up.
+ */
+const FEATURED_SLOTS = 5
+
 function ProductGrid({ products }: { products: ProductWithVariants[] }) {
-  // Keep the landing page useful while an empty production catalog is being
-  // seeded, but never repeat one product four times.
-  const cards = products.slice(0, 4)
+  // Already the featured set, in the console's order and capped at the brand's
+  // slot count (see listFeaturedProducts). The slice is belt-and-braces: this
+  // grid is laid out for at most FEATURED_SLOTS cards, and a caller handing it
+  // more would spill a second ragged row under the first.
+  const cards = products.slice(0, FEATURED_SLOTS)
 
   return (
     <Reveal className="fl-products" id="products">
@@ -354,7 +369,15 @@ function ProductGrid({ products }: { products: ProductWithVariants[] }) {
               no-op that also implied a catalog route which did not exist. */}
           <Link className="fl-btn fl-btn--outline fl-btn--arrow" to="/shop">View All <span>→</span></Link>
         </div>
-        <div className="grid-products" style={{ marginTop: 44 }}>
+        {/* `data-cols` is the ACTUAL card count, not the slot count: an admin
+            who features three must get three even columns, not three cards and
+            two gaps. The stylesheet keys its column counts off that attribute —
+            see .grid-products--featured in components/Products.css. */}
+        <div
+          className="grid-products grid-products--featured"
+          data-cols={cards.length}
+          style={{ marginTop: 44 }}
+        >
           {cards.map((product) => (
             <ProductCard key={product.id} product={product} showInsideOnHover />
           ))}

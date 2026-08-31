@@ -1,6 +1,8 @@
 import { requireConsole } from '@/lib/guard'
 import Link from 'next/link'
+import { featuredSlots } from '@femi9/core/brands'
 import { listAdminProducts } from '@femi9/core/services/admin/products'
+import { FeatureToggle } from './_feature-toggle'
 
 /**
  * Products index — the admin catalogue table. Server component: reads the
@@ -22,6 +24,13 @@ export default async function AdminProductsPage({ params }: { params: Promise<{ 
   const { brand } = await requireConsole((await params).brand, 'catalog')
   const products = await listAdminProducts(brand)
 
+  // How many products this brand's landing page leads with. `0` means it has no
+  // featured rail (Lumi9's homepage product section is the size run), and then
+  // the column is not rendered at all rather than offering a control that
+  // changes nothing a shopper sees. See BrandConfig.featuredSlots.
+  const slots = featuredSlots(brand)
+  const featuredCount = products.filter((p) => p.featured).length
+
   return (
     <>
       <div className="adm-toolbar">
@@ -31,6 +40,15 @@ export default async function AdminProductsPage({ params }: { params: Promise<{ 
           </h2>
           <p className="adm-help" style={{ margin: '2px 0 0' }}>
             {products.length} {products.length === 1 ? 'product' : 'products'} in the catalogue
+            {slots > 0 && (
+              <>
+                {' · '}
+                <strong style={{ color: featuredCount === slots ? 'var(--plum)' : 'inherit' }}>
+                  {featuredCount} of {slots}
+                </strong>{' '}
+                featured on the landing page
+              </>
+            )}
           </p>
         </div>
         <Link className="adm-btn adm-btn--primary" href={`/${brand}/products/new`}>
@@ -58,6 +76,7 @@ export default async function AdminProductsPage({ params }: { params: Promise<{ 
                 <th className="adm-td-num">Variants</th>
                 <th className="adm-td-num">Stock</th>
                 <th>Status</th>
+                {slots > 0 && <th style={{ width: 116 }}>Landing page</th>}
                 <th style={{ width: 64 }}>{/* actions */}</th>
               </tr>
             </thead>
@@ -101,6 +120,20 @@ export default async function AdminProductsPage({ params }: { params: Promise<{ 
                       {p.status}
                     </span>
                   </td>
+                  {slots > 0 && (
+                    <td>
+                      <FeatureToggle
+                        productId={p.id}
+                        featured={p.featured}
+                        // Every slot taken by some OTHER product. A featured row
+                        // is never "full" against itself — it can always be
+                        // switched off, which is how a slot is freed.
+                        full={featuredCount >= slots}
+                        publishable={p.status === 'active'}
+                        limit={slots}
+                      />
+                    </td>
+                  )}
                   <td>
                     <Link className="adm-btn adm-btn--ghost adm-btn--sm" href={`/${brand}/products/${p.id}`}>
                       Edit
