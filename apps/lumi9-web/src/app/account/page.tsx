@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { AccountDashboard } from "@/components/account/AccountDashboard";
 import { getSession } from "@femi9/core/auth";
 import { getAccountData } from "@femi9/core/services/account";
@@ -42,7 +42,7 @@ export default async function AccountPage() {
   const firstName = (data.user.name ?? "").trim().split(/\s+/)[0] || "there";
 
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <header className="page-wrap pt-[clamp(32px,4.4vw,56px)] pb-8.5">
         <div className="eyebrow mb-3">My account</div>
         <h1 className="m-0 font-display text-[clamp(27px,7.4vw,52px)] md:text-[clamp(32px,4vw,52px)] font-normal leading-[1.02]">

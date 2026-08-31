@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Nav, HOME_LINKS } from "@/components/site/Nav";
+import { Nav, NAV_LINKS } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
 import { CursorScrubVideo } from "@/components/media/CursorScrubVideo";
 import { FloatyBlob, Parallax } from "@/components/motion/Parallax";
@@ -78,10 +78,25 @@ const SIZE_LIST_SCHEMA = {
   })),
 };
 
-const FEATURE_COLUMNS = [
-  { factor: 0.06, offset: false, images: [FEATURE_IMAGES.softness, FEATURE_IMAGES.gentleSteps] },
-  { factor: 0.16, offset: true, images: [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.happinessWrapped] },
-  { factor: 0.1, offset: false, images: [FEATURE_IMAGES.softAsCotton, FEATURE_IMAGES.soothingComfort] },
+/*
+ * The gallery wall, read in rows.
+ *
+ * This was three COLUMNS, each with its own parallax factor (0.06 / 0.16 / 0.1)
+ * and the middle one pushed down by lg:mt-14. Three different scroll speeds
+ * means the columns can only line up at one scroll position and are ragged at
+ * every other one, so a grid of six identically-sized creatives never read as
+ * the wall it is - it read as tiles that had slipped. The stagger is a good
+ * device for images of DIFFERENT heights; all eight of these are 1500x1500.
+ *
+ * Row-major here, so the order matches what the eye actually follows.
+ */
+const FEATURE_TILES = [
+  FEATURE_IMAGES.softness,
+  FEATURE_IMAGES.wetnessLock,
+  FEATURE_IMAGES.softAsCotton,
+  FEATURE_IMAGES.gentleSteps,
+  FEATURE_IMAGES.happinessWrapped,
+  FEATURE_IMAGES.soothingComfort,
 ];
 
 export default function HomePage() {
@@ -96,7 +111,7 @@ export default function HomePage() {
 
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(SIZE_LIST_SCHEMA)} />
 
-      <Nav variant="home" links={HOME_LINKS} />
+      <Nav variant="home" links={NAV_LINKS} />
 
       <main>
         {/* HERO — clears the fixed nav by its measured height (--nav-h) */}
@@ -244,18 +259,33 @@ export default function HomePage() {
             className="absolute top-[10%] right-[6%] size-[clamp(80px,12vw,150px)] rounded-full bg-moss-tint opacity-60"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-2">
+          <div className="relative z-2 mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
             <Reveal className="relative">
-              <div className="relative aspect-5/6 overflow-hidden rounded-media shadow-hero">
-                <Parallax factor={0.1} className="absolute inset-x-0 top-[-9%] h-[118%]">
-                  <Image
-                    src={FEATURE_IMAGES.softness.src}
-                    alt="A peacefully sleeping baby"
-                    fill
-                    sizes="(max-width: 768px) 92vw, 560px"
-                    className="object-cover"
-                  />
-                </Parallax>
+              {/*
+               * SQUARE, and no parallax overscan — both deliberate.
+               *
+               * Every /assets/features creative is 1500x1500 with its headline
+               * set INTO the artwork ("Softness — That Runs Alongside Every
+               * Adventure"). This box was aspect-5/6 wrapped in a drift layer
+               * of h-[118%], which makes the effective frame 0.706 against a
+               * 1:1 source: object-cover then scaled to height and threw away
+               * ~21% off EACH side, cutting the headline in half. The crop
+               * looked deliberate, so nothing about it read as broken.
+               *
+               * A drift needs overscan to avoid exposing an edge, and overscan
+               * on a text-bearing image means cropping words. The image is
+               * square and whole; the section still moves via the blob and the
+               * 4.9-star card, which carry no copy and can be cropped freely.
+               */}
+              <div className="relative aspect-square w-full max-w-[560px] overflow-hidden rounded-media shadow-hero">
+                <Image
+                  src={FEATURE_IMAGES.softness.src}
+                  alt={FEATURE_IMAGES.softness.alt}
+                  fill
+                  unoptimized
+                  sizes="(max-width: 768px) 92vw, 560px"
+                  className="object-cover"
+                />
               </div>
               <Parallax
                 factor={0.26}
@@ -274,12 +304,12 @@ export default function HomePage() {
               <SectionHeading eyebrow="Our story" size="sm" className="mb-5.5">
                 Made for the little moments parents <Em>notice most.</Em>
               </SectionHeading>
-              <p className="m-0 mb-4.5 text-body leading-[1.65] text-muted">
+              <p className="m-0 mb-4.5 max-w-[62ch] text-body leading-[1.65] text-muted md:max-w-none">
                 There is a particular kind of silence parents recognise. The room is finally quiet. Your baby has
                 fallen asleep after a long day of feeding, playing, crawling and being carried from one loving pair of
                 arms to another. And then you check the diaper.
               </p>
-              <p className="m-0 mb-7 text-body leading-[1.65] text-muted">
+              <p className="m-0 mb-7 max-w-[62ch] text-body leading-[1.65] text-muted md:max-w-none">
                 Those small questions are part of everyday parenting, and they are part of what shapes Lumi9 by Femi9 —
                 soft everyday comfort, moisture-management technology, breathable materials and flexible protection in
                 baby diapers made to support babies as they grow.
@@ -309,26 +339,23 @@ export default function HomePage() {
                 Designed for every <Em>little</Em> milestone.
               </SectionHeading>
             </Reveal>
-            <div className="grid grid-cols-1 items-start gap-[clamp(14px,2vw,24px)] sm:grid-cols-2 lg:grid-cols-3">
-              {FEATURE_COLUMNS.map((column) => (
-                <Parallax
-                  key={column.factor}
-                  factor={column.factor}
-                  className={`flex flex-col gap-[clamp(14px,2vw,24px)] ${column.offset ? "lg:mt-14" : ""}`}
-                >
-                  {column.images.map((image) => (
-                    <Reveal key={image.src} className="overflow-hidden rounded-card shadow-lift">
-                      <Image
-                        src={image.src}
-                        alt={image.alt}
-                        width={900}
-                        height={1200}
-                        sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 380px"
-                        className="block h-auto w-full"
-                      />
-                    </Reveal>
-                  ))}
-                </Parallax>
+            <div className="grid grid-cols-1 gap-[clamp(14px,2vw,24px)] sm:grid-cols-2 lg:grid-cols-3">
+              {FEATURE_TILES.map((image) => (
+                <Reveal key={image.src} className="overflow-hidden rounded-card shadow-lift">
+                  {/* 1500x1500 is the real file size. It was declared 900x1200,
+                      so the box reserved 3:4 and then collapsed to the square
+                      the source actually is once it loaded - a layout shift on
+                      every one of the six, and a wall that assembled itself
+                      crookedly while you watched it. */}
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    width={1500}
+                    height={1500}
+                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 380px"
+                    className="block h-auto w-full"
+                  />
+                </Reveal>
               ))}
             </div>
           </div>

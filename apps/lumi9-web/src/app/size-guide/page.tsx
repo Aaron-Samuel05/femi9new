@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Reveal } from "@/components/motion/Reveal";
 import { SizeMatcher } from "@/components/size-guide/SizeMatcher";
 import { Em, NumberedCard } from "@/components/ui/bits";
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 export default async function SizeGuidePage() {
   const { sizes } = await loadCatalog();
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <header className="px-safe mx-auto max-w-[720px] pt-[clamp(44px,6vw,80px)] pb-10 text-center">
         <div className="eyebrow mb-4">Size guide</div>
         <h1 className="m-0 mb-3.5 font-display text-[clamp(29px,7.8vw,60px)] md:text-[clamp(34px,4.6vw,60px)] font-normal leading-[1.02]">

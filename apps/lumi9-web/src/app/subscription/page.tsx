@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { BoxBuilder } from "@/components/subscription/BoxBuilder";
 import { Em } from "@/components/ui/bits";
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
 
 export default function SubscriptionPage() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       {/* HERO */}
       <header
         className="px-safe relative overflow-hidden pt-[clamp(48px,7vw,96px)] pb-[clamp(44px,6vw,80px)]"

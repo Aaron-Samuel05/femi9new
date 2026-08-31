@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { HelpTopics } from "@/components/help/HelpTopics";
 import { FAQS } from "@/lib/content";
 import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME } from "@/lib/seo";
@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 
 export default function HelpPage() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       {/* Every answer below is in the server-rendered HTML — the accordion hides
           collapsed panels with the `hidden` attribute rather than unmounting
           them — so this FAQPage node describes content a crawler can actually

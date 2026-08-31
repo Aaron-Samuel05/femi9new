@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, NumberedCard } from "@/components/ui/bits";
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <header
         className="px-safe relative overflow-hidden pt-[clamp(56px,8vw,110px)] pb-[clamp(44px,6vw,80px)] text-center"
         style={{ background: "radial-gradient(120% 90% at 50% 0%, #eef1e0 0%, #f7f5ea 60%)" }}

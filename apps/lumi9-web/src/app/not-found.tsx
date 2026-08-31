@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 
 const QUICK_LINKS = [
   { label: "Find your size", href: "/size-guide" },
@@ -12,7 +12,7 @@ const QUICK_LINKS = [
 
 export default function NotFound() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <section
         className="px-safe relative flex min-h-[70svh] flex-col items-center justify-center overflow-hidden py-[clamp(48px,8vw,80px)] text-center"
         style={{ background: "radial-gradient(120% 90% at 50% 10%, #eef1e0 0%, #f7f5ea 60%)" }}

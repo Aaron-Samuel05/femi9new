@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { ArticleBody, inline } from "@/components/journal/ArticleBody";
@@ -92,7 +92,7 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
   };
 
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(articleSchema)} />
       <script
         type="application/ld+json"

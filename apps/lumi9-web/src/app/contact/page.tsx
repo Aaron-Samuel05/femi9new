@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { ContactForm } from "@/components/contact/ContactForm";
 import { Em } from "@/components/ui/bits";
 import { Icon, type IconName } from "@/components/ui/Icon";
@@ -27,7 +27,7 @@ const CHANNELS: { icon: IconName; label: string; value: string; href?: string }[
 
 export default function ContactPage() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <section className="page-wrap grid grid-cols-1 items-start gap-block pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">
         <div>
           <div className="eyebrow mb-4">Get in touch</div>

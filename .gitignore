@@ -38,3 +38,9 @@ out/
 
 # Hallmark design-pass scratch log — tooling output, not project history.
 .hallmark/
+
+# A local env drop that the `.env*` patterns miss: the file is named `env`, with
+# no dot, so nothing above matched it and it showed up as an ordinary untracked
+# file holding a live Postgres password. One `git add -A` would have published
+# the credential.
+/env

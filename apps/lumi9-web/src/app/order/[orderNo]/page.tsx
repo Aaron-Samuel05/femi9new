@@ -6,7 +6,7 @@ import { verifyOrderToken } from "@femi9/core/order-token";
 import { getSession } from "@femi9/core/auth";
 import { dbFor } from "@femi9/db";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Icon } from "@/components/ui/Icon";
 import { inr } from "@/lib/catalog";
 import { presentStatus } from "@/lib/order-status";
@@ -86,7 +86,7 @@ export default async function OrderPage(props: {
   });
 
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <section className="px-safe mx-auto max-w-[880px] pt-[clamp(28px,4.4vw,56px)] pb-section">
         <Link
           href={signedIn ? "/account?tab=orders" : "/shop"}

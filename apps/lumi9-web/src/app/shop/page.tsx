@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { ShopBrowser } from "@/components/shop/ShopBrowser";
 import { Em } from "@/components/ui/bits";
 import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 
 export default function ShopPage() {
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <header className="page-wrap pt-[clamp(36px,5vw,64px)] pb-8.5">
         <div className="eyebrow mb-3.5">Shop Cloud Soft</div>
         <h1 className="m-0 mb-3 font-display text-[clamp(30px,8vw,60px)] md:text-[clamp(34px,4.6vw,60px)] font-normal leading-[1.02]">

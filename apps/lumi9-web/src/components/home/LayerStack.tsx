@@ -133,7 +133,7 @@ export function LayerStack() {
             </h2>
             {/* min-height reserves space for the longest copy so the panel doesn't
                 jump between layers — measured in ch/em so it scales with the type */}
-            <p className="m-0 mb-6.5 max-w-[48ch] text-body leading-[1.6] opacity-90 md:min-h-[3.2em]">{layer.desc}</p>
+            <p className="m-0 mb-6.5 max-w-[48ch] text-body leading-[1.6] opacity-90 md:max-w-none md:min-h-[3.2em]">{layer.desc}</p>
             <ul className="m-0 mb-6.5 flex list-none flex-col gap-3 p-0 text-[clamp(14px,1.3vw,16px)]">
               {layer.benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-2.5">
@@ -145,7 +145,9 @@ export function LayerStack() {
               ))}
             </ul>
           </div>
-          {/* dots get a 44px tall invisible hit area on touch, 4px visual bar */}
+          {/* dots get a 44px tall invisible hit area on touch, 4px visual bar.
+              coarse:w-11 squares that off on phones - 26px wide was under the
+              44px touch guideline on exactly the control that switches layers. */}
           <div className="-my-5 flex gap-2.5" role="tablist" aria-label="Protection layers">
             {LAYERS.map((item, index) => (
               <button
@@ -155,7 +157,7 @@ export function LayerStack() {
                 aria-selected={index === active}
                 aria-label={`Layer ${index + 1}: ${item.title}`}
                 onClick={() => select(index)}
-                className="group flex h-11 w-[clamp(26px,3vw,34px)] cursor-pointer items-center"
+                className="group flex h-11 w-[clamp(26px,3vw,34px)] cursor-pointer items-center coarse:w-11"
               >
                 <span
                   className={`block h-1 w-full rounded-[4px] transition-colors ${
@@ -167,11 +169,19 @@ export function LayerStack() {
           </div>
         </div>
 
-        {/* Card stack — heights live in CSS vars so the whole stack scales with the
-            viewport; 94% width leaves room for the active card's 1.05 scale-out */}
-        <div className="flex items-center justify-center">
+        {/* Card stack - heights live in CSS vars so the whole stack scales with
+            the viewport.
+            Full width, and the active card's 1.05 grows LEFT (transformOrigin
+            right) into the column gutter. It used to be w-[94%] centred with a
+            max-w-[360px], which is what left 164px of dead green between the
+            last card and the page edge; going full width with a left-origin
+            scale just moved the problem, clipping the active card against the
+            section's overflow-hidden instead. Growing into the gutter is the
+            only version where every card reaches the right edge AND nothing is
+            cut off. */}
+        <div className="flex items-center">
           <div
-            className="relative w-[94%] max-w-[360px]"
+            className="relative w-full"
             style={{
               ["--layer-h" as string]: "clamp(54px, 9vw, 74px)",
               ["--layer-gap" as string]: "clamp(9px, 1.6vw, 14px)",
@@ -190,7 +200,7 @@ export function LayerStack() {
                   style={{
                     top: `calc(${index} * (var(--layer-h) + var(--layer-gap)))`,
                     height: "var(--layer-h)",
-                    transformOrigin: "left center",
+                    transformOrigin: "right center",
                     transitionDelay: staggering ? `${index * STAGGER_MS}ms` : "0ms",
                     opacity: revealed ? (isActive ? 1 : 0.5) : 0,
                     transform: `translateY(${revealed ? 0 : 38}px) scale(${isActive ? 1.05 : 1})`,

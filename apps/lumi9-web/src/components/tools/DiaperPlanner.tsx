@@ -59,7 +59,10 @@ export function DiaperPlanner() {
             step={1}
             value={activePerDay}
             onChange={(e) => setPerDay(Number(e.target.value))}
-            className="w-full"
+            /* 16px tall by default - the smallest target on the site. The
+               coarse box gives a thumb 44px to land in without changing how
+               the control looks with a mouse. */
+            className="w-full touch-manipulation accent-moss-deep coarse:h-11"
             aria-label="Diapers per day"
           />
         </label>

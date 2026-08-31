@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/site/PageShell";
-import { HOME_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, QuoteCard, SectionHeading } from "@/components/ui/bits";
@@ -176,7 +176,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
   };
 
   return (
-    <PageShell links={HOME_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(productSchema)} />
       <script
         type="application/ld+json"

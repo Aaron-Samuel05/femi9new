@@ -12,45 +12,36 @@ import { Icon } from "@/components/ui/Icon";
 export type NavLink = { label: string; href: string };
 
 /*
- * THREE lists, and no more.
+ * ONE list. Not three, and certainly not the seven this started with.
  *
- * There used to be seven: these three plus ABOUT_LINKS, HELP_LINKS,
- * SUBSCRIPTION_LINKS and AUTH_LINKS, each declared in the page that used it and
- * each a near-copy of the others. That is why /parenting-tools appeared in the
- * nav on exactly one page — it was added to the one list its author happened to
- * be looking at — and why three of them still carried a static "Account" link
- * after it was removed from here. A list per page does not survive contact with
- * a new destination. Add one here and every page gets it.
+ * It was seven - PRIMARY, HOME, SUPPORT, ABOUT, HELP, SUBSCRIPTION and AUTH -
+ * each declared in the page that used it and each a near-copy of the others.
+ * That is why /parenting-tools appeared in the nav on exactly one page, and why
+ * three of them still carried a static "Account" link after it was removed.
+ * Collapsing seven to three did not fix the underlying problem, it only made it
+ * rarer: the bar still CHANGED AS YOU BROWSED. Opening /parenting-tools swapped
+ * "Technology" and "Find your size" out for "About", "Help" and "Contact", so
+ * the destination a shopper had just been using vanished mid-session. A primary
+ * nav that is stable everywhere is worth more than one tuned per page.
+ *
+ * Support destinations are not lost: About and Contact live in the footer, and
+ * Size guide, Subscription and Help are in MENU_EXTRAS for the mobile sheet.
+ *
+ * The two hash links resolve against the home page from anywhere, so off-home
+ * they read as "go home, then scroll" rather than dead-ending.
  *
  * "Account" is deliberately absent. It was a fixed label pointing at /account
  * whether or not anybody was signed in, so a signed-out shopper who tapped it
  * was bounced to /login by the guard with no explanation. The avatar in the bar
- * resolves the session and points at the right one of the two — a control that
+ * resolves the session and points at the right one of the two - a control that
  * adapts cannot be a constant in an array.
  */
-export const PRIMARY_LINKS: NavLink[] = [
-  { label: "Shop", href: "/shop" },
-  { label: "Technology", href: "/#tech" },
-  { label: "Parenting", href: "/parenting-tools" },
-  { label: "Subscribe", href: "/subscription" },
-  { label: "Journal", href: "/journal" },
-];
-
-export const HOME_LINKS: NavLink[] = [
+export const NAV_LINKS: NavLink[] = [
   { label: "Shop", href: "/shop" },
   { label: "Technology", href: "/#tech" },
   { label: "Find your size", href: "/#sizes" },
   { label: "Parenting", href: "/parenting-tools" },
   { label: "Journal", href: "/journal" },
-];
-
-/** The support pages: about, help, contact, privacy, size guide, sign-in. */
-export const SUPPORT_LINKS: NavLink[] = [
-  { label: "Shop", href: "/shop" },
-  { label: "Parenting", href: "/parenting-tools" },
-  { label: "About", href: "/about" },
-  { label: "Help", href: "/help" },
-  { label: "Contact", href: "/contact" },
 ];
 
 /** Secondary destinations that only earn a slot inside the mobile sheet. */
@@ -283,7 +274,7 @@ function AccountSheetLinks({ onNavigate }: { onNavigate: () => void }) {
  * phone, with the last link half off-screen and nothing to say it scrolled.
  */
 export function Nav({
-  links = PRIMARY_LINKS,
+  links = NAV_LINKS,
   variant = "solid",
 }: {
   links?: NavLink[];
@@ -364,7 +355,7 @@ export function Nav({
 
   // Everything the burger reveals: the bar's own links, then the destinations
   // that never fit in it. Deduped, so a page whose list already names one
-  // (SUPPORT_LINKS carries /help) doesn't show it twice.
+  // (NAV_LINKS has no /help) doesn't show it twice.
   const menuLinks = [...links, ...MENU_EXTRAS.filter((extra) => !links.some((link) => link.href === extra.href))];
 
   const bar = (

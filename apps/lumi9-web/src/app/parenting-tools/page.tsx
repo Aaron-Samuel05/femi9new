@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/PageShell";
-import { SUPPORT_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { BabyProfileCard } from "@/components/tools/BabyProfileCard";
 import { DiaperPlanner } from "@/components/tools/DiaperPlanner";
 import { GrowthPercentile } from "@/components/tools/GrowthPercentile";
@@ -42,7 +42,7 @@ const TOOLS = [
 
 export default function ParentingToolsPage() {
   return (
-    <PageShell links={SUPPORT_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={jsonLd(
@@ -66,7 +66,7 @@ export default function ParentingToolsPage() {
             <a
               key={tool.href}
               href={tool.href}
-              className="rounded-pill border border-moss-tint px-4 py-2 text-sm font-semibold text-moss-deep"
+              className="inline-flex items-center rounded-pill border border-moss-tint px-4 py-2 text-sm font-semibold text-moss-deep coarse:min-h-11"
             >
               {tool.label}
             </a>

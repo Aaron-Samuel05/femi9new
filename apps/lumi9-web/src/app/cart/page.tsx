@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { CartView } from "@/components/cart/CartView";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function CartPage() {
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <CartView />
     </PageShell>
   );

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/site/PageShell";
-import { PRIMARY_LINKS } from "@/components/site/Nav";
+import { NAV_LINKS } from "@/components/site/Nav";
 import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { JournalGrid } from "@/components/journal/JournalGrid";
@@ -72,7 +72,7 @@ export default async function JournalPage() {
   };
 
   return (
-    <PageShell links={PRIMARY_LINKS}>
+    <PageShell links={NAV_LINKS}>
       <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(blogSchema)} />
       <script
         type="application/ld+json"
