@@ -16,7 +16,7 @@ import { FeaturedJournal } from "@/components/home/FeaturedJournal";
 import { Scallop, WaveEdge } from "@/components/ui/Scallop";
 import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
-import { SIZES } from "@/lib/catalog";
+import { loadCatalog } from "@/lib/catalog.server";
 import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const HOME_TITLE = "Baby Diapers & Baby Diaper Pants Online | Lumi9 by Femi9";
@@ -58,25 +58,32 @@ export const metadata: Metadata = {
 /**
  * The size run as an ItemList.
  *
- * Sourced from the seed list rather than the database on purpose: this is a
- * navigational hint about which size pages exist, it changes only when a size
- * is added or retired, and it must not be the thing that makes the homepage
- * fail when the catalogue read is slow. Prices and availability are stated on
- * the product pages, where the Product schema reads them live.
+ * Read from the DATABASE, like everything else the console owns.
+ *
+ * It used to be built from the `SIZES` array in `@/lib/catalog` — the seed's
+ * input — on the argument that a navigational hint must not make the homepage
+ * fail when the catalogue read is slow. That argument no longer holds: the root
+ * layout is `force-dynamic` and already awaits `loadCatalog()` on every
+ * request, so this page cannot render without that read succeeding anyway. All
+ * the seed list bought was the chance to advertise a size the console had
+ * retired. Prices and availability stay on the product pages, where the Product
+ * schema reads them live.
  */
-const SIZE_LIST_SCHEMA = {
-  "@context": "https://schema.org",
-  "@type": "ItemList",
-  name: "Lumi9 Cloud Soft baby diaper range",
-  itemListOrder: "https://schema.org/ItemListOrderAscending",
-  numberOfItems: SIZES.length,
-  itemListElement: SIZES.map((size, i) => ({
-    "@type": "ListItem",
-    position: i + 1,
-    name: `Lumi9 Cloud Soft ${size.name} baby diapers — ${size.fits}`,
-    url: absoluteUrl(`/product/${size.size.toLowerCase()}`),
-  })),
-};
+function sizeListSchema(sizes: { size: string; name: string; fits: string }[]) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: "Lumi9 Cloud Soft baby diaper range",
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    numberOfItems: sizes.length,
+    itemListElement: sizes.map((size, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: `Lumi9 Cloud Soft ${size.name} baby diapers — ${size.fits}`,
+      url: absoluteUrl(`/product/${size.size.toLowerCase()}`),
+    })),
+  };
+}
 
 /*
  * The gallery wall, read in rows.
@@ -99,7 +106,8 @@ const FEATURE_TILES = [
   FEATURE_IMAGES.soothingComfort,
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { sizes } = await loadCatalog();
   return (
     <>
       {/* The hero mascot is above the fold, but useGLTF can only request it after
@@ -109,7 +117,7 @@ export default function HomePage() {
       <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossOrigin="anonymous" />
 
-      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(SIZE_LIST_SCHEMA)} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={jsonLd(sizeListSchema(sizes))} />
 
       <Nav variant="home" links={NAV_LINKS} />
 

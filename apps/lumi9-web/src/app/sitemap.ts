@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 import { loadCatalog } from "@/lib/catalog.server";
-import { SIZES } from "@/lib/catalog";
 import { listJournalPosts } from "@/lib/journal.server";
 import { absoluteUrl } from "@/lib/seo";
 
@@ -12,12 +11,11 @@ import { absoluteUrl } from "@/lib/seo";
  *
  * Both reads are wrapped. A sitemap route that throws returns a 500 to the
  * crawler, and a repeated 500 is treated as "this sitemap is gone" — a transient
- * database blip would quietly cost the whole site its submitted URL set. The
- * catalogue falls back to the seed's size list, which is close enough to be
- * useful; the journal falls back to NOTHING, because there is no honest static
- * answer for "which articles exist" once the console can publish one. A sitemap
- * missing its articles for a minute beats one that 500s, and beats one that
- * lists five slugs somebody deleted last week.
+ * database blip would quietly cost the whole site its submitted URL set. Both
+ * therefore fall back to NOTHING, because there is no honest static answer to
+ * "which products and articles exist" once the console can add and retire them.
+ * A sitemap missing a section for a minute beats one that 500s, and beats one
+ * that lists five slugs somebody deleted last week.
  *
  * `dynamic` matches the rest of the tree: the build stage has no database.
  */
@@ -61,14 +59,23 @@ async function journalEntries(): Promise<MetadataRoute.Sitemap> {
   }
 }
 
+/**
+ * The product URLs, from the database and from nowhere else.
+ *
+ * This used to fall back to the `SIZES` array in `@/lib/catalog` — the seed's
+ * input — whenever the read failed or came back empty. That is the one place a
+ * stale list actively hurts: a size retired in the console would go on being
+ * advertised to crawlers, and every one of those URLs is a 404 being submitted
+ * on purpose. A sitemap briefly missing its products is recoverable; one
+ * asserting products that do not exist is a crawl-error report.
+ */
 async function productPaths(): Promise<string[]> {
   try {
     const { sizes } = await loadCatalog();
-    if (sizes.length > 0) return sizes.map((entry) => `/product/${entry.size.toLowerCase()}`);
+    return sizes.map((entry) => `/product/${entry.size.toLowerCase()}`);
   } catch {
-    // fall through to the seed list
+    return [];
   }
-  return SIZES.map((size) => `/product/${size.size.toLowerCase()}`);
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

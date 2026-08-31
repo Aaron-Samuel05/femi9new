@@ -17,6 +17,7 @@
  */
 import { dbFor } from '@femi9/db'
 import { CADENCES, SIZES, defaultPack, packImage, productName, type ProductSize } from '../src/lib/catalog'
+import { uploadPublicFile, uploadsBucket } from './product-images'
 import { PDP_ACCORDION } from '../src/lib/content'
 
 const BRAND = 'lumi9' as const
@@ -128,15 +129,37 @@ async function main() {
     }
 
     // ── Images: replace wholesale, since position matters and the set is small
+    //
+    // The bytes go to S3 and the row stores the `/uploads/…` URL CloudFront
+    // serves back. This used to write `packImage(...)` — `/assets/products/
+    // M-24.jpeg`, a file baked into the container — so every seeded photo came
+    // from the image rather than from object storage, and could not be changed
+    // without a redeploy. Nothing reported it: the page rendered a perfectly
+    // good picture, just not one anybody could replace.
+    //
+    // Without a bucket (a local seed) the row is SKIPPED rather than filled
+    // with a container path. A product with no photo is visibly missing one,
+    // which is the honest state and the one the console is there to fix; a
+    // bundled path looks finished and quietly is not.
     await db.productImage.deleteMany({ where: { productId: product.id } })
-    await db.productImage.createMany({
-      data: size.packs.map((pack, index) => ({
-        productId: product.id,
-        url: packImage(size.size, pack.count),
-        alt: `${productName(size)} — ${pack.count} pack`,
-        position: index,
-      })),
-    })
+    if (uploadsBucket()) {
+      const urls = await Promise.all(
+        size.packs.map((pack) => uploadPublicFile('lumi9', packImage(size.size, pack.count))),
+      )
+      await db.productImage.createMany({
+        data: size.packs.map((pack, index) => ({
+          productId: product.id,
+          url: urls[index]!,
+          alt: `${productName(size)} — ${pack.count} pack`,
+          position: index,
+        })),
+      })
+    } else {
+      console.warn(
+        `  ! UPLOADS_BUCKET unset — no photos seeded for ${size.size}. ` +
+          'Upload them in the console, or re-run with a bucket configured.',
+      )
+    }
 
     // ── Specs: the fit facts ops will want to edit later ───────────────────
     await db.productSpec.deleteMany({ where: { productId: product.id } })

@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useBabyProfile } from "@/lib/baby-profile";
-import { getSize } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 import { projectSizeUp, sizeForWeight } from "@/lib/size-projection";
 
 export function SizeUpPredictor() {
+  // Size names come from the catalogue in the DATABASE — `@/lib/catalog` is the
+  // seed's input, so a size renamed in the console never reached this page.
+  const { getSize } = useCatalogData();
   const profile = useBabyProfile();
   const today = new Date().toISOString().slice(0, 10);
 

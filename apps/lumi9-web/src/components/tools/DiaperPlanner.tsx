@@ -4,11 +4,16 @@ import Link from "next/link";
 import { useState } from "react";
 import { ageInMonths } from "@/lib/baby-age";
 import { useBabyProfile } from "@/lib/baby-profile";
-import { getSize, inr, SIZE_CODES, type SizeCode } from "@/lib/catalog";
+import { inr, type SizeCode } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 import { defaultPerDay, planDiapers } from "@/lib/diaper-planning";
 import { sizeForWeight } from "@/lib/size-projection";
 
 export function DiaperPlanner() {
+  // The catalogue from the DATABASE, not the SIZES array in lib/catalog.ts —
+  // that module is the seed's input, so the monthly cost quoted here was
+  // computed from constants a console price change never moved.
+  const { sizes, getSize } = useCatalogData();
   const profile = useBabyProfile();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -20,7 +25,7 @@ export function DiaperPlanner() {
 
   const activeSize = size ?? suggestedSize ?? "M";
   const activePerDay = perDay ?? defaultPerDay(ageMonths);
-  const plan = planDiapers({ size: activeSize, perDay: activePerDay });
+  const plan = planDiapers({ product: getSize(activeSize), perDay: activePerDay });
 
   return (
     <section id="planner" className="panel p-card scroll-mt-[calc(var(--nav-h,68px)+16px)]">
@@ -40,9 +45,9 @@ export function DiaperPlanner() {
             value={activeSize}
             onChange={(e) => setSize(e.target.value as SizeCode)}
           >
-            {SIZE_CODES.map((code) => (
+            {sizes.map(({ size: code, range }) => (
               <option key={code} value={code}>
-                {code} — {getSize(code)?.range}
+                {code} — {range}
               </option>
             ))}
           </select>
