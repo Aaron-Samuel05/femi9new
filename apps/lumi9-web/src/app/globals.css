@@ -143,6 +143,16 @@
     /* stop iOS from inflating text in landscape */
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+
+    /* The classic Windows scrollbar is ~15px and sits OUTSIDE the content box,
+       so a section padded 48px each side renders 48 on the left and 48+15 on
+       the right - every full-width band on the site is visibly off-centre, and
+       it reads as a layout bug rather than as browser chrome. Worse, the gutter
+       is a vw clamp and vw INCLUDES the scrollbar, so the padding itself never
+       compensates. Reserving the gutter on both edges makes the two sides
+       match. Ignored by overlay-scrollbar platforms (macOS, iOS, Android),
+       which never had the problem. */
+    scrollbar-gutter: stable both-edges;
   }
 
   body {

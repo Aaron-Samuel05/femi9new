@@ -322,7 +322,7 @@ export default function HomePage() {
         </section>
 
         {/* FEATURE GALLERY */}
-        <section id="features" className="px-safe relative overflow-hidden bg-moss-tint py-section">
+        <section id="features" className="px-safe relative overflow-hidden bg-moss-tint py-[clamp(28px,3.6vw,52px)]">
           <Parallax
             factor={0.12}
             className="absolute top-[8%] -left-10 size-[clamp(110px,16vw,200px)] rounded-full bg-butter/50 blur-[4px]"
@@ -333,13 +333,34 @@ export default function HomePage() {
             className="absolute right-[4%] bottom-[10%] size-[clamp(70px,10vw,120px)] rounded-full bg-moss-soft opacity-40"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto max-w-[var(--page-max)]">
-            <Reveal className="mx-auto mb-[clamp(36px,5.5vw,66px)] max-w-[680px] text-center">
+          <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block lg:grid-cols-[minmax(260px,1fr)_auto]">
+            <Reveal className="mx-auto mb-[clamp(16px,2.2vw,30px)] max-w-[680px] text-center lg:mx-0 lg:mb-0 lg:text-left">
               <SectionHeading eyebrow="The Lumi9 difference">
                 Designed for every <Em>little</Em> milestone.
               </SectionHeading>
             </Reveal>
-            <div className="grid grid-cols-1 gap-[clamp(14px,2vw,24px)] sm:grid-cols-2 lg:grid-cols-3">
+            {/*
+                Three across, two rows, sized from the VIEWPORT HEIGHT - and
+                the heading sits BESIDE it rather than above.
+                The creatives are 1:1 and must not be cropped, since the
+                headline is baked into the artwork, so two rows of squares are
+                as tall as two thirds of the grid is wide. Sized from the width
+                the band ran 1312px against a ~720px viewport. Sized from the
+                height with the heading still stacked on top, the heading ate
+                ~200px of the budget and the tiles fell to 203px, stranding
+                ~440px of margin each side.
+                Moving the heading into its own column hands the whole height to
+                the grid: the tiles come back up and the row spans the page
+                again. Above roughly a 1030px-tall viewport this stops binding
+                and --page-max takes over.
+                --nav-h is in the budget because the nav is FIXED: it floats over
+                the top of whatever is scrolled under it, so the screen a
+                reader actually has is 100svh minus the bar. Two rows means a
+                pixel off the tile costs two off the section, hence the 1.5x.
+                Scoped to lg because that is where the two-column layout lives.
+                Unscoped, a landscape phone (844x390) resolves the calc to
+                ~241px and shrinks the wall to a ribbon on a wide screen. */}
+              <div className="mx-auto grid w-full lg:max-w-[min(var(--page-max),calc(150svh_-_1.5_*_var(--nav-h,68px)_-_176px))] grid-cols-1 gap-[clamp(10px,1.4vw,20px)] sm:grid-cols-2 lg:grid-cols-3">
               {FEATURE_TILES.map((image) => (
                 <Reveal key={image.src} className="overflow-hidden rounded-card shadow-lift">
                   {/* 1500x1500 is the real file size. It was declared 900x1200,
@@ -352,7 +373,7 @@ export default function HomePage() {
                     alt={image.alt}
                     width={1500}
                     height={1500}
-                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 380px"
+                    sizes="(max-width: 640px) 92vw, (max-width: 1024px) 46vw, 500px"
                     className="block h-auto w-full"
                   />
                 </Reveal>
