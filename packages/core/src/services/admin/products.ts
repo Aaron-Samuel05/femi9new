@@ -272,9 +272,28 @@ function syncBasePriceWithPacks(args: {
   if (incomingPacks.length === 0) return { basePrice: input.basePrice, repriceVariantIds: [] }
 
   // The tiers that carried the old base price — what the storefront leads with.
-  const leaders = incomingPacks.filter(
+  let leaders = incomingPacks.filter(
     (v) => v.id && storedById.get(v.id)?.price === storedBasePrice,
   )
+
+  // RECOVERY for rows that have already drifted. A product whose base price
+  // matches no tier got that way under the old behaviour — the field saved a
+  // number nothing rendered — and it cannot heal itself, because the rule above
+  // looks for a tier carrying the OLD base price and there is none. Left like
+  // that, the very products an admin noticed were wrong would be the ones that
+  // stayed wrong however many times they re-saved them.
+  //
+  // The storefront falls back to `defaultPack` for these, which is the SMALLEST
+  // tier a diaper is sold in beyond the trial pack; here that is the smallest
+  // pack that is not the smallest overall when there are three, i.e. the one a
+  // shopper is shown by default. Picking the lowest packCount outright would
+  // reprice a ₹49 trial pack, which is not the number anybody was editing.
+  const drifted = leaders.length === 0
+  if (drifted) {
+    const byCount = [...incomingPacks].sort((a, b) => (a.packCount ?? 0) - (b.packCount ?? 0))
+    const fallback = byCount.length > 2 ? byCount[1] : byCount[0]
+    if (fallback?.id) leaders = [fallback]
+  }
 
   const baseChanged = input.basePrice !== storedBasePrice
   const leaderPriceChanged = leaders.some(
@@ -287,12 +306,25 @@ function syncBasePriceWithPacks(args: {
     return { basePrice: winner?.price ?? input.basePrice, repriceVariantIds: [] }
   }
 
-  // Base price edited on its own: carry it onto the tiers that mirrored it.
+  // Base price edited: carry it onto the tier that mirrored it — including a
+  // drifted product, where that is the whole point. This is the admin saying
+  // "this is the price", so it becomes the charged one.
   if (baseChanged && leaders.length > 0) {
     return {
       basePrice: input.basePrice,
       repriceVariantIds: leaders.map((v) => v.id as string),
     }
+  }
+
+  // A drifted product saved WITHOUT touching the price heals the other way:
+  // base follows the tier, so the console stops reporting a number nobody is
+  // charged. Deliberately not a reprice — somebody editing stock or a
+  // description must not move what a shopper pays as a side effect, and the
+  // charged price is the one with real orders behind it.
+  if (drifted && leaders.length > 0) {
+    const leader = leaders[0]
+    const price = leader.price ?? storedById.get(leader.id as string)?.price
+    if (typeof price === 'number') return { basePrice: price, repriceVariantIds: [] }
   }
 
   return { basePrice: input.basePrice, repriceVariantIds: [] }
