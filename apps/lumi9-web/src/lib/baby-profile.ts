@@ -17,7 +17,18 @@ export type BabyProfile = {
   heightCm?: number;
   /** Below 37 triggers corrected age for GROWTH only. Absent means term. */
   gestationalWeeks?: number;
+  /** Optional, informational only — surfaced on the card, never used in maths. */
+  bloodGroup?: BloodGroup;
+  /**
+   * Optional. Only reason we ever leave the device: if present, saving the
+   * profile emails a one-time care + vaccination plan to this address. Not used
+   * by any tool's maths.
+   */
+  email?: string;
 };
+
+export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+export type BloodGroup = (typeof BLOOD_GROUPS)[number];
 
 const KEY = "lumi9.babyProfile.v1";
 
