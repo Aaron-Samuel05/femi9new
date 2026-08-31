@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ageInDays, ageInMonths, formatMonthYear } from "@/lib/baby-age";
 import { useBabyProfile } from "@/lib/baby-profile";
-import { getSizeOrDefault, WEIGHT_OPTIONS } from "@/lib/catalog";
+import { useCatalogData } from "@/lib/catalog-context";
 import { defaultPerDay, planDiapers } from "@/lib/diaper-planning";
 import { scheduleFor } from "@/lib/immunisation-schedule";
 import { sizeForWeight } from "@/lib/size-projection";
@@ -18,6 +18,11 @@ type ActiveSub = { status: string; nextDelivery?: string };
  * It renders nothing until there is a profile — the form above is the prompt.
  */
 export function ParentingDashboard() {
+  // The catalogue from the DATABASE. `WEIGHT_OPTIONS` and `getSizeOrDefault` in
+  // `@/lib/catalog` are the seed's input — the provider derives the same two
+  // from the live rows, so a size or weight range edited in the console lands
+  // here instead of only in the next deploy.
+  const { getSizeOrDefault, weightOptions } = useCatalogData();
   const profile = useBabyProfile();
   const { user } = useSession();
   const [sub, setSub] = useState<ActiveSub | null>(null);
@@ -56,8 +61,10 @@ export function ParentingDashboard() {
   const perDay = defaultPerDay(ageMonths);
   const sizeCode = (profile.weightKg && sizeForWeight(profile.weightKg)) || null;
   const size = getSizeOrDefault(sizeCode);
-  const sizeLabel = WEIGHT_OPTIONS.find((w) => w.size === size.size)?.label;
-  const plan = planDiapers({ size: size.size, perDay });
+  const sizeLabel = weightOptions.find((w) => w.size === size.size)?.label;
+  // `size` is already the catalogue's row, so pass it straight in — the planner
+  // no longer looks a size code up in the hardcoded module.
+  const plan = planDiapers({ product: size, perDay });
 
   // ── Subscription ──
   const subDays =

@@ -78,6 +78,16 @@ export interface DbProductSize extends Omit<ProductSize, 'packs'> {
    */
   basePrice: number
   /**
+   * The product's own name — `Product.name`, e.g. "Cloud Soft — Medium".
+   *
+   * Distinct from `name`, which is the SIZE word ("Medium") off the `Size`
+   * spec and is what the size chips print. The PDP's `<h1>` used to be the
+   * literal string "Cloud Soft Diaper Pants", so every one of the five size
+   * pages carried an identical heading, the console's name field reached
+   * nothing, and a crawler saw five near-duplicate pages.
+   */
+  title: string
+  /**
    * Every image on the product, in the console's order. The pack tiers take the
    * first `packs.length` of them; anything beyond that is extra photography the
    * gallery shows and no tier owns.
@@ -161,6 +171,7 @@ export async function loadCatalog(): Promise<CatalogPayload> {
         productId: row.id,
         slug: row.slug,
         basePrice: row.basePrice,
+        title: row.name,
         size: code,
         name,
         fits,

@@ -54,7 +54,8 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
    * LAST so the product's own copy always leads.
    */
   const accordion = [
-    ...(size.description ? [{ q: "Description", a: size.description }] : []),
+    // No "Description" entry: `description` is the paragraph that leads the buy
+    // column now, and printing it twice on one page helped nobody.
     ...(size.longDescription ? [{ q: "Materials & safety", a: size.longDescription }] : []),
     ...size.features.filter((f) => f.body).map((f) => ({ q: f.title, a: f.body })),
     ...PDP_POLICY_ACCORDION,
@@ -129,8 +130,11 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
 
       {/* INFO */}
       <div>
+        {/* The console's product name. This was the literal "Cloud Soft Diaper
+            Pants", identical on all five size pages, so the name field reached
+            nothing and a crawler saw five near-duplicate headings. */}
         <h1 className="m-0 mb-3 font-display text-[clamp(27px,7.5vw,46px)] md:text-[clamp(32px,3.6vw,46px)] font-normal leading-[1.05]">
-          Cloud Soft Diaper Pants
+          {size.title}
         </h1>
         <div className="mb-5 flex items-center gap-3">
           <span className="text-base tracking-[2px] text-gold" aria-hidden>
@@ -138,9 +142,13 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           </span>
           <span className="text-sm text-muted">4.9 · 482 verified reviews</span>
         </div>
+        {/* `description`, from the console. It was a hardcoded paragraph while
+            the same column was rendered lower down as the accordion's
+            "Description" — so editing it in the console changed the panel
+            nobody opens and never the copy that leads the page. It reads here
+            now and the duplicate accordion entry is gone. */}
         <p className="m-0 mb-6.5 max-w-[54ch] text-[clamp(15px,1.4vw,17px)] leading-[1.6] text-muted">
-          Ultra-soft, chemical-free pants with a 5-layer protection system and Wetness Lock core — up to 12 hours of
-          dryness, gentle on delicate skin.
+          {size.description}
         </p>
 
         <div className="mb-7 flex flex-wrap items-baseline gap-3">

@@ -1,4 +1,3 @@
-import { getSize, type Pack, type SizeCode } from "@/lib/catalog";
 import { LAUNCH_OFFER } from "@/lib/content";
 
 /** Mean days per month — a diaper month is not 30 days. */
@@ -29,18 +28,31 @@ function launchPrice(price: number): number {
   return Math.round(price * (1 - LAUNCH_OFFER.percent / 100));
 }
 
-export function planDiapers(input: { size: SizeCode; perDay: number }): {
+/**
+ * Plan a month for ONE product, which the caller resolves.
+ *
+ * It used to take a `SizeCode` and call `getSize()` itself — the hardcoded
+ * `SIZES` array in `src/lib/catalog.ts`, which is the SEED's input. So the
+ * monthly cost this tool quotes a parent was computed from constants (₹349,
+ * ₹749) and a console price change never moved it, on the one page whose entire
+ * job is saying what Lumi9 costs. Taking the product as an argument is what
+ * lets the page hand it the database's catalogue instead; the generic keeps it
+ * usable with both a `Pack` and a `DbPack`.
+ */
+export function planDiapers<P extends { count: number; price: number }>(input: {
+  product: { packs: P[] } | null | undefined;
+  perDay: number;
+}): {
   perDay: number;
   perMonth: number;
-  pack: Pack;
+  pack: P;
   packsPerMonth: number;
   packLastsDays: number;
   monthlyCost: number;
 } | null {
-  const { size, perDay } = input;
+  const { product, perDay } = input;
   if (!Number.isFinite(perDay) || perDay <= 0 || perDay > MAX_SANE_PER_DAY) return null;
 
-  const product = getSize(size);
   if (!product || product.packs.length === 0) return null;
 
   const perMonth = Math.ceil(perDay * DAYS_PER_MONTH);
