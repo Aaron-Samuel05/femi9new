@@ -178,8 +178,17 @@ z = ln(value / M) / S                 for L = 0
 percentile = Φ(z)
 ```
 
-The `L = 0` branch is not hypothetical — it occurs in the WHO tables and the
-general formula divides by zero there.
+The `L = 0` branch is defensive, not exercised. Checked against the downloaded
+tables: height-for-age is L = 1 throughout and weight-for-age runs −0.3531 to
+0.3809, never reaching exactly zero. It is kept because the general formula
+divides by zero there and another WHO indicator (BMI-for-age) can sit near it —
+not because this data reaches it.
+
+*(Corrected after the fact. This section originally asserted the branch "occurs
+in the WHO tables". That was written before the tables were downloaded and it
+turned out to be false — recorded here rather than quietly overwritten, because
+a spec that hides having been wrong teaches the reader to trust the rest of it
+more than they should.)*
 
 JavaScript has no normal CDF, so `Φ` is implemented from an `erf` approximation
 (Abramowitz & Stegun 7.1.26 is accurate to ~1.5e-7, far beyond what a displayed
