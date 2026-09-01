@@ -4,7 +4,15 @@ import { useEffect, useMemo, type RefObject } from "react";
 import { Box3, Vector3, type Group } from "three";
 import { useGLTF } from "@react-three/drei";
 
-export const MASCOT_URL = "/assets/mascot.glb";
+/**
+ * Versioned filename on purpose. `/assets/:path*` is served
+ * `max-age=31536000, immutable` (next.config.ts), so a browser that has fetched
+ * this URL once will NOT revalidate it for a year — re-saving the model under
+ * the same name leaves earlier visitors on the old bytes indefinitely. That is
+ * what kept the footer mascot rendering as an untextured pale figure long after
+ * the textures were fixed. Bump the suffix whenever the GLB changes.
+ */
+export const MASCOT_URL = "/assets/mascot-v2.glb";
 
 /**
  * Draco-compressed geometry, decoded by a self-hosted decoder (no CDN request).
@@ -36,7 +44,7 @@ export function MascotLights({ rim = false }: { rim?: boolean }) {
 }
 
 /**
- * Loads mascot.glb (meshopt-compressed), then normalises it: uniformly scaled so
+ * Loads the mascot GLB (Draco-compressed), then normalises it: uniformly scaled so
  * its longest axis measures `fit`, and re-centred on the origin. Reports its
  * measured extents so <FitCamera> can frame it at any canvas ratio.
  */

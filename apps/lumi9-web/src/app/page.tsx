@@ -12,6 +12,7 @@ import { SizeFinder } from "@/components/home/SizeFinder";
 import { WhyLumi9 } from "@/components/home/WhyLumi9";
 import { FeatureStrip } from "@/components/home/FeatureStrip";
 import { Testimonials } from "@/components/home/Testimonials";
+import { Moments } from "@/components/home/Moments";
 import { FeaturedJournal } from "@/components/home/FeaturedJournal";
 import { Scallop, WaveEdge } from "@/components/ui/Scallop";
 import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
@@ -113,7 +114,7 @@ export default async function HomePage() {
       {/* The hero mascot is above the fold, but useGLTF can only request it after
           the bundle loads and hydrates - about a second of dead time. Preloading
           starts the model and its decoder while the JS is still downloading. */}
-      <link rel="preload" href="/assets/mascot.glb" as="fetch" crossOrigin="anonymous" />
+      <link rel="preload" href="/assets/mascot-v2.glb" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossOrigin="anonymous" />
 
@@ -395,6 +396,13 @@ export default async function HomePage() {
             PDP accordion already make, and linked nowhere; see
             components/home/FeaturedJournal.tsx. */}
         <FeaturedJournal />
+
+        {/* MOMENTS - the brand's own Instagram clips and stills, on Femi9's
+            centre-focused video rail. Directly under the journal on purpose:
+            the two sections are the page's only unhurried stretch, and a reader
+            who has just been offered three articles is the one most likely to
+            keep watching. See components/home/Moments.tsx. */}
+        <Moments />
 
         {/* TESTIMONIALS - eight short reviews in a dense grid rather than three
             long quote cards; see components/home/Testimonials.tsx for why. */}

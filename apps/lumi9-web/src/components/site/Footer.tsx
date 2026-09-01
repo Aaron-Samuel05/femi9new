@@ -4,6 +4,7 @@ import { BRAND } from "@/lib/content";
 import { SOCIALS, SocialIcon } from "@/components/ui/Icon";
 import { FooterMascot } from "@/components/three/FooterMascot";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
+import { WaveEdge } from "@/components/ui/Scallop";
 
 const SHOP_LINKS = [
   { label: "Cloud Soft diapers", href: "/shop" },
@@ -61,13 +62,92 @@ function LinkColumn({ title, links }: { title: string; links: { label: string; h
 }
 
 /**
- * Three-panel brand footer: cream contact panel, patterned links panel, 3D mascot.
+ * The rim: Lumi waving over a wave, across the top of the footer.
+ *
+ * Ported from lumi9.in, which ends its page this way — `.lumi-footer-wave` with
+ * `.footer-mascot` absolutely placed on it. Two things about that markup are
+ * load-bearing and are kept here:
+ *
+ *   1. **The wave is drawn IN FRONT of Lumi**, not behind him (lumi9.in gives
+ *      the svg `z-index:2` and the mascot `z-index:1`). The artwork is a bust —
+ *      its 260x146 frame crops him mid-body, with only 6px of transparency below
+ *      — so anything that puts him on top leaves that crop landing as a hard
+ *      horizontal cut across a flat colour. Behind the wave, the cut is the
+ *      thing the wave is covering, and he reads as peeking over it.
+ *   2. **The whole strip is inert.** `aria-hidden` and no pointer events: it is
+ *      a mascot, it links nowhere, and it sits directly above the footer's first
+ *      real link.
+ *
+ * ── The two files ──────────────────────────────────────────────────────────
+ * `footer-mascot.webp` is an 81-frame animated WebP and 1.1MB of it. That is
+ * fine as a lazy, below-the-fold decoration and NOT fine to send to somebody who
+ * has asked their OS for less motion — so the still frame is a separate file and
+ * the choice is made by `<picture media>`, which downloads exactly one of them.
+ * A `motion-reduce:hidden` class would not: both files would still be fetched,
+ * and the 1.1MB one is the one that would be thrown away.
+ *
+ * That is also why this is a plain `<img>` inside `<picture>` rather than
+ * `next/image` — art direction by media query is the one thing that component
+ * cannot express, and the optimizer has nothing to add to an animated WebP
+ * anyway (it would need `unoptimized` to avoid flattening it to a single frame).
+ *
+ * ── Why the wave is moss, over a footer whose left panel is cream ───────────
+ * It has to be ONE colour: the wave is a single path across the full width, and
+ * the row beneath it is butter for the first column and moss-deep for the other
+ * two. Moss-deep is the colour of two thirds of that row and of the panel Lumi
+ * actually stands over, so the odd one out is a thin moss lip along the top of
+ * the cream contact panel — which reads as a rim wrapping the footer, and is the
+ * reason this is a full-bleed strip rather than three per-column waves (those
+ * would restart the curve at every column edge, and stack into three separate
+ * waves the moment the grid collapses to one column below `lg`).
+ */
+function FooterRim() {
+  return (
+    <div
+      aria-hidden
+      className="relative isolate h-[clamp(62px,10vw,124px)] lg:col-span-3"
+      // Named once and read twice: the wave's own height, and how far up it Lumi
+      // stands. They cannot drift apart into a mascot floating above the curve.
+      style={{ ["--wave-h" as string]: "clamp(24px, 3.2vw, 48px)" }}
+    >
+      <picture>
+        <source media="(prefers-reduced-motion: reduce)" srcSet="/assets/footer-mascot-still.webp" />
+        {/* A plain <img>, and `no-img-element` does not fire on one inside a
+            <picture> — which is the rule agreeing that art direction is the case
+            the component does not cover. */}
+        <img
+          src="/assets/footer-mascot.webp"
+          alt=""
+          width={260}
+          height={146}
+          loading="lazy"
+          decoding="async"
+          // Right of centre, as on lumi9.in — but over the LINKS panel, not the
+          // 8% that would stack him directly above the 3D Lumi in the third
+          // column. Below `lg` the footer is one column and there is nothing to
+          // collide with, so the original 8% stands.
+          className="absolute right-[8%] bottom-[calc(var(--wave-h)*0.55)] z-1 h-[clamp(34px,6vw,88px)] w-auto lg:right-[26%]"
+        />
+      </picture>
+      {/* In front of Lumi, and the app's own divider rather than a second wave
+          implementation — it is the same curve the homepage puts between its
+          moss bands. */}
+      <WaveEdge color="var(--color-moss-deep)" className="absolute inset-x-0 bottom-0 z-2" />
+    </div>
+  );
+}
+
+/**
+ * Three-panel brand footer: cream contact panel, patterned links panel, 3D mascot,
+ * under a wave rim with Lumi on it.
  * Below `lg` it becomes one column; the mascot panel keeps a 16/10 frame there so
  * the canvas always has a sane ratio for the aspect-fit camera to work with.
  */
 export function Footer() {
   return (
     <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer lg:min-h-[560px] lg:grid-cols-[minmax(220px,330px)_minmax(0,1fr)_minmax(220px,340px)]">
+      <FooterRim />
+
       {/* Left - cream contact panel */}
       <div className="px-safe flex flex-col justify-center bg-butter py-[clamp(36px,6vw,64px)]">
         <Image
