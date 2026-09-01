@@ -156,7 +156,28 @@ femi9_public_razorpay_key_id = ""
 # who has never heard of Femi9.
 # femi9_email_from = "Femi9 <login@femi9.in>"
 lumi9_email_from     = "Lumi9 <no-reply@lumi9.in>"
-lumi9_reply_to_email = "support@lumi9.in"   # no-reply@ is nobody's inbox
+
+# ── SENDING AND RECEIVING ARE SEPARATE SYSTEMS ──────────────────────────────
+# A verified SES domain sends. It does not receive: SES email receiving is a
+# different feature, region-limited, and even where it exists it delivers to S3
+# or Lambda rather than to a mailbox anybody can open. So a domain can be
+# perfectly able to send and still bounce everything sent TO it.
+#
+# lumi9.in was exactly that on 1 September: verified, out of the sandbox, and a
+# test send to support@lumi9.in BOUNCED (SES metrics: Send 2, Delivery 1,
+# Bounce 1) because Cloudflare Email Routing had published MX records but had no
+# active rule for that address.
+#
+# LEAVE THE THREE SETTINGS BELOW EMPTY UNTIL A TEST MAIL ACTUALLY ARRIVES. Hard
+# bounces count against the sending reputation of the account BOTH brands
+# transact on, and a freshly verified domain under p=quarantine has none to
+# spare. Empty is the safe state in every case:
+#   reply_to   → replies go to no-reply@, unread but not bounced
+#   care inbox → /contact fails CLOSED (503, "email us directly") instead of
+#                showing a green tick over a message that bounced
+#   alarm      → no subscription, rather than one stuck pending forever because
+#                the confirmation link bounced
+lumi9_reply_to_email = ""
 
 # Lumi9 sends through SES; Femi9 is live on Resend and stays there. Setting a
 # domain here creates the identity, the DKIM keys, a configuration set and the
@@ -198,7 +219,7 @@ lumi9_mail_provider = "ses"
 # route answers 503 to every visitor from day one — deliberately, because the
 # form it replaced rendered a green tick and threw the message away. Not a
 # secret; it is printed in the site footer and in the site's JSON-LD.
-lumi9_care_inbox_email = "support@lumi9.in"
+lumi9_care_inbox_email = ""   # see the note above; set it when mail ARRIVES
 
 # ── Where a failure is reported ─────────────────────────────────────────────
 # Every alarm in alarms.tf publishes here: 5xx storms, tasks that will not
@@ -209,7 +230,8 @@ lumi9_care_inbox_email = "support@lumi9.in"
 #
 # A subscription needs confirming: AWS emails a link, and until someone clicks
 # it the topic delivers nothing. Check for it right after the first apply.
-alarm_email = "support@lumi9.in"
+# Use a domain that RECEIVES today. femi9.in does (Zoho); lumi9.in does not yet.
+alarm_email = ""
 
 # Alarms fire when a service is unhealthy, not when it is quiet. Raise the 5xx
 # threshold on a busy site rather than muting a topic.
