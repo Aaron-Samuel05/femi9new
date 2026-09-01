@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       if (err instanceof InvalidPhoneError) return badRequest(err.message);
       if (err instanceof ProviderConfigurationError) {
-        return serviceUnavailable("SMS sign-in is temporarily unavailable.");
+        return serviceUnavailable("WhatsApp sign-in is temporarily unavailable.");
       }
       throw err;
     }

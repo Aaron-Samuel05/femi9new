@@ -128,7 +128,8 @@ locals {
     RAZORPAY_KEY_ID         = "TODO-rzp_live_xxxxxxxx"                    # server-side Razorpay key id
     RAZORPAY_KEY_SECRET     = "TODO-change-me"                            # Razorpay key secret
     RAZORPAY_WEBHOOK_SECRET = "TODO-change-me"                            # Razorpay webhook signing secret
-    MSG91_AUTH_KEY          = "TODO-change-me"                            # MSG91 OTP/SMS auth key
+    MSG91_AUTH_KEY          = "TODO-change-me"                            # MSG91 reward-code SMS (no longer sign-in)
+    WHATSAPP_TOKEN          = "TODO-change-me"                            # WhatsApp Cloud API token — sign-in OTP + order messages
     RESEND_API_KEY          = "TODO-re_xxxxxxxx"                          # Resend transactional email key
     RESEND_WEBHOOK_SECRET   = "TODO-whsec_change-me"                      # Resend/Svix webhook signing secret
     CRON_SECRET             = "TODO-change-me"                            # EventBridge -> /api/cron shared secret
