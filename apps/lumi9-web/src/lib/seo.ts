@@ -90,6 +90,49 @@ export const DEFAULT_OG_IMAGE = {
 };
 
 /**
+ * A page's Open Graph block, with the site defaults already in it.
+ *
+ * ── Why every page must go through this ─────────────────────────────────────
+ * Next MERGES `metadata` shallowly and REPLACES a nested object wholesale. The
+ * root layout sets `openGraph.images: [DEFAULT_OG_IMAGE]`; the moment a page
+ * declares its own `openGraph` to set a title, the whole parent object is
+ * discarded and the image goes with it.
+ *
+ * Eighteen pages declared one. None of them re-declared `images`. So the home
+ * page, /shop, /about, /subscription, /journal, /help, /size-guide, /contact,
+ * /affiliate, /terms and all four parenting tools shared with no picture at all
+ * — a bare text link on WhatsApp, where most of this site's traffic is shared,
+ * and the four pages that DID keep an image only did so by not overriding.
+ *
+ * Nothing about that is visible while building a page: the tag is simply
+ * missing, the page renders perfectly, and you would only find it by pasting a
+ * link into a chat.
+ *
+ * Spread it and override what differs:
+ *
+ *   openGraph: og({ url: absoluteUrl("/about"), title: TITLE, description: DESC })
+ */
+export function og(
+  overrides: {
+    url?: string;
+    title?: string;
+    description?: string;
+    type?: "website" | "article";
+    images?: { url: string; width?: number; height?: number; alt?: string }[];
+    publishedTime?: string;
+    modifiedTime?: string;
+  } = {},
+) {
+  return {
+    type: "website" as const,
+    siteName: SITE_NAME,
+    locale: "en_IN",
+    images: [DEFAULT_OG_IMAGE],
+    ...overrides,
+  };
+}
+
+/**
  * `alternates.canonical` for a page. Next resolves a relative value against
  * `metadataBase`, but passing the absolute URL keeps the emitted tag readable
  * and independent of where `metadataBase` happens to point.
@@ -114,7 +157,7 @@ export function organizationSchema() {
     name: SITE_NAME,
     alternateName: BRAND_LEGAL_NAME,
     url: SITE_URL,
-    logo: absoluteUrl("/assets/logo-midnight.png"),
+    logo: absoluteUrl("/assets/logo-midnight.webp"),
     description:
       "Lumi9 by Femi9 makes Cloud Soft baby diapers and diaper pants - soft, breathable, leak-protected comfort for newborns and growing babies, in sizes NB to XL.",
     parentOrganization: { "@type": "Organization", name: "Femi9", url: "https://femi9.in" },
