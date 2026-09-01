@@ -423,7 +423,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
                 />
               </div>
               <p className="m-0 text-[13px] text-muted">
-                We will text you a 6-digit code - no password to remember.
+                We will send you a 6-digit code on WhatsApp - no password to remember.
               </p>
               <p className="m-0 min-h-5 text-[13px] text-[#b4232c]" role="alert" aria-live="polite">
                 {error ?? " "}

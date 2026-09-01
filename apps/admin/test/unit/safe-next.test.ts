@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect } from 'vitest'
 import { safeNext } from '../../src/lib/safe-next'
 
@@ -36,5 +38,28 @@ describe('safeNext', () => {
     for (const v of [null, undefined, '', 'orders', '/', '/notabrand/x', '/FEMI9/x']) {
       expect(safeNext(v, 'femi9')).toBe('/femi9')
     }
+  })
+
+  /**
+   * The gap this file did not close for a long time: every assertion above
+   * passed while NOTHING in the app imported the function.
+   *
+   * `login/page.tsx` did its own check — `next.startsWith('/')` — which
+   * `//evil.example` satisfies, and `LoginCard` pushed that value straight into
+   * `router.push`. A protocol-relative path there is an off-site navigation, so
+   * `/login?brand=lumi9&next=//evil.example` signed an admin in and then landed
+   * them on somebody else's page. Verified against a running console before the
+   * fix: the browser ended up on `http://example.com/phish`.
+   *
+   * A validator nobody calls is worse than no validator: it makes the code read
+   * as though the question has been dealt with. So this asserts the call site,
+   * not just the function.
+   */
+  it('is actually called on the login redirect', () => {
+    const card = readFileSync(join(process.cwd(), 'app', 'login', 'LoginCard.tsx'), 'utf8')
+    expect(card).toContain('safeNext')
+    // Specifically: the value handed to router.push must be the validated one.
+    expect(card).toMatch(/router\.push\(\s*safeNext\(/)
+    expect(card).not.toMatch(/router\.push\(\s*next\s*\?\?/)
   })
 })

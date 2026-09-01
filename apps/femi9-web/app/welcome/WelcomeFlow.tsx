@@ -36,9 +36,12 @@ type StepState = 'done' | 'current' | 'todo'
 
 /** Where the unanswered phone challenge is remembered across a closed tab. */
 const HINT_KEY = 'femi9:welcome:phone'
-/** The OTP lives 5 minutes server-side. Resume onto an existing challenge only
- *  while there is comfortably enough of it left to read a text and type six
- *  digits; past that, ask for a fresh one instead of guaranteeing a failure. */
+/** The OTP lives 5 minutes server-side - deliberately shorter than the ten the
+ *  WhatsApp template promises; see OTP_TTL_MS in packages/core/src/services/auth.ts.
+ *  Resume onto an existing challenge only while there is comfortably enough of it
+ *  left to open WhatsApp and type six digits; past that, ask for a fresh one
+ *  instead of guaranteeing a failure. Keep this BELOW OTP_TTL_MS - the two have
+ *  no way to check each other. */
 const HINT_RESUME_MS = 4 * 60 * 1000
 const RESEND_COOLDOWN_S = 30
 const FIELD_ORDER: FieldKey[] = ['name', 'email', 'phone', 'code']
@@ -59,7 +62,7 @@ const REASONS: Record<ProfileField, { Icon: typeof IUser; title: string; body: s
   phone: {
     Icon: IBell,
     title: 'Your mobile',
-    body: 'Delivery updates by SMS, and a one-tap sign-in the next time you visit.',
+    body: 'Delivery updates on WhatsApp, and a one-tap sign-in the next time you visit.',
   },
 }
 
@@ -667,7 +670,7 @@ export function WelcomeFlow({ initialMissing, next }: WelcomeFlowProps) {
             ) : (
               <form className="m-form" onSubmit={submitCode} noValidate>
                 <p className="auth-sentto">
-                  We sent a 6-digit code to <b>+91 {phone}</b>. It expires in 5 minutes.
+                  We sent a 6-digit code on WhatsApp to <b>+91 {phone}</b>. It expires in 5 minutes.
                 </p>
 
                 {devCode && (

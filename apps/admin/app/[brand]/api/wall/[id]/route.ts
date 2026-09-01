@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { z } from 'zod'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
-import { requireConsoleApi } from '@/lib/api-guard'
+import { moduleGate, requireConsoleApi } from '@/lib/api-guard'
+import { hasModule } from '@femi9/core/brands'
 import { remove, setStatus } from '@femi9/core/services/admin/wall'
 
 /**
@@ -21,6 +22,12 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
   if (!auth.ok) return auth.response
   const { brand } = auth
 
+  // A brand without this module has no rows here and must not learn it exists:
+  // 404, the same answer requireConsole gives the page. Guarding only the page
+  // left this endpoint answering for a brand whose console has no link to it.
+  const gated = moduleGate(hasModule(brand, 'community'))
+  if (gated) return gated
+
   return handle(async () => {
     const raw = await req.json().catch(() => null)
     const parsed = PatchSchema.safeParse(raw)
@@ -38,6 +45,12 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand
   const auth = await requireConsoleApi((await props.params).brand, 'support')
   if (!auth.ok) return auth.response
   const { brand } = auth
+
+  // A brand without this module has no rows here and must not learn it exists:
+  // 404, the same answer requireConsole gives the page. Guarding only the page
+  // left this endpoint answering for a brand whose console has no link to it.
+  const gated = moduleGate(hasModule(brand, 'community'))
+  if (gated) return gated
 
   return handle(async () => {
     const res = await remove(brand, params.id)

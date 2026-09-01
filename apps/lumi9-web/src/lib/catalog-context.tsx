@@ -3,6 +3,7 @@
 import { createContext, useContext, useMemo } from 'react'
 import type { CatalogPayload, DbProductSize } from './catalog.server'
 import type { SizeCode } from './catalog'
+import { boundsFromCatalog, type SizeBound } from './size-projection'
 
 /**
  * The catalogue, delivered to client components.
@@ -35,6 +36,17 @@ export interface CatalogData {
   sizes: Catalog
   /** The weight chips on the size finder and size guide, derived from the data. */
   weightOptions: { label: string; size: SizeCode }[]
+  /**
+   * The same bands as NUMBERS, for the parenting tools' size maths.
+   *
+   * `SIZE_BOUNDS` in `size-projection.ts` used to be the only copy and carried a
+   * comment saying it had to be kept in step with the catalogue by hand. It was
+   * not — an admin renaming "7-12 kg" moved what a parent read and never what
+   * the projector computed. This rides along on the payload for the same reason
+   * `subscribeSavePct` does: the client must not hold a second copy of a number
+   * the console owns.
+   */
+  sizeBounds: SizeBound[]
   /** One size, or undefined. Case-insensitive, so `/product/m` works. */
   getSize: (code: string | null | undefined) => DbProductSize | undefined
   /** One size with a fallback, so a view never renders empty on a bad param. */
@@ -76,6 +88,7 @@ export function useCatalogData(): CatalogData {
       sizes,
       subscribeSavePct,
       weightOptions: sizes.map((s) => ({ label: s.fits, size: s.size })),
+      sizeBounds: boundsFromCatalog(sizes),
       getSize,
       getSizeOrDefault: (code: string | null | undefined, fallback: SizeCode = 'M') => {
         // Falls through to the first size rather than a hardcoded 'M', which

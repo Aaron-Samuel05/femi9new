@@ -46,13 +46,21 @@ export function productionReadinessReport(): ReadinessReport {
     'RAZORPAY_KEY_SECRET',
     'RAZORPAY_WEBHOOK_SECRET',
     'NEXT_PUBLIC_RAZORPAY_KEY_ID',
-    'MSG91_AUTH_KEY',
-    'MSG91_TEMPLATE_ID',
+    // Phone sign-in delivers its OTP over WhatsApp and nothing else — no SMS
+    // fallback — so these two carry what MSG91 used to. Without them the
+    // primary way into the storefront is closed.
+    'WHATSAPP_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
     'RESEND_API_KEY',
     'EMAIL_FROM',
   ]
   // Feature-gating only — see the note above before promoting any of these.
   const recommended = [
+    // No longer on the sign-in path. Still the only way a phone-only customer
+    // receives a redeemed reward code (otp.ts::sendTextSms), which also needs
+    // MSG91_FLOW_TEMPLATE_ID — without it she is told nothing at all.
+    'MSG91_AUTH_KEY',
+    'MSG91_TEMPLATE_ID',
     'RESEND_WEBHOOK_SECRET',
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',

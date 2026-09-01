@@ -1,9 +1,11 @@
 import 'server-only'
 import { Prisma, type User } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
-import { generateCode, generateToken, hashCode, sendSms, sendMagicLink } from '../otp'
+import { generateCode, generateToken, hashCode, sendMagicLink } from '../otp'
+import { WHATSAPP_TEMPLATES, sendWhatsappTemplateOrThrow } from '../whatsapp'
 import type { GoogleProfile } from '../google-oauth'
 import { rateLimit } from '../rate-limit'
+import { ProviderConfigurationError } from '../runtime-mode'
 
 /**
  * Customer auth service — the challenge lifecycle for phone-OTP and email
@@ -19,6 +21,17 @@ import { rateLimit } from '../rate-limit'
 
 // Short-lived by design: an OTP is a live conversation, a link is checked from an
 // inbox a little later. Both are single-use regardless (consumed on success).
+//
+// FIVE minutes, and it KNOWINGLY DISAGREES with the WhatsApp copy. Both approved
+// templates read "This code is valid for 10 minutes"; that copy is approved by
+// Meta and is not ours to edit, and the shorter window was kept deliberately
+// rather than widened to match it. So a shopper who takes the message at its
+// word and returns at minute seven is told her code is invalid — a real,
+// accepted cost, not an oversight.
+//
+// Do not "fix" this by moving either number. The app's own screens say five,
+// which is what she sees while she is actually waiting; closing the gap for good
+// means getting the template copy changed, and only then this line.
 const OTP_TTL_MS = 5 * 60 * 1000
 const LINK_TTL_MS = 15 * 60 * 1000
 
@@ -36,6 +49,24 @@ export class InvalidOtpError extends Error {
   constructor() {
     super('That code is invalid or has expired. Please request a new one.')
     this.name = 'InvalidOtpError'
+  }
+}
+
+/**
+ * The OTP was minted but WhatsApp would not carry it.
+ *
+ * Deliberately a SUBCLASS of ProviderConfigurationError, which every OTP route
+ * already catches and maps to a 503 "temporarily unavailable". From the
+ * shopper's side the two are the same event — no code is coming, try again —
+ * and the alternative was six routes each growing a second, identical catch
+ * that a seventh route would forget. `handle()` would otherwise turn a Meta
+ * outage into a 500, which reads as our bug and gets a retry from nobody.
+ */
+export class OtpDeliveryError extends ProviderConfigurationError {
+  constructor(detail: string) {
+    super('WhatsApp')
+    this.name = 'OtpDeliveryError'
+    this.message = `Could not deliver the WhatsApp OTP: ${detail}`
   }
 }
 
@@ -86,7 +117,7 @@ function isValidEmail(email: string): boolean {
 
 export interface RequestOtpResult {
   mock: boolean
-  /** Present ONLY in mock mode so the code is testable without a live SMS provider. */
+  /** Present ONLY in mock mode so the code is testable without a live provider. */
   devCode?: string
 }
 
@@ -99,6 +130,19 @@ export interface RequestOtpResult {
  * numbers can independently draw the same 6-digit code, and VerificationToken.token
  * is globally @unique — folding the identifier into the hash keeps those rows
  * distinct so the second create can't collide.
+ *
+ * ── Delivery is WhatsApp, not SMS ──────────────────────────────────────────
+ * The code goes out on one of two approved templates and NOTHING falls back to
+ * MSG91: a shopper who does not get the WhatsApp message must retry, not
+ * silently receive a second code down a channel nobody is watching. `sendSms`
+ * stays in otp.ts for the reward-code path (`sendTextSms`), which still needs a
+ * DLT template. Anything gating phone sign-in on `smsConfigured()` is now
+ * asking the wrong question — ask `whatsappConfigured(brand)`.
+ *
+ * WHICH template is decided here, by whether this number already has an account:
+ * `signup_otp` welcomes her to the family, `login_otp` says welcome back. Sending
+ * the wrong one is not a cosmetic slip — greeting a two-year customer as a new
+ * registration is the kind of thing she notices and we do not.
  */
 export async function requestOtp(brand: Brand, phone: string): Promise<RequestOtpResult> {
   const prisma = dbFor(brand)
@@ -115,8 +159,28 @@ export async function requestOtp(brand: Brand, phone: string): Promise<RequestOt
     data: { identifier, token, expires: new Date(Date.now() + OTP_TTL_MS) },
   })
 
-  const { mock } = await sendSms(normalized, code)
-  return { mock, ...(mock ? { devCode: code } : {}) }
+  // A returning shopper is greeted by name; a new number has none to greet with,
+  // and an empty template parameter is rejected by Meta outright.
+  const existing = await prisma.user.findUnique({
+    where: { phone: normalized },
+    select: { name: true },
+  })
+  const template = existing ? WHATSAPP_TEMPLATES.loginOtp : WHATSAPP_TEMPLATES.signupOtp
+  const customerName = existing?.name?.trim().split(' ')[0] || 'there'
+
+  try {
+    const { mock } = await sendWhatsappTemplateOrThrow(brand, {
+      to: normalized,
+      template,
+      params: [customerName, code],
+    })
+    return { mock, ...(mock ? { devCode: code } : {}) }
+  } catch (err) {
+    // A missing token already IS a ProviderConfigurationError; only a real send
+    // failure needs wrapping, so the route sees one type either way.
+    if (err instanceof ProviderConfigurationError) throw err
+    throw new OtpDeliveryError(String(err).slice(0, 300))
+  }
 }
 
 /**

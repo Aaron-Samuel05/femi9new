@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
 import { NAV_LINKS } from "@/components/site/Nav";
 import { BRAND, TERMS_SECTIONS, TERMS_UPDATED } from "@/lib/content";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Terms & Conditions | Lumi9";
 const DESCRIPTION =
@@ -13,13 +13,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/terms"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/terms"),
-    siteName: SITE_NAME,
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/terms"), title: TITLE, description: DESCRIPTION }),
 };
 
 /**

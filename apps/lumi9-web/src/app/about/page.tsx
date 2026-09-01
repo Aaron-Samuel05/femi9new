@@ -7,7 +7,7 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, NumberedCard } from "@/components/ui/bits";
 import { ABOUT_STATS, ABOUT_VALUES, FEATURE_IMAGES } from "@/lib/content";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Our Story | Lumi9 by Femi9 Baby Diapers";
 const DESCRIPTION =
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: DESCRIPTION,
   keywords: ["Lumi9", "Femi9", "Lumi9 by Femi9", "Femi9 Lumi9", "Lumi9 diapers", "baby diapers"],
   alternates: canonical("/about"),
-  openGraph: { type: "website", url: absoluteUrl("/about"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/about"), title: TITLE, description: DESCRIPTION }),
 };
 
 

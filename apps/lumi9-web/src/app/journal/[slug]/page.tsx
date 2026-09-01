@@ -9,7 +9,7 @@ import { Reveal } from "@/components/motion/Reveal";
 import { ArticleBody, inline } from "@/components/journal/ArticleBody";
 import { ArticleCard, CategoryChip, PostMeta } from "@/components/journal/JournalCards";
 import { getJournalPost, relatedJournalPosts } from "@/lib/journal.server";
-import { absoluteUrl, breadcrumbSchema, canonical, faqSchema, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { absoluteUrl, breadcrumbSchema, canonical, DEFAULT_OG_IMAGE, faqSchema, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 /*
  * `generateStaticParams` used to live here, listing the slugs from the module.
@@ -49,7 +49,13 @@ export async function generateMetadata(props: { params: Promise<{ slug: string }
       authors: [post.author],
       section: post.category,
       tags: post.keywords,
-      ...(image ? { images: [{ url: image, width: 1800, height: 1204, alt: post.imageAlt }] } : {}),
+      // The cover when the post has one, the site card when it does not. This
+      // used to spread nothing in the else branch — and because Next replaces a
+      // parent openGraph object wholesale rather than merging into it, an
+      // article with no cover image shared as a bare text link.
+      images: image
+        ? [{ url: image, width: 1800, height: 1204, alt: post.imageAlt }]
+        : [DEFAULT_OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",

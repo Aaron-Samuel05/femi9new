@@ -8,7 +8,7 @@ import { MosaicTile } from "@/components/journal/JournalCards";
 import { NewsletterForm } from "@/components/site/NewsletterForm";
 import { Em } from "@/components/ui/bits";
 import { listJournalCategories, listJournalPosts } from "@/lib/journal.server";
-import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_URL, og } from "@/lib/seo";
 
 const DESCRIPTION =
   "Gentle, practical parenting reads from Lumi9 - baby diaper guides, newborn care tips, sleep and skin, written for the ordinary days nobody posts about.";
@@ -27,13 +27,7 @@ export const metadata: Metadata = {
     "Lumi9 journal",
   ],
   alternates: canonical("/journal"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/journal"),
-    title: "The Lumi9 Journal - Baby Care Guides & Diaper Tips",
-    description: DESCRIPTION,
-    siteName: SITE_NAME,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/journal"), title: "The Lumi9 Journal - Baby Care Guides & Diaper Tips", description: DESCRIPTION }),
 };
 
 export default async function JournalPage() {

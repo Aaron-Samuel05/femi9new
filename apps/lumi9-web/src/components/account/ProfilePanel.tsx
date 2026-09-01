@@ -178,7 +178,7 @@ export function ProfilePanel({ user }: { user: AccountUser }) {
       </p>
 
       {challenge ? (
-        <form className="max-w-[420px]" onSubmit={confirmChallenge}>
+        <form method="post" className="max-w-[420px]" onSubmit={confirmChallenge}>
           <p className="m-0 mb-4 text-[15px] text-muted">
             We sent a {CODE_LENGTH}-digit code to <b className="text-midnight">+91 {phone}</b>.
             Confirm it and the number is yours.
@@ -232,7 +232,7 @@ export function ProfilePanel({ user }: { user: AccountUser }) {
           </div>
         </form>
       ) : (
-        <form className="max-w-[560px]" onSubmit={save}>
+        <form method="post" className="max-w-[560px]" onSubmit={save}>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Full name" error={fieldErrors.name?.[0]} full>
               <input

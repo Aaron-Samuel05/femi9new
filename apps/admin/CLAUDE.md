@@ -55,6 +55,40 @@ another's orders.
 should not learn that Thara exists by guessing a URL, and 403 tells them it does.
 Hiding a nav link is decoration; the guard is the enforcement.
 
+That sentence was true of the RULE and false of the CODE for a long time, in a
+way worth knowing about because it will recur. `requireConsole(brand, module?)`
+takes the module as an OPTIONAL argument, and a page that omits it is gated by
+nothing. Every client-component page omitted it — they cannot call it at all —
+so `/lumi9/thara`, `/lumi9/partners` and `/lumi9/community` rendered in full for
+a Lumi9 admin, complete with the console shell, while the nav dutifully hid the
+links. The API half was worse: `wall` and `partners` had no gate either, and
+every `thara` route gated on `isTharaEnabled()`, a GLOBAL env flag — so one
+console serving both brands means the day Thara is switched on for Femi9, every
+Thara endpoint starts answering for Lumi9. `infra/terraform/variables.tf` still
+documented the opposite ("Lumi9's brand config does not include the module, so
+the console 404s it there regardless of this"), which was simply untrue.
+
+**A client page gets its gate from a server `layout.tsx` in the same segment**,
+calling `requireConsole(brand, '<module>')` and rendering `{children}`. Nine of
+those exist now, one per client-rendered section. `test/unit/route-module-gates.test.ts`
+is what keeps them: it derives the set of modules at least one brand lacks and
+fails if any page or API route for one of them is ungated, and it fails on a
+route directory nobody has classified.
+
+⚠️ **Modules diverge in BOTH directions now.** Lumi9's list used to be Femi9's
+with things removed, and `module-gating.test.ts` asserted exactly that. It is no
+longer true: `parenting` is **Lumi9-only**, because `/parenting-tools` is a
+storefront surface Femi9 does not have. The test asserts the stronger invariant
+instead — every listed module is classified `FEMI9_ONLY` / `LUMI9_ONLY` /
+`SHARED`, and the three cover `ADMIN_MODULES` exactly. Do not reinstate the
+subset assertion.
+
+**A CLIENT page needs a server segment layout to be gated at all.** `requireConsole`
+takes a module name, but a client component cannot call it — so `/[brand]/parenting`
+carries a `layout.tsx` whose only job is `requireConsole(brand, 'parenting')`.
+Any interactive section added the same way needs the same wrapper, or the module
+list gates its nav link and nothing else.
+
 **3. A role is enforced by the API, not by the nav.**
 `requireConsoleApi(brand, minRole)` takes the minimum role for the operation:
 reads pass `readonly` (the default), ordinary writes `support`, anything that
@@ -84,13 +118,15 @@ app/
   layout.tsx                  imports ALL THREE global sheets — see above
   login/                      page.tsx + LoginCard.tsx (the brand toggle)
   api/auth/login|logout/      sign in / sign out, per brand
-  [brand]/(panel)/            15 console sections, moved from the storefront
+  [brand]/(panel)/            16 console sections — 15 moved from the storefront,
+                              plus `parenting`, which is new and Lumi9-only
     layout.tsx                server half: guard + nav built from the brand's
                               module list
     _shell.tsx                the `.adm` markup; client only for the mobile
                               drawer's open bit
     _nav.tsx                  active-route link + one icon per module
-  [brand]/api/                31 route handlers, moved from /api/admin
+  [brand]/api/                34 route handlers — 31 moved from /api/admin, plus
+                              the three under api/parenting/
 src/lib/
   guard.ts                    requireConsole(brand, module?) — call it in EVERY page
   api-guard.ts                requireConsoleApi(brand, minRole?) — EVERY route
@@ -211,6 +247,19 @@ Keep customer data out of `target` and `meta`. This table lives in the `platform
 schema, which a wider set of people can read than one brand's customers.
 
 ## Things that will bite
+
+**Changing an order's status MESSAGES THE CUSTOMER.** `updateOrderStatus` emails
+on `shipped` and sends an approved WhatsApp template on `delivered` and
+`cancelled` — so this console, not a storefront, is where those go out. It needs
+`WHATSAPP_TOKEN` and `WHATSAPP_PHONE_NUMBER_ID` in its own task for that reason,
+and Terraform gives it both.
+
+Only a REAL transition sends: the status flip is an `updateMany` scoped to a
+differing status, and the cancel path reports whether it actually claimed the
+order, so an ops double-click cannot tell somebody twice that her order was
+cancelled. `NotificationLog.dedupeKey` is the second line of defence, not the
+first. There is no WhatsApp template for `shipped` — dispatch stays email-only,
+and the delivered one must not be repurposed for it.
 
 **The platform Prisma client has a custom output path** (`generated/`, gitignored).
 Two generators writing to `node_modules/@prisma/client` would overwrite each

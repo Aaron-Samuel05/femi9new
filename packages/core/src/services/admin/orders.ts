@@ -3,6 +3,7 @@ import { dbFor, type Brand } from '@femi9/db'
 import type { CouponType, OrderStatus, Prisma } from '@prisma/client'
 import * as razorpay from '../../razorpay'
 import { sendOrderStatusEmail } from '../order-mail'
+import { sendOrderStatusWhatsapp } from '../order-whatsapp'
 import {
   reverseTharaCreditForRefund,
   reverseTharaPointsForRefund,
@@ -279,9 +280,12 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
       // Either the order does not exist or it was already in this status.
       return getOrder(brand, id)
     }
-    if (status === 'shipped') {
+    if (status === 'shipped' || status === 'delivered') {
       const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } })
-      if (order) await sendOrderStatusEmail(brand, order.orderNo, 'shipped')
+      // Dispatch is email-only: there is no approved WhatsApp template for
+      // `shipped`, and the delivered one says the order "has been" completed.
+      if (order && status === 'shipped') await sendOrderStatusEmail(brand, order.orderNo, 'shipped')
+      if (order && status === 'delivered') await sendOrderStatusWhatsapp(brand, order.orderNo, 'delivered')
     }
     return getOrder(brand, id)
   }
@@ -322,10 +326,18 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
       await tx.order.update({ where: { id }, data: { status: 'cancelled' } })
     }
 
-    return { kind: 'ok' as const }
+    // Only a REAL transition tells the customer. An order that was already
+    // cancelled goes through this branch every time an ops click re-submits it,
+    // and "we're sorry to inform you" is not a message to send twice. The
+    // dedupeKey would catch it too; this keeps the row out of the log entirely.
+    const transitioned = claimed.count > 0 || order.status !== 'cancelled'
+    return { kind: 'ok' as const, transitioned, orderNo: order.orderNo }
   })
 
   if (outcome.kind === 'missing') return null
+  // Outside the transaction: a Meta round-trip has no business holding a stock
+  // restore open, and sendOrderStatusWhatsapp never throws.
+  if (outcome.transitioned) await sendOrderStatusWhatsapp(brand, outcome.orderNo, 'cancelled')
   return getOrder(brand, id)
 }
 
