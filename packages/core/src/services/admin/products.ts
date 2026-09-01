@@ -48,13 +48,25 @@ const VariantInput = z.object({
     .min(0, 'Discount must be ≥ 0%')
     .max(90, 'Discount is capped at 90% — a free order is not a price edit')
     .default(0),
-  price: z.coerce.number().int().min(0, 'Price must be ≥ 0'),
+  // OPTIONAL, and only a fallback. The console omits `price` on purpose and
+  // lets the server derive it; declaring it required meant z.coerce ran
+  // Number(undefined) on every save from the product form and rejected it
+  // with "expected number, received NaN" — discount or no discount.
+  price: z.coerce.number().int().min(0, 'Price must be ≥ 0').optional(),
   // Empty SKU is normalised to null so many variants can share "no SKU" without
   // tripping the unique index (Postgres allows multiple NULLs, not multiple '').
   sku: z.string().trim().optional().nullable(),
   stock: z.coerce.number().int().min(0).default(0),
   active: z.boolean().default(true),
 })
+  // Exactly one of them is always present in practice — the console sends
+  // `mrp`, the catalog import sends a bare `price` — but neither is
+  // individually required, so the pair has to be checked here rather than
+  // silently pricing the row at zero.
+  .refine((v) => v.mrp !== undefined || v.price !== undefined, {
+    message: 'Either an MRP or a price is required',
+    path: ['mrp'],
+  })
 
 /** A Key Benefits entry. The PDP reads the first six and mirrors them three per
  *  side, so order is meaningful — position follows array index. */
@@ -262,7 +274,7 @@ export function chargedPrice(mrp: number, discountPct: number): number {
  * half-populated.
  */
 function pricingOf(v: VariantInputT): { mrp: number; discountPct: number; price: number } {
-  const mrp = v.mrp ?? v.price
+  const mrp = v.mrp ?? v.price ?? 0
   const discountPct = v.mrp === undefined ? 0 : v.discountPct
   return { mrp, discountPct, price: chargedPrice(mrp, discountPct) }
 }
