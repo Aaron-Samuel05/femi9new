@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { CANONICAL_ORIGIN, IS_CANONICAL_HOST, noindexReason } from "@/lib/seo";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import { CANONICAL_ORIGIN } from "@/lib/seo";
 import { brandConfig } from "@femi9/core/brands";
 
 /**
@@ -32,13 +32,58 @@ describe("canonical origin", () => {
     expect(CANONICAL_ORIGIN).toMatch(/^https:\/\/[a-z0-9.-]+$/);
   });
 
-  it("indexes when SITE_URL is unset, because the fallback IS the canonical", () => {
-    // A task whose SITE_URL never got set falls back to this constant. That is
-    // the one case where a missing variable must not produce noindex — see the
-    // Terraform note: NEXT_PUBLIC_SITE_URL is inlined at build time and does
-    // nothing at runtime, which is how the variable went missing in the first
-    // place.
-    expect(IS_CANONICAL_HOST).toBe(true);
-    expect(noindexReason()).toBeNull();
+  // ── The indexability tests read the ENVIRONMENT, so they set it ──────────
+  //
+  // `SITE_URL` is read at module scope, so `IS_CANONICAL_HOST` is fixed the
+  // moment `seo.ts` is first imported. An earlier version of this file asserted
+  // that constant directly and passed on a laptop, where the variable is unset,
+  // and failed in CI, which sets `SITE_URL=http://127.0.0.1:3101` for the
+  // Playwright server. That is a test asserting the harness rather than the
+  // code. Each case below states the environment it means and re-imports the
+  // module under it, so the answer does not depend on who is running it.
+  const ENV_KEYS = ["SITE_URL", "NEXT_PUBLIC_SITE_URL"] as const;
+  const saved: Record<string, string | undefined> = {};
+
+  async function seoWith(siteUrl: string | undefined) {
+    for (const key of ENV_KEYS) {
+      saved[key] = process.env[key];
+      // DELETED, not set to "". `seo.ts` falls back with `??`, which only
+      // triggers on null/undefined — an empty string is a value, and would
+      // resolve SITE_URL to "" rather than to CANONICAL_ORIGIN.
+      delete process.env[key];
+    }
+    if (siteUrl !== undefined) process.env.SITE_URL = siteUrl;
+
+    vi.resetModules();
+    return import("@/lib/seo");
+  }
+
+  afterEach(() => {
+    for (const key of ENV_KEYS) {
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+    }
+    vi.resetModules();
+  });
+
+  it("indexes when SITE_URL is unset, because the fallback IS the canonical", async () => {
+    // The one case where a missing variable must NOT produce noindex. It is
+    // also the case Terraform got wrong: it set NEXT_PUBLIC_SITE_URL, which
+    // Next inlines at build time and which is therefore inert in a task
+    // definition, and set SITE_URL nowhere at all.
+    const seo = await seoWith(undefined);
+    expect(seo.IS_CANONICAL_HOST).toBe(true);
+    expect(seo.noindexReason()).toBeNull();
+  });
+
+  it("says WHY it is not indexable when the origin is anything else", async () => {
+    // The launch blocker, in one assertion: ship on a hostname nobody wrote
+    // into CANONICAL_ORIGIN and every page carries noindex while working
+    // perfectly for every human. The reason has to name both origins, because
+    // the person reading it is looking at a site that appears fine.
+    const seo = await seoWith("https://shop.lumi9.in");
+    expect(seo.IS_CANONICAL_HOST).toBe(false);
+    expect(seo.noindexReason()).toContain("shop.lumi9.in");
+    expect(seo.noindexReason()).toContain(CANONICAL_ORIGIN);
   });
 });
