@@ -32,8 +32,15 @@ const IMMUTABLE = "public, max-age=31536000, immutable";
  *    mascot silently fails to load with only a console error.
  *  - checkout.razorpay.com in script-src + *.razorpay.com in frame-src and
  *    connect-src: the payment widget is a script we load and an iframe it opens.
- *  - blob: in worker-src and img-src: three.js creates workers and textures
- *    from object URLs.
+ *  - blob: in worker-src, img-src AND connect-src: three.js creates workers and
+ *    textures from object URLs. connect-src is the one that is easy to miss and
+ *    the one the mascot actually needs: GLTFLoader extracts each embedded
+ *    texture from the GLB into a Blob URL and hands it to ImageBitmapLoader,
+ *    which FETCHES it — so the request is governed by connect-src, not img-src.
+ *    Without it the browser refuses all three maps, GLTFLoader logs "Couldn't
+ *    load texture blob:..." and carries on, and the model renders with its
+ *    default WHITE base colour: a pale, untextured mascot on a live site that
+ *    is perfect in `next dev`, because this CSP is production-only.
  *  - https: in img-src: product photographs may be served from Cloudinary when
  *    that provider branch is configured instead of the S3 bucket.
  */
@@ -48,7 +55,7 @@ const productionCsp = [
   "font-src 'self' data:",
   "img-src 'self' data: blob: https:",
   "worker-src 'self' blob:",
-  "connect-src 'self' https://*.razorpay.com",
+  "connect-src 'self' blob: https://*.razorpay.com",
   "frame-src https://*.razorpay.com",
   "upgrade-insecure-requests",
 ].join("; ");
