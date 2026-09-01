@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import { requireConsole } from '@/lib/guard'
+import { getFeaturedCapacity } from '@femi9/core/services/admin/products'
 import ProductForm from '../_form'
 
 /** Create-product screen — renders the shared form in create mode. */
+export const dynamic = 'force-dynamic' // reads how many featured slots are free
+
 export default async function NewProductPage({ params }: { params: Promise<{ brand: string }> }) {
   const { brand } = await requireConsole((await params).brand, 'catalog')
+  const capacity = await getFeaturedCapacity(brand)
   return (
     <>
       <div className="adm-toolbar">
@@ -21,7 +25,7 @@ export default async function NewProductPage({ params }: { params: Promise<{ bra
         </Link>
       </div>
 
-      <ProductForm mode="create" />
+      <ProductForm mode="create" featuredUsed={capacity.used} />
     </>
   )
 }

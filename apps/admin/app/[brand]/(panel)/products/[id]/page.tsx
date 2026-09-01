@@ -1,7 +1,7 @@
 import { requireConsole } from '@/lib/guard'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getAdminProduct } from '@femi9/core/services/admin/products'
+import { getAdminProduct, getFeaturedCapacity } from '@femi9/core/services/admin/products'
 import ProductForm, { type ProductFormValues } from '../_form'
 
 /**
@@ -17,6 +17,10 @@ export default async function EditProductPage(props: { params: Promise<{ brand: 
   const p = await getAdminProduct(brand, params.id)
   if (!p) notFound()
 
+  // Excluding THIS product, so the form counts the slots taken by the others and
+  // an already-featured product is never told its own rail is full.
+  const capacity = await getFeaturedCapacity(brand, p.id)
+
   const initial: ProductFormValues = {
     name: p.name,
     slug: p.slug,
@@ -28,6 +32,7 @@ export default async function EditProductPage(props: { params: Promise<{ brand: 
     longDescription: p.longDescription ?? '',
     tag: p.tag ?? '',
     status: p.status,
+    featured: p.featured,
     images: p.images.map((i) => i.url),
     features: p.features.map((f) => ({ title: f.title, body: f.body })),
     specs: p.specs.map((sp) => ({ key: sp.key, value: sp.value })),
@@ -60,7 +65,7 @@ export default async function EditProductPage(props: { params: Promise<{ brand: 
         </Link>
       </div>
 
-      <ProductForm mode="edit" productId={p.id} initial={initial} />
+      <ProductForm mode="edit" productId={p.id} initial={initial} featuredUsed={capacity.used} />
     </>
   )
 }

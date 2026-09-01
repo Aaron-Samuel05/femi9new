@@ -324,11 +324,93 @@ export const LEGAL_SECTIONS = [
   {
     id: "terms",
     title: "Terms of sale",
-    body: "Prices are listed in INR and include applicable taxes. Orders are subject to availability. Unopened packs may be returned within 30 days. Subscriptions can be skipped, paused, or cancelled anytime before the next dispatch.",
+    body: "Prices are listed in INR and include applicable taxes. Orders are subject to availability. Unopened packs may be returned within 30 days. Subscriptions can be skipped, paused, or cancelled anytime before the next dispatch. This is the summary; the full Terms & Conditions are at /terms.",
   },
 ];
 
 export const LEGAL_UPDATED = "Last updated 17 February 2026";
+
+/**
+ * Terms & Conditions, in full.
+ *
+ * `LEGAL_SECTIONS` above carries a one-paragraph "Terms of sale" summary on the
+ * privacy page; this is the actual document behind it, and /terms is what the
+ * footer links to. Both exist on purpose - the summary is what a shopper reads
+ * in passing, this is what she reads when something has gone wrong.
+ *
+ * Every number here is one the code actually enforces, and each is noted where
+ * it comes from. A term that quotes a figure the system does not apply is worse
+ * than no term at all: it is the version a customer will hold us to.
+ *
+ * Deliberately NOT a copy of Femi9's. Lumi9 is a separate business selling
+ * different products under its own order sequence, and the footer used to hand
+ * shoppers to femi9.in for this - a page that describes another company's
+ * period-care returns policy to somebody who bought diapers.
+ */
+export const TERMS_SECTIONS = [
+  {
+    id: "who-we-are",
+    title: "Who these terms are with",
+    body: `These terms cover everything you buy from Lumi9 at lumi9.in. Lumi9 sells baby diapers and is operated from ${BRAND.fullAddress}. You can reach us at ${BRAND.email} or ${BRAND.phone}. Femi9 is a separate brand with its own storefront, its own accounts and its own terms - an order, a coupon or a creator code from one is not valid on the other.`,
+  },
+  {
+    id: "orders",
+    title: "Orders and acceptance",
+    body: "Adding something to your cart does not reserve it. Your order is confirmed only once payment succeeds and you receive an order number beginning LM. Until then stock can sell out, and if it does we will tell you and refund you in full rather than substitute a size you did not choose.",
+  },
+  {
+    id: "prices",
+    title: "Prices, taxes and delivery charges",
+    body: "Prices are in Indian rupees and include applicable taxes. What you pay is calculated by us, not by your browser: the cart and the checkout summary show the same figure the payment is taken for, including any delivery charge and any discount. Delivery charges depend on where the parcel is going, so the amount shown in your cart for your address is the amount that applies. Prices can change, but never after you have paid.",
+  },
+  {
+    id: "payment",
+    title: "Payment",
+    body: "Payments are handled by Razorpay. We never see or store your card or UPI details. If a payment is taken but the order does not appear, it will reconcile automatically - and if it has not within a day, email us and we will resolve it.",
+  },
+  {
+    id: "delivery",
+    title: "Delivery",
+    body: "We ship across India. Delivery estimates are estimates, not promises: once a parcel is with the courier its timing is theirs. Please check the packaging on arrival - if it reaches you damaged, tell us within 48 hours with a photo and we will replace it.",
+  },
+  {
+    id: "returns",
+    title: "Returns and refunds",
+    body: "Unopened packs can be returned within 30 days of delivery for a full refund. Opened packs cannot be returned, because these are hygiene products - the exception is a manufacturing fault, which we will always replace or refund whether the pack is opened or not. Refunds go back to the method you paid with.",
+  },
+  {
+    id: "subscriptions",
+    title: "Subscriptions",
+    body: "A subscription ships on the cadence you chose and renews at the subscription price, which is discounted against the one-off price. You can skip a delivery, pause, or cancel at any time before the next dispatch, from your account - there is no notice period and no cancellation fee. We charge each delivery as it is prepared, never in advance for the whole run.",
+  },
+  {
+    id: "coupons",
+    title: "Coupons",
+    body: "A coupon works only on Lumi9, only while it is active, and only within any minimum-order, expiry or usage limit it carries. One coupon applies per order. A code is spent when the order it discounted is placed, so a cancelled order releases it back.",
+  },
+  {
+    id: "creators",
+    title: "The creator programme",
+    body: "Approved creators earn 10% of the value of orders placed through their Lumi9 link, attributed for 30 days from the click. Applying does not approve you and does not issue a code - we review each application and email your code if it is approved. Codes attribute only on lumi9.in; a Lumi9 code earns nothing on Femi9, and a Femi9 code earns nothing here. We may suspend a code that is used in a way that misleads people about what Lumi9 is or does.",
+  },
+  {
+    id: "accounts",
+    title: "Your account",
+    body: "You sign in with your mobile number, your email, or Google - there is no password to lose. Keep access to whichever you use, because anyone who has it can reach your order history and addresses. Tell us straight away if you think somebody else has.",
+  },
+  {
+    id: "product-use",
+    title: "Using the products",
+    body: "Our diapers are dermatologist tested and made for everyday use, but every baby is different. Stop using a product and speak to your paediatrician if you see a reaction. Nothing on this site, including the parenting tools and the growth and vaccination trackers, is medical advice - they are guides, and your doctor is the authority.",
+  },
+  {
+    id: "changes",
+    title: "Changes to these terms",
+    body: "We may update these terms. The version that applies to your order is the one published when you placed it, and the date above tells you when this version was published.",
+  },
+] as const;
+
+export const TERMS_UPDATED = "Last updated 1 September 2026";
 
 /* ACCOUNT_ORDERS, ACCOUNT_STATS and ACCOUNT_ADDRESSES lived here. All three were
    invented: every signed-in customer saw the same four delivered orders, was told

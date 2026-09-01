@@ -25,26 +25,29 @@ export function ParentingDashboard() {
   const { getSizeOrDefault, weightOptions } = useCatalogData();
   const profile = useBabyProfile();
   const { user } = useSession();
-  const [sub, setSub] = useState<ActiveSub | null>(null);
+  // Tagged with the shopper it was fetched for, so signing out - or switching
+  // accounts - falls back to null in render rather than needing the effect to
+  // clear it. A setState in an effect body would only cascade a second render.
+  const [fetched, setFetched] = useState<{ userId: string; sub: ActiveSub | null } | null>(null);
+  const userId = user?.id ?? null;
 
   useEffect(() => {
-    if (!user) {
-      setSub(null);
-      return;
-    }
+    if (!userId) return;
     let live = true;
     fetch("/api/subscriptions")
       .then((r) => (r.ok ? r.json() : null))
       .then((data: { subscriptions?: ActiveSub[] } | null) => {
         if (!live) return;
         const active = data?.subscriptions?.find((s) => s.status === "active") ?? null;
-        setSub(active);
+        setFetched({ userId, sub: active });
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [user]);
+  }, [userId]);
+
+  const sub = fetched && fetched.userId === userId ? fetched.sub : null;
 
   if (!profile) return null;
 

@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
-import { REF_COOKIE, logClick } from '@femi9/core/services/affiliate'
+import { refCookieName, logClick } from '@femi9/core/services/affiliate'
 
 /**
  * GET /a/[code] — creator (affiliate) referral link entry point.
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ code: strin
   await logClick('femi9', code).catch(() => {})
 
   const res = NextResponse.redirect(home)
-  res.cookies.set(REF_COOKIE, code, {
+  res.cookies.set(refCookieName('femi9'), code, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

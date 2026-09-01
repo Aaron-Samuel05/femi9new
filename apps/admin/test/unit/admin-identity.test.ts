@@ -166,11 +166,14 @@ describe('roles and module gating', () => {
   })
 
   it('keeps Femi9-only programmes out of the Lumi9 console', () => {
-    for (const m of ['thara', 'community', 'affiliates', 'partners'] as const) {
+    // NOT 'affiliates': both brands run a creator programme now. They are two
+    // separate rosters in two separate schemas reviewed through one screen —
+    // module-gating.test.ts is where that list is pinned properly.
+    for (const m of ['thara', 'community', 'partners'] as const) {
       expect(hasModule('femi9', m)).toBe(true)
       expect(hasModule('lumi9', m)).toBe(false)
     }
-    for (const m of ['orders', 'catalog', 'customers', 'settings'] as const) {
+    for (const m of ['orders', 'catalog', 'customers', 'affiliates', 'settings'] as const) {
       expect(hasModule('femi9', m)).toBe(true)
       expect(hasModule('lumi9', m)).toBe(true)
     }

@@ -58,6 +58,19 @@ export interface BrandConfig {
    * otherwise let them.
    */
   productTypes: readonly ProductTypeValue[]
+  /**
+   * How many products this brand's landing page features — and therefore how
+   * many the console will let an admin flag at once.
+   *
+   * A number rather than a shared constant because it is a LAYOUT fact, and the
+   * two landing pages are not the same page. Femi9's rail is a row of cards
+   * chosen by an editor. Lumi9's "Cloud Soft range" is the size run: it must
+   * show every size a baby can grow into, so picking a subset there is not a
+   * feature, it is a hole in the size chart. `0` means the brand has no rail —
+   * the console hides the control and the routes refuse the flag, rather than
+   * offering a toggle that changes nothing a shopper sees.
+   */
+  featuredSlots: number
 }
 
 export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
@@ -70,6 +83,8 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     accentInk: '#ffffff',
     orderPrefix: 'FM',
     productTypes: ['pad', 'panty'],
+    // The landing page's "Choose Your Perfect Fit" rail.
+    featuredSlots: 5,
     modules: [
       'dashboard',
       'catalog',
@@ -97,8 +112,23 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     accentInk: '#ffffff',
     orderPrefix: 'LM',
     productTypes: ['diaper'],
-    // No community, affiliates, partners or thara: those are Femi9 programmes,
-    // and the Lumi9 database has no rows for them.
+    // No rail. The homepage's product section IS the size run — see the note on
+    // BrandConfig.featuredSlots.
+    featuredSlots: 0,
+    // No community, partners or thara: those are Femi9 programmes, and the
+    // Lumi9 database has no rows for them.
+    //
+    // No `pricing` either. Lumi9 does not run price zones: a diaper costs the
+    // same wherever the baby lives, so there is nothing for a zone screen to
+    // edit. The seeded Default zone stays — it is what the storefront prices
+    // against at 0% — but it is not something this console offers to change.
+    //
+    // `affiliates` IS here, and is not the same programme as Femi9's. Lumi9
+    // runs its own creator roster in its own schema: an application from
+    // lumi9.in writes a `lumi9` Affiliate row, a code approved in this console
+    // works only on Lumi9 links, and neither brand's console or storefront can
+    // resolve the other's codes. Sharing the module name shares the service and
+    // the review screen - never the creators, the codes or the earnings.
     modules: [
       'dashboard',
       'catalog',
@@ -106,10 +136,10 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
       'orders',
       'customers',
       'coupons',
-      'pricing',
       'subscriptions',
       'content',
       'reviews',
+      'affiliates',
       'settings',
     ],
   },
@@ -133,6 +163,23 @@ export function hasModule(brand: Brand, moduleName: AdminModule): boolean {
  */
 export function allowsProductType(brand: Brand, type: string): type is ProductTypeValue {
   return (BRAND_CONFIG[brand].productTypes as readonly string[]).includes(type)
+}
+
+/**
+ * How many products this brand's landing page features. `0` means it has no
+ * featured rail at all — see the note on `BrandConfig.featuredSlots`.
+ *
+ * Both the storefront read and the console write go through this, so "five" is
+ * one number in one place rather than a literal in a `take:`, a literal in a
+ * `slice()` and a third in a validation message.
+ */
+export function featuredSlots(brand: Brand): number {
+  return BRAND_CONFIG[brand].featuredSlots
+}
+
+/** Whether a brand has a featured rail to put products on. */
+export function allowsFeatured(brand: Brand): boolean {
+  return BRAND_CONFIG[brand].featuredSlots > 0
 }
 
 /** The `FM-00001` / `LM-00001` prefix for this brand's order numbers. */

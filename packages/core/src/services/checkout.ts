@@ -7,7 +7,7 @@ import { PAID_ORDER_STATUSES } from '../order-status'
 import { IdentityConflictError, attachIdentity } from './auth'
 import { sendOrderStatusEmail } from './order-mail'
 import { getSettings } from './settings'
-import { REF_COOKIE, attributeOrder } from './affiliate'
+import { refCookieName, attributeOrder } from './affiliate'
 import { applyZonePrice, resolveZone } from './pricing'
 import * as razorpay from '../razorpay'
 import {
@@ -118,6 +118,41 @@ export interface CheckoutQuote {
  * failure has somewhere to go; quoting a discount that placement then refuses
  * would reintroduce the same class of lie in a new place.
  */
+/**
+ * Cookie holding the coupon code a shopper has applied to her current basket.
+ *
+ * Per brand, like the session and referral cookies, and for the same reason:
+ * the two storefronts share a hostname in development and in the E2E suites,
+ * where cookies ignore the port. A Lumi9 code carried into a Femi9 quote would
+ * resolve against the wrong schema and come back refused — harmless, but it
+ * would also silently drop whatever Femi9 coupon was actually applied.
+ *
+ * ── Why this is a cookie and not client storage ─────────────────────────────
+ * The provider's own note used to say the coupon was deliberately NOT persisted,
+ * because "a stale one restored from storage on a later visit would put a
+ * discount on screen that placement then refuses". That objection is right, and
+ * it is an objection to restoring a PRICE, not to remembering a CODE.
+ *
+ * What is stored here is the code alone. Every quote re-asks the server what it
+ * is worth against this basket and this shopper, so an expired, spent or
+ * deactivated code comes back as `couponCode: null` with a `couponError`,
+ * exactly as if she had just typed it. Nothing stale is ever shown as money.
+ *
+ * Not persisting it at all was the worse failure: the code lived only in React
+ * state in a provider mounted in the root layout, so it survived a soft
+ * navigation and was lost on any hard one — a refresh of /checkout, a second
+ * tab, a return from an external redirect. The shopper then saw a higher total
+ * than the one she had agreed to, and because the checkout form submits the
+ * quote's `couponCode`, the order was PLACED at full price.
+ */
+export function couponCookieName(brand: Brand): string {
+  return `${brand}_coupon`
+}
+
+/** 7 days: long enough to survive a shopper coming back to an abandoned bag,
+ *  short enough that a code she has forgotten about does not resurface. */
+export const COUPON_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
+
 export async function quoteCart(
   brand: Brand,
   token: string | null,
@@ -344,9 +379,13 @@ export async function placeOrder(brand: Brand,
   const { freeShipThreshold } = await getSettings(brand)
   const zone = await resolveZone(brand, { state: customer.state, pincode: customer.pincode })
 
-  // Referral attribution rides in an httpOnly cookie dropped by /r/[code]. Read
+  // Referral attribution rides in an httpOnly cookie dropped by /a/[code]. Read
   // it here (request scope) so the transaction can stamp the order's affiliate.
-  const refCode = (await cookies()).get(REF_COOKIE)?.value?.trim() || undefined
+  // Brand-scoped: this order is being placed for ONE brand and may only ever be
+  // attributed to that brand's creators, so it reads that brand's cookie and no
+  // other. `attributeOrder` then resolves the code against the same brand's
+  // schema, which is where the isolation is actually enforced.
+  const refCode = (await cookies()).get(refCookieName(brand))?.value?.trim() || undefined
 
   // Never persist an empty email; it would clash with the User.email @unique
   // index (many guests, no email) and blank a returning customer's real email.

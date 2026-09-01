@@ -1,6 +1,7 @@
 import 'server-only'
 import { Prisma, type AffiliateStatus } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
+import { brandConfig } from '../brands'
 import { logger } from '../logger'
 import { sendEmailNotification } from './notifications'
 
@@ -21,10 +22,27 @@ import { sendEmailNotification } from './notifications'
  *    stale or guessed link can never create tracking noise.
  */
 
-/** Cookie the creator referral redirect (/a/[code]) drops so checkout can
- *  attribute a later purchase back to the referring creator. Shared here so the
- *  setter and the reader agree on one name. (/r/[code] is the separate Thara
- *  membership referral and uses its own signed cookie.) */
+/**
+ * Cookie the creator referral redirect (/a/[code]) drops so checkout can
+ * attribute a later purchase back to the referring creator. Shared here so the
+ * setter and the reader agree on one name. (/r/[code] is the separate Thara
+ * membership referral and uses its own signed cookie.)
+ *
+ * Per brand, for the same reason `sessionCookieName` is: the two storefronts
+ * are separate hosts in production, but they are the SAME host in development
+ * and in the E2E suites (cookies ignore the port), so one shared `femi9_ref`
+ * would follow a shopper from one brand's referral link into the other brand's
+ * checkout. The affiliate tables live in per-brand Postgres schemas, so the
+ * stray code would resolve to nothing and attribute nothing — but "it happens
+ * to miss" is not isolation. The name derives to exactly what Femi9 already
+ * issues, so no live referral cookie was invalidated by making this
+ * brand-aware.
+ */
+export function refCookieName(brand: Brand): string {
+  return `${brand}_ref`
+}
+
+/** @deprecated Femi9's cookie name. Use `refCookieName(brand)`. */
 export const REF_COOKIE = 'femi9_ref'
 
 /** Commission paid to the creator on an attributed order, as a fraction of the
@@ -114,7 +132,7 @@ export async function apply(brand: Brand, input: AffiliateApplication): Promise<
   try {
     await sendEmailNotification(brand, {
       to: opsEmail,
-      subject: `New Femi9 creator application: @${handle}`,
+      subject: `New ${brandConfig(brand).name} creator application: @${handle}`,
       text: `${input.name} (@${handle}${platform ? `, ${platform}` : ''}${followerBand ? `, ${followerBand}` : ''}) applied. Review in the admin console.`,
       html: `<p><strong>${input.name}</strong> (@${handle}${platform ? `, ${platform}` : ''}${followerBand ? `, ${followerBand}` : ''}) applied. Review in the admin console.</p>`,
       template: 'affiliate-application-ops',

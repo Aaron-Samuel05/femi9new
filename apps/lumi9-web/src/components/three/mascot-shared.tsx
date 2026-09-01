@@ -3,14 +3,15 @@
 import { useEffect, useMemo, type RefObject } from "react";
 import { Box3, Vector3, type Group } from "three";
 import { useGLTF } from "@react-three/drei";
-
-export const MASCOT_URL = "/assets/mascot.glb";
+import { MASCOT_URL, DRACO_DECODER_PATH } from "@/lib/mascot";
 
 /**
- * Draco-compressed geometry, decoded by a self-hosted decoder (no CDN request).
- * Draco halves the transfer size versus meshopt at identical triangle counts.
+ * The model URL and decoder path live in `@/lib/mascot` - a plain module - so the
+ * home page's server-rendered `<link rel="preload">` can import the same string
+ * this canvas loads. Re-exported here because that is where the three components
+ * already reach for them.
  */
-export const DRACO_DECODER_PATH = "/draco/";
+export { MASCOT_URL, DRACO_DECODER_PATH } from "@/lib/mascot";
 
 /**
  * Half-extents of the scaled model, expressed as what the camera actually has to
@@ -36,7 +37,7 @@ export function MascotLights({ rim = false }: { rim?: boolean }) {
 }
 
 /**
- * Loads mascot.glb (meshopt-compressed), then normalises it: uniformly scaled so
+ * Loads the mascot GLB (Draco-compressed), then normalises it: uniformly scaled so
  * its longest axis measures `fit`, and re-centred on the origin. Reports its
  * measured extents so <FitCamera> can frame it at any canvas ratio.
  */

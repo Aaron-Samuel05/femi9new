@@ -35,6 +35,7 @@ So right now:
 | Journal | ✅ **in the `lumi9` schema** — editable at `/lumi9/content/blog` |
 | Reviews (home rail + PDP) | ✅ **`Review` rows** — the console's moderation queue is the gate |
 | PDP copy | ✅ `description` · `longDescription` · Key Benefits, all from the console |
+| Moments (home Instagram rail) | ⛔ `src/lib/moments.ts` — media is in S3, but the LIST is hand-written |
 | Marketing chrome | ⛔ `src/lib/content.ts` — no table models it, no console page owns it |
 
 ## How the catalogue reaches the page
@@ -325,6 +326,45 @@ the `hidden` attribute instead of unmounting them, and the article FAQ is a
 plain `<dl>`. FAQPage structured data whose answers a crawler cannot find in the
 document is a manual-action risk, not a shortcut to a rich result. Whatever
 replaces either component has to keep that property.
+
+## The Moments rail, and where its media lives
+
+`components/home/Moments.tsx` is Femi9's centre-focused video rail
+(`components/VideoTestimonials.tsx` over there) rebuilt on this app's Tailwind
+tokens — the same relationship the Journal has to its Femi9 original. It sits
+between the journal and the written reviews on the home page.
+
+It carries the eight creatives the OLD lumi9.in serves from
+`GET /api/instagram/feed` — the Laravel storefront this app replaces. **The
+media was copied off that stack's CloudFront distribution into THIS platform's
+uploads bucket**, under `uploads/lumi9/testimonials/`, because pointing the new
+site at the old one's CDN would mean retiring that stack blanks the section.
+
+```
+s3://femi9-staging-uploads-851725383246/uploads/lumi9/testimonials/
+  <slug>.mp4   four clips, 720x1280 H.264, faststart
+  <slug>.jpg   a poster for each clip, plus the four stills
+```
+
+Brand-scoped (`lumi9/`) because that bucket holds BOTH brands — Femi9's rail is
+at `uploads/testimonials/`, and an unscoped prefix would put two brands' stories
+in one folder. `src/lib/moments.ts` is the hand-written list, and its header has
+the upload command and the `L1`–`L10` → slug mapping.
+
+**Do not confuse it with `components/home/Testimonials.tsx`**, which is the
+WRITTEN reviews marquee and reads `Review` rows through the console's moderation
+queue. This one is brand-authored creative that no table models.
+
+**A clip and a still advance differently, deliberately.** A clip plays to its
+end and hands over from `onEnded`; a still has no such event, so a dwell timer
+is its "ended". Both call the same `go(1)`, so the endless roll never has to
+know which kind it is turning past.
+
+⚠️ **`/uploads/*` only resolves locally if `SITE_URL` points at a host that
+serves that prefix from the bucket.** `next.config.ts` rewrites it there. The
+committed `.env` points `SITE_URL` at `127.0.0.1:3001`, which proxies the app to
+itself — the trap that file's own comment warns about. Point it at the Lumi9
+CloudFront distribution to see the rail with its media in `next dev`.
 
 ## The seeds
 

@@ -1,6 +1,8 @@
 import 'server-only'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
+import { featuredSlots } from '../../brands'
 import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
 
 /**
@@ -91,10 +93,94 @@ export const ProductInputSchema = z.object({
    */
   features: z.array(FeatureInput).optional(),
   specs: z.array(SpecInput).optional(),
+  /**
+   * On the landing page's featured rail.
+   *
+   * `.optional()` with NO default, for the same reason `features`/`specs` are:
+   *   absent → leave the flag as it is
+   *   false  → unfeature
+   * A `.default(false)` here would make every PATCH from a client that does not
+   * send the field silently pull the product off the homepage — and nothing
+   * would error, so the first anyone would know is the rail going short.
+   *
+   * The "at most N" cap is not expressible here (it depends on the other rows
+   * and on the brand); see `assertFeaturedCapacity`.
+   */
+  featured: z.boolean().optional(),
 })
 
 export type ProductInput = z.infer<typeof ProductInputSchema>
 type VariantInputT = z.infer<typeof VariantInput>
+
+// ────────────────────────── Featured rail rules ─────────────────────────
+
+/**
+ * A featured-rail rule the caller broke. Routes catch this and return a 400
+ * carrying `.message`, which is written for the person looking at the console —
+ * "Only 5 products can be featured" is an answer; "500" is not.
+ *
+ * A distinct class rather than a `{ ok: false }` return because the checks
+ * happen INSIDE the write transaction (see below), where the only way to abort
+ * without committing half a product is to throw.
+ */
+export class FeaturedError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FeaturedError'
+  }
+}
+
+/** The brand's slots are full. Carries the limit so a form can say the number. */
+export class FeaturedLimitError extends FeaturedError {
+  readonly limit: number
+  constructor(limit: number) {
+    super(
+      limit === 0
+        ? 'This brand has no featured rail on its landing page.'
+        : `Only ${limit} products can be featured at a time. Unfeature one first.`,
+    )
+    this.name = 'FeaturedLimitError'
+    this.limit = limit
+  }
+}
+
+/**
+ * Refuse a sixth featured product.
+ *
+ * ⚠️ Always call this with `tx`, the transaction handle, never the base client.
+ * Counting outside the transaction that then writes the flag is a check-then-act
+ * race: two admins featuring at the same moment both read 4, both pass, and the
+ * rail renders six cards into a five-column grid. Inside the transaction the
+ * second one sees the first's row.
+ *
+ * `excludeId` is the product being written — a product that is ALREADY featured
+ * and is merely being re-saved must not count itself out of its own slot.
+ */
+async function assertFeaturedCapacity(
+  tx: Prisma.TransactionClient,
+  brand: Brand,
+  excludeId?: string,
+) {
+  const limit = featuredSlots(brand)
+  if (limit <= 0) throw new FeaturedLimitError(0)
+  const count = await tx.product.count({
+    where: { featured: true, ...(excludeId ? { NOT: { id: excludeId } } : {}) },
+  })
+  if (count >= limit) throw new FeaturedLimitError(limit)
+}
+
+/**
+ * Only a published product goes on the homepage.
+ *
+ * A draft or archived one would render a card linking to a 404 (the storefront
+ * filters on `status: 'active'`, so the PDP is gone while the flag survives) and
+ * would hold a slot no screen could show was taken.
+ */
+function assertFeaturable(status: 'active' | 'draft' | 'archived') {
+  if (status !== 'active') {
+    throw new FeaturedError('Only an active product can be featured on the landing page.')
+  }
+}
 
 // ───────────────────────────── Slug helpers ─────────────────────────────
 
@@ -150,7 +236,10 @@ export async function listAdminProducts(brand: Brand) {
   const prisma = dbFor(brand)
   try {
     const rows = await prisma.product.findMany({
-      orderBy: { createdAt: 'desc' },
+      // Featured first, in rail order, then newest. The five that lead the
+      // landing page are a SET an admin arranges, and they are unreadable as one
+      // when they are scattered through a catalogue sorted by creation date.
+      orderBy: [{ featured: 'desc' }, { featuredAt: 'asc' }, { createdAt: 'desc' }],
       include: {
         images: { orderBy: { position: 'asc' }, take: 1, select: { url: true } },
         // Pull just stock to sum in-app; the catalogue is small so this is cheap
@@ -167,6 +256,8 @@ export async function listAdminProducts(brand: Brand) {
       type: r.type,
       basePrice: r.basePrice,
       status: r.status,
+      featured: r.featured,
+      featuredAt: r.featuredAt,
       thumb: r.images[0]?.url ?? null,
       variantCount: r._count.variants,
       imageCount: r._count.images,
@@ -175,6 +266,27 @@ export async function listAdminProducts(brand: Brand) {
   } catch {
     return []
   }
+}
+
+/**
+ * How many slots the brand's rail has, and how many are taken.
+ *
+ * The console reads this to print "3 of 5 featured" and to disable the control
+ * once it is full. It is a HINT, not the enforcement — the count it returns is
+ * stale the moment another admin saves. `assertFeaturedCapacity` inside the
+ * write transaction is what actually holds the line.
+ *
+ * `excludeId` leaves one product out of the tally, so the edit form can ask
+ * "would there be room for THIS one" without counting the slot it already holds.
+ */
+export async function getFeaturedCapacity(brand: Brand, excludeId?: string) {
+  const limit = featuredSlots(brand)
+  if (limit <= 0) return { limit: 0, used: 0, remaining: 0 }
+  const prisma = dbFor(brand)
+  const used = await prisma.product
+    .count({ where: { featured: true, ...(excludeId ? { NOT: { id: excludeId } } : {}) } })
+    .catch(() => 0)
+  return { limit, used, remaining: Math.max(0, limit - used) }
 }
 
 /** One product, fully loaded for the editor (variants/images/features/specs). */
@@ -196,29 +308,41 @@ export async function getAdminProduct(brand: Brand, id: string) {
 export async function createProduct(brand: Brand, input: ProductInput) {
   const prisma = dbFor(brand)
   const slug = await resolveSlug(brand, input.slug || input.name)
+  const featured = input.featured === true
+  if (featured) assertFeaturable(input.status)
 
-  return prisma.product.create({
-    data: {
-      name: input.name,
-      slug,
-      type: input.type,
-      basePrice: input.basePrice,
-      meta: input.meta,
-      flow: input.flow,
-      description: input.description,
-      longDescription: input.longDescription || null,
-      tag: input.tag || null,
-      status: input.status,
-      images: { create: input.images.map((url, i) => ({ url, position: i })) },
-      variants: { create: input.variants.map(cleanVariant) },
-      features: {
-        create: (input.features ?? []).map((f, i) => ({ title: f.title, body: f.body, position: i })),
+  // A transaction only because of the featured cap: the count and the INSERT
+  // that consumes a slot have to be one atomic step, or two admins can both
+  // take the last one.
+  return prisma.$transaction(async (tx) => {
+    if (featured) await assertFeaturedCapacity(tx, brand)
+
+    return tx.product.create({
+      data: {
+        name: input.name,
+        slug,
+        type: input.type,
+        basePrice: input.basePrice,
+        meta: input.meta,
+        flow: input.flow,
+        description: input.description,
+        longDescription: input.longDescription || null,
+        tag: input.tag || null,
+        status: input.status,
+        featured,
+        // NULL exactly when not featured — the storefront orders on this.
+        featuredAt: featured ? new Date() : null,
+        images: { create: input.images.map((url, i) => ({ url, position: i })) },
+        variants: { create: input.variants.map(cleanVariant) },
+        features: {
+          create: (input.features ?? []).map((f, i) => ({ title: f.title, body: f.body, position: i })),
+        },
+        specs: {
+          create: (input.specs ?? []).map((s, i) => ({ key: s.key, value: s.value, position: i })),
+        },
       },
-      specs: {
-        create: (input.specs ?? []).map((s, i) => ({ key: s.key, value: s.value, position: i })),
-      },
-    },
-    select: { id: true },
+      select: { id: true },
+    })
   })
 }
 
@@ -342,14 +466,32 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
   const keptIds = new Set(input.variants.filter((v) => v.id).map((v) => v.id as string))
   const toDelete = [...existingIds].filter((vid) => !keptIds.has(vid))
 
-  const stored = await prisma.product.findUnique({ where: { id }, select: { basePrice: true } })
+  const stored = await prisma.product.findUnique({
+    where: { id },
+    select: { basePrice: true, featured: true, featuredAt: true },
+  })
   const sync = syncBasePriceWithPacks({
     storedBasePrice: stored?.basePrice ?? input.basePrice,
     storedVariants: existing,
     input,
   })
 
+  // ── The featured flag ─────────────────────────────────────────────────────
+  // Absent from the payload means "leave it alone" (see the schema), so the
+  // stored value is the starting point rather than `false`.
+  const wasFeatured = stored?.featured ?? false
+  let featured = input.featured ?? wasFeatured
+  // Asking to feature a draft is an error the admin should see. Un-publishing
+  // one that is ALREADY featured is not — that is a normal thing to do, and it
+  // simply gives the slot back rather than refusing the save.
+  if (input.featured === true) assertFeaturable(input.status)
+  if (input.status !== 'active') featured = false
+
   return prisma.$transaction(async (tx) => {
+    // Only when a slot is being CONSUMED. Re-saving an already-featured product
+    // must not fail just because the rail is full — it is one of the five.
+    if (featured && !wasFeatured) await assertFeaturedCapacity(tx, brand, id)
+
     await tx.product.update({
       where: { id },
       data: {
@@ -364,6 +506,11 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
         longDescription: input.longDescription || null,
         tag: input.tag || null,
         status: input.status,
+        featured,
+        // Keep the ORIGINAL timestamp when it was already featured: a product
+        // that is merely re-saved must not jump to the end of the rail, which
+        // is what stamping `new Date()` on every write would do.
+        featuredAt: featured ? stored?.featuredAt ?? new Date() : null,
       },
     })
 
@@ -428,12 +575,66 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
   })
 }
 
-/** Soft-delete: archived products drop out of the storefront (status filter). */
+/**
+ * Feature or unfeature one product — the star in the console's products table.
+ *
+ * A dedicated endpoint rather than a PATCH of the whole product, because this is
+ * a one-click action from a LIST: the row has a name and a price, not a variant
+ * array, and sending a partial product through `ProductInputSchema` would either
+ * fail validation or wipe the fields it could not supply.
+ *
+ * Returns `null` when the id does not exist (the route turns that into a 404);
+ * throws `FeaturedError` when the rail is full or the product is not published.
+ */
+export async function setProductFeatured(brand: Brand, id: string, featured: boolean) {
+  const prisma = dbFor(brand)
+
+  return prisma.$transaction(async (tx) => {
+    const product = await tx.product.findUnique({
+      where: { id },
+      select: { id: true, name: true, status: true, featured: true },
+    })
+    if (!product) return null
+
+    // Idempotent: asking for the state it is already in is a no-op, not a
+    // "the rail is full" error. Two clicks on a slow connection send two
+    // requests, and the second must not be the one that fails.
+    if (product.featured === featured) {
+      return { id: product.id, name: product.name, featured: product.featured }
+    }
+
+    if (!featured) {
+      return tx.product.update({
+        where: { id },
+        data: { featured: false, featuredAt: null },
+        select: { id: true, name: true, featured: true },
+      })
+    }
+
+    assertFeaturable(product.status)
+    await assertFeaturedCapacity(tx, brand, id)
+
+    return tx.product.update({
+      where: { id },
+      data: { featured: true, featuredAt: new Date() },
+      select: { id: true, name: true, featured: true },
+    })
+  })
+}
+
+/**
+ * Soft-delete: archived products drop out of the storefront (status filter).
+ *
+ * It also gives up its rail slot. Without that the flag outlives the product:
+ * the storefront's `status: 'active'` filter hides the card, so the rail quietly
+ * renders four, and the console goes on counting the archived row against the
+ * five — a slot nobody can see is taken and nothing can free.
+ */
 export async function archiveProduct(brand: Brand, id: string) {
   const prisma = dbFor(brand)
   return prisma.product.update({
     where: { id },
-    data: { status: 'archived' },
+    data: { status: 'archived', featured: false, featuredAt: null },
     select: { id: true, status: true },
   })
 }

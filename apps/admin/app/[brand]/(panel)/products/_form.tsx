@@ -41,6 +41,15 @@ export interface ProductFormValues {
   longDescription: string
   tag: string
   status: 'active' | 'draft' | 'archived'
+  /**
+   * On the landing page's featured rail.
+   *
+   * Editable here as well as from the star in the products table, because the
+   * two answer different questions: the table arranges the SET ("which five"),
+   * while this is where somebody publishing a new product decides it should
+   * lead. The cap belongs to neither — see @femi9/core/services/admin/products.
+   */
+  featured: boolean
   images: string[]
   variants: VariantValue[]
   /**
@@ -141,16 +150,28 @@ export default function ProductForm({
   mode,
   productId,
   initial,
+  featuredUsed = 0,
 }: {
   mode: 'create' | 'edit'
   productId?: string
   initial?: Partial<ProductFormValues>
+  /**
+   * How many OTHER products are already featured, read on the server when this
+   * page rendered. A hint for the checkbox's disabled state and nothing more:
+   * it is stale the moment another admin saves, and the API is what actually
+   * holds the cap.
+   */
+  featuredUsed?: number
 }) {
   const { brand } = useParams<{ brand: string }>()
   // Only what THIS brand sells. The routes reject anything else anyway, but a
   // dropdown offering a product the brand cannot file is a bug report waiting.
   const allowedTypes = (isBrand(brand) ? brandConfig(brand).productTypes : ['pad']) as
     readonly ProductTypeValue[]
+  // How many products this brand's landing page leads with. `0` hides the
+  // control entirely: Lumi9's homepage product section is the size run, so
+  // featuring a subset there is a hole in the size chart, not a feature.
+  const featuredSlots = isBrand(brand) ? brandConfig(brand).featuredSlots : 0
   const router = useRouter()
 
   const [name, setName] = useState(initial?.name ?? '')
@@ -162,6 +183,7 @@ export default function ProductForm({
   const [status, setStatus] = useState<'active' | 'draft' | 'archived'>(
     initial?.status ?? 'draft',
   )
+  const [featured, setFeatured] = useState(initial?.featured ?? false)
   const [tag, setTag] = useState(initial?.tag ?? '')
   const [meta, setMeta] = useState(initial?.meta ?? '')
   const [flow, setFlow] = useState(initial?.flow ?? '')
@@ -299,6 +321,10 @@ export default function ProductForm({
       longDescription: longDescription.trim() || null,
       tag: tag.trim() || null,
       status,
+      // Sent only by a brand that HAS a rail. The field is optional on the
+      // server and absent means "leave it alone", so a console without the
+      // control can never quietly unfeature anything.
+      ...(featuredSlots > 0 ? { featured } : {}),
       images: images.map((i) => i.url.trim()).filter(Boolean),
       // A row with no title (or no name) is an editor mid-thought; the service
       // requires one, so send only the complete rows rather than failing the
@@ -453,7 +479,15 @@ export default function ProductForm({
                 id="p-status"
                 className="adm-select"
                 value={status}
-                onChange={(e) => setStatus(e.target.value as 'active' | 'draft' | 'archived')}
+                onChange={(e) => {
+                  const next = e.target.value as 'active' | 'draft' | 'archived'
+                  setStatus(next)
+                  // Un-publishing gives the rail slot back. Leaving the box
+                  // ticked would send `featured: true` with a draft status and
+                  // the save would be REFUSED — the admin changed one field and
+                  // got an error about another, with no obvious way out.
+                  if (next !== 'active') setFeatured(false)
+                }}
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
@@ -472,6 +506,38 @@ export default function ProductForm({
               <span className="adm-help">Optional storefront ribbon.</span>
             </div>
           </div>
+
+          {featuredSlots > 0 && (
+            <div className="adm-field" style={{ marginBottom: 0 }}>
+              <label
+                className="adm-label"
+                htmlFor="p-featured"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}
+              >
+                <input
+                  id="p-featured"
+                  type="checkbox"
+                  checked={featured}
+                  // The two reasons it cannot be ticked, in the order they
+                  // matter: a draft has no page to send a shopper to, and the
+                  // rail only has so many slots. Unticking is never blocked —
+                  // that is how a slot is given back.
+                  disabled={!featured && (status !== 'active' || featuredUsed >= featuredSlots)}
+                  onChange={(e) => setFeatured(e.target.checked)}
+                  style={{ width: 18, height: 18, accentColor: 'var(--plum)' }}
+                />
+                Feature on the landing page
+              </label>
+              <span className="adm-help">
+                {status !== 'active' && !featured
+                  ? 'Only an active product can be featured.'
+                  : `The landing page leads with ${featuredSlots} products. ${featuredUsed} of ${featuredSlots} ${
+                      featuredUsed === 1 ? 'slot is' : 'slots are'
+                    } taken by other products.`}
+              </span>
+              {err('featured') && <span className="adm-error">{err('featured')}</span>}
+            </div>
+          )}
         </section>
 
         <section className="adm-card">

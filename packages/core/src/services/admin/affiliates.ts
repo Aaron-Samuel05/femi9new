@@ -1,6 +1,7 @@
 import 'server-only'
 import type { AffiliateStatus, PayoutStatus } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
+import { brandConfig } from '../../brands'
 import { logger } from '../../logger'
 import { isPlaceholder } from '../affiliate'
 import { sendEmailNotification } from '../notifications'
@@ -197,19 +198,35 @@ export async function approve(brand: Brand, id: string): Promise<AffiliateListIt
     data: { status: 'approved', promoCode },
   })
 
-  // Send the email the /affiliate page promises three separate times ("we'll
-  // email your personal Femi9 code the moment you're approved"). Until now
-  // approve(brand, brand) only wrote the row, so that promise was never kept and the
-  // creator had no way to learn her own code.
+  // Send the email both brands' /affiliate pages promise. Until now `approve`
+  // only wrote the row, so that promise was never kept and the creator had no
+  // way to learn her own code.
   await sendApprovalEmail(brand, id, current.user?.email ?? null, current.user?.name ?? null, promoCode)
 
   return listItem(brand, id)
 }
 
-/** The tracked share URL. Commission is only attributed to visitors who arrive
- *  through /a/<code>, so the code alone is not enough — send the link too. */
-function shareUrl(promoCode: string): string {
-  const origin = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '') ?? ''
+/**
+ * The tracked share URL for ONE brand's creator. Commission is only attributed
+ * to visitors who arrive through /a/<code>, so the code alone is not enough —
+ * send the link too.
+ *
+ * The origin has to come from the BRAND, not from the process. This runs in the
+ * console, which serves both brands from a single container with a single
+ * environment: reading `NEXT_PUBLIC_SITE_URL` gave every creator of both brands
+ * the same origin. In practice the console sets no such variable, so the link
+ * was `/a/CODE` — a bare path, in an email, where nothing resolves it — and
+ * setting it would have been worse than leaving it unset, because then a Lumi9
+ * creator's link would have pointed at Femi9's storefront and attributed her
+ * referrals to a schema her code does not exist in.
+ *
+ * `brandConfig(brand).host` is the public storefront hostname and needs no
+ * configuration to be right. The per-brand override exists for staging, where
+ * the storefronts are not on their production domains.
+ */
+function shareUrl(brand: Brand, promoCode: string): string {
+  const override = process.env[`STOREFRONT_URL_${brand.toUpperCase()}`]?.trim().replace(/\/$/, '')
+  const origin = override || `https://${brandConfig(brand).host}`
   return `${origin}/a/${promoCode}`
 }
 
@@ -223,20 +240,24 @@ async function sendApprovalEmail(brand: Brand,
     logger.warn('affiliate_approval_no_email', { affiliateId })
     return
   }
-  const url = shareUrl(promoCode)
+  const url = shareUrl(brand, promoCode)
   const greeting = name?.trim().split(' ')[0] || 'there'
+  // Named for the brand that approved her. The two programmes are separate
+  // rosters in separate schemas, and a Lumi9 creator told she has a "Femi9
+  // code" would try it on the wrong storefront, where it resolves to nothing.
+  const brandName = brandConfig(brand).name
   await sendEmailNotification(brand, {
     to: email,
-    subject: 'You are approved - here is your Femi9 creator code',
+    subject: `You are approved - here is your ${brandName} creator code`,
     text: `Hi ${greeting},
 
-You're in. Your Femi9 creator code is ${promoCode}.
+You're in. Your ${brandName} creator code is ${promoCode}.
 
 Share this link so your clicks and commission are tracked:
 ${url}
 
-Femi9`,
-    html: `<p>Hi ${greeting},</p><p>You're in. Your Femi9 creator code is <strong>${promoCode}</strong>.</p><p>Share this link so your clicks and commission are tracked:<br><a href="${url}">${url}</a></p><p>Femi9</p>`,
+${brandName}`,
+    html: `<p>Hi ${greeting},</p><p>You're in. Your ${brandName} creator code is <strong>${promoCode}</strong>.</p><p>Share this link so your clicks and commission are tracked:<br><a href="${url}">${url}</a></p><p>${brandName}</p>`,
     template: 'affiliate-approved',
     // Keyed on the allocated code, not the row, so re-approving after a
     // suspension does not re-send an identical email.
