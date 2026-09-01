@@ -28,10 +28,28 @@
 # Note the header names the APP, not the site: both console distributions send
 # `admin`, because they are two front doors to one service.
 #
-# It is a routing signal, not a secret. Anyone may send that header to the ALB
-# directly; all they achieve is reaching an app that is already public. Locking
-# the ALB to CloudFront alone is a separate hardening step — see README.md.
+# It is a routing signal, not a secret, and it is not what keeps anyone out:
+# the ALB security group admits the CloudFront edge and nothing else. See
+# var.alb_ingress_source in variables.tf.
 # ─────────────────────────────────────────────────────────────────────────────
+
+# ── How the edge addresses the origin ───────────────────────────────────────
+# Two things move together and must not be set independently, because getting
+# them out of step either leaves customer data in cleartext (http-only when a
+# certificate exists) or 502s the whole site (https-only against the ALB's own
+# elb.amazonaws.com name, which no publicly-trusted certificate can cover).
+# So they are derived from one input — alb_origin_host — and the override is
+# there only for a deliberate exception. See variables.tf for the three steps.
+locals {
+  alb_origin_encrypted = var.alb_origin_host != "" && local.has_cert
+
+  alb_origin_domain = var.alb_origin_host != "" ? var.alb_origin_host : aws_lb.this.dns_name
+
+  alb_origin_protocol = coalesce(
+    var.alb_origin_protocol_policy,
+    local.alb_origin_encrypted ? "https-only" : "http-only",
+  )
+}
 
 # ── Origin request policy (dynamic app traffic) ──────────────────────────────
 # NOT the managed AllViewerExceptHostHeader policy. That one forwards every
@@ -99,17 +117,21 @@ resource "aws_cloudfront_distribution" "site" {
   aliases = each.value.certificate_arn != "" && each.value.host != "" ? [each.value.host] : []
 
   origin {
-    domain_name = aws_lb.this.dns_name
+    # The ALB, addressed by a name of ours when there is one — see the local
+    # above. CloudFront matches the origin's certificate against THIS value, so
+    # it is the hostname and not the ALB's own DNS name that makes HTTPS to the
+    # origin possible at all.
+    domain_name = local.alb_origin_domain
     origin_id   = "alb"
 
     custom_origin_config {
       http_port  = 80
       https_port = 443
-      # http-only while the ALB has no certificate of its own; CloudFront
-      # terminates TLS at the edge either way. Set alb_origin_protocol_policy
-      # to "https-only" once acm_certificate_arn is set, so the edge-to-origin
-      # hop is encrypted too.
-      origin_protocol_policy = var.alb_origin_protocol_policy
+      # Derived, not configured: https-only once the origin has a name and a
+      # certificate, http-only while it does not. Until then this hop carries
+      # session cookies and checkout PII in cleartext, which is acceptable for
+      # staging traffic and not for real customers.
+      origin_protocol_policy = local.alb_origin_protocol
       origin_ssl_protocols   = ["TLSv1.2"]
     }
 
@@ -184,4 +206,28 @@ resource "aws_cloudfront_distribution" "site" {
   }
 
   tags = merge(local.tags, { Name = "${local.name_prefix}-${each.key}-cdn" })
+
+  lifecycle {
+    # An ALB with a certificate redirects :80 to :443 (alb.tf). A CloudFront
+    # origin does not follow redirects — it passes the 301 back to a viewer who
+    # is already on HTTPS, who asks the edge again, and the site becomes an
+    # infinite redirect for everyone. So the moment the ALB has a certificate,
+    # the origin hop has to be HTTPS as well.
+    #
+    # The derivation in the local above gets this right on its own; this catches
+    # the case where someone overrode it.
+    precondition {
+      condition     = !(local.has_cert && local.alb_origin_protocol == "http-only")
+      error_message = "The ALB has a certificate, so its :80 listener redirects to :443 — and CloudFront hands that 301 straight back to the viewer, who is already on HTTPS. Every page becomes a redirect loop. Set alb_origin_host (and leave alb_origin_protocol_policy empty so it derives https-only), or remove acm_certificate_arn."
+    }
+
+    # https-only against the ALB's own elb.amazonaws.com name cannot work:
+    # CloudFront validates the origin certificate against the origin domain
+    # name, and no publicly-trusted certificate covers that name. It fails at
+    # the handshake, on every request, as a 502 with nothing in the app logs.
+    precondition {
+      condition     = local.alb_origin_protocol == "http-only" || var.alb_origin_host != ""
+      error_message = "CloudFront cannot speak HTTPS to the ALB's own DNS name — it validates the origin certificate against the origin domain, and no public CA issues for *.elb.amazonaws.com. Set alb_origin_host to a hostname that resolves to the ALB and is covered by acm_certificate_arn."
+    }
+  }
 }

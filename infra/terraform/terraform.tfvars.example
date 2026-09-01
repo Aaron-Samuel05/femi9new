@@ -38,8 +38,12 @@ environment = "staging"
 #     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
 #   }
 #   lumi9 = {
-#     app             = "lumi9"
-#     host            = "shop.lumi9.in"
+#     app = "lumi9"
+#     # MUST equal CANONICAL_ORIGIN in apps/lumi9-web/src/lib/seo.ts, which is
+#     # https://lumi9.in. Any other host and every page serves noindex and
+#     # robots.txt serves Disallow: / — the site works perfectly for every human
+#     # and no crawler ever comes. (This example said shop.lumi9.in for months.)
+#     host            = "lumi9.in"
 #     canonical       = true
 #     certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/…"
 #   }
@@ -59,15 +63,44 @@ environment = "staging"
 # Constrained to a storefront; the console must never be the default.
 alb_default_app = "femi9"
 
-# ── The ALB's own certificate: usually leave this alone ─────────────────────
-# Every site is fronted by CloudFront, which terminates TLS for the viewer, so
-# the ALB is an origin rather than something a browser talks to. Set this only
-# if you intend to point DNS straight at the load balancer — and then it must
-# cover every hostname at once, which the per-site certificates above do not.
+# ── Encrypting the edge-to-origin hop ───────────────────────────────────────
+# CloudFront terminates TLS for the VIEWER on every site above. The SECOND hop,
+# edge to ALB, is a separate connection: on the default http-only it carries the
+# same session cookies, names, addresses and phone numbers across the public
+# internet in cleartext. That is acceptable for staging and not for customers.
 #
-# acm_certificate_arn         = "arn:aws:acm:ap-south-1:111122223333:certificate/…"
-# additional_certificate_arns = []
-# alb_origin_protocol_policy  = "https-only"   # once the ALB has one
+# Encrypting it takes a HOSTNAME, not just a certificate — CloudFront validates
+# the origin certificate against the origin domain name, and nobody can obtain a
+# public certificate for the ALB's own *.elb.amazonaws.com. So:
+#
+#   1. Pick a hostname for the origin and point it at the ALB (this stack writes
+#      that alias itself when route53_zone_id is set).
+#   2. Issue an ACM certificate for it IN THIS REGION — not us-east-1, which is
+#      where the CloudFront ones above have to live. Two regions, two certs.
+#   3. Set both lines below. The origin protocol then DERIVES to https-only.
+#
+# alb_origin_host     = "origin.lumi9.in"
+# acm_certificate_arn = "arn:aws:acm:ap-south-1:111122223333:certificate/…"
+#
+# additional_certificate_arns = []   # more origin hostnames over SNI
+#
+# LEAVE alb_origin_protocol_policy EMPTY. It is an override for a deliberate
+# exception; empty means "derive it", and the two settings that had to agree and
+# could not check each other are what left this hop in cleartext. Setting
+# acm_certificate_arn WITHOUT alb_origin_host is refused at plan time: the ALB
+# would start redirecting :80 to :443, CloudFront would hand that 301 to a
+# viewer already on HTTPS, and every page would become a redirect loop.
+
+# ── Who may reach the ALB ───────────────────────────────────────────────────
+# Defaults to "cloudfront": AWS's published origin-facing prefix list, and
+# nothing else. Every site here is served through the edge, so nothing
+# legitimate arrives another way — and the per-IP rate limits on OTP sends,
+# magic links, admin sign-in and checkout all key on CloudFront-Viewer-Address,
+# a header only the edge can set. An ALB open to the internet lets anyone send
+# that header themselves and defeat every limit at once.
+#
+# alb_ingress_source = "internet"          # restores that bypass. Don't.
+# alb_debug_cidrs    = ["203.0.113.4/32"]  # narrow, temporary, this instead
 
 # Alias records for every site, pointed at its CloudFront distribution. Only
 # useful when every hostname lives in ONE hosted zone — two brands on two
@@ -117,22 +150,67 @@ alb_default_app = "femi9"
 femi9_public_razorpay_key_id = ""
 # lumi9_public_razorpay_key_id = ""
 
-# Verified transactional senders. Lumi9's empty means its sign-in links go out
-# under Femi9's name — which reads as phishing to a parent who has never heard
-# of Femi9. Set it before Lumi9 takes real customers.
+# ── Who sends mail, and through what ────────────────────────────────────────
+# Verified transactional senders. An empty lumi9_email_from means Lumi9's
+# sign-in links go out under Femi9's name — which reads as phishing to a parent
+# who has never heard of Femi9.
 # femi9_email_from = "Femi9 <login@femi9.in>"
-# lumi9_email_from = "Lumi9 <hello@lumi9.in>"
+lumi9_email_from     = "Lumi9 <no-reply@lumi9.in>"
+lumi9_reply_to_email = "support@lumi9.in"   # no-reply@ is nobody's inbox
+
+# Lumi9 sends through SES; Femi9 is live on Resend and stays there. Setting a
+# domain here creates the identity, the DKIM keys, a configuration set and the
+# bounce feed; setting the PROVIDER is what actually routes mail through it, so
+# a domain can be verified and warmed before anything switches.
+lumi9_ses_domain    = "lumi9.in"
+lumi9_mail_provider = "ses"
+# femi9_ses_domain    = "femi9.in"    # creates the identity, moves nothing
+# femi9_mail_provider = "ses"         # THIS moves live mail. Verify first.
+
+# TWO THINGS TERRAFORM CANNOT DO FOR YOU:
+#   1. `terraform output ses_dns_records` prints DKIM CNAMEs that must exist in
+#      the zone. Until they resolve, the identity is PENDING and every send is
+#      rejected.
+#   2. A new SES account is in the SANDBOX and may only send to addresses it has
+#      individually verified — every real customer is refused with
+#      MessageRejected. Production access is a support request; allow a day.
 
 # Femi9 only. Lumi9's brand config does not include the module, so the console
 # 404s it there whatever this says.
 # thara_enabled     = true
 # msg91_template_id = ""
 
+# WhatsApp Cloud API. The sender id is the numeric phone_number_id, NOT the
+# number — set it on ALL THREE services (the storefronts send sign-in OTPs and
+# order confirmations; the console is where an order is marked delivered or
+# cancelled). Phone sign-in has no SMS fallback, so leaving this empty removes
+# the storefront's primary way in. Both brands share one WABA and one approved
+# template set today; lumi9_whatsapp_phone_number_id exists for when they split.
+# The token itself is a Secrets Manager placeholder (WHATSAPP_TOKEN), not a var.
+# whatsapp_phone_number_id       = "323448914175098"
+# lumi9_whatsapp_phone_number_id = ""
+# whatsapp_template_language     = "en"
+
 # next_public_sentry_dsn = ""
 
 # ── Lumi9 care inbox ────────────────────────────────────────────────────────
-# Where the /contact form delivers. Leave it empty and that route answers 503
-# with "please email care@lumi9.in" — deliberately, because the form it replaced
-# rendered a green tick and threw the message away. Not a secret; it is printed
-# in the site footer.
-# lumi9_care_inbox_email = "care@lumi9.in"
+# Where the /contact form delivers. LAUNCH BLOCKER: leave it empty and that
+# route answers 503 to every visitor from day one — deliberately, because the
+# form it replaced rendered a green tick and threw the message away. Not a
+# secret; it is printed in the site footer and in the site's JSON-LD.
+lumi9_care_inbox_email = "support@lumi9.in"
+
+# ── Where a failure is reported ─────────────────────────────────────────────
+# Every alarm in alarms.tf publishes here: 5xx storms, tasks that will not
+# start, targets failing health checks, a scheduled job that stopped running,
+# and anything reaching the cron dead-letter queue. Leave it empty and the
+# alarms still exist and still go red on the console — they just tell nobody,
+# which is how the worst findings in the launch audit stayed invisible.
+#
+# A subscription needs confirming: AWS emails a link, and until someone clicks
+# it the topic delivers nothing. Check for it right after the first apply.
+alarm_email = "support@lumi9.in"
+
+# Alarms fire when a service is unhealthy, not when it is quiet. Raise the 5xx
+# threshold on a busy site rather than muting a topic.
+# alarm_5xx_threshold = 5

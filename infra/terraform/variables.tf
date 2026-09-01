@@ -362,6 +362,18 @@ variable "route53_zone_id" {
 
 # ── Observability / misc ─────────────────────────────────────────────────────
 
+variable "alarm_email" {
+  description = "Address every CloudWatch alarm is emailed to: 5xx storms, an app with no healthy targets, tasks that will not start, a scheduled job that stopped running, anything in the cron dead-letter queue. Empty means the alarms exist and go red and TELL NOBODY. AWS sends a confirmation link that must be clicked before a single one is delivered — see the alarm_subscription_state output."
+  type        = string
+  default     = ""
+}
+
+variable "alarm_5xx_threshold" {
+  description = "Target 5xx responses in a five-minute window before the per-app alarm fires. Low on purpose: a storefront serving five 500s has a broken page, not a busy afternoon. Raise it once real traffic sets a baseline; never mute the topic instead."
+  type        = number
+  default     = 5
+}
+
 variable "log_retention_days" {
   description = "CloudWatch Logs retention for every service's log group."
   type        = number
@@ -375,13 +387,31 @@ variable "enable_alb_deletion_protection" {
 }
 
 variable "thara_enabled" {
-  description = "Turn the Thara Model on (THARA_ENABLED). Femi9 only — Lumi9's brand config does not include the module, so the console 404s it there regardless of this."
+  description = "Turn the Thara Model on (THARA_ENABLED). Femi9 only. The flag itself is global, so what keeps it out of Lumi9 is hasModule(brand, 'thara') in the console routes — not this variable. It is set on the femi9 SERVICE only; the console reads it too, and before those route gates existed, switching this on opened every /lumi9/api/thara/* endpoint."
   type        = bool
   default     = false
 }
 
 variable "msg91_template_id" {
-  description = "DLT-approved MSG91 OTP template id. Femi9 only — Lumi9 signs in by emailed link and sends no SMS."
+  description = "DLT-approved MSG91 OTP template id. No longer on the sign-in path (that is WhatsApp now) — this and MSG91_FLOW_TEMPLATE_ID are what deliver a redeemed reward code to a phone-only customer. Femi9 only."
+  type        = string
+  default     = ""
+}
+
+variable "whatsapp_phone_number_id" {
+  description = "WhatsApp Cloud API sender id — the numeric phone_number_id, NOT the phone number. Set on all three services: the storefronts send sign-in OTPs and order confirmations, and the console is where an order is marked delivered or cancelled. Both brands share one WABA and one approved template set today. Empty disables every WhatsApp message, which on the storefronts means phone sign-in is gone."
+  type        = string
+  default     = ""
+}
+
+variable "lumi9_whatsapp_phone_number_id" {
+  description = "Lumi9's own WhatsApp sender, when it gets one. Empty = fall back to whatsapp_phone_number_id, which is the shared Femi9 number the approved templates live on. Same shape as lumi9_email_from: the per-brand name resolves first, the shared one is the fallback."
+  type        = string
+  default     = ""
+}
+
+variable "whatsapp_template_language" {
+  description = "Language code the WhatsApp templates were approved under, e.g. en or en_US. Empty = the app default (en). A wrong code fails with the same error as a template that does not exist, so it is worth stating."
   type        = string
   default     = ""
 }
@@ -394,6 +424,67 @@ variable "femi9_email_from" {
 
 variable "lumi9_email_from" {
   description = "Lumi9's verified transactional sender, e.g. Lumi9 <hello@lumi9.in>. Empty = fall back to femi9_email_from, which WILL send Lumi9's sign-in links under Femi9's name. That reads as phishing to a parent who has never heard of Femi9; set it before Lumi9 takes real customers."
+  type        = string
+  default     = ""
+}
+
+# ── Mail: SES per brand ──────────────────────────────────────────────────────
+#
+# Setting a domain here turns SES ON for that brand: ses.tf creates the identity,
+# the DKIM keys, a configuration set and the bounce feed, and grants that brand's
+# task role permission to send as exactly one address on it.
+#
+# TWO THINGS TERRAFORM CANNOT DO. The DKIM CNAMEs have to exist in DNS before
+# SES will send (`terraform output ses_dns_records`), and a new SES account is in
+# the SANDBOX, where it may only send to addresses it has individually verified —
+# every real customer is refused. Production access is a support request; ask for
+# it before launch day.
+#
+# Femi9 is empty on purpose. It is live on Resend and its mail works; moving it
+# is a separate decision with its own warm-up, and it is two variables when
+# somebody makes it.
+variable "lumi9_ses_domain" {
+  description = "Domain Lumi9 sends transactional mail from, e.g. lumi9.in. Empty = Lumi9 uses whatever MAIL_PROVIDER says instead (Resend, on Femi9's account and Femi9's domain, which reads as phishing to a parent who has never heard of Femi9). lumi9_email_from MUST be an address on this domain: the IAM policy pins ses:FromAddress to it."
+  type        = string
+  default     = ""
+}
+
+variable "femi9_ses_domain" {
+  description = "Same for Femi9, and deliberately empty: Femi9 is live on Resend. Setting this creates the SES identity but does NOT move it — that is femi9_mail_provider — so a domain can be verified and warmed before anything is switched."
+  type        = string
+  default     = ""
+}
+
+variable "lumi9_mail_provider" {
+  description = "Which transport Lumi9 sends through: \"ses\" or \"resend\". Stated rather than inferred, because Lumi9's task inherits the SHARED RESEND_API_KEY and \"whichever credential is present\" would silently send every Lumi9 sign-in link through Femi9's Resend account from a domain it has not verified. Empty = infer (Resend if a key is present)."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = contains(["", "ses", "resend"], var.lumi9_mail_provider)
+    error_message = "lumi9_mail_provider must be empty, ses or resend."
+  }
+}
+
+variable "femi9_mail_provider" {
+  description = "Same for Femi9. Empty means it keeps inferring Resend from its API key, which is what it has always done and what is live today. Set \"ses\" only after femi9_ses_domain is verified AND out of the sandbox."
+  type        = string
+  default     = ""
+
+  validation {
+    condition     = contains(["", "ses", "resend"], var.femi9_mail_provider)
+    error_message = "femi9_mail_provider must be empty, ses or resend."
+  }
+}
+
+variable "ses_mail_from_subdomain" {
+  description = "Label for the custom envelope MAIL FROM domain, e.g. \"mail\" gives mail.lumi9.in. It aligns SPF with the visible From so DMARC can pass on SPF as well as DKIM, and keeps bounce traffic off the parent domain's reputation. Needs an MX and a TXT record; without them SES falls back to its own MAIL FROM rather than failing to send."
+  type        = string
+  default     = "mail"
+}
+
+variable "lumi9_reply_to_email" {
+  description = "Where a REPLY to Lumi9's transactional mail goes, when the From is a no-reply address. Empty means a reply vanishes — a parent hitting reply on her order confirmation is not doing anything unusual, and hearing nothing back is the same defect as the contact form that showed a green tick and discarded the message. Usually the same address as lumi9_care_inbox_email."
   type        = string
   default     = ""
 }
@@ -437,14 +528,74 @@ variable "next_public_sentry_dsn" {
 # ── CloudFront ───────────────────────────────────────────────────────────────
 
 variable "alb_origin_protocol_policy" {
-  description = "How CloudFront talks to the ALB. \"http-only\" is correct while the ALB has no certificate (acm_certificate_arn empty) — the edge still terminates TLS for the viewer. Set \"https-only\" once the ALB has one, so the edge-to-origin hop is encrypted as well."
+  description = "OVERRIDE for how CloudFront talks to the ALB. Empty (the default) DERIVES it: https-only once alb_origin_host and acm_certificate_arn are both set, http-only otherwise. Two settings that had to agree and could not check each other is how the edge-to-origin hop stayed in cleartext — leave this empty unless you are deliberately forcing a mismatch."
   type        = string
-  default     = "http-only"
+  default     = ""
 
   validation {
-    condition     = contains(["http-only", "https-only", "match-viewer"], var.alb_origin_protocol_policy)
-    error_message = "alb_origin_protocol_policy must be http-only, https-only or match-viewer."
+    condition     = contains(["", "http-only", "https-only", "match-viewer"], var.alb_origin_protocol_policy)
+    error_message = "alb_origin_protocol_policy must be empty (derive it), http-only, https-only or match-viewer."
   }
+}
+
+# ── The edge-to-origin hop ───────────────────────────────────────────────────
+#
+# CloudFront terminates TLS for the VIEWER on every distribution here. That is
+# not the whole path: the second hop, edge to ALB, is a separate connection with
+# its own protocol, and it carries the same session cookies, names, addresses
+# and phone numbers the viewer sent. On `http-only` it carries them in cleartext
+# across the public internet between an edge location and ap-south-1.
+#
+# Encrypting it needs a hostname, not just a certificate. CloudFront validates
+# the origin's certificate against THE ORIGIN DOMAIN NAME, and the origin domain
+# name is the ALB's own `…elb.amazonaws.com` — which nobody can obtain a
+# publicly-trusted certificate for. Setting https-only against the raw ELB name
+# does not warn: every request fails at the TLS handshake and the site 502s.
+#
+# So the hop is encrypted by giving the ALB a name of your own:
+#
+#   1. Point a hostname at the ALB          origin.lumi9.in -> the ALB (alias)
+#   2. Get an ACM certificate for it IN THIS REGION, and set acm_certificate_arn
+#   3. Set alb_origin_host to that hostname
+#
+# The origin then becomes that hostname, the protocol policy derives to
+# https-only, and both hops are encrypted. Leave alb_origin_host empty and
+# nothing changes from the http-only posture that is correct for staging.
+variable "alb_origin_host" {
+  description = "Hostname that resolves to the ALB and is covered by acm_certificate_arn (in THIS region), e.g. origin.lumi9.in. Set it and CloudFront addresses the origin by that name over HTTPS, encrypting the edge-to-origin hop. Empty = CloudFront addresses the ALB's own elb.amazonaws.com name over HTTP, which is only acceptable while the data crossing it is not real customers'. It is NOT a public entrance: with alb_ingress_source = cloudfront the security group admits the edge and nothing else."
+  type        = string
+  default     = ""
+}
+
+# ── Who may reach the ALB ────────────────────────────────────────────────────
+#
+# The rate limiter keys on `CloudFront-Viewer-Address` because it is generated
+# at the edge and a viewer cannot set it (packages/core/src/rate-limit.ts). That
+# is true of traffic that ARRIVES THROUGH THE EDGE. While the ALB accepts
+# connections from the whole internet, anyone who finds it sends that header
+# themselves, varies it per request, and every per-IP limit on the platform —
+# OTP sends, magic links, admin sign-in, checkout — stops existing, while the
+# code reads as though it is throttling.
+#
+# It is fixed in the network, where it is one rule, rather than in the app,
+# where it would be a check in every handler. AWS publishes the edge's own
+# address ranges as a managed prefix list, so "CloudFront only" is expressible
+# directly and stays correct as those ranges change.
+variable "alb_ingress_source" {
+  description = "Who may open a connection to the ALB. \"cloudfront\" (default) admits only AWS's com.amazonaws.global.cloudfront.origin-facing prefix list, which is the only path any site here is served over — and is what makes the edge-generated headers the app trusts actually trustworthy. \"internet\" restores 0.0.0.0/0 and with it a bypass of every per-IP rate limit; use it only to debug an origin directly, and pair it with alb_debug_cidrs instead if you can."
+  type        = string
+  default     = "cloudfront"
+
+  validation {
+    condition     = contains(["cloudfront", "internet"], var.alb_ingress_source)
+    error_message = "alb_ingress_source must be cloudfront or internet."
+  }
+}
+
+variable "alb_debug_cidrs" {
+  description = "Extra source CIDRs allowed to reach the ALB directly, on top of alb_ingress_source — an office range while you are diagnosing an origin. Every entry here is a path that skips CloudFront, and therefore skips the edge headers the rate limiter keys on: a request from one of these is throttled by its X-Forwarded-For fallback, which the ALB writes and the caller cannot forge, so limits still hold. Keep it empty in production."
+  type        = list(string)
+  default     = []
 }
 
 # ─────────────────────────────────────────────────────────────────────────────

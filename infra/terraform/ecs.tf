@@ -148,6 +148,24 @@ locals {
   # bundle at build time: server code reads them too, and having one list of
   # what a brand publishes is worth the small redundancy. CI must pass the same
   # values as --build-arg or the two will disagree.
+  #
+  # SITE_URL IS NOT THE SAME VARIABLE AS NEXT_PUBLIC_SITE_URL. A NEXT_PUBLIC_*
+  # name is INLINED BY THE BUILD: the Docker build stage has no deploy
+  # configuration, so whatever the image was built with is what the client
+  # bundle carries forever, and a value written into a task definition under
+  # that name reaches no client code at all - only server code that happens to
+  # read the same name.
+  #
+  # apps/lumi9-web/src/lib/seo.ts reads SITE_URL FIRST and deliberately does not
+  # take a public name: canonicals, sitemap.xml, robots.txt and every JSON-LD
+  # @id resolve through it, and the robots staging guard has to be able to fire
+  # at RUNTIME. With only the public name in the task, SITE_URL was absent
+  # entirely and every deploy fell back to the CANONICAL_ORIGIN compiled into
+  # the image - right on production by luck, and silently wrong everywhere else,
+  # where it makes a staging deploy claim production's canonicals.
+  #
+  # So both are emitted, from the same local, for every service. An app with no
+  # site configured yet gets "", which the app reads as unset exactly as before.
   base_environment = [
     { name = "NODE_ENV", value = "production" },
     { name = "PORT", value = tostring(var.container_port) },
@@ -157,15 +175,30 @@ locals {
     { name = "SENTRY_ENVIRONMENT", value = var.environment },
     { name = "NEXT_PUBLIC_SENTRY_ENVIRONMENT", value = var.environment },
     { name = "NEXT_PUBLIC_SENTRY_DSN", value = var.next_public_sentry_dsn },
+    # In base_environment because all THREE services send WhatsApp: the
+    # storefronts mint sign-in OTPs and order confirmations, and the console is
+    # where an order is marked delivered or cancelled. A task holding the token
+    # but not the sender id sends nothing, and says so only in a log line.
+    { name = "WHATSAPP_PHONE_NUMBER_ID", value = var.whatsapp_phone_number_id },
+    # Empty = the app default (en). Must match the language the templates were
+    # approved under; a mismatch fails exactly like a missing template.
+    { name = "WHATSAPP_TEMPLATE_LANGUAGE", value = var.whatsapp_template_language },
   ]
 
   service_environment = {
     femi9 = concat(local.base_environment, [
+      { name = "SITE_URL", value = local.app_urls["femi9"] },
       { name = "NEXT_PUBLIC_SITE_URL", value = local.app_urls["femi9"] },
       { name = "GOOGLE_REDIRECT_URI", value = "${local.app_urls["femi9"]}/api/auth/google/callback" },
       { name = "NEXT_PUBLIC_RAZORPAY_KEY_ID", value = var.femi9_public_razorpay_key_id },
       { name = "MSG91_TEMPLATE_ID", value = var.msg91_template_id },
       { name = "EMAIL_FROM", value = var.femi9_email_from },
+      # Empty today: Femi9 is live on Resend and infers it from its API key.
+      # Set femi9_mail_provider only after femi9_ses_domain is verified AND out
+      # of the SES sandbox — see ses.tf.
+      { name = "MAIL_PROVIDER", value = var.femi9_mail_provider },
+      { name = "SES_REGION", value = var.aws_region },
+      { name = "SES_CONFIGURATION_SET", value = try(aws_sesv2_configuration_set.brand["femi9"].configuration_set_name, "") },
       # Without an entry here the app reads THARA_ENABLED as unset whatever a
       # laptop's .env says, every /api/thara route 404s, and the storefront
       # hides the programme. It has to be stated explicitly.
@@ -175,6 +208,8 @@ locals {
     ])
 
     lumi9 = concat(local.base_environment, [
+      # The one the storefront's SEO actually reads. See base_environment.
+      { name = "SITE_URL", value = local.app_urls["lumi9"] },
       { name = "NEXT_PUBLIC_SITE_URL", value = local.app_urls["lumi9"] },
       # The per-brand name resolves first; the shared one is the fallback, and
       # is what runs while both brands are on one merchant account.
@@ -184,6 +219,30 @@ locals {
       # See variables.tf for why leaving this empty is a launch blocker.
       { name = "EMAIL_FROM_LUMI9", value = var.lumi9_email_from },
       { name = "EMAIL_FROM", value = var.femi9_email_from },
+      { name = "EMAIL_REPLY_TO_LUMI9", value = var.lumi9_reply_to_email },
+
+      # ── Which transport, and it is STATED ─────────────────────────────────
+      # This task also carries the shared RESEND_API_KEY (Femi9's account), so
+      # "use whichever credential is present" would send every Lumi9 sign-in
+      # link through Femi9's Resend account from a domain that account has not
+      # verified. mail-identity.ts reads this name first for exactly that
+      # reason. Empty is a valid value and means "infer", which is the old
+      # behaviour.
+      { name = "MAIL_PROVIDER_LUMI9", value = var.lumi9_mail_provider },
+      # SES carries no key: the task role is the credential (ses.tf). What it
+      # does need is which region's endpoint to call and which configuration set
+      # to send under — outside a config set the mail is delivered and the
+      # bounce feed is silently lost.
+      { name = "SES_REGION_LUMI9", value = var.aws_region },
+      { name = "SES_CONFIGURATION_SET_LUMI9", value = try(aws_sesv2_configuration_set.brand["lumi9"].configuration_set_name, "") },
+      # The topic the bounce webhook authenticates against. A valid AWS
+      # signature only proves AWS sent the event, not that it came from OUR
+      # topic, so /api/webhooks/ses fails closed without this.
+      { name = "SES_EVENT_TOPIC_ARN", value = try(aws_sns_topic.ses_events["lumi9"].arn, "") },
+      # And again for WhatsApp: Lumi9's own sender if it has one, else the
+      # shared number from base_environment. Empty is read as absent, so this
+      # costs nothing until the brands split.
+      { name = "WHATSAPP_PHONE_NUMBER_ID_LUMI9", value = var.lumi9_whatsapp_phone_number_id },
       # The schema this brand's entrypoint migrates. It MUST agree with the
       # `?schema=` in DATABASE_URL_LUMI9 — see secrets.tf.
       { name = "BRAND_DB_SCHEMA", value = var.lumi9_schema },
@@ -210,6 +269,18 @@ locals {
     ])
 
     admin = concat(local.base_environment, [
+      # The console SENDS: marking an order shipped mails the customer, as the
+      # brand that owns the order. So it carries both brands' mail identities
+      # and both brands' provider choices, and ses.tf grants its task role
+      # permission to send as each SES brand.
+      { name = "MAIL_PROVIDER", value = var.femi9_mail_provider },
+      { name = "MAIL_PROVIDER_LUMI9", value = var.lumi9_mail_provider },
+      { name = "SES_REGION", value = var.aws_region },
+      { name = "SES_CONFIGURATION_SET", value = try(aws_sesv2_configuration_set.brand["femi9"].configuration_set_name, "") },
+      { name = "SES_CONFIGURATION_SET_LUMI9", value = try(aws_sesv2_configuration_set.brand["lumi9"].configuration_set_name, "") },
+      { name = "EMAIL_REPLY_TO_LUMI9", value = var.lumi9_reply_to_email },
+      { name = "SITE_URL", value = local.app_urls["admin"] },
+      { name = "NEXT_PUBLIC_SITE_URL", value = local.app_urls["admin"] },
       { name = "PLATFORM_DB_SCHEMA", value = var.platform_schema },
       # The console renders both brands' mail templates in previews and issues
       # refunds against both gateways, so it carries both identities.

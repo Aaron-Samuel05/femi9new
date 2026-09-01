@@ -190,6 +190,28 @@ jobs:
           # than the one this stack's IAM policies name.
           allowed-account-ids: "851725383246"
 
+      # ── Will this deployment be able to become healthy? ─────────────────
+      # /api/health fails CLOSED on missing payment credentials, which is the
+      # right call and an unhelpful failure mode on its own: with Terraform's
+      # TODO- placeholders still in Secrets Manager the tasks never enter the
+      # load balancer, the rollout below sits at "waiting for service
+      # stability" for its whole timeout, and then rolls back reporting nothing
+      # about the cause. Terraform cannot catch it either — it seeds those
+      # secrets and then ignores their values, by design.
+      #
+      # So it is checked here, before an image is built, against the same rules
+      # the health probe uses. Warnings print and pass; only a value that would
+      # keep tasks out of service fails the job.
+      #
+      # SCOPED TO THIS SERVICE. Each brand fails its health check on its OWN
+      # credentials, so blocking a Femi9 rollout because Lumi9's secret is a
+      # placeholder would stop a deploy that was going to be perfectly healthy
+      # — and a check that cries wolf is one somebody turns off before the day
+      # it is right. `admin` blocks on nothing: the console's health probe gates
+      # on the platform database and AUTH_SECRET, never on a payment gateway.
+      - name: Preflight - secrets the health check treats as blocking
+        run: bash infra/scripts/preflight.sh "${PROJECT}-${ENVIRONMENT}" "${AWS_REGION}" "${{ matrix.app }}"
+
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
 

@@ -182,7 +182,59 @@ secret you have not filled in leaves its feature switched off rather than
 letting the app try to authenticate with the literal string `TODO-change-me`.
 That is why an unfinished setup degrades instead of erroring in strange places.
 
-Terraform ignores these values from here on. It will not clobber them.
+Terraform ignores these values from here on. It will not clobber them — and it
+cannot see them either, which leaves one hole worth knowing about:
+
+```bash
+infra/scripts/preflight.sh femi9plat-staging ap-south-1
+```
+
+**Razorpay credentials are the exception that does not degrade.** `/api/health`
+fails CLOSED without them, so a brand still holding placeholders never enters
+the load balancer: `terraform apply` succeeds, the deploy sits at *waiting for
+service stability* for its whole timeout, and rolls back reporting nothing about
+the cause. That script reads the values back and says which ones would block,
+using the same rules the health probe uses. `deploy-platform.yml` runs it before
+it builds an image, so a deploy that could not become healthy fails in seconds
+with a reason instead of in twenty minutes without one.
+
+### 5b. Verify the sending domain — Lumi9 sends through SES
+
+Lumi9's transactional mail goes through Amazon SES as
+`Lumi9 <no-reply@lumi9.in>`, with `support@lumi9.in` as the reply-to. Femi9 is
+live on Resend and stays there; `mail-identity.ts` picks the provider per brand,
+so the two coexist and Femi9 moves later by setting two variables.
+
+`ses.tf` creates the identity, the DKIM keys, a configuration set, an SNS topic
+carrying bounces and complaints to `/api/webhooks/ses`, and an IAM grant pinned
+to exactly one From address. **Two things it cannot do:**
+
+```bash
+terraform output ses_dns_records      # three DKIM CNAMEs, plus MAIL FROM MX/TXT
+terraform output ses_identity_status  # PENDING until those records resolve
+```
+
+**Until the DKIM records exist in the `lumi9.in` zone, every send is rejected.**
+Not degraded — rejected. Add them, then watch `ses_identity_status` flip to
+`verified`; propagation is usually minutes and occasionally an hour.
+
+**A new SES account is in the SANDBOX**, where it may only send to addresses it
+has individually verified. Every real customer is refused with
+`MessageRejected`, which the app records as one failed `NotificationLog` row and
+nothing else. Production access is a support request from the SES console
+(Account dashboard → Request production access); allow a day for the answer, and
+ask for it *before* launch week.
+
+Two things are deliberately pinned, and both fail loudly rather than quietly:
+
+- **The From address.** The IAM policy carries a `ses:FromAddress` condition, so
+  changing `lumi9_email_from` without changing Terraform fails with
+  `AccessDenied` at send time instead of sending as an address nobody chose. A
+  `check` block also refuses a plan whose From address is outside the verified
+  domain.
+- **The configuration set.** Mail sent outside it is delivered with no event
+  feed at all — no bounces, no complaints, no reputation metrics. That is the
+  failure you discover when SES pauses the account.
 
 ### 6. Seed each brand's catalogue
 
@@ -285,11 +337,15 @@ Straight against the ALB, with no CloudFront and no DNS:
 curl -H "X-Platform-App: lumi9" "http://$(terraform output -raw alb_dns_name)/api/health"
 ```
 
-The header is a routing signal, not a secret. Anyone may send it; all they reach
-is an app that is already public. Locking the ALB down to CloudFront alone —
-a shared secret header plus a listener rule, or the CloudFront managed prefix
-list on the security group — is a separate hardening step worth doing before
-launch.
+**This only works from an address the security group admits.** Since
+`alb_ingress_source` defaults to `cloudfront`, that is the edge and nothing
+else, and the command above times out from a laptop. Add your address to
+`alb_debug_cidrs` for as long as you need it.
+
+The header is a routing signal and not a gate: anyone the security group lets in
+may send it, and all they reach is an app that is already public. The gate is
+the prefix list — see *Things that will bite*, which explains why an open ALB
+also made every per-IP rate limit on the platform forgeable.
 
 **Point DNS at the site's CloudFront domain, never at `alb_dns_name`.** A record
 aimed at the load balancer bypasses the CDN, and with it the certificate, the
@@ -380,7 +436,16 @@ self-contained path.
   `docs/RENAME-RUNBOOK.md`, which is rehearsed and has never been fired.
 - **A `public` → `femi9` schema rename.** Same reason.
 - **WAF.** Worth adding in front of the console and the checkout routes.
-- **An ALB locked to CloudFront.** See above.
+- **Sentry in the Lumi9 and console images.** Only femi9-web ships it. The
+  alarms in `alarms.tf` cover the shapes that matter operationally — a 5xx
+  storm, an app with no healthy targets, a schedule that stopped running — but
+  there is no per-exception reporting for the other two apps. Adding it is not
+  a one-line change: `@sentry/nextjs` is an OPTIONAL peer of `packages/core`
+  imported dynamically, and making it a hard dependency once put its
+  instrumentation into every image, where Turbopack externalised it under a
+  name the standalone bundle could not resolve and **every route in the Lumi9
+  image answered 500** — a failure that appears only when you RUN the
+  container. See the root CLAUDE.md.
 
 ## Things that will bite
 
@@ -390,8 +455,28 @@ its own `certificate_arn`, and it must be in **us-east-1** whatever
 A regional ARN here produces a confusing `InvalidViewerCertificate` on apply.
 
 `acm_certificate_arn` is a different thing: the ALB's own listener certificate,
-regional, and usually unnecessary because CloudFront terminates TLS for the
-viewer. Set it only if DNS will point straight at the load balancer.
+**regional**, and it is what encrypts the SECOND hop. CloudFront terminates TLS
+for the viewer; edge-to-origin is a separate connection, and on the default
+`http-only` it carries session cookies, names, addresses and phone numbers in
+cleartext across the public internet.
+
+Encrypting it takes a hostname as well as a certificate. CloudFront validates
+the origin certificate against the **origin domain name**, and no public CA
+issues for the ALB's own `*.elb.amazonaws.com` — so `https-only` against that
+name fails at the handshake, on every request, as a 502 with nothing in the app
+logs. Set `alb_origin_host` to a name that resolves to the ALB and is covered by
+`acm_certificate_arn`, leave `alb_origin_protocol_policy` empty, and the
+protocol derives itself. Both traps are refused at plan time by preconditions in
+`cloudfront.tf` rather than discovered in production.
+
+**The ALB only accepts the CloudFront edge.** `alb_ingress_source` defaults to
+AWS's `com.amazonaws.global.cloudfront.origin-facing` prefix list. That is not
+only defence in depth: the per-IP rate limits on OTP sends, magic links, admin
+sign-in and checkout all key on `CloudFront-Viewer-Address`, which only the edge
+can set — while the ALB was open to the internet, anyone who found it could send
+that header themselves, vary it per request, and defeat every limit at once. Use
+`alb_debug_cidrs` for a temporary direct route; `alb_ingress_source =
+"internet"` puts the bypass back.
 
 **All three images run from `/app/apps/<app>`, not `/app`.** They keep the
 nested layout `next build` produced instead of flattening it, and that is not a
