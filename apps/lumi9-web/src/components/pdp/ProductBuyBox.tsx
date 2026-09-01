@@ -8,10 +8,11 @@ import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
-import { getPack, inr, leadPack, subscriptionPrice } from "@/lib/catalog";
+import { getPack, inr, leadPack, packDiscountPct, subscriptionPrice } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
+import { useQuote } from "@/lib/quote";
 import type { DbProductSize } from "@/lib/catalog.server";
-import { FEATURE_IMAGES, PDP_POLICY_ACCORDION } from "@/lib/content";
+import { FEATURE_IMAGES, pdpPolicyAccordion } from "@/lib/content";
 
 const TRUST: { icon: IconName; label: string }[] = [
   { icon: "leaf", label: "Chemical-free" },
@@ -25,8 +26,24 @@ const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEA
  * Sticky gallery + buy column. Size lives in the URL (`/product/m`) so packs and
  * prices are shareable; pack, quantity and the active image are local state.
  */
-export function ProductBuyBox({ size }: { size: DbProductSize }) {
+export function ProductBuyBox({
+  size,
+  freeShipThreshold,
+}: {
+  size: DbProductSize;
+  freeShipThreshold: number;
+}) {
   const { sizes, subscribeSavePct } = useCatalogData();
+  // The free-shipping threshold, from the server that CHARGES against it.
+  //
+  // The PAGE passes it, rather than this component defaulting to a constant
+  // until `useQuote()` resolves. That default rendered the wrong number into
+  // the server HTML — so the policy line said "over ₹999" in the markup a
+  // crawler reads and in the first paint a shopper sees, and only corrected
+  // itself after hydration. The quote still governs the cart and the drawer;
+  // this surface has a server that already knows, so it should not guess.
+  const { quote } = useQuote();
+  const threshold = quote?.freeShipThreshold ?? freeShipThreshold;
   // Opens on the tier priced at `basePrice`, which is what carries the
   // console's "Base price (₹)" field onto the product page - it was dropped in
   // catalog.server.ts and no surface read it, so editing that field moved the
@@ -49,16 +66,18 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
    * printing the module. Every entry with a real column behind it now reads it,
    * and an empty column drops its entry rather than showing a blank panel.
    *
-   * Shipping & returns stays a constant: it is site policy, the same sentence
-   * on every product, and there is no console page that owns it. It is appended
-   * LAST so the product's own copy always leads.
+   * Shipping & returns is site policy - the same sentence on every product, so
+   * it is appended LAST and the product's own copy always leads. It is not a
+   * CONSTANT though: it quotes the free-shipping threshold, which the console
+   * owns and `/api/checkout/quote` charges against, so it reads that number
+   * from the quote rather than repeating a literal that can go stale.
    */
   const accordion = [
     // No "Description" entry: `description` is the paragraph that leads the buy
     // column now, and printing it twice on one page helped nobody.
     ...(size.longDescription ? [{ q: "Materials & safety", a: size.longDescription }] : []),
     ...size.features.filter((f) => f.body).map((f) => ({ q: f.title, a: f.body })),
-    ...PDP_POLICY_ACCORDION,
+    ...pdpPolicyAccordion(threshold),
   ];
 
   // Pack thumbs SELECT a tier; the extras only change the picture. `images`
@@ -136,12 +155,35 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
         <h1 className="m-0 mb-3 font-display text-[clamp(27px,7.5vw,46px)] md:text-[clamp(32px,3.6vw,46px)] font-normal leading-[1.05]">
           {size.title}
         </h1>
-        <div className="mb-5 flex items-center gap-3">
-          <span className="text-base tracking-[2px] text-gold" aria-hidden>
-            ★★★★★
-          </span>
-          <span className="text-sm text-muted">4.9 · 482 verified reviews</span>
-        </div>
+        {/*
+          The product's REAL rating, from the moderated Review rows the console's
+          queue gates — and nothing at all when there are none.
+
+          This was `★★★★★  4.9 · 482 verified reviews`, hardcoded, on all five
+          size pages. A fabricated rating and a fabricated tally, printed as
+          "verified", directly above the Add to cart button, on a page whose
+          review rail underneath was already reading the real rows. A product
+          with two approved reviews claimed 482 of them.
+
+          Below four reviews there is no aggregate worth printing, so the block
+          is absent rather than showing "5.0 · 1 verified review" — which reads
+          as a rating and is a single opinion.
+        */}
+        {size.reviewCount >= 4 ? (
+          <div className="mb-5 flex items-center gap-3">
+            <span
+              className="text-base tracking-[2px] text-gold"
+              aria-hidden
+            >
+              {"★".repeat(Math.round(size.rating))}
+              <span className="text-muted/40">{"★".repeat(5 - Math.round(size.rating))}</span>
+            </span>
+            <span className="text-sm text-muted">
+              {size.rating.toFixed(1)} · {size.reviewCount} verified{" "}
+              {size.reviewCount === 1 ? "review" : "reviews"}
+            </span>
+          </div>
+        ) : null}
         {/* `description`, from the console. It was a hardcoded paragraph while
             the same column was rendered lower down as the accordion's
             "Description" - so editing it in the console changed the panel
@@ -151,8 +193,21 @@ export function ProductBuyBox({ size }: { size: DbProductSize }) {
           {size.description}
         </p>
 
+        {/* PRICE. `pack.price` is the column the cart is priced from, and the
+            struck-through figure and the badge are both derived from it and
+            `pack.mrp` - see packDiscountPct. Nothing here reads a discount
+            constant; the last one on this page said 10% off while Razorpay
+            took full price on all five products. */}
         <div className="mb-7 flex flex-wrap items-baseline gap-3">
           <div className="font-display text-[clamp(30px,3.4vw,40px)] leading-none text-midnight">{inr(pack.price)}</div>
+          {packDiscountPct(pack) > 0 && (
+            <>
+              <s className="text-[clamp(17px,1.7vw,20px)] leading-none text-muted/70">{inr(pack.mrp)}</s>
+              <span className="rounded-full bg-midnight px-2.5 py-1 text-xs font-semibold text-white">
+                {packDiscountPct(pack)}% off
+              </span>
+            </>
+          )}
           <div className="text-sm text-muted">
             for {pack.count} pants · ₹{(pack.price / pack.count).toFixed(1)}/pant
           </div>

@@ -41,7 +41,17 @@ import { PRODUCT_IMAGE_PLACEHOLDER, productName, type ProductSize, type SizeCode
 export interface DbPack {
   variantId: string
   count: number
+  /** What the shopper is charged for this tier. */
   price: number
+  /**
+   * The undiscounted price, for the strikethrough. Equal to `price` when the
+   * tier is sold at full price, which is how a card knows to show nothing.
+   *
+   * Use `packDiscountPct` to turn the pair into a percentage. Do NOT put a
+   * percentage in this payload: two numbers a shopper can see plus one derived
+   * from them cannot disagree, and three independent numbers already did once.
+   */
+  mrp: number
   /** Purely so the UI can show "only 3 left"; not a reservation. */
   stock: number
   /**
@@ -55,7 +65,28 @@ export interface DbPack {
   imageAlt: string
 }
 
-export interface DbProductSize extends Omit<ProductSize, 'packs'> {
+export interface DbProductSize extends Omit<ProductSize, 'packs' | 'minWeightKg' | 'maxWeightKg'> {
+  /**
+   * The weight band this size fits, in kg — the numbers behind `range`.
+   *
+   * Nullable here where `ProductSize` (the seed's input) has them required: the
+   * column is nullable because a Femi9 pad has no band, and a Lumi9 product
+   * seeded before this migration has none either. A size with no bounds drops
+   * OUT of the size projection rather than defaulting into a band nobody
+   * measured it for.
+   */
+  minWeightKg: number | null
+  maxWeightKg: number | null
+  /**
+   * The product's rating and how many moderated reviews it rests on.
+   *
+   * The PDP printed "4.9 · 482 verified reviews" from a literal, on all five
+   * sizes, beside a review rail reading real `Review` rows. `reviewCount: 0`
+   * means the product has no approved reviews and the page must say nothing
+   * rather than invent a number.
+   */
+  rating: number
+  reviewCount: number
   productId: string
   slug: string
   packs: DbPack[]
@@ -160,6 +191,7 @@ export async function loadCatalog(): Promise<CatalogPayload> {
             variantId: v.id,
             count,
             price: v.price,
+            mrp: v.mrp,
             stock: v.stock,
             // S3 only - the `packImage()` fallback is gone. See the header.
             image: photo?.url ?? PRODUCT_IMAGE_PLACEHOLDER,
@@ -178,6 +210,13 @@ export async function loadCatalog(): Promise<CatalogPayload> {
         range: fits,
         // "7-12 kg" → "7-12kg", the compact form the size chips use.
         short: fits.replace(/\s+/g, ''),
+        // The numeric band, straight from the row. `size-projection.ts` reads
+        // these instead of the SIZE_BOUNDS array it used to carry, so the words
+        // on the chip and the maths behind the projection are one thing.
+        minWeightKg: row.minWeightKg,
+        maxWeightKg: row.maxWeightKg,
+        rating: row.rating,
+        reviewCount: row.reviewCount,
         packs,
         description: row.description,
         longDescription: row.longDescription ?? '',

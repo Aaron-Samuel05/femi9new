@@ -241,6 +241,32 @@ export function leadPack<P extends { count: number; price: number }>(
 }
 
 /**
+ * How much off this tier is, as a whole percent - or 0 when it is not on offer.
+ *
+ * DERIVED FROM THE TWO NUMBERS THE SHOPPER CAN SEE, and that is the entire
+ * design. The site used to render "10% off" from `LAUNCH_OFFER`, a constant in
+ * `content.ts` that no server code had ever read: every pack card led with a
+ * price about 10% below the real one, struck the real price through beside it,
+ * and stamped a badge on the difference. The card said Rs 404, Razorpay took
+ * Rs 449, on all five products, and nothing failed - both numbers on the card
+ * came from one constant, so they agreed perfectly with each other and neither
+ * agreed with the gateway.
+ *
+ * A percentage computed here from `mrp` and `price` cannot do that. If the badge
+ * is wrong, the strikethrough is wrong in the same direction, because they are
+ * the same subtraction - and `price` is the column the cart is priced from.
+ *
+ * Returns 0 (not null) so a caller may render `pct > 0 && <Badge/>` without a
+ * second nullish check, and 0 for any nonsense - an mrp below the price, a
+ * missing mrp on an older row - because "no offer" is the safe way to be wrong.
+ */
+export function packDiscountPct(pack: { price: number; mrp?: number }): number {
+  const mrp = pack.mrp;
+  if (typeof mrp !== "number" || mrp <= 0 || mrp <= pack.price) return 0;
+  return Math.round(((mrp - pack.price) / mrp) * 100);
+}
+
+/**
  * The BUNDLED pack photo - the seed's input, and the storefront's last resort.
  *
  * Not what a page renders any more. `catalog.server.ts` reads `ProductImage`

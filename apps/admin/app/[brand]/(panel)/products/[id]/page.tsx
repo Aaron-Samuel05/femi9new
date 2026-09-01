@@ -43,6 +43,10 @@ export default async function EditProductPage(props: { params: Promise<{ brand: 
       packCount: v.packCount,
       size: v.size,
       price: v.price,
+      // Null on a row saved before the column existed — the form reads that as
+      // "MRP is the price", which is what it was.
+      mrp: v.mrp,
+      discountPct: v.discountPct,
       sku: v.sku ?? '',
       stock: v.stock,
       active: v.active,
