@@ -41,6 +41,24 @@ async function myStats(page: import("@playwright/test").Page, clientIp: string) 
   return (await res.json()) as { status: string; promoCode: string; clicks: number; orders: number };
 }
 
+/**
+ * Wait for the panel to stop resolving.
+ *
+ * `AffiliatePanel` renders an `aria-busy` placeholder until the session AND
+ * (for a signed-in shopper) her own metrics have landed, deliberately: painting
+ * the application form at an approved creator and then swapping it for her
+ * dashboard reads as the programme forgetting who she is.
+ *
+ * `next dev` compiles each route on first hit, so on a COLD /affiliate that
+ * placeholder can outlast the suite's 15s per-expect budget — which is what made
+ * the first attempt fail and the retry pass. Waiting for the placeholder itself,
+ * on its own timeout, says what is actually being waited for instead of
+ * inflating every assertion on the page.
+ */
+async function settled(page: import("@playwright/test").Page) {
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0, { timeout: 60_000 });
+}
+
 async function refCookies(page: import("@playwright/test").Page) {
   const jar = await page.context().cookies();
   return {
@@ -54,6 +72,7 @@ test.describe("the creator programme", () => {
     await installDialogGuard(page);
 
     await page.goto("/affiliate");
+    await settled(page);
     const form = page.getByTestId("affiliate-form");
     await expect(form).toBeVisible();
 
@@ -158,6 +177,7 @@ test.describe("the creator programme", () => {
 
     // The page reflects that: she is offered the form, not somebody's numbers.
     await page.goto("/affiliate");
+    await settled(page);
     await expect(page.getByTestId("affiliate-form")).toBeVisible();
     await expect(page.getByText(LUMI9_CREATOR)).toHaveCount(0);
   });
