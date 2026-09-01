@@ -70,12 +70,21 @@ function apiVersion(): string {
 }
 
 /**
- * The language code the templates were approved under. A wrong code fails with
- * 132001 — the same "template does not exist" error as a wrong name — so it is
- * worth setting explicitly rather than guessing between `en` and `en_US`.
+ * The language code the templates were approved under.
+ *
+ * `en_US`, because that is what all five ARE — verified against the WABA's
+ * template list, not assumed. This defaulted to `en` and every send failed with
+ * 132001, which reads "template does not exist": Meta matches on the NAME AND
+ * LANGUAGE PAIR, so `login_otp`/`en` is a different template from
+ * `login_otp`/`en_US`, and the error cannot tell you which half was wrong.
+ *
+ * That cost a deployment to find, because the shopper saw "WhatsApp sign-in is
+ * temporarily unavailable" and nothing was logged. A default that is wrong for
+ * the only templates that exist is a trap, so the default is now the truth and
+ * WHATSAPP_TEMPLATE_LANGUAGE remains the override for a WABA that differs.
  */
 function templateLanguage(): string {
-  return process.env.WHATSAPP_TEMPLATE_LANGUAGE?.trim() || 'en'
+  return process.env.WHATSAPP_TEMPLATE_LANGUAGE?.trim() || 'en_US'
 }
 
 /**

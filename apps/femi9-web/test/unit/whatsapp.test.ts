@@ -128,7 +128,10 @@ describe('sendWhatsappTemplate', () => {
     const body = JSON.parse(calls[0].init.body as string)
     expect(body.to).toBe('919876543210')
     expect(body.template.name).toBe('order_status_cancell')
-    expect(body.template.language.code).toBe('en')
+    // en_US is what all five templates are actually approved under on the WABA.
+    // The default used to be 'en' and every send failed 132001 — Meta matches on
+    // the name AND language pair, so this is not cosmetic.
+    expect(body.template.language.code).toBe('en_US')
     expect(body.template.components[0].parameters).toEqual([
       { type: 'text', text: 'Priya' },
       { type: 'text', text: 'FM-00042' },

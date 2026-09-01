@@ -6,6 +6,7 @@ import { WHATSAPP_TEMPLATES, sendWhatsappTemplateOrThrow } from '../whatsapp'
 import type { GoogleProfile } from '../google-oauth'
 import { rateLimit } from '../rate-limit'
 import { ProviderConfigurationError } from '../runtime-mode'
+import { logger } from '../logger'
 
 /**
  * Customer auth service — the challenge lifecycle for phone-OTP and email
@@ -179,7 +180,19 @@ export async function requestOtp(brand: Brand, phone: string): Promise<RequestOt
     // A missing token already IS a ProviderConfigurationError; only a real send
     // failure needs wrapping, so the route sees one type either way.
     if (err instanceof ProviderConfigurationError) throw err
-    throw new OtpDeliveryError(String(err).slice(0, 300))
+
+    // LOG BEFORE THROWING, because nothing downstream will. Every OTP route
+    // catches ProviderConfigurationError — which OtpDeliveryError extends, on
+    // purpose — and answers a flat 503 "temporarily unavailable" without
+    // touching the message. So Meta's actual complaint (132001 wrong template
+    // or language, 132000 wrong parameter count, an expired token) reached the
+    // shopper as four words and reached the operator as nothing at all: no log
+    // line, no Sentry event, an empty CloudWatch group and a sign-in that
+    // simply does not work. Diagnosing it meant reasoning backwards from a
+    // health check. The detail belongs here, once, where it is still intact.
+    const detail = String(err).slice(0, 300)
+    logger.error('otp_whatsapp_delivery_failed', { brand, template, detail })
+    throw new OtpDeliveryError(detail)
   }
 }
 
