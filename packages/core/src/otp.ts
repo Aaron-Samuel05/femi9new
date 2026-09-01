@@ -1,6 +1,7 @@
 import 'server-only'
 import type { Brand } from '@femi9/db'
-import { brandName, emailFromFor, mailConfigured, resendKeyFor } from './mail-identity'
+import { brandName, mailConfigured, mailProviderFor } from './mail-identity'
+import { sendMail } from './mailer'
 import { randomInt, randomBytes, createHash } from 'node:crypto'
 import {
   configuredEnv,
@@ -130,37 +131,33 @@ export async function sendTextSms(
  * Email a sign-in `url` to `email`.
  *
  * MOCK: explicit local/test mode does nothing and reports mock:true; the caller
- * returns the link as a dev field. LIVE: send via Resend. Throws on a non-2xx.
+ * returns the link as a dev field. LIVE: sent through whichever provider the
+ * brand is configured for — SES for Lumi9, Resend for Femi9 — by `mailer.ts`.
+ * Throws when the provider refuses, because the caller tells the shopper to go
+ * and look in her inbox.
  */
 export async function sendMagicLink(brand: Brand, email: string, url: string): Promise<SendResult> {
   if (!mailConfigured(brand)) {
-    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Resend')
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError(mailProviderFor(brand) ?? 'email')
     return { mock: true }
   }
 
-  // Per-brand credentials, falling back to the shared ones — see mail-identity.
-  const apiKey = resendKeyFor(brand) as string
-  const from = emailFromFor(brand) as string
   // The copy carries the brand too. A Lumi9 parent receiving a Femi9-branded
   // sign-in link reads as phishing, not as a sibling company.
   const name = brandName(brand)
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: email,
-      subject: `Your ${name} sign-in link`,
-      html:
-        `<p>Tap the button below to sign in to ${name}. This link expires in 15 minutes.</p>` +
-        `<p><a href="${url}" style="display:inline-block;padding:12px 20px;border-radius:999px;` +
-        `background:#F0C14E;color:#34204E;font-weight:600;text-decoration:none">Sign in to ${name}</a></p>` +
-        `<p>If you didn't request this, you can safely ignore this email.</p>`,
-    }),
+  await sendMail(brand, {
+    to: email,
+    subject: `Your ${name} sign-in link`,
+    html:
+      `<p>Tap the button below to sign in to ${name}. This link expires in 15 minutes.</p>` +
+      `<p><a href="${url}" style="display:inline-block;padding:12px 20px;border-radius:999px;` +
+      `background:#F0C14E;color:#34204E;font-weight:600;text-decoration:none">Sign in to ${name}</a></p>` +
+      `<p>If you didn't request this, you can safely ignore this email.</p>`,
+    // A sign-in link with no plain-text part is the single most spam-filtered
+    // shape a transactional email can have, and this one has to arrive.
+    text:
+      `Sign in to ${name} using this link, which expires in 15 minutes:\n\n${url}\n\n` +
+      `If you didn't request this, you can safely ignore this email.`,
   })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`Resend sendMagicLink failed (${res.status}): ${detail}`)
-  }
   return { mock: false }
 }

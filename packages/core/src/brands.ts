@@ -26,6 +26,10 @@ export const ADMIN_MODULES = [
   'affiliates',
   'partners',
   'thara',
+  // Lumi9 only: the /parenting-tools schedule and its care-plan leads. Femi9
+  // has no such page, so the route 404s there rather than rendering an empty
+  // console screen for a feature that brand does not have.
+  'parenting',
   'settings',
 ] as const
 
@@ -40,6 +44,16 @@ export interface BrandConfig {
   name: string
   /** Shown on the login toggle and in the console header. */
   shortName: string
+  /**
+   * The one-line sign-off under a transactional email.
+   *
+   * Here rather than in the mail templates because there is one template and
+   * two brands. `order-mail.ts` printed "Femi9 · organic period care" as a
+   * literal, so every Lumi9 order confirmation — for baby diapers — was signed
+   * off as period care from the other company, under a subject line that also
+   * said Femi9. The customer had never heard of Femi9.
+   */
+  tagline: string
   /** Public storefront host, for "view site" links. */
   host: string
   accent: string
@@ -79,6 +93,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     name: 'Femi9',
     shortName: 'Femi9',
     host: 'femi9.in',
+    tagline: 'Femi9 · organic period care',
     accent: '#352D78',
     accentInk: '#ffffff',
     orderPrefix: 'FM',
@@ -108,6 +123,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     name: 'Lumi9',
     shortName: 'Lumi9',
     host: 'lumi9.in',
+    tagline: 'Lumi9 · cloud soft baby care',
     accent: '#4F6F52',
     accentInk: '#ffffff',
     orderPrefix: 'LM',
@@ -140,6 +156,10 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
       'content',
       'reviews',
       'affiliates',
+      // Lumi9's parenting tools: the published vaccination schedule and the
+      // care-plan leads. Femi9 has no such page — its tools surface does not
+      // exist — so the module is Lumi9's alone and the route 404s over there.
+      'parenting',
       'settings',
     ],
   },

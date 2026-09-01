@@ -190,12 +190,16 @@ locals {
     RAZORPAY_KEY_SECRET     = "TODO-change-me"
     RAZORPAY_WEBHOOK_SECRET = "TODO-change-me"
     MSG91_AUTH_KEY          = "TODO-change-me"
-    RESEND_API_KEY          = "TODO-re_xxxxxxxx"
-    RESEND_WEBHOOK_SECRET   = "TODO-whsec_change-me"
-    CRON_SECRET             = "TODO-change-me"
-    SENTRY_DSN              = "TODO-https://public@o0.ingest.sentry.io/0"
-    GOOGLE_CLIENT_ID        = "TODO-xxxx.apps.googleusercontent.com"
-    GOOGLE_CLIENT_SECRET    = "TODO-GOCSPX-change-me"
+    # The Cloud API access token. Phone sign-in delivers its OTP over WhatsApp
+    # and nowhere else, so a TODO here means nobody can sign in with a number —
+    # and the console cannot tell a customer her order shipped or was cancelled.
+    WHATSAPP_TOKEN        = "TODO-change-me"
+    RESEND_API_KEY        = "TODO-re_xxxxxxxx"
+    RESEND_WEBHOOK_SECRET = "TODO-whsec_change-me"
+    CRON_SECRET           = "TODO-change-me"
+    SENTRY_DSN            = "TODO-https://public@o0.ingest.sentry.io/0"
+    GOOGLE_CLIENT_ID      = "TODO-xxxx.apps.googleusercontent.com"
+    GOOGLE_CLIENT_SECRET  = "TODO-GOCSPX-change-me"
   }
 
   # Lumi9's own accounts, when it gets them. Injected from day one carrying TODO
@@ -212,6 +216,10 @@ locals {
     RAZORPAY_KEY_SECRET_LUMI9     = "TODO-change-me"
     RAZORPAY_WEBHOOK_SECRET_LUMI9 = "TODO-change-me"
     RESEND_API_KEY_LUMI9          = "TODO-re_lumi9"
+    # Both brands share one WABA, one number and one set of approved templates
+    # today. This exists so splitting them later is a put-secret-value, not a
+    # code change — core reads the TODO as absent and uses the shared token.
+    WHATSAPP_TOKEN_LUMI9 = "TODO-change-me"
   }
 
   placeholder_secrets = merge(local.shared_placeholder_secrets, local.lumi9_placeholder_secrets)

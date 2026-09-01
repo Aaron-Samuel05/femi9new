@@ -31,7 +31,7 @@ same exact Next version as `lumi9-web`.
 | Styling | Hand-written CSS in `src/styles/*.css` + colocated `*.css`. **No Tailwind.** |
 | Auth | Stateless HS256 JWTs in httpOnly cookies (`jose`) |
 | Payments | Razorpay (order + webhook + reconcile cron) |
-| Email / SMS | Resend · MSG91 OTP |
+| Messaging | Resend (email) · WhatsApp Cloud API (**sign-in OTP + order status**) · MSG91 (reward codes only) |
 | Tests | Vitest (`npm test`) · Playwright (`npm run test:ui`) |
 | Errors | Sentry (client/server/edge configs at app root) |
 

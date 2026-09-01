@@ -29,6 +29,7 @@ const LABELS: Record<AdminModule, string> = {
   affiliates: 'Affiliates',
   partners: 'Partners',
   thara: 'Thara',
+  parenting: 'Parenting tools',
   settings: 'Settings',
 }
 
@@ -48,6 +49,7 @@ const HREF: Record<AdminModule, string> = {
   affiliates: '/affiliates',
   partners: '/partners',
   thara: '/thara',
+  parenting: '/parenting',
   settings: '/settings',
 }
 
@@ -61,7 +63,7 @@ const GROUPS: { eyebrow: string; modules: AdminModule[] }[] = [
   { eyebrow: 'Catalog', modules: ['catalog', 'inventory'] },
   { eyebrow: 'Sales', modules: ['orders', 'subscriptions', 'customers', 'coupons'] },
   { eyebrow: 'Growth', modules: ['affiliates', 'partners'] },
-  { eyebrow: 'Programs', modules: ['thara'] },
+  { eyebrow: 'Programs', modules: ['thara', 'parenting'] },
   { eyebrow: 'Content', modules: ['content', 'reviews', 'community'] },
   { eyebrow: 'Configure', modules: ['settings', 'pricing'] },
 ]

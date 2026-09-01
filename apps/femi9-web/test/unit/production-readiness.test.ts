@@ -12,6 +12,8 @@ const KEYS = [
   'NEXT_PUBLIC_RAZORPAY_KEY_ID',
   'MSG91_AUTH_KEY',
   'MSG91_TEMPLATE_ID',
+  'WHATSAPP_TOKEN',
+  'WHATSAPP_PHONE_NUMBER_ID',
   'RESEND_API_KEY',
   'EMAIL_FROM',
   'RESEND_WEBHOOK_SECRET',
@@ -52,6 +54,10 @@ function configureProduction() {
   process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID = 'rzp_live_1'
   process.env.MSG91_AUTH_KEY = 'msg91-key'
   process.env.MSG91_TEMPLATE_ID = 'template-id'
+  // Phone sign-in delivers its OTP over WhatsApp and nothing else, so these two
+  // are traffic-blocking where the MSG91 pair no longer is.
+  process.env.WHATSAPP_TOKEN = 'EAAG-real-token'
+  process.env.WHATSAPP_PHONE_NUMBER_ID = '323448914175098'
   process.env.RESEND_API_KEY = 're_live_1'
   process.env.EMAIL_FROM = 'Femi9 <login@example.test>'
   process.env.RESEND_WEBHOOK_SECRET = 'whsec_test'
@@ -99,13 +105,30 @@ describe('production readiness', () => {
       'ADMIN_EMAIL',
       'ADMIN_PASSWORD',
       'CRON_SECRET',
+      // No longer on the sign-in path: the OTP goes out over WhatsApp, and
+      // MSG91 is left carrying only reward-code delivery. Losing it must not
+      // pull a task out of the load balancer.
+      'MSG91_AUTH_KEY',
+      'MSG91_TEMPLATE_ID',
+      // Nor may WhatsApp, however much it costs to lose. The token is set out
+      // of band AFTER the apply that creates its secret, so blocking on it made
+      // the first deploy of a stack impossible to complete: the task would fail
+      // its health check, stall the rollout and roll back with no stated cause.
+      'WHATSAPP_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
     ]) {
       delete process.env[key]
     }
     const report = productionReadinessReport()
     expect(report.blocking).toEqual([])
     expect(report.warnings).toEqual(
-      expect.arrayContaining(['RESEND_WEBHOOK_SECRET', 'GOOGLE_CLIENT_ID', 'CRON_SECRET']),
+      expect.arrayContaining([
+        'RESEND_WEBHOOK_SECRET',
+        'GOOGLE_CLIENT_ID',
+        'CRON_SECRET',
+        'MSG91_AUTH_KEY',
+        'WHATSAPP_TOKEN',
+      ]),
     )
   })
 

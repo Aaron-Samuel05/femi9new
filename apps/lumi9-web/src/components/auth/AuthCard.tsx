@@ -42,6 +42,28 @@ import { safeNextPath } from "@/lib/safe-next";
  * expires every six months - none of which exists on this platform. It is a
  * project, not a button, and a dead control that looks live costs more trust
  * than an absent one.
+ *
+ * ── Why every <form> here carries method="post" ─────────────────────────────
+ * Every submit handler in this file calls `event.preventDefault()`, so the
+ * attribute never fires in a working browser - and that is exactly why it was
+ * missing everywhere and why it matters. A form with NO method is a GET, and
+ * between first paint and hydration there is no handler attached to prevent it.
+ * A shopper who types her number and hits Enter early, a password manager that
+ * autofills and submits, or a bundle that fails to load at all, submits
+ * natively - and the browser puts every field in the query string of the URL it
+ * navigates to.
+ *
+ * On this card those fields are a phone number and a SIX DIGIT OTP. That URL
+ * then lives in her history, in the Referer header of every subsequent request,
+ * and in the access log of every proxy in front of this service - a one-time
+ * credential written down in three places that outlive it.
+ *
+ * `method="post"` costs nothing and removes the whole class: the pre-hydration
+ * submit becomes a POST to a page route that has no POST handler, so it fails
+ * visibly instead of leaking silently. The same attribute is on every form in
+ * this app for the same reason - checkout and the address book carry a full
+ * delivery address, /welcome carries a name and a mobile, and the newsletter
+ * and contact forms carry an email.
  */
 
 const MODES = [
@@ -376,6 +398,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
         {methods.phone && method === "phone" ? (
           phoneStep === "enter" ? (
             <form
+              method="post"
               className="flex flex-col gap-3.5"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -400,7 +423,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
                 />
               </div>
               <p className="m-0 text-[13px] text-muted">
-                We will text you a 6-digit code - no password to remember.
+                We will send you a 6-digit code on WhatsApp - no password to remember.
               </p>
               <p className="m-0 min-h-5 text-[13px] text-[#b4232c]" role="alert" aria-live="polite">
                 {error ?? " "}
@@ -415,6 +438,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
             </form>
           ) : (
             <form
+              method="post"
               className="flex flex-col gap-3.5"
               onSubmit={(event) => {
                 event.preventDefault();
@@ -502,6 +526,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
           </div>
         ) : (
           <form
+            method="post"
             className="flex flex-col gap-3.5"
             onSubmit={(event) => {
               event.preventDefault();

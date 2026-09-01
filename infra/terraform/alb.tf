@@ -389,3 +389,26 @@ resource "aws_route53_record" "site" {
     evaluate_target_health = false
   }
 }
+
+# ── The origin's own name ────────────────────────────────────────────────────
+# THE ONE RECORD THAT DOES POINT AT THE LOAD BALANCER, and the exception proves
+# the rule above: no viewer resolves it. It exists so CloudFront can address the
+# origin by a name a certificate can cover, which is the only way the
+# edge-to-origin hop is encrypted at all — see var.alb_origin_host.
+#
+# Publishing it costs nothing: the ALB security group admits the CloudFront edge
+# and nothing else, so knowing the name buys no access. Written only when this
+# stack manages the zone; otherwise create the same alias yourself.
+resource "aws_route53_record" "alb_origin" {
+  count = var.route53_zone_id != "" && var.alb_origin_host != "" ? 1 : 0
+
+  zone_id = var.route53_zone_id
+  name    = var.alb_origin_host
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.this.dns_name
+    zone_id                = aws_lb.this.zone_id
+    evaluate_target_health = false
+  }
+}

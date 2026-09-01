@@ -9,7 +9,7 @@ import { projectSizeUp, sizeForWeight } from "@/lib/size-projection";
 export function SizeUpPredictor() {
   // Size names come from the catalogue in the DATABASE - `@/lib/catalog` is the
   // seed's input, so a size renamed in the console never reached this page.
-  const { getSize } = useCatalogData();
+  const { getSize, sizeBounds } = useCatalogData();
   const profile = useBabyProfile();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -17,11 +17,14 @@ export function SizeUpPredictor() {
   const weight = typed ?? profile?.weightKg?.toString() ?? "";
   const weightKg = Number(weight);
   const hasWeight = weight !== "" && Number.isFinite(weightKg) && weightKg > 0;
-  const current = hasWeight ? sizeForWeight(weightKg) : null;
+  // Bands from the CATALOGUE. `SIZE_BOUNDS` in size-projection.ts was a second
+  // copy of these numbers with a comment saying it had to be kept in step by
+  // hand; it is the fallback now, for a catalogue seeded before the migration.
+  const current = hasWeight ? sizeForWeight(weightKg, sizeBounds) : null;
 
   const projection =
     profile && hasWeight
-      ? projectSizeUp({ dob: profile.dob, sex: profile.sex, weightKg, today })
+      ? projectSizeUp({ dob: profile.dob, sex: profile.sex, weightKg, today }, sizeBounds)
       : null;
 
   return (

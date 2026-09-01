@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       }
       if (err instanceof InvalidPhoneError) return badRequest(err.message);
       if (err instanceof ProviderConfigurationError) {
-        return serviceUnavailable("SMS verification is temporarily unavailable.");
+        return serviceUnavailable("WhatsApp verification is temporarily unavailable.");
       }
       throw err;
     }

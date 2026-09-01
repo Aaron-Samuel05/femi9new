@@ -20,10 +20,17 @@
  */
 
 /**
- * The production origin, as fixed by the SEO brief. Change it here and the
- * canonicals, sitemap, JSON-LD and the robots.txt staging guard all follow.
+ * The production origin. Change it here and the canonicals, sitemap, JSON-LD
+ * and the robots.txt staging guard all follow.
+ *
+ * DECIDED: the apex, `lumi9.in` — the same host `brandConfig('lumi9').host`
+ * records, which `test/canonical-origin.test.ts` now pins them to. Three names
+ * for one site were in the repo before this (`thelumi9.com` here,
+ * `shop.lumi9.in` in the Terraform examples, `lumi9.in` in the brand config)
+ * and shipping on any but this one serves `noindex` everywhere. Terraform's
+ * `sites` block and `SITE_URL` on the task have to name this host too.
  */
-export const CANONICAL_ORIGIN = "https://thelumi9.com";
+export const CANONICAL_ORIGIN = "https://lumi9.in";
 
 /** The origin THIS deployment answers on, no trailing slash. */
 export const SITE_URL = (
@@ -41,9 +48,9 @@ export const IS_CANONICAL_HOST = SITE_URL === CANONICAL_ORIGIN;
  * The staging guard is correct and load-bearing, and it is also the quietest
  * possible way to launch invisibly. `CANONICAL_ORIGIN` is a constant in this
  * file; `SITE_URL` arrives from the environment. If the site ships on a
- * hostname nobody remembered to write here - `shop.lumi9.in` and `lumi9.in`
- * are both named elsewhere in this repo, and an un-aliased CloudFront
- * distribution serves a `*.cloudfront.net` name - then every page carries
+ * hostname nobody remembered to write here - an un-aliased CloudFront
+ * distribution serves a `*.cloudfront.net` name, and a task with no `SITE_URL`
+ * at all falls back to this constant - then every page carries
  * `noindex` and robots.txt says `Disallow: /`, the site works perfectly for
  * every human who visits it, and no crawler ever comes. Nothing fails, nothing
  * logs, and the first signal is an empty Search Console weeks later.
@@ -90,6 +97,49 @@ export const DEFAULT_OG_IMAGE = {
 };
 
 /**
+ * A page's Open Graph block, with the site defaults already in it.
+ *
+ * ── Why every page must go through this ─────────────────────────────────────
+ * Next MERGES `metadata` shallowly and REPLACES a nested object wholesale. The
+ * root layout sets `openGraph.images: [DEFAULT_OG_IMAGE]`; the moment a page
+ * declares its own `openGraph` to set a title, the whole parent object is
+ * discarded and the image goes with it.
+ *
+ * Eighteen pages declared one. None of them re-declared `images`. So the home
+ * page, /shop, /about, /subscription, /journal, /help, /size-guide, /contact,
+ * /affiliate, /terms and all four parenting tools shared with no picture at all
+ * — a bare text link on WhatsApp, where most of this site's traffic is shared,
+ * and the four pages that DID keep an image only did so by not overriding.
+ *
+ * Nothing about that is visible while building a page: the tag is simply
+ * missing, the page renders perfectly, and you would only find it by pasting a
+ * link into a chat.
+ *
+ * Spread it and override what differs:
+ *
+ *   openGraph: og({ url: absoluteUrl("/about"), title: TITLE, description: DESC })
+ */
+export function og(
+  overrides: {
+    url?: string;
+    title?: string;
+    description?: string;
+    type?: "website" | "article";
+    images?: { url: string; width?: number; height?: number; alt?: string }[];
+    publishedTime?: string;
+    modifiedTime?: string;
+  } = {},
+) {
+  return {
+    type: "website" as const,
+    siteName: SITE_NAME,
+    locale: "en_IN",
+    images: [DEFAULT_OG_IMAGE],
+    ...overrides,
+  };
+}
+
+/**
  * `alternates.canonical` for a page. Next resolves a relative value against
  * `metadataBase`, but passing the absolute URL keeps the emitted tag readable
  * and independent of where `metadataBase` happens to point.
@@ -122,7 +172,7 @@ export function organizationSchema() {
     contactPoint: {
       "@type": "ContactPoint",
       contactType: "customer support",
-      email: "support@thelumi9.com",
+      email: "support@lumi9.in",
       availableLanguage: ["en", "hi", "ta"],
     },
   };

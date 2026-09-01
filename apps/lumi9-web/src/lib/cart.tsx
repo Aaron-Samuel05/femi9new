@@ -332,6 +332,25 @@ export function useCart() {
     setCart(EMPTY);
   }, [cart, setCart]);
 
+  /**
+   * Drop the local basket because the SERVER already has.
+   *
+   * `placeOrder` deletes the cart and its items inside the same transaction
+   * that records the payment intent, so from the moment an order exists the
+   * basket is gone server-side. This provider fetches `/api/cart` exactly once,
+   * on mount, with an empty dependency list — so nothing told it. A shopper who
+   * paid then carried on browsing with the bag badge still showing what she had
+   * just bought, and a drawer that listed it, until a hard reload.
+   *
+   * Deliberately NOT `clear()`: that one DELETEs every line over the network,
+   * which here would be requests against a cart that no longer exists, to
+   * achieve a state the server is already in. This is a local correction, so it
+   * cannot fail and cannot race the confirmation navigation.
+   */
+  const markConsumed = useCallback(() => {
+    setCart(EMPTY);
+  }, [setCart]);
+
   const lines = useMemo(
     () => cart.items.map((item) => toResolved(catalog, item)),
     [catalog, cart],
@@ -357,6 +376,7 @@ export function useCart() {
     decrement,
     remove,
     clear,
+    markConsumed,
   };
 }
 

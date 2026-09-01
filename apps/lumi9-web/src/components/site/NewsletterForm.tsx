@@ -55,6 +55,7 @@ export function NewsletterForm() {
 
   return (
     <form
+      method="post"
       /* input + button sit side by side from 420px up; below that the button drops
          onto its own row (and the pill relaxes to a panel) so neither gets squeezed */
       className="mb-[clamp(20px,3vw,30px)] flex max-w-[440px] flex-col gap-2 rounded-panel border-[1.5px] border-butter/40 bg-butter/10 p-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:rounded-pill min-[420px]:pl-6"

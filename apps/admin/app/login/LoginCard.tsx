@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BRAND_CONFIG, BRANDS, type Brand } from '@femi9/core/brands'
+import { safeNext } from '@/lib/safe-next'
 
 /**
  * The sign-in card.
@@ -57,7 +58,19 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
         setPassword('')
         return
       }
-      router.push(next ?? `/${brand}`)
+      // `safeNext`, not `next`. This is the ONE place the destination is known
+      // to be safe to use: the brand is decided (the toggle is client state, so
+      // the server rendering this page could not know it), and the sign-in has
+      // succeeded.
+      //
+      // It was written, unit-tested, and then imported by nothing. The page
+      // upstream only checked `startsWith('/')`, which `//evil.example` passes —
+      // and a protocol-relative path in `router.push` is an off-site navigation.
+      // So `/login?brand=lumi9&next=//evil.example` signed an admin in and landed
+      // them on somebody else's page: the exact setup for a "your session
+      // expired, sign in again" phish, arriving from a real console link, after a
+      // real successful login.
+      router.push(safeNext(next, brand))
       router.refresh()
     } catch {
       setError('Could not reach the server. Try again.')
@@ -68,7 +81,17 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
 
   return (
     <main className="adm-auth" data-brand={brand} style={{ ['--accent' as string]: config.accent }}>
-      <form className="adm-auth-card" onSubmit={submit}>
+      {/* `method="post"` matters even though `submit` preventDefaults every
+          time it runs. Between first paint and hydration the handler is not
+          attached yet, and a form with no method is a GET — so an admin who
+          types fast, or whose password manager autofills and presses Enter, or
+          whose bundle fails to load at all, submits to this same URL with
+          `?email=…&password=…` in the query string. That lands in the browser
+          history, the Referer of every subsequent request, and every access log
+          in front of this service. POST puts it in a body that goes nowhere
+          instead: the page route has no POST handler, so the pre-hydration
+          submit fails visibly rather than leaking silently. */}
+      <form className="adm-auth-card" method="post" onSubmit={submit}>
         <div className="adm-auth-brand">
           <svg
             className="adm-auth-mark"

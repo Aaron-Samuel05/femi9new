@@ -138,6 +138,11 @@ locals {
     { name = "UPLOADS_BUCKET", value = aws_s3_bucket.uploads.bucket },
     { name = "RATE_LIMIT_TABLE", value = aws_dynamodb_table.rate_limit.name },
     { name = "MSG91_TEMPLATE_ID", value = var.msg91_template_id },
+    # Phone sign-in delivers its OTP over WhatsApp and nothing else. A task
+    # holding WHATSAPP_TOKEN but not the sender id sends nothing at all, and
+    # says so only in a log line nobody is reading.
+    { name = "WHATSAPP_PHONE_NUMBER_ID", value = var.whatsapp_phone_number_id },
+    { name = "WHATSAPP_TEMPLATE_LANGUAGE", value = var.whatsapp_template_language },
     { name = "EMAIL_FROM", value = var.email_from },
     # Thara Model. The task definition had no entry for this at all, so the
     # deployed app always read it as unset — every /api/thara route 404'd and

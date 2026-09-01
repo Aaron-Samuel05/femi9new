@@ -105,7 +105,11 @@ output "next_steps" {
   value       = <<-EOT
     1. Push an image to each ECR repo (see .github/workflows/deploy-platform.yml).
     2. Fill the placeholder secrets — `terraform output placeholder_secrets_to_fill`.
-       Anything left as TODO reads as absent: payments and mail stay off.
+       Anything left as TODO reads as absent: payments and mail stay off, and a
+       brand with no Razorpay credentials FAILS ITS HEALTH CHECK, so the deploy
+       stalls and rolls back rather than serving. Check before you push, not
+       after: `infra/scripts/preflight.sh <project>-<environment>` reads them
+       back and says which ones would block. The deploy workflow runs it too.
     3. Seed each brand's catalogue with a one-off ECS task (README.md).
     4. Create the first admin — also a one-off task; there is no self-service
        sign-up and there should not be.
@@ -113,6 +117,17 @@ output "next_steps" {
        apply cannot lock the team out of their own back office; that default is
        not one to keep on a console that can refund money. It covers EVERY
        console hostname at once — see `terraform output admin_hosts`.
-    6. Point DNS at each site's cloudfront_domain, NOT at alb_dns_name.
+    6. Point DNS at each site's cloudfront_domain, NOT at alb_dns_name. The
+       storefront hostname MUST match CANONICAL_ORIGIN in its own seo.ts —
+       lumi9.in — or every page serves noindex and robots.txt serves
+       Disallow: /, silently, while the site works for every human.
+    7. Confirm the alarm email. AWS sends a subscription link and delivers
+       nothing until somebody clicks it: `terraform output
+       alarm_subscription_state`. Until then the alarms exist, go red, and tell
+       nobody — see alarms.tf.
+    8. Encrypt the edge-to-origin hop before real customers: set alb_origin_host
+       and acm_certificate_arn (THIS region, not us-east-1). Until then that hop
+       carries session cookies and checkout PII in cleartext. See the block in
+       terraform.tfvars.example.
   EOT
 }

@@ -178,30 +178,94 @@ resource "aws_route_table_association" "private" {
 # Security groups
 # ─────────────────────────────────────────────────────────────────────────────
 
-# ALB: accepts 80/443 from the internet, talks to the tasks on the app port.
+# ALB: accepts 80/443 from CloudFront's edge only, talks to the tasks on the
+# app port.
+#
+# ── Why not the internet ────────────────────────────────────────────────────
+# Every site here is served through CloudFront, so nothing legitimate arrives at
+# the ALB from anywhere else — and the difference is not academic. The platform
+# rate-limits per IP on `CloudFront-Viewer-Address`, a header GENERATED at the
+# edge that a viewer cannot set (packages/core/src/rate-limit.ts). That property
+# holds only while the edge is the sole route in. With the ALB open, anyone who
+# found it could send that header themselves and vary it per request: OTP sends,
+# magic links, admin sign-in and checkout would all have been unlimited, from
+# code that reads as though it throttles them.
+#
+# The same rule is what makes it safe for the ALB to be addressed over plain
+# HTTP while alb_origin_host is unset — the cleartext hop is edge-to-origin,
+# never viewer-to-origin.
+#
+# `X-Platform-App` (cloudfront.tf) is a routing signal and not a second gate. It
+# is not secret, and it never was: this is the gate.
 resource "aws_security_group" "alb" {
-  name        = "${local.name_prefix}-alb-sg"
+  name = "${local.name_prefix}-alb-sg"
+  # ── DO NOT "CORRECT" THIS DESCRIPTION ────────────────────────────────────
+  # It says "from the internet" and the rules below admit only the CloudFront
+  # edge. That reads wrong, and it stays: EC2 cannot edit a security group
+  # description, so any change to this string REPLACES the group — which means
+  # detaching and reattaching the security group of a load balancer that is
+  # serving, to improve a sentence nobody reads at runtime. The rules are the
+  # truth; this is a label, and a plan that replaces the ALB's security group
+  # for a label is a bad trade. (Also: no apostrophe — see the app group below.)
   description = "ALB: allow HTTP/HTTPS from the internet"
   vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-alb-sg" })
 }
 
-resource "aws_vpc_security_group_ingress_rule" "alb_https" {
+# AWS publishes the edge's origin-facing ranges as a managed prefix list, so
+# "CloudFront only" is one rule that stays correct as those ranges change. It is
+# a GLOBAL list published into every region — the name is literal.
+#
+# A prefix list rule counts against the security group's rule quota as its
+# max_entries (currently 55 of the default 60), which is why this group holds
+# nothing else. Adding many alb_debug_cidrs will hit that limit; raise the
+# "Inbound or outbound rules per security group" quota if you need them.
+data "aws_ec2_managed_prefix_list" "cloudfront" {
+  count = var.alb_ingress_source == "cloudfront" ? 1 : 0
+  name  = "com.amazonaws.global.cloudfront.origin-facing"
+}
+
+locals {
+  # One list of {port -> source}, so the two ports cannot drift apart.
+  alb_ingress_ports = { https = 443, http = 80 }
+}
+
+resource "aws_vpc_security_group_ingress_rule" "alb_edge" {
+  for_each = var.alb_ingress_source == "cloudfront" ? local.alb_ingress_ports : {}
+
   security_group_id = aws_security_group.alb.id
-  description       = "HTTPS from anywhere"
+  description       = "${upper(each.key)} from the CloudFront edge"
   ip_protocol       = "tcp"
-  from_port         = 443
-  to_port           = 443
+  from_port         = each.value
+  to_port           = each.value
+  prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront[0].id
+}
+
+# The escape hatch, and it is a real one: this is the posture that made every
+# per-IP limit forgeable. See var.alb_ingress_source.
+resource "aws_vpc_security_group_ingress_rule" "alb_internet" {
+  for_each = var.alb_ingress_source == "internet" ? local.alb_ingress_ports : {}
+
+  security_group_id = aws_security_group.alb.id
+  description       = "${upper(each.key)} from anywhere - BYPASSES the edge, and with it per-IP rate limiting"
+  ip_protocol       = "tcp"
+  from_port         = each.value
+  to_port           = each.value
   cidr_ipv4         = "0.0.0.0/0"
 }
 
-resource "aws_vpc_security_group_ingress_rule" "alb_http" {
+resource "aws_vpc_security_group_ingress_rule" "alb_debug" {
+  for_each = {
+    for pair in setproduct(keys(local.alb_ingress_ports), var.alb_debug_cidrs) :
+    "${pair[0]}-${pair[1]}" => { port = local.alb_ingress_ports[pair[0]], cidr = pair[1] }
+  }
+
   security_group_id = aws_security_group.alb.id
-  description       = "HTTP from anywhere (redirected to HTTPS when a cert is set)"
+  description       = "Direct origin access for debugging: ${each.value.cidr}"
   ip_protocol       = "tcp"
-  from_port         = 80
-  to_port           = 80
-  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = each.value.port
+  to_port           = each.value.port
+  cidr_ipv4         = each.value.cidr
 }
 
 resource "aws_vpc_security_group_egress_rule" "alb_to_app" {

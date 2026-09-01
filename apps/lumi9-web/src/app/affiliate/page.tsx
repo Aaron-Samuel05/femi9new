@@ -4,7 +4,7 @@ import { NAV_LINKS } from "@/components/site/Nav";
 import { AffiliatePanel } from "@/components/affiliate/AffiliatePanel";
 import { Em } from "@/components/ui/bits";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Lumi9 Creator Programme | Earn With Every Referral";
 const DESCRIPTION =
@@ -14,13 +14,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/affiliate"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/affiliate"),
-    siteName: SITE_NAME,
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/affiliate"), title: TITLE, description: DESCRIPTION }),
 };
 
 /**

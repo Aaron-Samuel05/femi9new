@@ -1,6 +1,7 @@
 import type { NextRequest } from 'next/server'
 import { handle, ok, notFound, forbidden } from '@femi9/core/api'
 import { requireConsoleApi } from '@/lib/api-guard'
+import { hasModule } from '@femi9/core/brands'
 import { listMemberships } from '@femi9/core/services/thara'
 import { isTharaEnabled } from '@femi9/core/thara/feature'
 import type { TharaStatus } from '@prisma/client'
@@ -16,6 +17,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ bran
     const auth = await requireConsoleApi((await params).brand)
     if (!auth.ok) return auth.response
     const { brand } = auth
+    // THARA_ENABLED is a GLOBAL flag and this console serves both brands, so the
+    // flag alone says nothing about whether THIS brand runs the programme. Without
+    // this line, turning Thara on for Femi9 opened every one of these endpoints to
+    // a Lumi9 admin. 404, matching requireConsole: a brand that has no Thara must
+    // not learn one exists.
+    if (!hasModule(brand, 'thara')) return notFound()
 
     const url = new URL(req.url)
     const rawStatus = url.searchParams.get('status') ?? undefined

@@ -46,13 +46,32 @@ export function productionReadinessReport(): ReadinessReport {
     'RAZORPAY_KEY_SECRET',
     'RAZORPAY_WEBHOOK_SECRET',
     'NEXT_PUBLIC_RAZORPAY_KEY_ID',
-    'MSG91_AUTH_KEY',
-    'MSG91_TEMPLATE_ID',
     'RESEND_API_KEY',
     'EMAIL_FROM',
   ]
   // Feature-gating only — see the note above before promoting any of these.
   const recommended = [
+    // No longer on the sign-in path. Still the only way a phone-only customer
+    // receives a redeemed reward code (otp.ts::sendTextSms), which also needs
+    // MSG91_FLOW_TEMPLATE_ID — without it she is told nothing at all.
+    'MSG91_AUTH_KEY',
+    'MSG91_TEMPLATE_ID',
+    // WhatsApp carries phone sign-in and every order message, and its absence
+    // costs a lot: no OTP, and no confirmation at all for the phone-only
+    // accounts whose `email` is null. It is still a WARNING, deliberately.
+    //
+    // These took MSG91's place, and MSG91 was listed as required — so promoting
+    // them looked like continuity. It is not. A missing token would have failed
+    // /api/health, which fails CLOSED, so the task never enters the load
+    // balancer, the rollout stalls at "waiting for service stability" and rolls
+    // back reporting nothing about the cause. That converts "phone sign-in is
+    // off" into "the storefront cannot be deployed at all", on a value that is
+    // set out of band AFTER a terraform apply creates the secret — i.e. it
+    // cannot be present on the apply that first needs it. The emailed link is
+    // still a way in; brand-readiness.ts warns on the same setting for Lumi9,
+    // and preflight.sh reports it as a warning too. All three now agree.
+    'WHATSAPP_TOKEN',
+    'WHATSAPP_PHONE_NUMBER_ID',
     'RESEND_WEBHOOK_SECRET',
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',

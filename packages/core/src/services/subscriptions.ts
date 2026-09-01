@@ -2,6 +2,7 @@ import 'server-only'
 import { Prisma } from '@prisma/client'
 import type { SubscriptionStatus } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
+import { orderPrefix } from '../brands'
 import { applyZonePrice, resolveZone } from './pricing'
 import { getSettings } from './settings'
 
@@ -59,6 +60,21 @@ export interface SubscriptionView {
   cadenceCode: string
   frequency: string // cadence.label, e.g. "Every 4 weeks"
   nextDelivery: string // "18 Jun 2026" — matches the account read model's format
+  /**
+   * The same date as an ISO day, for arithmetic.
+   *
+   * `nextDelivery` is a DISPLAY string and reading it as one was a real bug:
+   * the parenting dashboard did `nextDelivery.slice(0, 10)`, which turns
+   * "18 Jun 2026" into "18 Jun 20", and told every subscriber their next box
+   * "ships in about 0 days" — forever, on a card whose whole purpose is that
+   * number. The `Date.parse` guard in front of it passed, because the FULL
+   * string parses fine; only the slice was nonsense.
+   *
+   * A formatted date and a computable one are different things, so the DTO
+   * carries both rather than asking every consumer to re-derive one from the
+   * other and get the locale wrong.
+   */
+  nextDeliveryOn: string // "2026-06-18"
   status: SubscriptionStatus
   saved: number // savedTotal, rupees
 }
@@ -84,6 +100,26 @@ function fmtDate(d: Date): string {
   return `${get('day')} ${get('month')} ${get('year')}`
 }
 
+/**
+ * The local calendar day as `YYYY-MM-DD`.
+ *
+ * Not `toISOString().slice(0,10)`: that is UTC, and a delivery at 00:30 IST
+ * reads as the previous day for every Indian customer — which on a "ships in N
+ * days" counter is an off-by-one on the number the card exists to show.
+ */
+function isoDay(d: Date): string {
+  const parts = DMY_ISO.formatToParts(d)
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? ''
+  return `${get('year')}-${get('month')}-${get('day')}`
+}
+
+const DMY_ISO = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+})
+
 /** now + n days. Cadence intervals are whole days, so plain ms arithmetic is exact. */
 function addDays(from: Date, days: number): Date {
   return new Date(from.getTime() + days * 86_400_000)
@@ -98,6 +134,7 @@ function toView(s: SubRow): SubscriptionView {
     cadenceCode: s.cadence.code,
     frequency: s.cadence.label,
     nextDelivery: fmtDate(s.nextDeliveryAt),
+    nextDeliveryOn: isoDay(s.nextDeliveryAt),
     status: s.status,
     saved: s.savedTotal,
   }
@@ -218,17 +255,32 @@ function isUniqueViolation(err: unknown): boolean {
   return err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002'
 }
 
-/** Next sequential FM-order number, continuing past the current max. Mirrors
- *  checkout's generator so subscription orders share the same numbering space. */
-async function nextOrderNo(tx: Prisma.TransactionClient): Promise<string> {
+/**
+ * Next sequential order number for THIS BRAND, continuing past its current max.
+ * Mirrors checkout's generator so a renewal shares the numbering space of the
+ * orders placed beside it.
+ *
+ * The prefix is `orderPrefix(brand)`, not the literal 'FM-' this used to hard
+ * code. That literal is Femi9's, and this function runs against whichever schema
+ * `dbFor(brand)` opened — so a Lumi9 renewal was numbered FM-00001 inside the
+ * `lumi9` schema: a customer-facing number, printed on her receipt and read back
+ * to support, belonging to the other brand.
+ *
+ * It also counted the wrong sequence. The `startsWith` found no FM- rows among
+ * Lumi9's LM- orders, so renewals numbered themselves from 00001 upwards in
+ * parallel with the real orders beside them, and the same digits appeared on two
+ * different orders in one schema.
+ */
+async function nextOrderNo(tx: Prisma.TransactionClient, brand: Brand): Promise<string> {
+  const prefix = orderPrefix(brand) + '-'
   const last = await tx.order.findFirst({
-    where: { orderNo: { startsWith: 'FM-' } },
+    where: { orderNo: { startsWith: prefix } },
     orderBy: { orderNo: 'desc' },
     select: { orderNo: true },
   })
-  const lastNum = last ? Number.parseInt(last.orderNo.slice(3), 10) : 0
+  const lastNum = last ? Number.parseInt(last.orderNo.slice(prefix.length), 10) : 0
   const nextNum = (Number.isFinite(lastNum) ? lastNum : 0) + 1
-  return 'FM-' + String(nextNum).padStart(5, '0')
+  return prefix + String(nextNum).padStart(5, '0')
 }
 
 /**
@@ -322,7 +374,7 @@ async function runRenewalTxn(brand: Brand,
     const shipping = discountedSubtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
     const total = discountedSubtotal + shipping
 
-    const orderNo = await nextOrderNo(tx)
+    const orderNo = await nextOrderNo(tx, brand)
 
     await tx.order.create({
       data: {

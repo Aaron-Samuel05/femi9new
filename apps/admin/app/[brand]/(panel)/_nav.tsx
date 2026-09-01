@@ -136,6 +136,16 @@ export function NavIcon({ name }: { name: AdminModule }) {
           <path d="M12 7.5v3.5M12 11H5.5a.5.5 0 0 0-.5.5v5M12 11h6.5a.5.5 0 0 1 .5.5v5" />
         </svg>
       )
+    case 'parenting':
+      // A shield with a tick — the same glyph the storefront's vaccination card
+      // uses, so the console and the page a parent sees agree about what this
+      // section is.
+      return (
+        <svg {...props}>
+          <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      )
     case 'settings':
       return (
         <svg {...props}>

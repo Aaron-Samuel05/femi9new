@@ -4,6 +4,9 @@
  */
 
 import type { IconName } from "@/components/ui/Icon";
+// `catalog.ts` imports nothing, so this cannot cycle. `inr` is here so a rupee
+// amount in copy is formatted the one way the rest of the site formats one.
+import { inr } from "@/lib/catalog";
 
 export const BRAND = {
   tagline: "Happy day, every day - for every baby, in every home.",
@@ -174,12 +177,14 @@ export const PDP_REVIEWS = [
  * is appended to each product's own copy rather than stored per row, where five
  * sizes would mean five places to update one shipping rule.
  */
-export const PDP_POLICY_ACCORDION = [
-  {
-    q: "Shipping & returns",
-    a: "Free delivery on orders over ₹999, dispatched within 24 hours across India. Unopened packs can be returned within 30 days, no questions asked.",
-  },
-];
+export function pdpPolicyAccordion(freeShipThreshold: number) {
+  return [
+    {
+      q: "Shipping & returns",
+      a: `Free delivery on orders over ${inr(freeShipThreshold)}, dispatched within 24 hours across India. Unopened packs can be returned within 30 days, no questions asked.`,
+    },
+  ];
+}
 
 /**
  * The PDP accordion's SEED INPUT, not what the page renders.
@@ -199,7 +204,6 @@ export const PDP_ACCORDION = [
     q: "Materials & safety",
     a: "Free from lotions, fragrances, chlorine bleaching and harsh irritants. Dermatologist tested and clinically proven safe for sensitive newborn skin. A wetness indicator changes colour when it is time for a change.",
   },
-  ...PDP_POLICY_ACCORDION,
 ];
 
 export const ABOUT_STATS = [
@@ -253,48 +257,69 @@ export const FIT_TIPS = [
 export const FAQ_TOPICS = ["All", "Sizing", "Subscription", "Shipping", "Safety"] as const;
 export type FaqTopic = (typeof FAQ_TOPICS)[number];
 
-export const FAQS: { topic: Exclude<FaqTopic, "All">; q: string; a: string }[] = [
-  {
-    topic: "Sizing",
-    q: "How do I choose the right size?",
-    a: "Go by your baby’s weight, not age. NB fits up to 5kg, S 4-8kg, M 7-12kg, L 9-14kg and XL 12-17kg. If you see red marks the size is too small; gaps or sagging mean size up. Our size finder on the home page matches you in one tap.",
-  },
-  {
-    topic: "Sizing",
-    q: "My baby is between two sizes - what should I do?",
-    a: "Choose the larger size for daytime movement and the snugger one for overnight leak protection. Most parents keep both on hand during a transition week.",
-  },
-  {
-    topic: "Subscription",
-    q: "How does the subscription work?",
-    a: "Pick a size and pack, choose a delivery frequency, and we ship automatically while you save 20%. Auto size-up moves your baby to the next size when the time comes. Skip, pause or cancel anytime from your account.",
-  },
-  {
-    topic: "Subscription",
-    q: "Can I change my box before it ships?",
-    a: "Yes - edit size, pack or delivery date up to 48 hours before dispatch from the Subscription tab in your account.",
-  },
-  {
-    topic: "Shipping",
-    q: "How fast is delivery and what does it cost?",
-    a: "Standard delivery is free on orders over ₹999 and arrives in 3-5 business days across India. Express (1-2 days) is ₹79. Orders placed before 2pm ship the same day.",
-  },
-  {
-    topic: "Shipping",
-    q: "What is your returns policy?",
-    a: "Unopened packs can be returned within 30 days for a full refund, no questions asked. If a pack arrives damaged, message our care team and we’ll replace it right away.",
-  },
-  {
-    topic: "Safety",
-    q: "Are Lumi9 diapers really chemical-free?",
-    a: "They’re free from added lotions, fragrances, chlorine bleaching and common irritants. Every batch is dermatologist tested and clinically proven safe for sensitive newborn skin.",
-  },
-  {
-    topic: "Safety",
-    q: "Is the diaper biodegradable?",
-    a: "The breathable backsheet is biodegradable and the packaging is recyclable. We’re steadily increasing the share of plant-based materials in every layer.",
-  },
-];
+export type Faq = { topic: Exclude<FaqTopic, "All">; q: string; a: string };
+
+/**
+ * The site FAQ.
+ *
+ * A FUNCTION rather than a constant, because two of these answers quote numbers
+ * the console owns — the free-shipping threshold and the subscription discount —
+ * and as literals they went stale silently. `/subscription` promised 20% in the
+ * copy while the box builder beside it rendered the console's 15%.
+ *
+ * Answers that quote nothing configurable are still plain strings; only the two
+ * that make a promise interpolate.
+ */
+export function faqs({
+  freeShipThreshold,
+  subscribeSavePct,
+}: {
+  freeShipThreshold: number;
+  subscribeSavePct: number;
+}): Faq[] {
+  return [
+    {
+      topic: "Sizing",
+      q: "How do I choose the right size?",
+      a: "Go by your baby’s weight, not age. NB fits up to 5kg, S 4-8kg, M 7-12kg, L 9-14kg and XL 12-17kg. If you see red marks the size is too small; gaps or sagging mean size up. Our size finder on the home page matches you in one tap.",
+    },
+    {
+      topic: "Sizing",
+      q: "My baby is between two sizes - what should I do?",
+      a: "Choose the larger size for daytime movement and the snugger one for overnight leak protection. Most parents keep both on hand during a transition week.",
+    },
+    {
+      topic: "Subscription",
+      q: "How does the subscription work?",
+      a: `Pick a size and pack, choose a delivery frequency, and we ship automatically while you save ${subscribeSavePct}%. Auto size-up moves your baby to the next size when the time comes. Skip, pause or cancel anytime from your account.`,
+    },
+    {
+      topic: "Subscription",
+      q: "Can I change my box before it ships?",
+      a: "Yes - edit size, pack or delivery date up to 48 hours before dispatch from the Subscription tab in your account.",
+    },
+    {
+      topic: "Shipping",
+      q: "How fast is delivery and what does it cost?",
+      a: `Standard delivery is free on orders over ${inr(freeShipThreshold)} and arrives in 3-5 business days across India. Orders placed before 2pm ship the same day.`,
+    },
+    {
+      topic: "Shipping",
+      q: "What is your returns policy?",
+      a: "Unopened packs can be returned within 30 days for a full refund, no questions asked. If a pack arrives damaged, message our care team and we’ll replace it right away.",
+    },
+    {
+      topic: "Safety",
+      q: "Are Lumi9 diapers really chemical-free?",
+      a: "They’re free from added lotions, fragrances, chlorine bleaching and common irritants. Every batch is dermatologist tested and clinically proven safe for sensitive newborn skin.",
+    },
+    {
+      topic: "Safety",
+      q: "Is the diaper biodegradable?",
+      a: "The breathable backsheet is biodegradable and the packaging is recyclable. We’re steadily increasing the share of plant-based materials in every layer.",
+    },
+  ];
+}
 
 /* The journal now lives in `src/lib/journal.ts` - full articles with body,
    SEO metadata and FAQs, rather than the card-only stubs that used to sit
@@ -471,15 +496,43 @@ export const PARENT_REVIEWS = [
 ] as const;
 
 /**
- * Launch offer shown on pack cards.
+ * Launch offer shown on pack cards. **OFF, and it must stay off until a server
+ * charges it.**
  *
- * ONE source of truth: the strike-through price is derived from this rate at
- * render time, never stored alongside it. Two numbers in the data file is how a
- * catalogue ends up advertising a discount that no longer matches what the
- * server charges - and the server is the only thing that actually prices a cart.
- * Set to `null` to remove every badge and strike-through on the site at once.
+ * ── Why this is null ────────────────────────────────────────────────────────
+ * It was `{ percent: 10 }`, and nothing on the server had ever heard of it.
+ * `getCart` prices a line with `applyZonePrice(...)` and `placeOrder` prices it
+ * the same way; neither reads this module, and no console field sets it. So the
+ * home page — the site's main buying surface — led every pack card with the
+ * discounted number, struck the real price through beside it, and stamped a
+ * "10% off" badge on it, while the drawer, /shop, the PDP, the Product JSON-LD
+ * and Razorpay all used the real one.
+ *
+ *   home card:  ₹404   ~~₹449~~   10% off
+ *   charged:    ₹449
+ *
+ * Every pack, ~10% below what is taken from the card, with a badge asserting the
+ * difference is a discount. That is not a rendering bug to tidy up later; it is
+ * a price advertised and not honoured, on all five products.
+ *
+ * The comment that used to sit here said the derivation guaranteed the card
+ * "cannot drift out of step with what the server actually charges at checkout".
+ * The reasoning was sound about the STRIKE-THROUGH — that number is derived, so
+ * the two on the card agree — and it never applied to the third number, which is
+ * the only one that matters: what the gateway takes.
+ *
+ * ── Turning it back on ──────────────────────────────────────────────────────
+ * Do NOT just set a percent here. A discount has to exist where money is
+ * computed, or this comes straight back. Two mechanisms already exist and both
+ * are console-editable:
+ *
+ *   • drop `basePrice` / the variant prices in `/lumi9/products` — the storefront
+ *     and the gateway both follow within the request, no rebuild;
+ *   • or create a coupon in `/lumi9/coupons`, which `quoteCart` and `placeOrder`
+ *     already validate and claim.
+ *
+ * If a badge is genuinely wanted on top of one of those, the percentage has to
+ * ride on `CatalogPayload` from the server that applied it — the way
+ * `subscribeSavePct` does — never from this file.
  */
-export const LAUNCH_OFFER: { percent: number; label: string } | null = {
-  percent: 10,
-  label: "Launch offer",
-};
+export const LAUNCH_OFFER: { percent: number; label: string } | null = null;

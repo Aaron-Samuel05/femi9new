@@ -3,13 +3,28 @@ import type { BabySex } from "@/lib/baby-profile";
 import type { SizeCode } from "@/lib/catalog";
 import { lookupLms, Z_DISPLAY_LIMIT, zScore } from "@/lib/growth-standards";
 
+export type SizeBound = { size: SizeCode; minKg: number; maxKg: number };
+
 /**
- * Numeric bounds behind the catalog's `WEIGHT_OPTIONS` labels. The catalog
- * stores those ranges as display strings ("4-8 kg"); parsing them at runtime
- * would let a copy edit silently change the maths, so they are stated once here
- * and must be kept in step with `WEIGHT_OPTIONS`.
+ * The FALLBACK bands, and the fixture this module's tests run against.
+ *
+ * It used to be the only copy, with a header conceding it "must be kept in step
+ * with `WEIGHT_OPTIONS`" by hand. It was not: the catalogue moved into the
+ * database, an admin could rename a range in the console, and that moved the
+ * words a parent READ while these numbers went on deciding what the projector
+ * CALCULATED. Nothing anywhere reported the divergence.
+ *
+ * `Product.minWeightKg` / `maxWeightKg` are the source now, and
+ * `boundsFromCatalog()` derives this shape from them - the same relationship
+ * `scheduleFor(input, doses)` has to its dose table. These values survive as
+ * the default so every existing call site and every test keeps working, and so
+ * a catalogue that predates the migration still projects rather than going
+ * blank.
+ *
+ * Parsing the display string ("4-8 kg") was the other option and is worse: it
+ * lets a copy edit silently change the maths.
  */
-export const SIZE_BOUNDS: { size: SizeCode; minKg: number; maxKg: number }[] = [
+export const SIZE_BOUNDS: SizeBound[] = [
   { size: "NB", minKg: 0, maxKg: 5 },
   { size: "S", minKg: 4, maxKg: 8 },
   { size: "M", minKg: 7, maxKg: 12 },
@@ -17,17 +32,41 @@ export const SIZE_BOUNDS: { size: SizeCode; minKg: number; maxKg: number }[] = [
   { size: "XL", minKg: 12, maxKg: 17 },
 ];
 
+/**
+ * The catalogue's bands, in run order.
+ *
+ * A size whose row has no bounds is DROPPED rather than defaulted: guessing a
+ * band for a product nobody measured would put a baby in a nappy on the
+ * strength of a fallback. Returns `SIZE_BOUNDS` when that leaves nothing at
+ * all, so a catalogue seeded before the migration still projects.
+ */
+export function boundsFromCatalog(
+  sizes: { size: string; minWeightKg: number | null; maxWeightKg: number | null }[],
+): SizeBound[] {
+  const bounds = sizes
+    .filter((s) => s.minWeightKg !== null && s.maxWeightKg !== null)
+    .map((s) => ({
+      size: s.size as SizeCode,
+      minKg: s.minWeightKg as number,
+      maxKg: s.maxWeightKg as number,
+    }));
+  return bounds.length > 0 ? bounds : SIZE_BOUNDS;
+}
+
 /** The bands overlap by design; the first match is the smallest size that fits. */
-export function sizeForWeight(weightKg: number): SizeCode | null {
+export function sizeForWeight(
+  weightKg: number,
+  bounds: SizeBound[] = SIZE_BOUNDS,
+): SizeCode | null {
   if (!Number.isFinite(weightKg) || weightKg <= 0) return null;
-  const band = SIZE_BOUNDS.find((b) => weightKg > b.minKg && weightKg <= b.maxKg);
+  const band = bounds.find((b) => weightKg > b.minKg && weightKg <= b.maxKg);
   return band ? band.size : null;
 }
 
-export function nextSize(size: SizeCode): SizeCode | null {
-  const index = SIZE_BOUNDS.findIndex((b) => b.size === size);
-  if (index < 0 || index === SIZE_BOUNDS.length - 1) return null;
-  return SIZE_BOUNDS[index + 1].size;
+export function nextSize(size: SizeCode, bounds: SizeBound[] = SIZE_BOUNDS): SizeCode | null {
+  const index = bounds.findIndex((b) => b.size === size);
+  if (index < 0 || index === bounds.length - 1) return null;
+  return bounds[index + 1].size;
 }
 
 const HORIZON_MONTHS = 6;
@@ -43,21 +82,24 @@ const HORIZON_MONTHS = 6;
  * Capped at six months and reported as a month, never a date - precision beyond
  * that is invented.
  */
-export function projectSizeUp(input: {
-  dob: IsoDate;
-  sex: BabySex;
-  weightKg: number;
-  today: IsoDate;
-}):
+export function projectSizeUp(
+  input: {
+    dob: IsoDate;
+    sex: BabySex;
+    weightKg: number;
+    today: IsoDate;
+  },
+  bounds: SizeBound[] = SIZE_BOUNDS,
+):
   | { current: SizeCode; next: SizeCode; whenMonth: string }
   | { unavailable: "out-of-range" | "beyond-horizon" | "largest-size" } {
-  const current = sizeForWeight(input.weightKg);
+  const current = sizeForWeight(input.weightKg, bounds);
   if (!current) return { unavailable: "out-of-range" };
 
-  const upcoming = nextSize(current);
+  const upcoming = nextSize(current, bounds);
   if (!upcoming) return { unavailable: "largest-size" };
 
-  const bound = SIZE_BOUNDS.find((b) => b.size === current);
+  const bound = bounds.find((b) => b.size === current);
   if (!bound) return { unavailable: "out-of-range" };
 
   const ageNow = ageInMonths(input.dob, input.today);

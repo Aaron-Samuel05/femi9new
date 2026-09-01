@@ -44,3 +44,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Playwright run output. `npx playwright test` writes a trace, a screenshot and
+# an error-context file per failure into test-results/, and the HTML reporter
+# writes playwright-report/ - both are artefacts of a run, not project history,
+# and a failing local run would otherwise offer them up to the next `git add -A`.
+/test-results/
+/playwright-report/

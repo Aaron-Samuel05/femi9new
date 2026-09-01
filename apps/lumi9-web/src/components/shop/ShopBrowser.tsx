@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { AddButton } from "@/components/product/AddButton";
-import { inr, leadPack } from "@/lib/catalog";
+import { inr, leadPack, packDiscountPct } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 
 const SIZE_FILTERS = ["All", "NB", "S", "M", "L", "XL"] as const;
@@ -134,7 +134,17 @@ export function ShopBrowser() {
                 </div>
 
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-2">
-                  <div className="font-display text-[clamp(19px,2vw,23px)] text-midnight">{inr(pack.price)}</div>
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <div className="font-display text-[clamp(19px,2vw,23px)] text-midnight">{inr(pack.price)}</div>
+                    {packDiscountPct(pack) > 0 && (
+                      <>
+                        <s className="text-sm text-muted/70">{inr(pack.mrp)}</s>
+                        <span className="rounded-full bg-midnight px-2 py-0.5 text-[11px] font-semibold text-white">
+                          {packDiscountPct(pack)}% off
+                        </span>
+                      </>
+                    )}
+                  </div>
                   <AddButton
                     size={size.size}
                     count={pack.count}

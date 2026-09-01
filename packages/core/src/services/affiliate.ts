@@ -85,15 +85,37 @@ export interface AffiliateApplication {
 /**
  * Register (or refresh) a creator application.
  *
- * Upserts a User by email — mirroring how checkout upserts a customer by phone —
- * then upserts the Affiliate keyed to that user. Re-applying updates only the
- * application details; it deliberately leaves `status` and `promoCode` untouched
- * so an already-approved creator can never be demoted or lose their live code by
- * resubmitting the form.
+ * Upserts a User by email, then upserts the Affiliate keyed to that user.
+ * Re-applying updates only the application details; it deliberately leaves
+ * `status` and `promoCode` untouched so an already-approved creator can never be
+ * demoted or lose their live code by resubmitting the form.
+ *
+ * ── An email in a public request body is not an identity claim ──────────────
+ * This is reached UNAUTHENTICATED — `/api/affiliate/apply` takes the address
+ * straight from the form. The upsert used to carry `update: { name: input.name }`,
+ * so anyone who knew (or guessed) a shopper's address could rewrite the name on
+ * her account: the name on her orders, her delivery label and every email we
+ * send her. No sign-in, no verification, one form post.
+ *
+ * The existing-user branch now writes NOTHING to `User`. An application is a
+ * claim about a person, and the only thing it may create is the row that
+ * records the claim — an admin approving it in the console is what turns it
+ * into anything. `name` on a row that already exists belongs to whoever proved
+ * they own that address.
+ *
+ * `role: 'affiliate'` stays on the CREATE path only. It was already scoped that
+ * way and the comment below explains why; what matters is that it can no longer
+ * be applied to somebody else's existing account.
  */
 export async function apply(brand: Brand, input: AffiliateApplication): Promise<void> {
   const prisma = dbFor(brand)
-  const email = input.email.trim()
+  // Lowercased, not merely trimmed. Every sign-in path normalises through
+  // `normalizeEmail` (trim + toLowerCase), so `Priya@Gmail.com` here created a
+  // SECOND User row that no sign-in could ever reach: the creator was approved,
+  // given a live promo code, and then locked out of the dashboard that reports
+  // her earnings, because `/api/affiliate/me` looks up the session's user and
+  // finds no Affiliate on it. Her links still paid out — to a row she cannot see.
+  const email = input.email.trim().toLowerCase()
   const handle = input.handle.replace(/^@+/, '').trim()
   const platform = input.platform?.trim() || null
   const followerBand = input.followerBand?.trim() || null
@@ -101,11 +123,10 @@ export async function apply(brand: Brand, input: AffiliateApplication): Promise<
   // role 'affiliate' is intentional on create: creator accounts are a distinct
   // identity from shoppers (and are excluded from the customers admin). We never
   // change role on update, so an existing customer applying keeps their role.
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: { name: input.name },
-    create: { email, name: input.name, role: 'affiliate' },
-  })
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } })
+  const user =
+    existing ??
+    (await prisma.user.create({ data: { email, name: input.name, role: 'affiliate' } }))
 
   const affiliate = await prisma.affiliate.upsert({
     where: { userId: user.id },
@@ -228,19 +249,21 @@ export async function logClick(brand: Brand, promoCode: string): Promise<void> {
 }
 
 /**
- * Attribute an order to the creator that owns `promoCode` and record the
- * commission (10% of subtotal). Returns the affiliate id so the caller can stamp
- * `order.affiliateId`, or null when the code doesn't map to an approved creator.
+ * Resolve `promoCode` to the approved creator it belongs to, so the caller can
+ * stamp `order.affiliateId`. Null for an unknown, pending or suspended code.
  *
- * Accepts an optional transaction client so checkout can run this inside the same
- * atomic transaction that created the order — the AffiliateEvent's orderId FK
- * would otherwise reference an order not yet visible to a separate connection.
+ * ATTRIBUTION ONLY. It used to take `orderId` and `subtotal` as well and write
+ * the commission event itself — at placement, on a still-unpaid order, with no
+ * reversal anywhere. Those two parameters are gone rather than ignored, so a
+ * future caller cannot pass them and expect money to move: the payable is
+ * `bookOrderCommission`, below, called from `markOrderPaid`.
+ *
+ * Accepts an optional transaction client so checkout can resolve this inside
+ * the same atomic transaction that creates the order.
  */
 export async function attributeOrder(
   brand: Brand,
   promoCode: string,
-  orderId: string,
-  subtotal: number,
   db: Db = dbFor(brand),
 ): Promise<string | null> {
   const code = normalizeCode(promoCode)
@@ -249,10 +272,93 @@ export async function attributeOrder(
     select: { id: true, status: true },
   })
   if (!affiliate || affiliate.status !== 'approved') return null
-
-  const commission = Math.round(subtotal * COMMISSION_RATE)
-  await db.affiliateEvent.create({
-    data: { affiliateId: affiliate.id, type: 'order', orderId, amount: subtotal, commission },
-  })
   return affiliate.id
+}
+
+/**
+ * Book the creator's commission for an order that has just been PAID.
+ *
+ * ── Why this is not done at placement ───────────────────────────────────────
+ * `attributeOrder` used to create the `AffiliateEvent` itself, inside
+ * `placeOrder`'s transaction — on an order written `status: 'pending'`, before
+ * the gateway had been opened, let alone captured. Nothing ever reversed it:
+ * `reconcilePendingOrders` cancels an abandoned order and restores its stock,
+ * coupon and payment without touching the event; `refundOrder` reverses points,
+ * stock, coupon and both Thara ledgers and not this; and `placeOrder`'s
+ * gateway-failure path DELETES the order, while the FK is `onDelete: SetNull`,
+ * so the payable outlived the order entirely.
+ *
+ * Every earnings read is an unfiltered `sum(commission)` with no join to the
+ * order's status, and the console prints that number in the column an operator
+ * pays out from. So a creator accrued 10% of every basket that merely reached
+ * the order table — including every shopper who opened the payment window and
+ * closed it again.
+ *
+ * The file's own loyalty comment, two lines above the old call site, already
+ * stated the rule this now follows: points "are NOT awarded here. The order is
+ * only 'pending' at this point; the Bloom points award now lives in
+ * markOrderPaid so it's granted exactly once, when (and only when) the order
+ * actually becomes 'paid'." Commission is the same kind of promise and now
+ * lives in the same place.
+ *
+ * Idempotent on `(orderId, type)`. `markOrderPaid` already claims the
+ * pending→paid transition with a compare-and-set so only one transaction runs
+ * these side effects, but this also has to be safe for an order PLACED before
+ * this change (which already carries a placement-time event) and paid after it.
+ */
+export async function bookOrderCommission(brand: Brand, db: Db, orderId: string): Promise<void> {
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: { affiliateId: true, subtotal: true },
+  })
+  if (!order?.affiliateId) return
+
+  const existing = await db.affiliateEvent.findFirst({
+    where: { orderId, type: 'order' },
+    select: { id: true },
+  })
+  if (existing) return
+
+  const commission = Math.round(order.subtotal * COMMISSION_RATE)
+  await db.affiliateEvent.create({
+    data: {
+      affiliateId: order.affiliateId,
+      type: 'order',
+      orderId,
+      amount: order.subtotal,
+      commission,
+    },
+  })
+}
+
+/**
+ * Reverse a booked commission when the order is refunded.
+ *
+ * A mirror-signed row rather than a delete, so the ledger still shows what
+ * happened — the same shape `reverseTharaPointsForRefund` uses. The earnings
+ * aggregates sum `commission`, so a negative row nets the payable back to zero
+ * without any read having to learn about order statuses.
+ */
+export async function reverseOrderCommission(db: Db, orderId: string): Promise<void> {
+  const booked = await db.affiliateEvent.findFirst({
+    where: { orderId, type: 'order' },
+    select: { affiliateId: true, amount: true, commission: true },
+  })
+  if (!booked || booked.commission <= 0) return
+
+  const alreadyReversed = await db.affiliateEvent.findFirst({
+    where: { orderId, type: 'order', commission: { lt: 0 } },
+    select: { id: true },
+  })
+  if (alreadyReversed) return
+
+  await db.affiliateEvent.create({
+    data: {
+      affiliateId: booked.affiliateId,
+      type: 'order',
+      orderId,
+      amount: -booked.amount,
+      commission: -booked.commission,
+    },
+  })
 }

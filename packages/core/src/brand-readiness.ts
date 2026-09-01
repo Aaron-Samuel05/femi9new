@@ -1,8 +1,9 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
-import { mailConfigured } from './mail-identity'
+import { mailConfigured, mailProviderFor } from './mail-identity'
 import { paymentsConfigured, webhookConfiguredFor } from './payment-identity'
 import { configuredEnv } from './runtime-mode'
+import { whatsappConfigured } from './whatsapp'
 
 /**
  * Is this brand configured well enough to serve traffic?
@@ -73,7 +74,32 @@ export async function brandReadiness(brand: Brand): Promise<BrandReadiness> {
 
     // Sign-in is by emailed link, so no mail means no new sessions — but
     // browsing, and every already-signed-in shopper, is unaffected.
-    if (!mailConfigured(brand)) warnings.push(`RESEND_API_KEY_${upper} / EMAIL_FROM_${upper}`)
+    //
+    // The warning names what is actually missing for THIS brand's provider.
+    // "RESEND_API_KEY_LUMI9" sent whoever read it looking for a key Lumi9 does
+    // not have and does not need: it sends through SES, where the credential is
+    // the task role and the only thing an environment can get wrong is the
+    // From address.
+    if (!mailConfigured(brand)) {
+      const provider = mailProviderFor(brand)
+      warnings.push(
+        provider === 'ses'
+          ? `EMAIL_FROM_${upper} (SES)`
+          : provider === 'resend'
+            ? `RESEND_API_KEY_${upper} / EMAIL_FROM_${upper}`
+            : `MAIL_PROVIDER_${upper} (no provider chosen, and no RESEND_API_KEY to infer one from)`,
+      )
+    }
+
+    // Phone OTP is delivered ONLY over WhatsApp, and it is the primary sign-in
+    // for both storefronts. Still a warning rather than blocking, on the same
+    // reasoning as mail: the emailed link is a second way in, and taking the
+    // task out of the load balancer would turn a lost sign-in method into a
+    // full outage. It also silences the order confirmations that are the only
+    // thing a phone-only customer hears after paying.
+    if (!whatsappConfigured(brand)) {
+      warnings.push(`WHATSAPP_TOKEN_${upper} / WHATSAPP_PHONE_NUMBER_ID_${upper}`)
+    }
 
     // Without this, the four `/api/cron/*` routes refuse every caller and no
     // scheduled job runs: subscriptions ship one box and then nothing, and an

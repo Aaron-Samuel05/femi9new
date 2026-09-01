@@ -26,7 +26,21 @@ export interface Variant {
   label: string
   packCount: number | null
   size: string | null
+  /** What the cart charges. */
   price: number
+  /**
+   * What it costs without the discount — the number struck through.
+   *
+   * Always present and never below `price`: a row with no stored mrp (written
+   * before the column existed) reports its price, so `mrp === price` means
+   * "no discount" and there is no third state for a caller to get wrong.
+   *
+   * The DISCOUNT PERCENTAGE is deliberately not carried. A badge computed from
+   * these two numbers is a badge that cannot contradict them; one carried
+   * separately is a third number that can, which is exactly how the storefront
+   * came to advertise 10% off while the gateway charged full price.
+   */
+  mrp: number
   stock: number
 }
 
@@ -74,6 +88,28 @@ export interface CatalogEntry {
   basePrice: number
   meta: string
   flow: string
+  /**
+   * The weight band this size fits, in kg — Lumi9's diapers only.
+   *
+   * `specs` already carries "7-12 kg" for a size chip to print, and Lumi9's
+   * size-up projector carried its own numeric copy of the same bands, with a
+   * comment conceding the two "must be kept in step" by hand. They were not:
+   * renaming a range in the console moved what a parent READ and never what the
+   * projector CALCULATED. Null on a Femi9 pad, which has no such band.
+   */
+  minWeightKg: number | null
+  maxWeightKg: number | null
+  /**
+   * The product's own rating and review tally, as maintained from moderated
+   * `Review` rows.
+   *
+   * Carried on the catalogue because Lumi9's product page printed a hardcoded
+   * "4.9 · 482 verified reviews" on all five sizes — a fabricated number beside
+   * a real, moderated review rail, on a page that also sells the product. These
+   * are the honest values; `reviewCount: 0` means say nothing.
+   */
+  rating: number
+  reviewCount: number
   description: string
   longDescription: string | null
   images: { url: string; alt: string | null }[]
@@ -119,6 +155,10 @@ export async function getCatalog(brand: Brand): Promise<CatalogEntry[]> {
     basePrice: applyZonePrice(row.basePrice, zone, { productId: row.id }),
     meta: row.meta,
     flow: row.flow,
+    minWeightKg: row.minWeightKg,
+    maxWeightKg: row.maxWeightKg,
+    rating: row.rating,
+    reviewCount: row.reviewCount,
     description: row.description,
     longDescription: row.longDescription,
     images: row.images.map((i) => ({ url: i.url, alt: i.alt })),
@@ -131,6 +171,11 @@ export async function getCatalog(brand: Brand): Promise<CatalogEntry[]> {
       packCount: v.packCount,
       size: v.size,
       price: applyZonePrice(v.price, zone, { variantId: v.id }),
+      // Through the SAME zone resolution as the price. A zone that overrides a
+      // variant's price outright resolves both to that number, so mrp === price
+      // and no discount is advertised — which is right: an explicit zone price
+      // is a price, not a sale.
+      mrp: applyZonePrice(v.mrp ?? v.price, zone, { variantId: v.id }),
       stock: v.stock,
     })),
   }))
@@ -259,6 +304,8 @@ function toProduct(row: Row, zone: ResolvedZone | null): ProductWithVariants {
       packCount: v.packCount,
       size: v.size,
       price: zonedVariant(v.price, v.id),
+      // Same zone resolution as the price — see the note on Variant.mrp.
+      mrp: zonedVariant(v.mrp ?? v.price, v.id),
       stock: v.stock,
     })),
   }

@@ -5,7 +5,7 @@ import { BabyProfileCard } from "@/components/tools/BabyProfileCard";
 import { ParentingDashboard } from "@/components/tools/ParentingDashboard";
 import { ToolCard, type ToolIcon } from "@/components/tools/ToolCard";
 import { Reveal } from "@/components/motion/Reveal";
-import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, breadcrumbSchema, canonical, jsonLd, og } from "@/lib/seo";
 
 const TITLE = "Parenting Tools | Diaper Planner, Growth & Vaccination Chart | Lumi9";
 const DESCRIPTION =
@@ -22,13 +22,7 @@ export const metadata: Metadata = {
     "baby vaccination schedule india",
   ],
   alternates: canonical("/parenting-tools"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/parenting-tools"),
-    siteName: SITE_NAME,
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/parenting-tools"), title: TITLE, description: DESCRIPTION }),
 };
 
 const TOOLS: { href: string; title: string; blurb: string; icon: ToolIcon }[] = [

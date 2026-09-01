@@ -5,7 +5,8 @@ import { ContactForm } from "@/components/contact/ContactForm";
 import { Em } from "@/components/ui/bits";
 import { Icon, type IconName } from "@/components/ui/Icon";
 import { BRAND } from "@/lib/content";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
+import { storefrontNumbers } from "@/lib/settings.server";
 
 const TITLE = "Contact Lumi9 | Baby Diaper Support";
 const DESCRIPTION =
@@ -15,17 +16,29 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/contact"),
-  openGraph: { type: "website", url: absoluteUrl("/contact"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/contact"), title: TITLE, description: DESCRIPTION }),
 };
 
-const CHANNELS: { icon: IconName; label: string; value: string; href?: string }[] = [
+/**
+ * The support channels.
+ *
+ * A function of the WhatsApp number rather than a constant, because
+ * `Settings.whatsappNumber` is a field the console offers and this page was the
+ * only surface that could have used it. The number was written here as a
+ * literal instead, so an ops team changing it in the console changed nothing a
+ * customer could dial - a control that looks live and moves nothing.
+ */
+const channels = (whatsappNumber: string): { icon: IconName; label: string; value: string; href?: string }[] => [
   { icon: "mail", label: "Email", value: BRAND.email, href: `mailto:${BRAND.email}` },
   { icon: "phone", label: "Phone", value: BRAND.phone, href: `tel:${BRAND.phone.replace(/\s/g, "")}` },
-  { icon: "chat", label: "WhatsApp", value: BRAND.whatsapp, href: "https://wa.me/919042916499" },
+  { icon: "chat", label: "WhatsApp", value: BRAND.whatsapp, href: `https://wa.me/${whatsappNumber}` },
   { icon: "pin", label: "Head office", value: BRAND.fullAddress },
 ];
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { whatsappNumber } = await storefrontNumbers();
+  const CHANNELS = channels(whatsappNumber);
+
   return (
     <PageShell links={NAV_LINKS}>
       <section className="page-wrap grid grid-cols-1 items-start gap-block pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">

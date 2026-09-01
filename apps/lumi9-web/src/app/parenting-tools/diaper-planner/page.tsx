@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageFrame } from "@/components/tools/ToolPageFrame";
 import { DiaperPlanner } from "@/components/tools/DiaperPlanner";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "How Many Diapers Will You Need? Planner & Cost | Lumi9";
 const DESCRIPTION =
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/parenting-tools/diaper-planner"),
-  openGraph: { type: "website", url: absoluteUrl("/parenting-tools/diaper-planner"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/parenting-tools/diaper-planner"), title: TITLE, description: DESCRIPTION }),
 };
 
 export default function DiaperPlannerPage() {

@@ -197,12 +197,12 @@ export function WelcomeFlow({
         </h1>
         <p className="m-0 mb-7 text-[clamp(14px,1.35vw,16px)] leading-[1.6] text-muted">
           {step === "code"
-            ? `We sent a ${CODE_LENGTH}-digit code to +91 ${phone}. It keeps your delivery updates going to the right handset.`
+            ? `We sent a ${CODE_LENGTH}-digit code on WhatsApp to +91 ${phone}. It keeps your delivery updates going to the right handset.`
             : "We just need a couple of details so we know who to greet and where to send the box."}
         </p>
 
         {step === "details" ? (
-          <form className="flex flex-col gap-4" onSubmit={submitDetails}>
+          <form method="post" className="flex flex-col gap-4" onSubmit={submitDetails}>
             {needName && (
               <Field label="Full name" error={fieldError("name")}>
                 <input
@@ -273,7 +273,7 @@ export function WelcomeFlow({
             </button>
           </form>
         ) : (
-          <form className="flex flex-col gap-4" onSubmit={submitCode}>
+          <form method="post" className="flex flex-col gap-4" onSubmit={submitCode}>
             <input
               ref={codeRef}
               type="text"

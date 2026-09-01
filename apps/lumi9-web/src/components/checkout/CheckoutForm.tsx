@@ -77,7 +77,7 @@ export function CheckoutForm({
   prefill?: CheckoutPrefill;
 }) {
   const router = useRouter();
-  const { lines, subtotal, ready } = useCart();
+  const { lines, subtotal, ready, markConsumed } = useCart();
   // The same quote the cart showed, from the same provider - including any
   // coupon the shopper applied there. Nothing on this screen computes a total.
   const { quote } = useQuote();
@@ -184,7 +184,14 @@ export function CheckoutForm({
       }
 
       const { orderNo, token, payment } = body;
-      const done = () => router.push(`/confirmation?order=${orderNo}&t=${token}`);
+      const done = () => {
+        // The order exists, so the server-side cart is already deleted — see
+        // `markConsumed`. Without this the bag badge and the drawer kept
+        // listing the items she had just paid for, all the way to the next hard
+        // reload, which reads as "the order did not go through".
+        markConsumed();
+        router.push(`/confirmation?order=${orderNo}&t=${token}`);
+      };
 
       // No live keys → no gateway to open. Simulate the capture and be honest
       // on screen that it is a test.
@@ -248,6 +255,7 @@ export function CheckoutForm({
 
   return (
     <form
+      method="post"
       onSubmit={onSubmit}
       className="page-wrap grid grid-cols-1 items-start gap-block py-[clamp(28px,4vw,48px)] lg:grid-cols-[1fr_minmax(320px,400px)]"
     >

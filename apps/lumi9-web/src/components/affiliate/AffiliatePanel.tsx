@@ -209,6 +209,7 @@ export function AffiliatePanel() {
 
   return (
     <form
+      method="post"
       onSubmit={onSubmit}
       data-testid="affiliate-form"
       className="rounded-media border border-moss-tint bg-canvas p-card-lg shadow-hero"

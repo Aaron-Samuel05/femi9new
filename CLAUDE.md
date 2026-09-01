@@ -10,9 +10,10 @@ apps/
                 Next 15.5 · hand-written CSS · Prisma/Postgres · LIVE.
                 Has its own CLAUDE.md — read it before touching this app.
   lumi9-web/    Lumi9 storefront. Next 16.3 · Tailwind v4. Has its own CLAUDE.md.
-                Catalogue, cart, checkout, account, JOURNAL and REVIEWS all run
-                on the shared backend — src/lib/journal.ts and the review arrays
-                in src/lib/content.ts are SEED INPUT now, not what a page reads.
+                Catalogue, cart, checkout, account, JOURNAL, REVIEWS and the
+                PARENTING TOOLS all run on the shared backend — src/lib/journal.ts,
+                src/lib/immunisation-schedule.data.ts and the review arrays in
+                src/lib/content.ts are SEED INPUT now, not what a page reads.
                 Marketing chrome (hero stats, USPs, the layer diagram, the site
                 FAQ, legal copy) is still modules: no table models it and no
                 console page owns it.
@@ -21,6 +22,9 @@ apps/
   admin/        ONE console, both brands. :3002. Has its own CLAUDE.md.
                 Brand comes from the SESSION, never the URL segment.
                 Holds ALL the ops pages and APIs — femi9-web has none.
+                ⚠️ Lumi9's module list is NOT a subset of Femi9's any more:
+                `parenting` is Lumi9-only, because Femi9 has no such storefront
+                page. Modules diverge in BOTH directions now.
 packages/
   db/           @femi9/db — the shared Prisma schema and `dbFor(brand)`.
                 One schema, one client per brand. Seeds are NOT here: seed data
@@ -153,6 +157,64 @@ Every build prints a deprecation warning until that decision is revisited.
 **`apps/femi9-web/.github/workflows/deploy.yml` is inert.** GitHub only runs
 workflows from `<repo>/.github/workflows`. It has never executed. The two that
 DO run are `ci.yml` and `deploy-staging.yml` at this root.
+
+**Phone sign-in is delivered over WhatsApp, and NOTHING falls back to SMS.**
+`requestOtp` posts an approved Cloud API template (`signup_otp` for a number
+with no account, `login_otp` for one that has) and throws when Meta will not
+take it, so the route answers 503 rather than leaving a shopper on a code screen
+with no code coming. `sendSms` still exists in `packages/core/src/otp.ts` — it
+is the reward-code path (`sendTextSms`) and nothing else. Anything asking
+`smsConfigured()` in order to decide whether phone sign-in is available is
+asking the wrong question; ask `whatsappConfigured(brand)`.
+
+**There are FIVE approved WhatsApp templates and no sixth.** Meta accepts
+nothing but a pre-approved template outside a 24-hour service window, and a name
+that does not exist on the WABA fails with a 132001 that reads exactly like an
+outage. `packages/core/src/whatsapp.ts` lists them with their ids; the copy is
+fixed and only the variables change. That is why **dispatch is still email-only**
+— there is no `shipped` template, and the delivered one says the order "has
+been" completed. A new message means getting a new template approved first.
+
+Two things about sending one are easy to get wrong. A body parameter containing
+a **newline** (or a tab, or four spaces) fails the whole message — `templateParam`
+collapses whitespace for that reason, and it is why the order line-item list goes
+out semicolon-separated rather than laid out like the email. And the **language
+code must match what the template was approved under**: a wrong `en` / `en_US`
+fails identically to a missing template.
+
+**A phone-only account gets no email and never has.** `order.user.email` is null
+for every OTP signup, so `sendOrderStatusEmail` returns without sending and the
+customer heard nothing after paying. `order-whatsapp.ts` is what reaches her —
+which is why it falls back to the SHIPPING ADDRESS phone where `order-mail.ts`
+deliberately refuses to fall back to the shipping address. Both are keyed on
+`NotificationLog.dedupeKey`, because the webhook, the verify call and the
+reconcile cron all race to mark one order paid.
+
+**One mail transport, two providers, chosen PER BRAND.**
+`packages/core/src/mailer.ts` is the only place a transactional email leaves the
+platform — `otp.ts`, `services/notifications.ts` and `thara/invite.ts` all go
+through it. Lumi9 sends through **Amazon SES** (`no-reply@lumi9.in`, identity and
+IAM in `infra/terraform/ses.tf`); Femi9 is live on **Resend** and stays there.
+
+`MAIL_PROVIDER_<BRAND>` is STATED, never inferred, and that is load-bearing: the
+Lumi9 task carries the shared `RESEND_API_KEY` (Femi9's account), so "use
+whichever credential is present" sends Lumi9's sign-in links through Femi9's
+Resend account from a domain it has not verified. `mail-identity.ts` is the only
+module that decides this.
+
+SES has **no API key** — the task role is the credential, and the policy pins
+`ses:FromAddress`, so an `EMAIL_FROM` that Terraform does not know about fails
+with `AccessDenied` rather than sending as something unauthorised. Two failures
+live outside the code: an identity whose DKIM records are not in DNS rejects
+every send, and an account still in the **SES sandbox** refuses every recipient
+it has not individually verified. Neither is visible from the app.
+
+**A send is not a delivery.** SES reports bounces and complaints through SNS, not
+a signed webhook: `/api/webhooks/ses` verifies the SNS signature, the signing
+certificate's host AND the topic ARN (a valid AWS signature only proves AWS sent
+it, not that it is ours), then writes the outcome onto the `NotificationLog` row.
+Suppression is left to SES's own account-level list — a second list here that
+disagreed with it would be worse than none.
 
 **`npm test` in femi9-web truncates every table.** Never run it against a `.env`
 pointing at staging or production. Both suites are safe against local scratch
