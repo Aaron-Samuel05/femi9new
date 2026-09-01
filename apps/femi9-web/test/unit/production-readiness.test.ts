@@ -110,6 +110,12 @@ describe('production readiness', () => {
       // pull a task out of the load balancer.
       'MSG91_AUTH_KEY',
       'MSG91_TEMPLATE_ID',
+      // Nor may WhatsApp, however much it costs to lose. The token is set out
+      // of band AFTER the apply that creates its secret, so blocking on it made
+      // the first deploy of a stack impossible to complete: the task would fail
+      // its health check, stall the rollout and roll back with no stated cause.
+      'WHATSAPP_TOKEN',
+      'WHATSAPP_PHONE_NUMBER_ID',
     ]) {
       delete process.env[key]
     }
@@ -121,6 +127,7 @@ describe('production readiness', () => {
         'GOOGLE_CLIENT_ID',
         'CRON_SECRET',
         'MSG91_AUTH_KEY',
+        'WHATSAPP_TOKEN',
       ]),
     )
   })
