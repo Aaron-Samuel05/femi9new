@@ -18,6 +18,7 @@ import { Scallop, WaveEdge } from "@/components/ui/Scallop";
 import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { loadCatalog } from "@/lib/catalog.server";
+import { MASCOT_URL } from "@/lib/mascot";
 import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
 
 const HOME_TITLE = "Baby Diapers & Baby Diaper Pants Online | Lumi9 by Femi9";
@@ -111,10 +112,12 @@ export default async function HomePage() {
   const { sizes } = await loadCatalog();
   return (
     <>
-      {/* The hero mascot is above the fold, but useGLTF can only request it after
-          the bundle loads and hydrates - about a second of dead time. Preloading
-          starts the model and its decoder while the JS is still downloading. */}
-      <link rel="preload" href="/assets/mascot-v2.glb" as="fetch" crossOrigin="anonymous" />
+      {/* useGLTF can only request the model after the bundle loads and hydrates -
+          about a second of dead time. Preloading starts it and its decoder while
+          the JS is still downloading. The URL comes from the shared constant, not
+          a literal: it carries a cache-busting version suffix, and a preload
+          pointing at the previous one warms the wrong bytes. */}
+      <link rel="preload" href={MASCOT_URL} as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossOrigin="anonymous" />
       <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossOrigin="anonymous" />
 

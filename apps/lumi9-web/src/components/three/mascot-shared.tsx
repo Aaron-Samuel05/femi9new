@@ -3,22 +3,15 @@
 import { useEffect, useMemo, type RefObject } from "react";
 import { Box3, Vector3, type Group } from "three";
 import { useGLTF } from "@react-three/drei";
+import { MASCOT_URL, DRACO_DECODER_PATH } from "@/lib/mascot";
 
 /**
- * Versioned filename on purpose. `/assets/:path*` is served
- * `max-age=31536000, immutable` (next.config.ts), so a browser that has fetched
- * this URL once will NOT revalidate it for a year — re-saving the model under
- * the same name leaves earlier visitors on the old bytes indefinitely. That is
- * what kept the footer mascot rendering as an untextured pale figure long after
- * the textures were fixed. Bump the suffix whenever the GLB changes.
+ * The model URL and decoder path live in `@/lib/mascot` - a plain module - so the
+ * home page's server-rendered `<link rel="preload">` can import the same string
+ * this canvas loads. Re-exported here because that is where the three components
+ * already reach for them.
  */
-export const MASCOT_URL = "/assets/mascot-v2.glb";
-
-/**
- * Draco-compressed geometry, decoded by a self-hosted decoder (no CDN request).
- * Draco halves the transfer size versus meshopt at identical triangle counts.
- */
-export const DRACO_DECODER_PATH = "/draco/";
+export { MASCOT_URL, DRACO_DECODER_PATH } from "@/lib/mascot";
 
 /**
  * Half-extents of the scaled model, expressed as what the camera actually has to

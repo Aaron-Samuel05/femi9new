@@ -592,8 +592,8 @@ export function Moments() {
         is what makes the middle card read as the one being watched rather than
         as the first of a row. The section is already the full width of the body,
         so this needs no 100vw trick; `body { overflow-x: hidden }` and
-        `scrollbar-gutter: stable both-edges` in globals.css make one wrong
-        anyway.
+        `scrollbar-gutter: stable` in globals.css make one wrong anyway - 100vw
+        counts the scrollbar the gutter has reserved, so it overflows by ~15px.
 
         The geometry lives in three custom properties so there is ONE place to
         change it. Phone values are the base: at the desktop clamps a 390px
