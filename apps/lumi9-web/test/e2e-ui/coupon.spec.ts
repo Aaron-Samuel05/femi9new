@@ -6,6 +6,8 @@ import {
   femi9LinksOn,
   installDialogGuard,
   quote,
+  signUpViaApi,
+  uniqueEmail,
 } from "./helpers";
 
 /**
@@ -62,7 +64,17 @@ test.describe("the cart's promo box", () => {
 
   test("the discount the cart showed is the one checkout carries", async ({ page, clientIp }) => {
     await installDialogGuard(page);
+
+    // Build the basket as a GUEST, then sign in — the order a real shopper
+    // arrives in, and the one that exercises `mergeGuestCartIntoUser`. Lumi9
+    // requires a session at checkout (`/checkout` redirects a guest to
+    // /login?next=/checkout), so a signed-out navigation never reaches the
+    // summary this test is about.
     await addFirstPackToCart(page);
+    await signUpViaApi(page, clientIp, {
+      name: "Meera Iyer",
+      email: uniqueEmail("coupon-checkout"),
+    });
 
     await page.goto("/cart");
     await page.getByLabel("Promo code").fill(LUMI9_COUPON);
@@ -73,6 +85,7 @@ test.describe("the cart's promo box", () => {
     // point of `useQuote`. The code must be named on the discount line, or the
     // shopper cannot tell the coupon survived the navigation.
     await page.goto("/checkout");
+    await expect(page).toHaveURL(/\/checkout$/);
     await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
 
     const priced = await quote(page, clientIp, LUMI9_COUPON);
