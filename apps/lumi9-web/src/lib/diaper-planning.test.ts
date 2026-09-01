@@ -35,11 +35,17 @@ describe("planDiapers", () => {
   it("reports how long one pack lasts", () => {
     expect(planDiapers({ product: product("M"), perDay: 6 })!.packLastsDays).toBe(9); // 54 / 6
   });
-  it("costs a month at launch pricing", () => {
+  it("costs a month at the price the server charges", () => {
     const plan = planDiapers({ product: product("NB"), perDay: 10 })!;
-    // 10/day -> 305/month -> 54-packs -> 6 packs at 749 less 10% = 674
+    // 10/day -> 305/month -> 54-packs -> 6 packs at the pack's own price.
+    //
+    // This used to assert `6 * 674` - the pack price less a hardcoded 10%
+    // "launch offer" that no server ever applied. So the one page whose whole
+    // job is answering "what will this cost me a month" answered 10% low, and
+    // this test held the wrong answer in place. The offer is off (see
+    // LAUNCH_OFFER in content.ts); the cost is the price.
     expect(plan.packsPerMonth).toBe(6);
-    expect(plan.monthlyCost).toBe(6 * 674);
+    expect(plan.monthlyCost).toBe(6 * plan.pack.price);
     expect(Number.isInteger(plan.monthlyCost)).toBe(true);
   });
   it("falls back to the smallest pack when even that overshoots a month", () => {
@@ -63,8 +69,8 @@ describe("planDiapers", () => {
     // The whole point of the signature change: swap the packs, the cost moves.
     const plan = planDiapers({ product: { packs: [{ count: 30, price: 1000 }] }, perDay: 1 })!;
     expect(plan.pack.price).toBe(1000);
-    // 1/day -> ceil(30.44) = 31 a month -> two 30-packs at 1000 less 10% = 900.
+    // 1/day -> ceil(30.44) = 31 a month -> two 30-packs at 1000 each.
     expect(plan.packsPerMonth).toBe(2);
-    expect(plan.monthlyCost).toBe(1800);
+    expect(plan.monthlyCost).toBe(2000);
   });
 });

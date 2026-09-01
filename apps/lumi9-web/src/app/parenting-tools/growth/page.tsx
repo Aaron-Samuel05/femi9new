@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageFrame } from "@/components/tools/ToolPageFrame";
 import { GrowthPercentile } from "@/components/tools/GrowthPercentile";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Baby Growth Percentile Calculator (WHO) | Lumi9";
 const DESCRIPTION =
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/parenting-tools/growth"),
-  openGraph: { type: "website", url: absoluteUrl("/parenting-tools/growth"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/parenting-tools/growth"), title: TITLE, description: DESCRIPTION }),
 };
 
 export default function GrowthPage() {

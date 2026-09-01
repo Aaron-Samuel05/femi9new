@@ -4,13 +4,18 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ageInDays, ageInMonths, formatMonthYear } from "@/lib/baby-age";
 import { useBabyProfile } from "@/lib/baby-profile";
+import { useVaccinations } from "@/lib/baby-vaccinations";
 import { useCatalogData } from "@/lib/catalog-context";
 import { defaultPerDay, planDiapers } from "@/lib/diaper-planning";
 import { scheduleFor } from "@/lib/immunisation-schedule";
+import { useParenting } from "@/lib/parenting-context";
 import { sizeForWeight } from "@/lib/size-projection";
 import { useSession } from "@/lib/auth-context";
 
-type ActiveSub = { status: string; nextDelivery?: string };
+// `nextDeliveryOn` is the ISO day; `nextDelivery` is the formatted string the
+// card prints. Both come from SubscriptionView — see the note there for why the
+// display one must never be used for arithmetic.
+type ActiveSub = { status: string; nextDelivery?: string; nextDeliveryOn?: string };
 
 /**
  * The "at a glance" panel. Everything here is derived from the on-device baby
@@ -22,8 +27,11 @@ export function ParentingDashboard() {
   // `@/lib/catalog` are the seed's input - the provider derives the same two
   // from the live rows, so a size or weight range edited in the console lands
   // here instead of only in the next deploy.
-  const { getSizeOrDefault, weightOptions } = useCatalogData();
+  const { getSizeOrDefault, weightOptions, sizeBounds } = useCatalogData();
   const profile = useBabyProfile();
+  // The published schedule and this parent's ticks, both from the backend.
+  const { schedule: doses } = useParenting();
+  const records = useVaccinations();
   const { user } = useSession();
   // Tagged with the shopper it was fetched for, so signing out - or switching
   // accounts - falls back to null in render rather than needing the effect to
@@ -53,16 +61,33 @@ export function ParentingDashboard() {
 
   const today = new Date().toISOString().slice(0, 10);
 
-  // ── Vaccinations ──
-  const schedule = scheduleFor({ dob: profile.dob, today, track: "UIP" });
-  const done = schedule.filter((d) => d.status === "past").length;
-  const dueNow = schedule.filter((d) => d.status === "due");
-  const upNext = schedule.filter((d) => d.status === "upcoming").slice(0, 3);
+  /*
+   * ── Vaccinations ──
+   *
+   * "Done" is what the PARENT ticked, not what the calendar passed.
+   *
+   * It used to count doses whose due date had gone by, which says nothing about
+   * whether the baby was actually taken — a six-week-old with no vaccinations at
+   * all read as fully up to date the day after their six-week appointment, and
+   * there was no control anywhere to say otherwise. A record is the only thing
+   * that knows.
+   *
+   * "Due now" is the calendar's answer MINUS what is already ticked, so a dose
+   * given early stops nagging; "upcoming" is everything else, which keeps the
+   * three numbers adding up to the schedule's length however they are reached.
+   */
+  const schedule = scheduleFor({ dob: profile.dob, today, track: "UIP" }, doses);
+  const isDone = (id: string) => records[id]?.status === "given";
+  const done = schedule.filter((d) => isDone(d.id)).length;
+  const dueNow = schedule.filter((d) => !isDone(d.id) && d.status === "due");
+  const upNext = schedule.filter((d) => !isDone(d.id) && d.status === "upcoming").slice(0, 3);
 
   // ── Diapers / restock ──
   const ageMonths = ageInMonths(profile.dob, today);
   const perDay = defaultPerDay(ageMonths);
-  const sizeCode = (profile.weightKg && sizeForWeight(profile.weightKg)) || null;
+  // Bands from the CATALOGUE, so a weight range edited in the console moves the
+  // size this card names. `sizeForWeight`'s own SIZE_BOUNDS is the fallback.
+  const sizeCode = (profile.weightKg && sizeForWeight(profile.weightKg, sizeBounds)) || null;
   const size = getSizeOrDefault(sizeCode);
   const sizeLabel = weightOptions.find((w) => w.size === size.size)?.label;
   // `size` is already the catalogue's row, so pass it straight in - the planner
@@ -70,9 +95,13 @@ export function ParentingDashboard() {
   const plan = planDiapers({ product: size, perDay });
 
   // ── Subscription ──
+  // `nextDeliveryOn`, not `nextDelivery`. The latter is the DISPLAY string
+  // ("18 Jun 2026"), and `.slice(0, 10)` made it "18 Jun 20" — which
+  // `ageInDays` could not read, so every subscriber was told their next box
+  // "ships in about 0 days", every day, forever.
   const subDays =
-    sub?.nextDelivery && !Number.isNaN(Date.parse(sub.nextDelivery))
-      ? ageInDays(today, sub.nextDelivery.slice(0, 10))
+    sub?.nextDeliveryOn && !Number.isNaN(Date.parse(sub.nextDeliveryOn))
+      ? ageInDays(today, sub.nextDeliveryOn)
       : null;
 
   return (
@@ -112,6 +141,13 @@ export function ParentingDashboard() {
             <p className="mt-4 text-sm text-muted">
               Next up: <b className="text-midnight">{upNext[0].vaccine}</b> ({upNext[0].dose}) around{" "}
               {formatMonthYear(upNext[0].dueOn)}.
+            </p>
+          ) : schedule.length === 0 ? (
+            /* No schedule at all is NOT "all caught up". An unseeded `lumi9`
+               schema would otherwise congratulate a parent on a list that does
+               not exist - the one wrong answer this card must never give. */
+            <p className="mt-4 text-sm text-muted">
+              The vaccination schedule isn&apos;t available yet.
             </p>
           ) : (
             <p className="mt-4 text-sm text-muted">All caught up for now - nothing due.</p>
