@@ -13,9 +13,13 @@
  *   LUMI9CREATOR affiliate, lumi9 schema → must log a click on /a/LUMI9CREATOR
  *   FEMI9CREATOR affiliate, femi9 schema → must log NOTHING on Lumi9
  *
- * Calls the same services the console's routes call, rather than the console's
- * HTTP API — one less hop, and no cross-app dependency in a storefront's own
- * test setup.
+ * Writes through `dbFor(brand)` rather than through the console's services.
+ * Every service in `@femi9/core` opens with `import "server-only"`, which
+ * throws the moment a plain Node process requires it — so a seed that called
+ * `createCoupon`/`apply`/`approve` died before its first statement. Fixture
+ * SETUP is also not the thing under test: the specs exercise the real service
+ * paths through the running app, and going straight to Prisma here keeps the
+ * setup from mailing an ops inbox and a creator on every CI run.
  *
  * Local:
  *   npm run e2e:seed --workspace lumi9-web
@@ -24,9 +28,6 @@
  *   ALLOW_PRODUCTION_SEED=true npm run e2e:seed --workspace lumi9-web
  */
 import { dbFor, type Brand } from "@femi9/db";
-import { createCoupon } from "@femi9/core/services/admin/coupons";
-import { apply } from "@femi9/core/services/affiliate";
-import { approve } from "@femi9/core/services/admin/affiliates";
 
 const baseUrl = (process.env.E2E_BASE_URL || "http://127.0.0.1:3101").replace(/\/$/, "");
 const isLocal = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/i.test(baseUrl);
@@ -56,54 +57,53 @@ async function ensureCoupon(brand: Brand, code: string): Promise<void> {
     });
     return;
   }
-  await createCoupon(brand, {
-    code,
-    type: "flat",
-    value: COUPON_VALUE,
-    minOrder: 0,
-    maxUses: null,
-    expiresAt: null,
-    active: true,
+  await db.coupon.create({
+    data: {
+      code,
+      type: "flat",
+      value: COUPON_VALUE,
+      minOrder: 0,
+      maxUses: null,
+      expiresAt: null,
+      active: true,
+    },
   });
 }
 
 /**
  * An APPROVED creator whose promo code is exactly `code`.
  *
- * `apply` parks a placeholder and `approve` allocates the real code from the
- * handle, so the allocated value is not ours to choose — the row is updated to
- * the fixed code afterwards so the specs can name a stable URL. Everything
- * else (the status, the event rollups) is left exactly as the service left it.
+ * The code is fixed rather than allocated, because the specs have to name a
+ * stable `/a/<code>` URL. `role: "affiliate"` matches what `apply` sets — a
+ * creator account is a distinct identity from a shopper and is excluded from
+ * the customers list in the console.
+ *
+ * The affiliate specs sign this user in by email magic link to read her own
+ * click count, so the email has to be a real, unique address on the row.
  */
 async function ensureApprovedCreator(brand: Brand, code: string): Promise<void> {
   const db = dbFor(brand);
-  const existing = await db.affiliate.findUnique({ where: { promoCode: code } });
-  if (existing) {
-    if (existing.status !== "approved") {
-      await db.affiliate.update({ where: { id: existing.id }, data: { status: "approved" } });
-    }
-    return;
-  }
-
   const email = `e2e-${code.toLowerCase()}@example.test`;
-  await apply(brand, {
-    name: `E2E ${code}`,
-    handle: code.toLowerCase(),
-    platform: "Instagram",
-    followerBand: "5k - 25k",
-    email,
-  });
 
-  const user = await db.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) throw new Error(`apply(${brand}) did not create a user for ${email}`);
-  const affiliate = await db.affiliate.findUnique({
-    where: { userId: user.id },
+  const user = await db.user.upsert({
+    where: { email },
+    update: {},
+    create: { email, name: `E2E ${code}`, role: "affiliate" },
     select: { id: true },
   });
-  if (!affiliate) throw new Error(`apply(${brand}) did not create an affiliate for ${email}`);
 
-  await approve(brand, affiliate.id);
-  await db.affiliate.update({ where: { id: affiliate.id }, data: { promoCode: code } });
+  await db.affiliate.upsert({
+    where: { userId: user.id },
+    update: { status: "approved", promoCode: code },
+    create: {
+      userId: user.id,
+      handle: code.toLowerCase(),
+      platform: "Instagram",
+      followerBand: "5k - 25k",
+      status: "approved",
+      promoCode: code,
+    },
+  });
 }
 
 async function main() {

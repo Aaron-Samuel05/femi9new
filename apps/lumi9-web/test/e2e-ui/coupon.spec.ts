@@ -119,29 +119,35 @@ test.describe("the cart's promo box", () => {
     // domains. A femi9.in link on a page where she is mid-purchase sends her
     // somewhere none of them do.
     //
-    // Scoped to `main`, because the FOOTER currently has two deliberate
-    // exceptions — see the next test, which pins them.
-    for (const path of ["/cart", "/shop", "/affiliate"]) {
+    // Whole document, footer included. The footer used to carry two femi9.in
+    // rows — Terms & Conditions and FAQ — and this assertion had to be scoped
+    // to `main` to pass. Lumi9 now has /terms of its own and has had its own
+    // FAQ at /help all along, so there is nothing left to exempt.
+    for (const path of ["/cart", "/shop", "/affiliate", "/terms", "/privacy"]) {
       await page.goto(path);
-      expect(await femi9LinksOn(page, "main"), `${path} must not link into Femi9`).toEqual([]);
+      expect(await femi9LinksOn(page), `${path} must not link into Femi9`).toEqual([]);
     }
 
     expectNoNativeDialogs(page);
   });
 
-  test("the footer's cross-brand links are exactly the two known ones", async ({ page }) => {
+  test("the legal row is three Lumi9 pages that actually render", async ({ page }) => {
     await page.goto("/shop");
 
-    // Lumi9's footer sends Terms & Conditions and FAQ to femi9.in, because
-    // Lumi9 has no page of its own for either yet. That is a content gap, not a
-    // data leak — neither link carries a session, a cart or a coupon — but it is
-    // the only place on the storefront where a shopper is handed to the other
-    // brand, so it is pinned rather than left to drift. A THIRD such link, or
-    // one on a page where she is mid-purchase, should fail this and be a
-    // decision somebody makes on purpose.
-    expect(await femi9LinksOn(page, "footer")).toEqual([
-      "https://femi9.in/terms-and-conditions",
-      "https://femi9.in/faq",
-    ]);
+    const legal = page.getByRole("navigation", { name: "Legal" });
+    await expect(legal.getByRole("link")).toHaveCount(3);
+
+    // A legal link that 404s is worse than one that points off-site: Razorpay
+    // and a shopper both need these to resolve.
+    for (const [label, path] of [
+      ["Privacy Policy", "/privacy"],
+      ["Terms & Conditions", "/terms"],
+      ["FAQ", "/help"],
+    ] as const) {
+      const link = legal.getByRole("link", { name: label });
+      await expect(link).toHaveAttribute("href", path);
+      const res = await page.request.get(path);
+      expect(res.status(), `${path} must render`).toBe(200);
+    }
   });
 });
