@@ -7,7 +7,6 @@ import {
   reverseTharaCreditForRefund,
   reverseTharaPointsForRefund,
 } from '../thara'
-import { reverseOrderCommission } from '../affiliate'
 
 /**
  * Admin orders service — the single seam between the DB and the Ops console's
@@ -440,10 +439,6 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
 
     // Thara: reverse any reward-points earned for this order (mirror-signed).
     await reverseTharaPointsForRefund(tx, id)
-
-    // The creator's commission, same treatment: a refunded order is not a sale,
-    // and the console's Earnings column is what an operator pays out from.
-    await reverseOrderCommission(tx, id)
 
     return { kind: 'ok' as const }
   })

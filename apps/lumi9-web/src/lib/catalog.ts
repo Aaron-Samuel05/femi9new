@@ -31,20 +31,6 @@ export type ProductSize = {
   range: string;
   /** ultra-compact form used inside size chips, e.g. "≤5kg" */
   short: string;
-  /**
-   * The weight band, as NUMBERS - the same range `fits` states in words.
-   *
-   * `SIZE_BOUNDS` in `src/lib/size-projection.ts` used to hold a second copy of
-   * these, with a comment conceding the two "must be kept in step" by hand.
-   * They are one thing now: the seed writes them to `Product.minWeightKg` /
-   * `maxWeightKg` and the projector reads the catalogue, so renaming a range in
-   * the console moves what a parent reads AND what the maths computes.
-   *
-   * The bands overlap deliberately - the first match is the smallest size that
-   * fits.
-   */
-  minWeightKg: number;
-  maxWeightKg: number;
   packs: Pack[];
 };
 
@@ -55,8 +41,6 @@ export const SIZES: ProductSize[] = [
     fits: "up to 5 kg",
     range: "≤ 5 kg",
     short: "≤5kg",
-    minWeightKg: 0,
-    maxWeightKg: 5,
     packs: [
       { count: 3, price: 49, shipWeight: 0.04 },
       { count: 24, price: 349, shipWeight: 0.4 },
@@ -69,8 +53,6 @@ export const SIZES: ProductSize[] = [
     fits: "4-8 kg",
     range: "4-8 kg",
     short: "4-8kg",
-    minWeightKg: 4,
-    maxWeightKg: 8,
     packs: [
       { count: 3, price: 59, shipWeight: 0.06 },
       { count: 24, price: 399, shipWeight: 0.53 },
@@ -83,8 +65,6 @@ export const SIZES: ProductSize[] = [
     fits: "7-12 kg",
     range: "7-12 kg",
     short: "7-12kg",
-    minWeightKg: 7,
-    maxWeightKg: 12,
     packs: [
       { count: 24, price: 449, shipWeight: 0.65 },
       { count: 54, price: 949, shipWeight: 1.5 },
@@ -96,8 +76,6 @@ export const SIZES: ProductSize[] = [
     fits: "9-14 kg",
     range: "9-14 kg",
     short: "9-14kg",
-    minWeightKg: 9,
-    maxWeightKg: 14,
     packs: [
       { count: 24, price: 499, shipWeight: 0.7 },
       { count: 54, price: 1049, shipWeight: 1.58 },
@@ -109,8 +87,6 @@ export const SIZES: ProductSize[] = [
     fits: "12-17 kg",
     range: "12-17 kg",
     short: "12-17kg",
-    minWeightKg: 12,
-    maxWeightKg: 17,
     packs: [
       { count: 24, price: 549, shipWeight: 0.85 },
       { count: 54, price: 1149, shipWeight: 1.85 },
