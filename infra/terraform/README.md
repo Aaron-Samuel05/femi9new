@@ -225,6 +225,30 @@ nothing else. Production access is a support request from the SES console
 (Account dashboard → Request production access); allow a day for the answer, and
 ask for it *before* launch week.
 
+#### Where account 851725383246 actually stands (checked 1 September 2026)
+
+Both of the above are already DONE for staging, which is worth writing down
+because neither is visible from the repository:
+
+| | |
+| --- | --- |
+| `lumi9.in` identity | **verified**, `DkimStatus: SUCCESS`, Easy DKIM at RSA_2048_BIT |
+| Sandbox | **out of it** — `ProductionAccessEnabled: true`, 50,000/day quota |
+| MAIL FROM | not set (Terraform adds `mail.lumi9.in`; needs an MX and a TXT) |
+| Configuration set | none (Terraform attaches `femi9plat-staging-lumi9`) |
+
+`femi9.in` is verified in the same account. It is deliberately NOT in
+`femi9_ses_domain`: verifying a domain and MOVING a brand's live mail onto it
+are separate decisions, and the second one is `femi9_mail_provider`.
+
+**The identity was created by hand, so Terraform must ADOPT it.**
+`CreateEmailIdentity` on a name SES already holds fails with
+`AlreadyExistsException`, which would kill the first apply after it had already
+created the configuration set and the SNS topic. The `import` block at the top
+of `ses.tf` handles that — the plan shows `will be updated in-place (imported
+from "lumi9.in")`, touching only the configuration set and the tags, leaving the
+verified DKIM keys alone. **Delete that block once it has been applied.**
+
 Two things are deliberately pinned, and both fail loudly rather than quietly:
 
 - **The From address.** The IAM policy carries a `ses:FromAddress` condition, so

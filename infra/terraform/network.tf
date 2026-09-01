@@ -199,8 +199,15 @@ resource "aws_route_table_association" "private" {
 # is not secret, and it never was: this is the gate.
 resource "aws_security_group" "alb" {
   name = "${local.name_prefix}-alb-sg"
-  # NO APOSTROPHE - see the note on the app security group below.
-  description = "ALB: HTTP/HTTPS from the CloudFront edge only"
+  # ── DO NOT "CORRECT" THIS DESCRIPTION ────────────────────────────────────
+  # It says "from the internet" and the rules below admit only the CloudFront
+  # edge. That reads wrong, and it stays: EC2 cannot edit a security group
+  # description, so any change to this string REPLACES the group — which means
+  # detaching and reattaching the security group of a load balancer that is
+  # serving, to improve a sentence nobody reads at runtime. The rules are the
+  # truth; this is a label, and a plan that replaces the ALB's security group
+  # for a label is a bad trade. (Also: no apostrophe — see the app group below.)
+  description = "ALB: allow HTTP/HTTPS from the internet"
   vpc_id      = local.vpc_id
   tags        = merge(local.tags, { Name = "${local.name_prefix}-alb-sg" })
 }

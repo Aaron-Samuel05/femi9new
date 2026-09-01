@@ -82,6 +82,25 @@ check "ses_from_matches_identity" {
   }
 }
 
+# ── Adopting an identity that already exists ─────────────────────────────────
+# lumi9.in was verified by hand in the SES console before this file existed, and
+# CreateEmailIdentity on a name SES already holds fails with
+# AlreadyExistsException — so without this block the first apply dies partway,
+# having created the configuration set and the SNS topic but not the identity.
+#
+# The import ADOPTS the existing identity instead of recreating it. Nothing is
+# destroyed and the verified DKIM keys are kept: the live identity already uses
+# AWS-managed Easy DKIM at RSA_2048_BIT, which is exactly what the resource
+# below declares, so the plan after adoption changes only the two things nobody
+# set by hand — the configuration set and the custom MAIL FROM.
+#
+# Remove this block once it has been applied. An import block is a one-shot
+# instruction, not a permanent declaration.
+import {
+  to = aws_sesv2_email_identity.brand["lumi9"]
+  id = "lumi9.in"
+}
+
 # ── The sending identity ─────────────────────────────────────────────────────
 # A DOMAIN identity, not an address identity: verify lumi9.in once and every
 # address on it can send, which is what makes no-reply@ and support@ one
