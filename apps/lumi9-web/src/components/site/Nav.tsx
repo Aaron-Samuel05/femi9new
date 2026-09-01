@@ -84,7 +84,7 @@ function Logo() {
   return (
     <Link href="/" className="flex shrink-0 items-center coarse:min-h-11" aria-label="Lumi9 home">
       <Image
-        src="/assets/logo-midnight.png"
+        src="/assets/logo-midnight.webp"
         alt="Lumi9"
         width={106}
         height={48}

@@ -156,7 +156,7 @@ export function Footer() {
       {/* Left - cream contact panel */}
       <div className="px-safe flex flex-col justify-center bg-butter py-[clamp(36px,6vw,64px)]">
         <Image
-          src="/assets/logo-midnight.png"
+          src="/assets/logo-midnight.webp"
           alt="Lumi9"
           width={115}
           height={52}
