@@ -401,12 +401,26 @@ jobs:
       # Both schemas, migrated from the same history — `migrate deploy` rather
       # than `db push`, because that is what production does and a drift between
       # the two is exactly what this should catch.
+      #
+      # DIRECT_URL is set alongside DATABASE_URL on every iteration, and that is
+      # not belt-and-braces: `packages/db/prisma/schema.prisma` declares
+      # `directUrl = env("DIRECT_URL")`, and Prisma Migrate PREFERS it. Overriding
+      # only DATABASE_URL sent both passes at whatever DIRECT_URL happened to
+      # name — the lumi9 schema, twice — and the step still reported success,
+      # because the second pass found every migration already applied. The femi9
+      # schema was never created, and the failure surfaced two steps later as
+      # "The table `femi9.Coupon` does not exist".
       - name: Create both brand schemas
         if: env.RUN_E2E == 'true'
-        working-directory: .
         run: |
-          for url in "$DATABASE_URL_LUMI9" "$DATABASE_URL_FEMI9"; do
-            DATABASE_URL="$url" npx prisma migrate deploy               --schema packages/db/prisma/schema.prisma
+          PGPASSWORD=postgres psql -h localhost -U postgres -d lumi9_test             -c 'CREATE SCHEMA IF NOT EXISTS femi9; CREATE SCHEMA IF NOT EXISTS lumi9;'
+
+      - name: Migrate both brand schemas
+        if: env.RUN_E2E == 'true'
+        working-directory: packages/db
+        run: |
+          for schema in femi9 lumi9; do
+            DATABASE_URL="postgresql://postgres:postgres@localhost:5432/lumi9_test?schema=$schema"             DIRECT_URL="postgresql://postgres:postgres@localhost:5432/lumi9_test?schema=$schema"             npx prisma migrate deploy
           done
 
       # The Lumi9 catalogue: the coupon specs put a real pack in a real cart, so
