@@ -29,6 +29,12 @@
 #                              Actions → Variables → RUN_E2E = true
 #   Turn them on for one run:  Actions → CI → "Run workflow" → tick "run_e2e"
 #
+# ONE switch, TWO suites. `RUN_E2E` gates the Femi9 job's HTTP + Playwright
+# suites and the Lumi9 job's Playwright suite alike. The two jobs each bring
+# their own throwaway Postgres and their own dev server on their own port
+# (:3100 and :3101), so they run side by side without sharing a database, a
+# cookie jar or a port.
+#
 # Nothing else changes when they are off: install, typecheck, the vitest suites
 # (unit + integration, which is where the money-path coverage lives) and the
 # production build still gate every push and PR.
@@ -294,11 +300,61 @@ jobs:
   # own and does not mask a Femi9 failure.
   # ───────────────────────────────────────────────────────────────────────────
   lumi9:
-    name: Lumi9 — Lint · Build
+    name: Lumi9 — Lint · Build (E2E opt-in)
     runs-on: ubuntu-latest
 
+    # Lumi9 now has a browser E2E suite, and it needs a database — one throwaway
+    # Postgres holding BOTH brands, a schema each, the shape production has. The
+    # coupon and affiliate specs assert that a Femi9 row is invisible from
+    # Lumi9, so the femi9 schema has to exist and be populated for that
+    # assertion to mean anything. Sharing one server keeps the isolation honest:
+    # it is enforced by the connection string, not by there being no other
+    # database to reach.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lumi9_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    # DUMMY placeholders only — never real secrets. Provider keys are left EMPTY
+    # on purpose: a non-empty value makes the provider seams believe they are
+    # configured and attempt real outbound calls.
     env:
+      # Same switch as the Femi9 job — the repo variable is the durable setting,
+      # the workflow_dispatch input the one-off. Neither → the fast path.
+      RUN_E2E: ${{ (vars.RUN_E2E == 'true' || inputs.run_e2e == true) && 'true' || 'false' }}
+
+      DATABASE_URL_LUMI9: postgresql://postgres:postgres@localhost:5432/lumi9_test?schema=lumi9
+      # The E2E seed writes the Femi9 half of the isolation fixture, so this job
+      # needs the other brand's URL too. Nothing the storefront serves reads it.
+      DATABASE_URL_FEMI9: postgresql://postgres:postgres@localhost:5432/lumi9_test?schema=femi9
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/lumi9_test?schema=lumi9
+      AUTH_SECRET: ci-dummy-secret-0123456789abcdef0123456789abcdef
+      RAZORPAY_KEY_ID: ""
+      RAZORPAY_KEY_SECRET: ""
+      RAZORPAY_WEBHOOK_SECRET: ""
+      NEXT_PUBLIC_RAZORPAY_KEY_ID: ""
+      MSG91_AUTH_KEY: ""
+      RESEND_API_KEY: ""
+      # MUST match the origin the E2E server listens on. It is not cosmetic:
+      # the magic-link route builds its post-verification redirect from this
+      # (`NEXT_PUBLIC_SITE_URL || url.origin`), and the affiliate specs sign a
+      # seeded creator in through exactly that link. Pointed anywhere else, the
+      # browser follows a correct 307 to a port nothing is listening on.
+      SITE_URL: http://127.0.0.1:3101
+      NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3101
+      ALLOW_MOCK_PROVIDERS: "true"
       NEXT_TELEMETRY_DISABLED: "1"
+      E2E_BASE_URL: http://127.0.0.1:3101
 
     defaults:
       run:
@@ -334,6 +390,86 @@ jobs:
 
       - name: Build (production)
         run: npm run build
+
+      # ── Everything below needs a RUNNING app: opt-in (see RUN_E2E above) ───
+
+      - name: E2E suite is switched off
+        if: env.RUN_E2E != 'true'
+        run: |
+          echo "::notice title=E2E skipped::The Lumi9 browser E2E is off. Set the repo variable RUN_E2E=true, or re-run this workflow with the run_e2e input ticked, to enable it."
+
+      # Both schemas, migrated from the same history — `migrate deploy` rather
+      # than `db push`, because that is what production does and a drift between
+      # the two is exactly what this should catch.
+      - name: Create both brand schemas
+        if: env.RUN_E2E == 'true'
+        working-directory: .
+        run: |
+          for url in "$DATABASE_URL_LUMI9" "$DATABASE_URL_FEMI9"; do
+            DATABASE_URL="$url" npx prisma migrate deploy               --schema packages/db/prisma/schema.prisma
+          done
+
+      # The Lumi9 catalogue: the coupon specs put a real pack in a real cart, so
+      # there has to be something to sell before the server starts.
+      - name: Seed the Lumi9 catalogue
+        if: env.RUN_E2E == 'true'
+        run: npx tsx prisma/seed.ts
+
+      - name: Start app for E2E
+        if: env.RUN_E2E == 'true'
+        env:
+          # `next dev` compiles each route on demand and the heap grows all run;
+          # at Node's default limit the dev server trips its own memory guard and
+          # restarts mid-suite, which surfaces as a bare `fetch failed`.
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: |
+          # Drop the production build first: `next dev` and `next build` write
+          # incompatible artifacts into the same .next directory.
+          rm -rf .next
+          nohup npx next dev -p 3101 > "$RUNNER_TEMP/lumi9.log" 2>&1 &
+          echo "Waiting for the server to accept traffic…"
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3101/api/health > /dev/null 2>&1; then
+              echo "Server is up after ${i}s."
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::Server did not become healthy within 90s"
+          cat "$RUNNER_TEMP/lumi9.log"
+          exit 1
+
+      # Writes the coupon + creator fixtures into BOTH schemas and asserts they
+      # are genuinely split before a single spec runs — a shared database fails
+      # here rather than quietly passing every isolation assertion.
+      - name: Seed the E2E fixtures
+        if: env.RUN_E2E == 'true'
+        run: npx tsx scripts/seed-e2e.ts
+
+      - name: Install Playwright browser
+        if: env.RUN_E2E == 'true'
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser E2E
+        if: env.RUN_E2E == 'true'
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        # `always()` so a FAILING run still ships its traces — but only when the
+        # suite actually ran, else every skipped build uploads nothing and warns.
+        if: always() && env.RUN_E2E == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lumi9-playwright-report
+          path: |
+            apps/lumi9-web/playwright-report
+            apps/lumi9-web/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Server log on failure
+        if: failure() && env.RUN_E2E == 'true'
+        run: cat "$RUNNER_TEMP/lumi9.log" || true
 
   # ───────────────────────────────────────────────────────────────────────────
   # Admin console — the shared back office for both brands.

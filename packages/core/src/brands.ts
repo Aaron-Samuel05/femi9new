@@ -115,8 +115,20 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     // No rail. The homepage's product section IS the size run — see the note on
     // BrandConfig.featuredSlots.
     featuredSlots: 0,
-    // No community, affiliates, partners or thara: those are Femi9 programmes,
-    // and the Lumi9 database has no rows for them.
+    // No community, partners or thara: those are Femi9 programmes, and the
+    // Lumi9 database has no rows for them.
+    //
+    // No `pricing` either. Lumi9 does not run price zones: a diaper costs the
+    // same wherever the baby lives, so there is nothing for a zone screen to
+    // edit. The seeded Default zone stays — it is what the storefront prices
+    // against at 0% — but it is not something this console offers to change.
+    //
+    // `affiliates` IS here, and is not the same programme as Femi9's. Lumi9
+    // runs its own creator roster in its own schema: an application from
+    // lumi9.in writes a `lumi9` Affiliate row, a code approved in this console
+    // works only on Lumi9 links, and neither brand's console or storefront can
+    // resolve the other's codes. Sharing the module name shares the service and
+    // the review screen - never the creators, the codes or the earnings.
     modules: [
       'dashboard',
       'catalog',
@@ -124,10 +136,10 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
       'orders',
       'customers',
       'coupons',
-      'pricing',
       'subscriptions',
       'content',
       'reviews',
+      'affiliates',
       'settings',
     ],
   },

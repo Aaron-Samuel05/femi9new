@@ -10,7 +10,26 @@ import { hasModule, brandConfig, ADMIN_MODULES, type AdminModule } from '@femi9/
  * to a brand by accident.
  */
 
-const FEMI9_ONLY: AdminModule[] = ['thara', 'community', 'affiliates', 'partners']
+/** Modules only Femi9's console has. `pricing` is here because Lumi9 does not
+ *  run price zones at all — see the note on the lumi9 module list. */
+const FEMI9_ONLY: AdminModule[] = ['thara', 'community', 'partners', 'pricing']
+
+/** Modules BOTH consoles have. Sharing a module name is not sharing data: each
+ *  console reads its own brand's schema, so `affiliates` here means two
+ *  separate creator rosters reviewed through one screen. */
+const SHARED: AdminModule[] = [
+  'dashboard',
+  'catalog',
+  'inventory',
+  'orders',
+  'customers',
+  'coupons',
+  'subscriptions',
+  'content',
+  'reviews',
+  'affiliates',
+  'settings',
+]
 
 describe('module gating', () => {
   it('keeps Femi9-only programmes out of Lumi9 entirely', () => {
@@ -20,10 +39,8 @@ describe('module gating', () => {
     }
   })
 
-  it('gives both brands the commerce modules', () => {
-    for (const m of ['dashboard', 'catalog', 'inventory', 'orders', 'customers',
-                     'coupons', 'pricing', 'subscriptions', 'content', 'reviews',
-                     'settings'] as AdminModule[]) {
+  it('gives both brands the commerce modules, affiliates included', () => {
+    for (const m of SHARED) {
       expect(hasModule('femi9', m)).toBe(true)
       expect(hasModule('lumi9', m)).toBe(true)
     }

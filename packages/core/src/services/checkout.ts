@@ -7,7 +7,7 @@ import { PAID_ORDER_STATUSES } from '../order-status'
 import { IdentityConflictError, attachIdentity } from './auth'
 import { sendOrderStatusEmail } from './order-mail'
 import { getSettings } from './settings'
-import { REF_COOKIE, attributeOrder } from './affiliate'
+import { refCookieName, attributeOrder } from './affiliate'
 import { applyZonePrice, resolveZone } from './pricing'
 import * as razorpay from '../razorpay'
 import {
@@ -344,9 +344,13 @@ export async function placeOrder(brand: Brand,
   const { freeShipThreshold } = await getSettings(brand)
   const zone = await resolveZone(brand, { state: customer.state, pincode: customer.pincode })
 
-  // Referral attribution rides in an httpOnly cookie dropped by /r/[code]. Read
+  // Referral attribution rides in an httpOnly cookie dropped by /a/[code]. Read
   // it here (request scope) so the transaction can stamp the order's affiliate.
-  const refCode = (await cookies()).get(REF_COOKIE)?.value?.trim() || undefined
+  // Brand-scoped: this order is being placed for ONE brand and may only ever be
+  // attributed to that brand's creators, so it reads that brand's cookie and no
+  // other. `attributeOrder` then resolves the code against the same brand's
+  // schema, which is where the isolation is actually enforced.
+  const refCode = (await cookies()).get(refCookieName(brand))?.value?.trim() || undefined
 
   // Never persist an empty email; it would clash with the User.email @unique
   // index (many guests, no email) and blank a returning customer's real email.

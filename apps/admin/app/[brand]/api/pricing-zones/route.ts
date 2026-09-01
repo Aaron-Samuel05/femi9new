@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, created, handle, ok, unauthorized } from '@femi9/core/api'
-import { requireConsoleApi } from '@/lib/api-guard'
+import { moduleGate, requireConsoleApi } from '@/lib/api-guard'
+import { hasModule } from '@femi9/core/brands'
 import {
   UnknownPriceTargetError,
   ZoneInputSchema,
@@ -15,6 +16,10 @@ import {
  *   GET  → list every zone (with its states + region count) for the admin table.
  *   POST → create a zone.
  * Both guarded by requireAdmin; the (panel) shell also guards the pages.
+ *
+ * And both gated on the `pricing` module. Lumi9 does not have it, so these
+ * return 404 there — the page 404ing on its own would leave the writes reachable
+ * to anyone who knows the URL, which is the whole hole module gating closes.
  */
 
 /** Map known name-collision failures to a friendly 400 the form can show. */
@@ -33,6 +38,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bra
   if (!auth.ok) return auth.response
   const { brand } = auth
 
+  const gated = moduleGate(hasModule(brand, 'pricing'))
+  if (gated) return gated
+
   return handle(async () => ok(await listZones(brand)))
 }
 
@@ -40,6 +48,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
   const auth = await requireConsoleApi((await params).brand, 'manager')
   if (!auth.ok) return auth.response
   const { brand } = auth
+
+  const gated = moduleGate(hasModule(brand, 'pricing'))
+  if (gated) return gated
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)

@@ -1,7 +1,8 @@
 import type { NextRequest } from 'next/server'
 import { Prisma } from '@prisma/client'
 import { badRequest, handle, notFound, ok, unauthorized } from '@femi9/core/api'
-import { requireConsoleApi } from '@/lib/api-guard'
+import { moduleGate, requireConsoleApi } from '@/lib/api-guard'
+import { hasModule } from '@femi9/core/brands'
 import { auditConsole } from '@/lib/audit'
 import {
   CannotDeleteDefaultError,
@@ -18,6 +19,9 @@ import {
  *   PATCH  → update any subset of a zone's fields (and reconcile states).
  *   DELETE → hard delete (blocked for the default zone).
  * Next 14.2: `params` is a plain synchronous object, not a Promise.
+ *
+ * Both gated on the `pricing` module, like the collection endpoint: Lumi9 does
+ * not have it, and a 404ing page is no protection for a route that still writes.
  */
 
 /** Map known service / Prisma failures to friendly responses. */
@@ -38,6 +42,9 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
   const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
+
+  const gated = moduleGate(hasModule(brand, 'pricing'))
+  if (gated) return gated
 
   return handle(async () => {
     const raw = await req.json().catch(() => null)
@@ -63,6 +70,9 @@ export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand
   const auth = await requireConsoleApi((await props.params).brand, 'manager')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
+
+  const gated = moduleGate(hasModule(brand, 'pricing'))
+  if (gated) return gated
 
   return handle(async () => {
     try {

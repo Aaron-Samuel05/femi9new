@@ -1,0 +1,147 @@
+import {
+  test,
+  expect,
+  addFirstPackToCart,
+  expectNoNativeDialogs,
+  femi9LinksOn,
+  installDialogGuard,
+  quote,
+} from "./helpers";
+
+/**
+ * The cart's promo box, end to end — and the line Lumi9's coupons must not
+ * cross.
+ *
+ * The box used to answer EVERY code with a hardcoded "isn't a valid code right
+ * now" while the console had a full coupons section and `placeOrder` had the
+ * redemption logic. Every campaign code the team minted was unredeemable, and
+ * the one screen that would have shown it said so in a sentence that was true
+ * by construction rather than by checking. These specs are the standing proof
+ * that the box now asks the server.
+ *
+ * The isolation test is the other half, and it is the one worth reading. Lumi9
+ * and Femi9 are separate businesses: separate customers, separate catalogues,
+ * separate coupons. `FEMI9ONLY` is a real, active, unexpired coupon — in the
+ * `femi9` schema. It must be as unusable here as a code nobody ever created,
+ * and it must fail for the ORDINARY reason, not with an error that reveals a
+ * Femi9 row exists. The seed script asserts the two rows really are split
+ * across schemas before the suite runs, so a shared database fails setup rather
+ * than quietly passing every assertion below.
+ */
+
+/** Seeded by `scripts/seed-e2e.ts` — see the note there on why both exist. */
+const LUMI9_COUPON = "LUMI9ONLY";
+const FEMI9_COUPON = "FEMI9ONLY";
+const COUPON_VALUE = 50;
+
+test.describe("the cart's promo box", () => {
+  test("a Lumi9 coupon discounts a Lumi9 basket", async ({ page, clientIp }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+
+    // The server is the authority on what a basket costs, so establish the
+    // undiscounted baseline from the same endpoint the box will call.
+    const before = await quote(page, clientIp);
+    expect(before.subtotal, "the basket must have something in it").toBeGreaterThan(0);
+    expect(before.discount).toBe(0);
+
+    await page.goto("/cart");
+    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
+    await page.getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
+
+    const after = await quote(page, clientIp, LUMI9_COUPON);
+    expect(after.couponCode).toBe(LUMI9_COUPON);
+    expect(after.couponError ?? null).toBeNull();
+    expect(after.discount).toBe(COUPON_VALUE);
+    expect(after.total).toBe(before.total - COUPON_VALUE);
+
+    expectNoNativeDialogs(page);
+  });
+
+  test("the discount the cart showed is the one checkout carries", async ({ page, clientIp }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+
+    await page.goto("/cart");
+    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
+
+    // Checkout renders the quote rather than computing its own total — the whole
+    // point of `useQuote`. The code must be named on the discount line, or the
+    // shopper cannot tell the coupon survived the navigation.
+    await page.goto("/checkout");
+    await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
+
+    const priced = await quote(page, clientIp, LUMI9_COUPON);
+    expect(priced.discount).toBe(COUPON_VALUE);
+
+    expectNoNativeDialogs(page);
+  });
+
+  test("a FEMI9 coupon is refused here, exactly like an unknown code", async ({
+    page,
+    clientIp,
+  }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+
+    const baseline = await quote(page, clientIp);
+
+    // A real, active coupon — in the other brand's schema.
+    const foreign = await quote(page, clientIp, FEMI9_COUPON);
+    expect(foreign.couponCode ?? null, "a Femi9 coupon must not apply to a Lumi9 basket").toBeNull();
+    expect(foreign.discount).toBe(0);
+    expect(foreign.total).toBe(baseline.total);
+
+    // And it must fail the SAME way an invented code does. A distinguishable
+    // response would turn this endpoint into an oracle for the other brand's
+    // coupon table.
+    const invented = await quote(page, clientIp, "NOSUCHCODEATALL");
+    expect(foreign.couponError).toBe(invented.couponError);
+
+    // The shopper-facing half of the same fact.
+    await page.goto("/cart");
+    await page.getByLabel("Promo code").fill(FEMI9_COUPON);
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByText(`“${FEMI9_COUPON}” applied`)).toHaveCount(0);
+
+    expectNoNativeDialogs(page);
+  });
+
+  test("no commerce surface links a shopper into the other brand", async ({ page }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+
+    // Her session, her cart and her coupons exist on exactly one of these two
+    // domains. A femi9.in link on a page where she is mid-purchase sends her
+    // somewhere none of them do.
+    //
+    // Scoped to `main`, because the FOOTER currently has two deliberate
+    // exceptions — see the next test, which pins them.
+    for (const path of ["/cart", "/shop", "/affiliate"]) {
+      await page.goto(path);
+      expect(await femi9LinksOn(page, "main"), `${path} must not link into Femi9`).toEqual([]);
+    }
+
+    expectNoNativeDialogs(page);
+  });
+
+  test("the footer's cross-brand links are exactly the two known ones", async ({ page }) => {
+    await page.goto("/shop");
+
+    // Lumi9's footer sends Terms & Conditions and FAQ to femi9.in, because
+    // Lumi9 has no page of its own for either yet. That is a content gap, not a
+    // data leak — neither link carries a session, a cart or a coupon — but it is
+    // the only place on the storefront where a shopper is handed to the other
+    // brand, so it is pinned rather than left to drift. A THIRD such link, or
+    // one on a page where she is mid-purchase, should fail this and be a
+    // decision somebody makes on purpose.
+    expect(await femi9LinksOn(page, "footer")).toEqual([
+      "https://femi9.in/terms-and-conditions",
+      "https://femi9.in/faq",
+    ]);
+  });
+});
