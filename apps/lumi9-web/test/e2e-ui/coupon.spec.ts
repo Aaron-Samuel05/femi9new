@@ -37,14 +37,15 @@ const FEMI9_COUPON = "FEMI9ONLY";
 const COUPON_VALUE = 50;
 
 /**
- * The promo box on /cart.
+ * The promo box, on whichever of /cart and /checkout is open.
  *
- * Scoped rather than reached by role from the page, because /cart has more than
- * one of everything this test presses: each cart line carries its own "Remove"
- * button, and `CheckoutCta` is rendered by both CartView and the CartDrawer that
- * lives in the root layout. An unscoped query matches several and fails strict
- * mode instantly, which reads like a broken control rather than an ambiguous
- * selector.
+ * Scoped rather than reached by role from the page, because both screens carry
+ * more than one of everything this test presses: each cart line has its own
+ * "Remove" button, `CheckoutCta` is rendered by both CartView and the CartDrawer
+ * that lives in the root layout, and the drawer's summary names an applied
+ * coupon on top of the one the page itself shows. An unscoped query matches
+ * several and fails strict mode instantly, which reads like a broken control
+ * rather than an ambiguous selector.
  */
 function promo(page: import("@playwright/test").Page) {
   return page.getByTestId("promo-form");
@@ -116,6 +117,81 @@ test.describe("the cart's promo box", () => {
 
     const priced = await quote(page, clientIp, LUMI9_COUPON);
     expect(priced.discount).toBe(COUPON_VALUE);
+
+    expectNoNativeDialogs(page);
+  });
+
+  test("a code can be applied AT checkout, and applying one never places the order", async ({
+    page,
+    clientIp,
+  }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+    await signUpViaApi(page, clientIp, {
+      name: "Anitha Rajan",
+      email: uniqueEmail("coupon-at-checkout"),
+    });
+
+    // Straight to checkout WITHOUT passing through /cart - the shopper who has a
+    // code from an email or an influencer and never opened the cart screen. This
+    // was a dead end until the box was rendered here too: the discount row and
+    // the `couponCode` the checkout form submits were both already wired to the
+    // quote, and there was simply nowhere to type. Her only route was back a
+    // screen, and nothing on this one said so.
+    await page.goto("/checkout");
+    await expect(page).toHaveURL(/\/checkout$/);
+
+    // FILL THE FORM FIRST, which is what makes the rest of this test mean
+    // anything. The promo box sits INSIDE the checkout's <form>, so the hazard
+    // it has to avoid is submitting that form - and an EMPTY form is refused by
+    // its own validation, which would mask a broken Apply behind a rejection
+    // that looks like nothing happening. Only a form that would otherwise go
+    // through can prove Apply is inert.
+    await page.getByPlaceholder("Email address").fill(uniqueEmail("checkout-addr"));
+    await page.getByPlaceholder("First name").fill("Anitha");
+    await page.getByPlaceholder("Last name").fill("Rajan");
+    await page.getByPlaceholder("Address", { exact: true }).fill("14 Kamaraj Salai");
+    await page.getByPlaceholder("City").fill("Coimbatore");
+    await page.getByPlaceholder("State").fill("Tamil Nadu");
+    await page.getByPlaceholder("PIN code").fill("641001");
+    await page.getByPlaceholder("Phone").fill("9884230571");
+
+    // `placeOrder` is a POST to /api/checkout, and a success then pushes to
+    // /confirmation. Watching the REQUEST rather than the URL is what catches a
+    // submission that fails for some later reason - the order is still placed.
+    const placements: string[] = [];
+    page.on("request", (r) => {
+      if (r.method() === "POST" && new URL(r.url()).pathname === "/api/checkout") {
+        placements.push(r.url());
+      }
+    });
+
+    await promo(page).getByLabel("Promo code").fill(LUMI9_COUPON);
+    await promo(page).getByRole("button", { name: "Apply" }).click();
+
+    await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
+    const priced = await quote(page, clientIp, LUMI9_COUPON);
+    expect(priced.discount).toBe(COUPON_VALUE);
+
+    // The reason the box is a <div> and not a <form>. HTML has no nested form:
+    // the parser drops the inner tag, leaving "Apply" as a submit button for the
+    // OUTER one - so applying a coupon would PLACE THE ORDER, on a form the
+    // shopper has just finished filling in.
+    expect(placements, "Apply must not submit the checkout form").toEqual([]);
+    await expect(page).toHaveURL(/\/checkout$/);
+
+    // Enter is the same hazard by the other route - implicit submission - which
+    // is why the component intercepts the key rather than leaving it to the
+    // browser. It must apply the code and nothing else.
+    await promo(page).getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeHidden();
+
+    await promo(page).getByLabel("Promo code").fill(LUMI9_COUPON);
+    await promo(page).getByLabel("Promo code").press("Enter");
+    await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
+
+    expect(placements, "Enter must not submit the checkout form").toEqual([]);
+    await expect(page).toHaveURL(/\/checkout$/);
 
     expectNoNativeDialogs(page);
   });

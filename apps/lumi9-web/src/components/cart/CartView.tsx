@@ -2,85 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
 import { QtyStepper } from "@/components/ui/QtyStepper";
 import { CheckoutCta } from "@/components/cart/CheckoutCta";
+import { PromoField } from "@/components/cart/PromoField";
 import { Icon } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
 import { useQuote } from "@/lib/quote";
 import { inr, shippingLabel } from "@/lib/catalog";
-
-/**
- * The promo box, now connected to the coupon system that was already there.
- *
- * It used to answer EVERY code with a hardcoded "isn't a valid code right now"
- * and call nothing - while the console has had a full coupons section, and
- * `placeOrder` has had the redemption logic, since before this storefront
- * existed. Every campaign code the team created was unredeemable, and the one
- * screen that would have shown it said so in a sentence that was true by
- * construction rather than by checking.
- *
- * Submitting hands the code to the quote provider, which asks the server what
- * it is worth against THIS basket and this shopper. The code then rides through
- * to /api/checkout, where it is re-validated and its use atomically claimed.
- */
-function PromoField() {
-  const { quote, loading, coupon, applyCoupon } = useQuote();
-  const [code, setCode] = useState("");
-
-  const applied = quote?.couponCode;
-  const error = quote?.couponError;
-
-  return (
-    <form
-      // The line items carry their own "Remove" button, so the promo box needs
-      // a handle of its own for anything driving this page.
-      data-testid="promo-form"
-      className="mb-5.5"
-      onSubmit={(event) => {
-        event.preventDefault();
-        applyCoupon(code);
-      }}
-    >
-      <div className="flex rounded-pill border border-moss-tint bg-paper p-1.25 pl-4.5">
-        <label htmlFor="promo" className="sr-only">
-          Promo code
-        </label>
-        <input
-          id="promo"
-          value={code}
-          onChange={(event) => setCode(event.target.value)}
-          placeholder="Promo code"
-          className="min-w-0 flex-1 border-none bg-transparent text-[max(16px,0.95rem)] text-midnight outline-none"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className="chip shrink-0 cursor-pointer border-transparent bg-moss-tint font-bold text-midnight hover:bg-moss-soft disabled:opacity-60"
-        >
-          {loading ? "Checking…" : "Apply"}
-        </button>
-      </div>
-      {applied && (
-        <p className="m-0 mt-2 text-xs text-moss-deep">
-          “{applied}” applied - {inr(quote!.discount)} off.{" "}
-          <button
-            type="button"
-            className="cursor-pointer underline"
-            onClick={() => {
-              setCode("");
-              applyCoupon("");
-            }}
-          >
-            Remove
-          </button>
-        </p>
-      )}
-      {/* Only shown once a code has actually been submitted and refused. */}
-      {!applied && coupon && error && <p className="m-0 mt-2 text-xs text-muted">{error}</p>}
-    </form>
-  );
-}
 
 export function CartView() {
   const { lines, count, subtotal, increment, decrement, remove, ready } = useCart();
@@ -92,7 +20,8 @@ export function CartView() {
     <section className="page-wrap pt-[clamp(32px,4.4vw,56px)] pb-section">
       <h1 className="m-0 mb-2 font-display text-[clamp(28px,8vw,52px)] md:text-[clamp(32px,4vw,52px)] font-normal">Your cart</h1>
       <p className="m-0 mb-10 text-base text-muted">
-        {ready ? count : 0} {count === 1 ? "item" : "items"} · free delivery on orders over ₹999
+        {ready ? count : 0} {count === 1 ? "item" : "items"}
+        {quote ? ` · free delivery on orders over ${inr(quote.freeShipThreshold)}` : null}
       </p>
 
       {!ready ? (
@@ -173,7 +102,7 @@ export function CartView() {
               )}
             </div>
 
-            <PromoField />
+            <PromoField className="mb-5.5" />
 
             <div className="mb-5.5 flex items-baseline justify-between border-t border-moss-tint pt-4.5">
               <span className="text-[17px] font-bold">Total</span>
