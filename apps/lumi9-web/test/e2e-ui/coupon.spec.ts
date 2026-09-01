@@ -81,11 +81,18 @@ test.describe("the cart's promo box", () => {
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
 
+    // Leave the cart the way a shopper does — by pressing the CTA, which is a
+    // client-side <Link>. That matters: the applied coupon lives in
+    // `CartQuoteProvider`'s React state, and the provider is mounted in the root
+    // layout. A soft navigation keeps it; `page.goto` would tear the provider
+    // down and rebuild it with `coupon` back at "", which is a real gap in the
+    // app (see the note below) but not what this test is about.
+    await page.getByRole("link", { name: /^Checkout/ }).click();
+    await expect(page).toHaveURL(/\/checkout$/);
+
     // Checkout renders the quote rather than computing its own total — the whole
     // point of `useQuote`. The code must be named on the discount line, or the
     // shopper cannot tell the coupon survived the navigation.
-    await page.goto("/checkout");
-    await expect(page).toHaveURL(/\/checkout$/);
     await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
 
     const priced = await quote(page, clientIp, LUMI9_COUPON);
@@ -93,6 +100,24 @@ test.describe("the cart's promo box", () => {
 
     expectNoNativeDialogs(page);
   });
+
+  /**
+   * KNOWN GAP, deliberately not asserted here.
+   *
+   * The applied coupon is React state in `CartQuoteProvider` and nothing else —
+   * not a cookie, not the URL, not the server. So it survives a soft navigation
+   * and is lost on any HARD one: a refresh of /checkout, opening it in a second
+   * tab, or coming back from an external redirect. The shopper is then shown a
+   * total higher than the one she just agreed to, with no explanation — and
+   * `CheckoutForm` submits `couponCode: quote?.couponCode`, which is now
+   * undefined, so the order is actually PLACED at full price.
+   *
+   * Not pinned as a passing test, because a test asserting that behaviour would
+   * be pinning the bug. Fixing it means choosing where the code should live —
+   * a cookie the quote route falls back to is the option that also makes
+   * `placeOrder` right — and that is a change to the money path, worth making
+   * on purpose rather than as a side effect of writing this suite.
+   */
 
   test("a FEMI9 coupon is refused here, exactly like an unknown code", async ({
     page,
