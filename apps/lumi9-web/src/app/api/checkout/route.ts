@@ -10,6 +10,7 @@ import {
   EmptyCartError,
   InvalidCouponError,
   OutOfStockError,
+  couponCookieName,
   placeOrder,
 } from "@femi9/core/services/checkout";
 import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
@@ -23,6 +24,14 @@ import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
  *
  * Domain failures map to precise statuses so the form can say the right thing
  * inline rather than "something went wrong".
+ *
+ * The coupon falls back to the `lumi9_coupon` cookie when the body carries
+ * none. The form normally sends the code the quote resolved, so this is the
+ * belt to that braces - but it is the belt on the MONEY path, and the failure
+ * it covers is the one that actually happened: a shopper who applied a coupon
+ * and then reloaded checkout had it silently dropped from the payload and paid
+ * full price. Neither source is trusted; `placeOrder` re-validates whichever
+ * arrives and claims it atomically.
  */
 
 // Empty optional text fields arrive as '' from the form; normalise to undefined
@@ -70,10 +79,23 @@ export async function POST(req: NextRequest) {
       // session, the service would identify the buyer by the phone typed into
       // the form, and a magic-link customer would collect a second User row per
       // order while her order history stayed empty.
-      const result = await placeOrder("lumi9", token, parsed.data, session?.sub);
+      const cookieName = couponCookieName("lumi9");
+      const couponCode =
+        parsed.data.couponCode ?? req.cookies.get(cookieName)?.value?.trim().slice(0, 40) ?? undefined;
+
+      const result = await placeOrder(
+        "lumi9",
+        token,
+        { ...parsed.data, couponCode },
+        session?.sub,
+      );
       // An unguessable capability token, so the confirmation page can authorise
       // a guest without exposing anyone's details to orderNo guessing.
-      return created({ ...result, token: orderToken(result.orderNo) });
+      const res = created({ ...result, token: orderToken(result.orderNo) });
+      // The basket this coupon belonged to is now an order. Leaving the cookie
+      // would quietly re-apply it to whatever she puts in her bag next.
+      res.cookies.delete(cookieName);
+      return res;
     } catch (err) {
       if (err instanceof EmptyCartError) return badRequest(err.message);
       if (err instanceof InvalidCouponError) return badRequest(err.message);

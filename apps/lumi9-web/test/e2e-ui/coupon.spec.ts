@@ -101,23 +101,49 @@ test.describe("the cart's promo box", () => {
     expectNoNativeDialogs(page);
   });
 
-  /**
-   * KNOWN GAP, deliberately not asserted here.
-   *
-   * The applied coupon is React state in `CartQuoteProvider` and nothing else —
-   * not a cookie, not the URL, not the server. So it survives a soft navigation
-   * and is lost on any HARD one: a refresh of /checkout, opening it in a second
-   * tab, or coming back from an external redirect. The shopper is then shown a
-   * total higher than the one she just agreed to, with no explanation — and
-   * `CheckoutForm` submits `couponCode: quote?.couponCode`, which is now
-   * undefined, so the order is actually PLACED at full price.
-   *
-   * Not pinned as a passing test, because a test asserting that behaviour would
-   * be pinning the bug. Fixing it means choosing where the code should live —
-   * a cookie the quote route falls back to is the option that also makes
-   * `placeOrder` right — and that is a change to the money path, worth making
-   * on purpose rather than as a side effect of writing this suite.
-   */
+  test("the coupon survives a reload, and Remove still removes it", async ({
+    page,
+    clientIp,
+  }) => {
+    await installDialogGuard(page);
+    await addFirstPackToCart(page);
+    await signUpViaApi(page, clientIp, {
+      name: "Divya Menon",
+      email: uniqueEmail("coupon-reload"),
+    });
+
+    await page.goto("/cart");
+    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
+
+    // The regression this covers: the coupon used to live ONLY in
+    // `CartQuoteProvider`'s React state, so a hard navigation rebuilt the
+    // provider with it gone. The shopper saw a higher total than the one she
+    // had agreed to, and the checkout form then submitted no code at all — the
+    // order was placed at full price.
+    await page.reload();
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
+
+    // Straight into checkout, no soft navigation to carry state for us.
+    await page.goto("/checkout");
+    await expect(page.getByText(`Discount (${LUMI9_COUPON})`)).toBeVisible();
+
+    // And the other half: removing it must actually remove it. This is what
+    // breaks if the route ever collapses "?coupon=" (remove) into an absent
+    // parameter (fall back to the cookie) — the code comes straight back.
+    await page.goto("/cart");
+    await page.getByRole("button", { name: "Remove" }).click();
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toHaveCount(0);
+    const cleared = await quote(page, clientIp);
+    expect(cleared.couponCode ?? null, "a removed coupon must not come back").toBeNull();
+    expect(cleared.discount).toBe(0);
+
+    expectNoNativeDialogs(page);
+  });
 
   test("a FEMI9 coupon is refused here, exactly like an unknown code", async ({
     page,
