@@ -99,6 +99,30 @@ styles.css
 apps/lumi9-web/**
 !apps/lumi9-web/package.json
 
+# ── femi9-web's PNG masters ──────────────────────────────────────────────────
+# BUILD INPUTS, not assets the site serves. `scripts/build-images.mjs` turns each
+# one into the WebP ladder under public/assets/opt — 318 files, 11MB, committed —
+# and <OptImg> serves that ladder off the OPT_IMAGES manifest, so a 360px phone
+# pulls a ~30KB 360w WebP and never the 2718x1818 PNG behind it. That made these
+# 49MB a cost every image paid and no browser ever asked for. They stay in git,
+# where re-running the script needs them; they simply stop shipping.
+#
+# Safe because `build` is `next build` ALONE — it does not invoke that script,
+# and the ladder is committed — so nothing in the image build reads these files.
+# Re-run scripts/build-images.mjs on the HOST after changing any of them.
+#
+# The negations below have no ladder (build-images skips anything too small to
+# be worth resizing) and are therefore served raw, so they must ship — ~12KB in
+# total. img/logo.png needs no negation: the pattern is scoped to img/blogs, and
+# that file is the favicon.
+apps/femi9-web/public/assets/figma-home/*.png
+apps/femi9-web/public/assets/img/blogs/*.png
+!apps/femi9-web/public/assets/figma-home/about-imgSubtract.png
+!apps/femi9-web/public/assets/figma-home/about-imgSubtract2.png
+!apps/femi9-web/public/assets/figma-home/footer-imgImage1.png
+!apps/femi9-web/public/assets/figma-home/hero-imgBadgetCheckAlt21.png
+!apps/femi9-web/public/assets/figma-home/hero-imgSeedling1.png
+
 # Editor / OS cruft.
 **/.vscode
 **/.idea
