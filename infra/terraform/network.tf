@@ -216,29 +216,64 @@ resource "aws_security_group" "alb" {
 # "CloudFront only" is one rule that stays correct as those ranges change. It is
 # a GLOBAL list published into every region — the name is literal.
 #
+# ── THERE IS ROOM FOR EXACTLY ONE PREFIX-LIST RULE HERE ─────────────────────
 # A prefix list rule counts against the security group's rule quota as its
-# max_entries (currently 55 of the default 60), which is why this group holds
-# nothing else. Adding many alb_debug_cidrs will hit that limit; raise the
-# "Inbound or outbound rules per security group" quota if you need them.
+# max_entries — currently 55 against a default limit of 60. So a SECOND one does
+# not fit, and AWS rejects it.
+#
+# This file used to open 80 AND 443 to the edge, as two rules, and that took the
+# whole platform down on 1 September. Terraform destroyed the old
+# 0.0.0.0/0 rules, created the 443 rule (55 entries), and was refused on the 80
+# rule for exceeding the quota. CloudFront reaches this origin on PORT 80 —
+# http-only, because the ALB has no certificate — so the one port that mattered
+# was the one that failed, and all three distributions timed out while every
+# ECS task sat healthy in its target group and nothing looked wrong anywhere.
+#
+# So: ONE rule, on the port CloudFront actually uses, derived from the same
+# local that sets the origin protocol policy. The two cannot disagree.
 data "aws_ec2_managed_prefix_list" "cloudfront" {
   count = var.alb_ingress_source == "cloudfront" ? 1 : 0
   name  = "com.amazonaws.global.cloudfront.origin-facing"
 }
 
 locals {
-  # One list of {port -> source}, so the two ports cannot drift apart.
+  # The port the EDGE connects to, which is a consequence of how CloudFront was
+  # told to address the origin (see local.alb_origin_protocol in cloudfront.tf):
+  #
+  #   http-only     -> 80    the default, while the ALB has no certificate
+  #   https-only    -> 443   once alb_origin_host + acm_certificate_arn are set
+  #   match-viewer  -> both, so a RANGE, because two prefix-list rules do not
+  #                    fit. 80-443 admits ports nothing listens on, which costs
+  #                    nothing: a port with no listener refuses regardless.
+  alb_edge_from_port = local.alb_origin_protocol == "https-only" ? 443 : 80
+  alb_edge_to_port   = local.alb_origin_protocol == "http-only" ? 80 : 443
+
+  # Direct access, for the escape hatches below. These are plain CIDR rules
+  # worth one entry each, and there are about five entries left in the group.
   alb_ingress_ports = { https = 443, http = 80 }
 }
 
 resource "aws_vpc_security_group_ingress_rule" "alb_edge" {
-  for_each = var.alb_ingress_source == "cloudfront" ? local.alb_ingress_ports : {}
+  count = var.alb_ingress_source == "cloudfront" ? 1 : 0
 
   security_group_id = aws_security_group.alb.id
-  description       = "${upper(each.key)} from the CloudFront edge"
+  description       = "Origin traffic from the CloudFront edge (${local.alb_origin_protocol})"
   ip_protocol       = "tcp"
-  from_port         = each.value
-  to_port           = each.value
+  from_port         = local.alb_edge_from_port
+  to_port           = local.alb_edge_to_port
   prefix_list_id    = data.aws_ec2_managed_prefix_list.cloudfront[0].id
+}
+
+# The edge must be able to reach the port CloudFront was told to use. Getting
+# this wrong does not fail the apply and does not fail a health check — the
+# tasks stay healthy behind an ALB nothing can reach — so it is asserted here.
+check "alb_edge_port_matches_origin_protocol" {
+  assert {
+    condition = var.alb_ingress_source != "cloudfront" || (
+      local.alb_origin_protocol == "http-only" ? local.alb_edge_from_port == 80 : local.alb_edge_to_port == 443
+    )
+    error_message = "The ALB security group would not admit the port CloudFront uses to reach the origin. Every distribution would time out while every task stayed healthy."
+  }
 }
 
 # The escape hatch, and it is a real one: this is the posture that made every
