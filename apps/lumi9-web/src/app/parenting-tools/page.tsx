@@ -71,18 +71,18 @@ export default function ParentingToolsPage() {
         )}
       />
 
-      <header className="px-safe mx-auto max-w-[720px] pt-[clamp(44px,6vw,80px)] pb-8 text-center">
+      <header className="px-safe mx-auto max-w-[var(--page-max)] pt-[clamp(44px,6vw,80px)] pb-8 text-center">
         <h1 className="m-0 mb-3.5 font-display text-[clamp(29px,7.8vw,60px)] font-normal leading-[1.02] md:text-[clamp(34px,4.6vw,60px)]">
           Parenting tools
         </h1>
-        <p className="m-0 text-lead text-muted">
+        <p className="m-0 mx-auto max-w-[68ch] text-lead text-muted">
           A few small tools for the nappy years. Tell us about your baby once and every tool just
           works - the details stay on your device. Add an email and we&apos;ll send a care &amp;
           vaccination plan too.
         </p>
       </header>
 
-      <div className="px-safe gap-block mx-auto flex max-w-[900px] flex-col pb-section">
+      <div className="px-safe gap-block mx-auto flex max-w-[var(--page-max)] flex-col pb-section">
         <Reveal>
           <BabyProfileCard />
         </Reveal>
@@ -96,7 +96,7 @@ export default function ParentingToolsPage() {
             <h2 className="m-0 mb-4 font-display text-[clamp(20px,2.6vw,28px)] font-normal leading-tight">
               Your toolkit
             </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {TOOLS.map((tool) => (
                 <ToolCard key={tool.href} {...tool} />
               ))}

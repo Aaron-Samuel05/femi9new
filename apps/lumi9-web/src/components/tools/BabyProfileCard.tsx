@@ -132,13 +132,13 @@ export function BabyProfileCard() {
       <h2 className="m-0 mb-1 font-display text-[clamp(20px,2.4vw,28px)] font-normal leading-tight">
         Tell us about your baby
       </h2>
-      <p className="m-0 mb-5 text-sm text-muted">
+      <p className="m-0 mb-5 max-w-[95ch] text-sm text-muted">
         Fill this in once and every tool uses it. Baby&apos;s details stay on this device - the only
         thing we use is your email, and only to send you a one-time care &amp; vaccination plan. You
         can skip it and use the tools directly.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="block">
           <span className="mb-1.5 block text-sm font-semibold text-midnight">Name (optional)</span>
           <input className="field" value={name} onChange={(e) => setName(e.target.value)} />

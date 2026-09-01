@@ -37,7 +37,7 @@ export function ToolPageFrame({
         )}
       />
 
-      <header className="px-safe mx-auto max-w-[720px] pt-[clamp(32px,5vw,64px)] pb-8">
+      <header className="px-safe mx-auto max-w-[var(--page-max)] pt-[clamp(32px,5vw,64px)] pb-8">
         <Link
           href="/parenting-tools"
           /* 20px tall on a phone, and it is the only way back out of a tool
@@ -62,10 +62,10 @@ export function ToolPageFrame({
         <h1 className="m-0 mt-4 mb-3 font-display text-[clamp(28px,6.4vw,48px)] font-normal leading-[1.05]">
           {title}
         </h1>
-        <p className="m-0 text-lead text-muted">{subtitle}</p>
+        <p className="m-0 max-w-[68ch] text-lead text-muted">{subtitle}</p>
       </header>
 
-      <div className="px-safe gap-block mx-auto flex max-w-[900px] flex-col pb-section">
+      <div className="px-safe gap-block mx-auto flex max-w-[var(--page-max)] flex-col pb-section">
         <Reveal>
           <BabyProfileCard />
         </Reveal>
