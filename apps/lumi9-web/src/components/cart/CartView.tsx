@@ -33,6 +33,9 @@ function PromoField() {
 
   return (
     <form
+      // The line items carry their own "Remove" button, so the promo box needs
+      // a handle of its own for anything driving this page.
+      data-testid="promo-form"
       className="mb-5.5"
       onSubmit={(event) => {
         event.preventDefault();

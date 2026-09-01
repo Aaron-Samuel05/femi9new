@@ -36,6 +36,20 @@ const LUMI9_COUPON = "LUMI9ONLY";
 const FEMI9_COUPON = "FEMI9ONLY";
 const COUPON_VALUE = 50;
 
+/**
+ * The promo box on /cart.
+ *
+ * Scoped rather than reached by role from the page, because /cart has more than
+ * one of everything this test presses: each cart line carries its own "Remove"
+ * button, and `CheckoutCta` is rendered by both CartView and the CartDrawer that
+ * lives in the root layout. An unscoped query matches several and fails strict
+ * mode instantly, which reads like a broken control rather than an ambiguous
+ * selector.
+ */
+function promo(page: import("@playwright/test").Page) {
+  return page.getByTestId("promo-form");
+}
+
 test.describe("the cart's promo box", () => {
   test("a Lumi9 coupon discounts a Lumi9 basket", async ({ page, clientIp }) => {
     await installDialogGuard(page);
@@ -48,8 +62,8 @@ test.describe("the cart's promo box", () => {
     expect(before.discount).toBe(0);
 
     await page.goto("/cart");
-    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
-    await page.getByRole("button", { name: "Apply" }).click();
+    await promo(page).getByLabel("Promo code").fill(LUMI9_COUPON);
+    await promo(page).getByRole("button", { name: "Apply" }).click();
 
     await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
 
@@ -77,8 +91,8 @@ test.describe("the cart's promo box", () => {
     });
 
     await page.goto("/cart");
-    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
-    await page.getByRole("button", { name: "Apply" }).click();
+    await promo(page).getByLabel("Promo code").fill(LUMI9_COUPON);
+    await promo(page).getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
 
     // Leave the cart the way a shopper does — by pressing the CTA, which is a
@@ -87,7 +101,12 @@ test.describe("the cart's promo box", () => {
     // layout. A soft navigation keeps it; `page.goto` would tear the provider
     // down and rebuild it with `coupon` back at "", which is a real gap in the
     // app (see the note below) but not what this test is about.
-    await page.getByRole("link", { name: /^Checkout/ }).click();
+    // Scoped to `main`: `CheckoutCta` is rendered TWICE on this page — once by
+    // CartView and once by CartDrawer, which lives in the root layout outside
+    // <main>. An unscoped role query matches both and fails strict mode
+    // immediately, which reads like a broken button rather than an ambiguous
+    // selector.
+    await page.locator("main").getByRole("link", { name: /^Checkout/ }).click();
     await expect(page).toHaveURL(/\/checkout$/);
 
     // Checkout renders the quote rather than computing its own total — the whole
@@ -113,8 +132,8 @@ test.describe("the cart's promo box", () => {
     });
 
     await page.goto("/cart");
-    await page.getByLabel("Promo code").fill(LUMI9_COUPON);
-    await page.getByRole("button", { name: "Apply" }).click();
+    await promo(page).getByLabel("Promo code").fill(LUMI9_COUPON);
+    await promo(page).getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toBeVisible();
 
     // The regression this covers: the coupon used to live ONLY in
@@ -133,7 +152,9 @@ test.describe("the cart's promo box", () => {
     // breaks if the route ever collapses "?coupon=" (remove) into an absent
     // parameter (fall back to the cookie) — the code comes straight back.
     await page.goto("/cart");
-    await page.getByRole("button", { name: "Remove" }).click();
+    // Scoped: each cart LINE has a "Remove" button too, and Playwright matches
+    // an accessible name by substring, so an unscoped query is ambiguous.
+    await promo(page).getByRole("button", { name: "Remove" }).click();
     await expect(page.getByText(`“${LUMI9_COUPON}” applied`)).toHaveCount(0);
 
     await page.reload();
@@ -168,8 +189,8 @@ test.describe("the cart's promo box", () => {
 
     // The shopper-facing half of the same fact.
     await page.goto("/cart");
-    await page.getByLabel("Promo code").fill(FEMI9_COUPON);
-    await page.getByRole("button", { name: "Apply" }).click();
+    await promo(page).getByLabel("Promo code").fill(FEMI9_COUPON);
+    await promo(page).getByRole("button", { name: "Apply" }).click();
     await expect(page.getByText(`“${FEMI9_COUPON}” applied`)).toHaveCount(0);
 
     expectNoNativeDialogs(page);
