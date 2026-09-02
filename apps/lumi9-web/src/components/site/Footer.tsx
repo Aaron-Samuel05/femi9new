@@ -110,7 +110,7 @@ function FooterRim() {
   return (
     <div
       aria-hidden
-      className="relative isolate h-[clamp(62px,10vw,124px)] lg:col-span-3"
+      className="relative isolate h-[clamp(62px,10vw,124px)] lg:col-span-3 lg:col-start-1 lg:row-start-1"
       // Named once and read twice: the wave's own height, and how far up it Lumi
       // stands. They cannot drift apart into a mascot floating above the curve.
       style={{ ["--wave-h" as string]: "clamp(24px, 3.2vw, 48px)" }}
@@ -137,7 +137,37 @@ function FooterRim() {
       {/* In front of Lumi, and the app's own divider rather than a second wave
           implementation — it is the same curve the homepage puts between its
           moss bands. */}
-      <WaveEdge color="var(--color-moss-deep)" className="absolute inset-x-0 bottom-0 z-2" />
+      {/* -bottom-px, not bottom-0. An SVG path's edge is ANTIALIASED against
+          the element's transparent background, so the wave's last device-pixel
+          row is only partly covered and the page background bleeds through it:
+          a 1px hairline straight across the footer, invisible at 100% and
+          obvious the moment anyone zooms. Sampled at dsf 1.25 it read
+          (110,126,62) -> (141,153,101) on the moss side. Dropping the wave a
+          pixel puts that soft edge INSIDE the solid fill below, where it blends
+          the colour into itself and disappears. */}
+      <WaveEdge
+        color="var(--color-moss-deep)"
+        /* Clipped to the complement of the cream wave's clip, so the two never
+           OVERLAP. They did, and the moss one's antialiased bottom row bled
+           through the cream one's - two soft edges compositing over each other
+           left the hairline on the cream side even after both were dropped a
+           pixel. Together the two clips tile the width exactly once. */
+        className="absolute inset-x-0 -bottom-px z-2 [clip-path:inset(0_0_0_var(--f-col1))]"
+      />
+      {/* The same curve again in cream, clipped to the first column, so the
+          contact panel is carried up on the wave instead of starting under it
+          with a moss band overhead. It has to be a SECOND full-width WaveEdge
+          rather than one sized to the column: the svg is
+          preserveAspectRatio="none", so a copy 330px wide would squeeze the
+          whole curve into 330px and meet the moss one at an angle. Both span
+          the footer, so both trace the identical path; only the clip differs.
+          `--f-col1` is the grid's own first track, which is what stops the clip
+          and the column from drifting apart - and it is 100% below `lg`, where
+          the footer is one column and the whole wave should be cream. */}
+      <WaveEdge
+        color="var(--color-butter)"
+        className="absolute inset-x-0 -bottom-px z-3 [clip-path:inset(0_calc(100%_-_var(--f-col1))_0_0)]"
+      />
     </div>
   );
 }
@@ -147,14 +177,66 @@ function FooterRim() {
  * under a wave rim with Lumi on it.
  * Below `lg` it becomes one column; the mascot panel keeps a 16/10 frame there so
  * the canvas always has a sane ratio for the aspect-fit camera to work with.
+ *
+ * `blob-pattern` and `bg-moss-deep` live on ONE absolute layer, not on the two
+ * moss panels and not on the footer. The utility paints its tile on a `::before`
+ * with `inset: 0`, so every element carrying it restarts the tile from its OWN
+ * top-left; on the two adjacent panels the blobs broke mid-shape at the seam and
+ * the mascot column read as a block pasted on rather than part of one band. On
+ * the footer it fixed that and broke the rim instead, filling the strip the wave
+ * curves through so the wave became moss on moss. The layer starts at the rim's
+ * height and runs to the bottom, which is both: one tiling, and a rim that still
+ * shows the page behind it. The cream panel and the midnight bar are opaque and
+ * cover it where they sit.
  */
 export function Footer() {
   return (
-    <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer lg:min-h-[560px] lg:grid-cols-[minmax(220px,330px)_minmax(0,1fr)_minmax(220px,340px)]">
+    <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer [--f-col1:100%] lg:min-h-[560px] lg:grid-cols-[var(--f-col1)_minmax(0,1fr)_minmax(220px,340px)] lg:[--f-col1:330px]">
+      {/*
+       * The moss field, as ONE layer, starting below the rim.
+       *
+       * It cannot go on the <footer> itself. The rim is the strip the wave
+       * curves through, and a wave painted in moss-deep needs the PAGE
+       * background above it to read as a curve at all - fill the footer edge to
+       * edge and the wave becomes moss on moss, i.e. invisible, and the footer
+       * ends in a flat rounded band instead of the scalloped one every other
+       * moss section on the site ends with.
+       *
+       * It cannot go back on the two panels either: blob-pattern paints its
+       * tile on a ::before with inset:0, so every element carrying it restarts
+       * the tiling from its own top-left and the blobs broke mid-shape at the
+       * seam between the links and mascot columns.
+       *
+       * One absolutely-positioned layer answers both - a single continuous
+       * tiling across every column, and nothing behind the rim. Its top is the
+       * rim's own height clamp, so the two cannot drift apart.
+       */}
+      <div
+        aria-hidden
+        className="blob-pattern pointer-events-none absolute inset-x-0 top-[clamp(62px,10vw,124px)] bottom-0 -z-10 bg-moss-deep"
+      />
+
       <FooterRim />
 
       {/* Left - cream contact panel */}
-      <div className="px-safe flex flex-col justify-center bg-butter py-[clamp(36px,6vw,64px)]">
+      {/*
+       * Rows 1-2, so the cream runs from the footer's TOP EDGE to the bottom
+       * bar. FooterRim is a transparent 124px strip spanning all three columns,
+       * so the footer's own bg-moss-deep showed through above this panel and
+       * the cream read as a square pasted into the corner rather than as the
+       * column it is. It overlaps the rim rather than shortening it: the rim
+       * keeps its full width, so the wave stays one continuous curve and the
+       * mascot keeps the position that holds him over the links panel. `relative
+       * z-1` is what wins that overlap - the rim is positioned, so without it a
+       * static panel paints underneath.
+       */}
+      {/* Top-aligned on the SAME padding as the links column, so the logo sits
+          on the "Shop"/"Company" line rather than floating half a panel below
+          it. It was justify-center with its own py: vertically centred in a
+          column whose height is set by the links, which put the logo level with
+          nothing in particular and read as three blocks that had been dropped
+          in separately. */}
+      <div className="px-safe flex flex-col bg-butter py-[clamp(40px,5.5vw,60px)] lg:col-start-1 lg:row-start-2">
         <Image
           src="/assets/logo-midnight.png"
           alt="Lumi9"
@@ -187,7 +269,7 @@ export function Footer() {
       </div>
 
       {/* Center - patterned links + newsletter + socials */}
-      <div className="blob-pattern px-safe bg-moss-deep py-[clamp(40px,5.5vw,60px)]">
+      <div className="px-safe py-[clamp(40px,5.5vw,60px)] lg:col-start-2 lg:row-start-2">
         <div className="mb-[clamp(28px,4vw,44px)] grid grid-cols-2 gap-[clamp(16px,2.4vw,24px)] sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
           <LinkColumn title="Shop" links={SHOP_LINKS} />
           <LinkColumn title="Company" links={COMPANY_LINKS} />
@@ -220,12 +302,12 @@ export function Footer() {
           with a capped height derives its *width* from the ratio, so the panel
           stopped stretching across the stacked row and let the page background
           show through beside it. */}
-      <div className="blob-pattern relative w-full bg-moss-deep max-lg:h-[clamp(210px,32vw,300px)] lg:min-h-[320px]">
+      <div className="relative w-full max-lg:h-[clamp(210px,32vw,300px)] lg:col-start-3 lg:row-start-2 lg:min-h-[320px]">
         <FooterMascot />
       </div>
 
       {/* Bottom bar */}
-      <div className="px-safe flex flex-wrap items-center justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3">
+      <div className="px-safe flex flex-wrap items-center justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3 lg:row-start-3">
         <span>{BRAND.copyright}</span>
         <span className="max-sm:order-3 max-sm:w-full">{BRAND.legalLine}</span>
         <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-5 gap-y-1">
