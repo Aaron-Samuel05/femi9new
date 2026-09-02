@@ -135,11 +135,20 @@ export function BabyProfileCard() {
                 ? ` · born at ${profile.gestationalWeeks} weeks`
                 : ""}
             </div>
-            <div className="mt-1.5 text-[13px] text-muted">
-              {origin === "account"
-                ? "Saved to your account, so it follows you to any device."
-                : "Saved on this device only."}
-            </div>
+            {/* Bound to the sync state as well as the origin.
+                `origin` flips to "account" the moment a session is seen, which
+                is BEFORE any write has succeeded — so on its own it promised
+                "follows you to any device" directly above an amber line saying
+                the sync had failed. When the write did not land, the failure
+                line below is the only true statement about where this is, and
+                it says so; a second sentence here would only contradict it. */}
+            {sync.state === "error" ? null : (
+              <div className="mt-1.5 text-[13px] text-muted">
+                {origin === "account"
+                  ? "Saved to your account, so it follows you to any device."
+                  : "Saved on this device only."}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button type="button" className="btn btn-ghost" onClick={beginEdit}>

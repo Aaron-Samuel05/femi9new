@@ -1,4 +1,5 @@
 import 'server-only'
+import { Prisma } from '@prisma/client'
 import type {
   BabySex,
   BloodGroup as DbBloodGroup,
@@ -219,13 +220,26 @@ export async function getBabyProfile(brand: Brand, userId: string): Promise<Baby
  * is the CALLER'S today, not `new Date()` — the route derives it from the
  * request so a test can fix it, and so a server in UTC does not file an evening
  * measurement in India under tomorrow's date.
+ *
+ * Returns `'unknown-user'` rather than throwing when `userId` has no `User` row.
+ * Session tokens are verified by SIGNATURE alone and last 30 days, so a cookie
+ * outlives the account it names — after a deletion, or against a database that
+ * has been reset under it. That is a stale identity, not a server fault: without
+ * this the FK violation surfaced as a 500 and the card told a parent their
+ * baby's details "couldn't sync" on every single save, with nothing to act on.
+ * Same stance `/api/auth/me` takes — a session whose user is gone reads as
+ * signed out.
  */
+export type SaveBabyProfileResult =
+  | { status: 'ok'; profile: BabyProfileDTO }
+  | { status: 'unknown-user' }
+
 export async function saveBabyProfile(
   brand: Brand,
   userId: string,
   input: SaveBabyProfileInput,
   today: IsoDate,
-): Promise<BabyProfileDTO> {
+): Promise<SaveBabyProfileResult> {
   const prisma = dbFor(brand)
 
   const data = {
@@ -238,27 +252,53 @@ export async function saveBabyProfile(
     bloodGroup: toDb(input.bloodGroup),
   }
 
-  return prisma.$transaction(async (tx) => {
-    const row = await tx.babyProfile.upsert({
-      where: { userId },
-      create: { userId, ...data },
-      update: data,
-    })
-
-    // Only when there is something to record. A profile saved with the weight
-    // field left empty must not write a row of two nulls — that is an empty
-    // point on a chart, not a measurement, and it would take the day's slot.
-    if (data.weightKg !== null || data.heightCm !== null) {
-      const takenOn = toDate(today)
-      await tx.babyMeasurement.upsert({
-        where: { babyId_takenOn: { babyId: row.id, takenOn } },
-        create: { babyId: row.id, takenOn, weightKg: data.weightKg, heightCm: data.heightCm },
-        update: { weightKg: data.weightKg, heightCm: data.heightCm },
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const row = await tx.babyProfile.upsert({
+        where: { userId },
+        create: { userId, ...data },
+        update: data,
       })
-    }
 
-    return toProfileDTO(row)
-  })
+      // Only when there is something to record. A profile saved with the weight
+      // field left empty must not write a row of two nulls — that is an empty
+      // point on a chart, not a measurement, and it would take the day's slot.
+      if (data.weightKg !== null || data.heightCm !== null) {
+        const takenOn = toDate(today)
+        await tx.babyMeasurement.upsert({
+          where: { babyId_takenOn: { babyId: row.id, takenOn } },
+          create: { babyId: row.id, takenOn, weightKg: data.weightKg, heightCm: data.heightCm },
+          update: { weightKg: data.weightKg, heightCm: data.heightCm },
+        })
+      }
+
+      return { status: 'ok' as const, profile: toProfileDTO(row) }
+    })
+  } catch (err) {
+    // Narrowed to THIS constraint. Any other foreign key failing here would be a
+    // real bug, and swallowing it as "sign in again" would send a parent round a
+    // loop that never fixes anything.
+    if (isUnknownUser(err)) return { status: 'unknown-user' }
+    throw err
+  }
+}
+
+/**
+ * P2003 on `BabyProfile.userId` — the session names a `User` that is gone.
+ *
+ * Prisma reports the constraint by NAME in `meta.constraint`, so this reads the
+ * one FK it means rather than treating every P2003 as an expired session. If a
+ * future client stops populating `meta` the check simply stops matching and the
+ * failure goes back to being a loud 500, which is the right way for it to break.
+ */
+const USER_FK = 'BabyProfile_userId_fkey'
+
+function isUnknownUser(err: unknown): boolean {
+  return (
+    err instanceof Prisma.PrismaClientKnownRequestError &&
+    err.code === 'P2003' &&
+    (err.meta as { constraint?: unknown } | undefined)?.constraint === USER_FK
+  )
 }
 
 /**

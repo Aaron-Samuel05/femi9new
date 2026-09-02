@@ -87,7 +87,7 @@ export async function PUT(req: Request) {
      * on the wrong day.
      */
     const today = new Date().toISOString().slice(0, 10);
-    const profile = await saveBabyProfile(
+    const result = await saveBabyProfile(
       "lumi9",
       session.sub,
       {
@@ -105,7 +105,19 @@ export async function PUT(req: Request) {
       today,
     );
 
-    return ok({ ok: true, profile });
+    /*
+     * A signature-valid cookie for a user who no longer exists is a 401, not a
+     * 500. The token is verified by signature alone and lives 30 days, so it
+     * outlasts the account it names — after a deletion, or against a database
+     * reset under it in development. The STATUS is what the card branches on: a
+     * 401 tells a parent to sign in again, where the 500 this used to be left it
+     * repeating "we couldn't sync" on every save with nothing to act on.
+     */
+    if (result.status === "unknown-user") {
+      return unauthorized("Your session has expired. Sign in again to save to your account.");
+    }
+
+    return ok({ ok: true, profile: result.profile });
   });
 }
 

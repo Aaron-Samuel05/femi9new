@@ -207,18 +207,41 @@ function toBody(profile: BabyProfile) {
   };
 }
 
-async function putProfile(profile: BabyProfile): Promise<boolean> {
+/**
+ * The outcome of an account write, kept apart from each other on purpose.
+ *
+ * This used to be a `boolean`, which collapsed "your session expired", "your
+ * details were rejected" and "the network dropped" into one amber sentence that
+ * told a parent nothing they could act on — and made the failure undiagnosable
+ * from the browser. Each one has a different thing for them to do.
+ */
+type WriteResult = "ok" | "signed-out" | "rejected" | "offline";
+
+async function putProfile(profile: BabyProfile): Promise<WriteResult> {
   try {
     const res = await fetch("/api/parenting/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(toBody(profile)),
     });
-    return res.ok;
+    if (res.ok) return "ok";
+    // 401 is the cookie outliving the account it names — see the PUT handler.
+    if (res.status === 401) return "signed-out";
+    if (res.status === 400) return "rejected";
+    return "offline";
   } catch {
-    return false;
+    // Never reached the server at all. The device copy is already written, so
+    // this is a sync that has not happened yet rather than data that is lost.
+    return "offline";
   }
 }
+
+/** What the card says for each way an account write can fail. */
+const WRITE_MESSAGE: Record<Exclude<WriteResult, "ok">, string> = {
+  "signed-out": "Saved on this device - sign in again to sync it to your account.",
+  rejected: "Saved on this device - your account wouldn't accept these details.",
+  offline: "Saved on this device - we couldn't sync it to your account.",
+};
 
 /**
  * Adopt whatever the server said, once per page load.
@@ -255,10 +278,23 @@ export async function adoptAccountProfile(remote: BabyProfile | null): Promise<v
   }
 
   emit();
-  // Best effort. A failed migration leaves the profile exactly where it already
-  // was — on the device, working — so there is nothing to tell the parent and
-  // nothing for them to do about it. The next save retries.
-  await putProfile(local);
+  /*
+   * Best effort, with ONE exception.
+   *
+   * A dropped migration leaves the profile exactly where it already was — on the
+   * device, working — so there is nothing to tell the parent and nothing for
+   * them to do about it. The next save retries.
+   *
+   * A 401 is different in kind: it means this browser is carrying a cookie for
+   * an account that is not there, so `origin` is about to promise account
+   * storage that cannot happen. Surfacing it here is what stops the card
+   * claiming "follows you to any device" from first paint, before the parent has
+   * touched anything.
+   */
+  const result = await putProfile(local);
+  if (result === "signed-out") {
+    setSync({ state: "error", message: WRITE_MESSAGE["signed-out"] });
+  }
 }
 
 /** Signed out: the device is the whole story. Idempotent. */
@@ -288,14 +324,11 @@ export async function saveBabyProfile(profile: BabyProfile): Promise<void> {
   if (origin !== "account") return;
 
   setSync({ state: "saving" });
-  const okay = await putProfile(profile);
+  const result = await putProfile(profile);
   setSync(
-    okay
+    result === "ok"
       ? { state: "idle" }
-      : {
-          state: "error",
-          message: "Saved on this device - we couldn't sync it to your account.",
-        },
+      : { state: "error", message: WRITE_MESSAGE[result] },
   );
 }
 
