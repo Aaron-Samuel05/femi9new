@@ -110,7 +110,7 @@ function FooterRim() {
   return (
     <div
       aria-hidden
-      className="relative isolate h-[clamp(62px,10vw,124px)] lg:col-span-3"
+      className="relative isolate h-[clamp(62px,10vw,124px)] lg:col-span-2"
       // Named once and read twice: the wave's own height, and how far up it Lumi
       // stands. They cannot drift apart into a mascot floating above the curve.
       style={{ ["--wave-h" as string]: "clamp(24px, 3.2vw, 48px)" }}
@@ -147,10 +147,14 @@ function FooterRim() {
  * under a wave rim with Lumi on it.
  * Below `lg` it becomes one column; the mascot panel keeps a 16/10 frame there so
  * the canvas always has a sane ratio for the aspect-fit camera to work with.
+ *
+ * The three panels are TWO grid columns, not three: the links and the mascot are
+ * halves of one moss slab. See the note on that slab - the pattern is what makes
+ * the nesting load-bearing.
  */
 export function Footer() {
   return (
-    <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer lg:min-h-[560px] lg:grid-cols-[minmax(220px,330px)_minmax(0,1fr)_minmax(220px,340px)]">
+    <footer className="relative mt-10 grid grid-cols-1 overflow-hidden rounded-t-footer lg:min-h-[560px] lg:grid-cols-[minmax(220px,330px)_minmax(0,1fr)]">
       <FooterRim />
 
       {/* Left - cream contact panel */}
@@ -186,46 +190,56 @@ export function Footer() {
         </div>
       </div>
 
-      {/* Center - patterned links + newsletter + socials */}
-      <div className="blob-pattern px-safe bg-moss-deep py-[clamp(40px,5.5vw,60px)]">
-        <div className="mb-[clamp(28px,4vw,44px)] grid grid-cols-2 gap-[clamp(16px,2.4vw,24px)] sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
-          <LinkColumn title="Shop" links={SHOP_LINKS} />
-          <LinkColumn title="Company" links={COMPANY_LINKS} />
+      {/* Right of the cream panel - ONE moss slab, split into links and mascot.
+          The blob pattern is painted HERE, on the slab, and not on each half.
+          Per half it restarted its tiling at the boundary between them: every
+          ellipse crossing that line was sliced down the middle and continued
+          out of phase on the other side, so the mascot column read as a
+          rectangle pasted onto the footer rather than part of it. One layer
+          across both, and the motif runs under the seam at every width. */}
+      <div className="blob-pattern grid grid-cols-1 bg-moss-deep lg:grid-cols-[minmax(0,1fr)_minmax(220px,340px)]">
+        {/* Links + newsletter + socials */}
+        <div className="px-safe py-[clamp(40px,5.5vw,60px)]">
+          <div className="mb-[clamp(28px,4vw,44px)] grid grid-cols-2 gap-[clamp(16px,2.4vw,24px)] sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
+            <LinkColumn title="Shop" links={SHOP_LINKS} />
+            <LinkColumn title="Company" links={COMPANY_LINKS} />
+          </div>
+
+          <p className="mb-[18px] max-w-[46ch] text-[clamp(15px,1.4vw,17px)] leading-[1.5] text-butter">
+            Parenting tips + early access to drops.
+          </p>
+          <NewsletterForm />
+
+          <div className="mb-3.5 text-[clamp(14px,1.2vw,15px)] font-bold text-butter">Follow us</div>
+          <div className="flex flex-wrap gap-[clamp(8px,1.2vw,12px)]">
+            {SOCIALS.map((social) => (
+              <a
+                key={social.name}
+                href={social.href}
+                target="_blank"
+                rel="noreferrer noopener"
+                aria-label={social.name}
+                className="flex size-11 items-center justify-center rounded-full border-[1.5px] border-butter/40 text-butter transition-colors hover:border-butter hover:bg-butter/15"
+              >
+                <SocialIcon name={social.name} />
+              </a>
+            ))}
+          </div>
         </div>
 
-        <p className="mb-[18px] max-w-[46ch] text-[clamp(15px,1.4vw,17px)] leading-[1.5] text-butter">
-          Parenting tips + early access to drops.
-        </p>
-        <NewsletterForm />
-
-        <div className="mb-3.5 text-[clamp(14px,1.2vw,15px)] font-bold text-butter">Follow us</div>
-        <div className="flex flex-wrap gap-[clamp(8px,1.2vw,12px)]">
-          {SOCIALS.map((social) => (
-            <a
-              key={social.name}
-              href={social.href}
-              target="_blank"
-              rel="noreferrer noopener"
-              aria-label={social.name}
-              className="flex size-11 items-center justify-center rounded-full border-[1.5px] border-butter/40 text-butter transition-colors hover:border-butter hover:bg-butter/15"
-            >
-              <SocialIcon name={social.name} />
-            </a>
-          ))}
+        {/* Mascot. No background and no pattern of its own - it stands on the
+            slab's. */}
+        {/* Height is set directly rather than via aspect-ratio: an aspect-ratio box
+            with a capped height derives its *width* from the ratio, so the panel
+            stopped stretching across the stacked row and let the page background
+            show through beside it. */}
+        <div className="relative w-full max-lg:h-[clamp(210px,32vw,300px)] lg:min-h-[320px]">
+          <FooterMascot />
         </div>
-      </div>
-
-      {/* Right - mascot on brand pattern */}
-      {/* Height is set directly rather than via aspect-ratio: an aspect-ratio box
-          with a capped height derives its *width* from the ratio, so the panel
-          stopped stretching across the stacked row and let the page background
-          show through beside it. */}
-      <div className="blob-pattern relative w-full bg-moss-deep max-lg:h-[clamp(210px,32vw,300px)] lg:min-h-[320px]">
-        <FooterMascot />
       </div>
 
       {/* Bottom bar */}
-      <div className="px-safe flex flex-wrap items-center justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-3">
+      <div className="px-safe flex flex-wrap items-center justify-between gap-x-6 gap-y-2 bg-midnight py-4 text-[clamp(12px,1vw,13px)] text-butter/75 lg:col-span-2">
         <span>{BRAND.copyright}</span>
         <span className="max-sm:order-3 max-sm:w-full">{BRAND.legalLine}</span>
         <nav aria-label="Legal" className="flex flex-wrap items-center gap-x-5 gap-y-1">
