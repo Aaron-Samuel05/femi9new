@@ -158,12 +158,15 @@ resource "aws_cloudwatch_metric_alarm" "service_task_count" {
 # The scheduled jobs
 #
 # These are the quietest failures on the platform and the most expensive.
-# Without `renew-subscriptions` a subscription ships one box and then nothing,
-# forever, while the account page keeps showing a next-delivery date. Without
-# `reconcile` an order whose webhook was missed sits `pending` indefinitely,
-# holding its stock, with the money already taken. Nothing on any dashboard
-# looks wrong in either case — which is precisely why they are alarmed and the
-# storefront's latency is not.
+# Without `renew-subscriptions` a legacy pay-later subscription ships one box and
+# then nothing, forever, while the account page keeps showing a next-delivery
+# date. Without `resume-subscriptions` a customer who skips ONE delivery is
+# paused permanently and never receives another box. Without `reconcile` an order
+# whose webhook was missed sits `pending` indefinitely, holding its stock, with
+# the money already taken. Nothing on any dashboard looks wrong in any of those
+# cases — which is precisely why they are alarmed and the storefront's latency is
+# not. The alarm below is `for_each` over every job, so a job added to cron.tf is
+# alarmed without anyone remembering to come here.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # EventBridge could not deliver — the target refused it, or the endpoint was

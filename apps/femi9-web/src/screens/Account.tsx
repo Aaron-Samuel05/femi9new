@@ -41,6 +41,7 @@ import {
 // The dialog primitive and the two write sheets now live in one place, shared
 // with /dashboard — see the note at the top of that file.
 import { AddressSheet, ProfileSheet, readFailure } from '@/components/member/sheets'
+import { authorizeMandate, type MandateAuthorization } from '@/lib/mandate'
 import type {
   AccountAddress,
   AccountCoupon,
@@ -82,13 +83,19 @@ const ORDER_TONE: Record<AccountOrder['statusKey'], 'active' | 'success' | 'warn
 }
 
 const SUB_TONE: Record<SubStatus, 'active' | 'warning' | 'danger'> = {
+  pending_mandate: 'warning',
   active: 'active',
   paused: 'warning',
+  // A halted plan is not merely paused: Razorpay has stopped trying, and it
+  // will not restart on its own. It reads as danger because only she can fix it.
+  halted: 'danger',
   cancelled: 'danger',
 }
 const SUB_LABEL: Record<SubStatus, string> = {
+  pending_mandate: 'Auto-pay not set up',
   active: 'Active',
   paused: 'Paused',
+  halted: 'Payment failed',
   cancelled: 'Cancelled',
 }
 
@@ -464,7 +471,7 @@ function OrdersPanel({ orders }: { orders: AccountOrder[] }) {
 
 type SubAction = 'pause' | 'resume' | 'skip' | 'cancel'
 
-/** The three fields a PATCH can move. Held per id while the request settles. */
+/** The fields a PATCH can move. Held per id while the request settles. */
 interface SubPatch {
   status: SubStatus
   nextDelivery: string
@@ -525,9 +532,43 @@ function SubscriptionCard({
   notify: (msg: string) => void
   onApplied: (patch: SubPatch) => void
 }) {
+  const router = useRouter()
   const [busy, setBusy] = useState<SubAction | null>(null)
+  const [authorizing, setAuthorizing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Finish a mandate she started and abandoned.
+   *
+   * It re-fetches the SAME authorization rather than creating a new plan: a
+   * second POST to /api/subscriptions would leave her with two subscriptions
+   * and, once both were authorised, two debits a cycle for one box.
+   */
+  async function finishAuthorization() {
+    if (authorizing) return
+    setAuthorizing(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/subscriptions/${sub.id}/authorize`)
+      if (!res.ok) {
+        setError((await readFailure(res)).message)
+        return
+      }
+      const { authorization } = (await res.json()) as { authorization: MandateAuthorization }
+      const outcome = await authorizeMandate(authorization, { description: sub.product })
+      if (outcome.ok) {
+        notify('Auto-pay is set up')
+        router.refresh()
+        return
+      }
+      if (!outcome.dismissed) setError(outcome.message)
+    } catch {
+      setError('We could not reach the server. Check your connection and try again.')
+    } finally {
+      setAuthorizing(false)
+    }
+  }
 
   async function run(action: SubAction) {
     if (busy) return
@@ -582,6 +623,12 @@ function SubscriptionCard({
             <span className="m-kv__k">Next delivery</span>
             <span className="m-kv__v m-num">{sub.nextDelivery}</span>
           </div>
+          {sub.chargeAmount != null && (
+            <div className="m-kv__row">
+              <span className="m-kv__k">Auto-pay</span>
+              <span className="m-kv__v m-num">{fmtRs(sub.chargeAmount)} each delivery</span>
+            </div>
+          )}
           <div className="m-kv__row">
             <span className="m-kv__k">Saved so far</span>
             <span className="m-kv__v m-num">{fmtRs(sub.saved)}</span>
@@ -618,7 +665,22 @@ function SubscriptionCard({
         </div>
       ) : (
         <div className="m-card__foot acct-sub__actions">
-          {sub.status === 'active' ? (
+          {/* An unauthorised plan has exactly one useful action. Pause and Skip
+              would be meaningless on a mandate that has never been approved, and
+              offering them implies the plan is running when it is not.
+              `needsMandate`, NOT `!mandateActive` — a legacy pay-later plan also
+              has no mandate but has nothing to authorise, and this button would
+              404 on every one of them. */}
+          {sub.needsMandate ? (
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => void finishAuthorization()}
+              disabled={authorizing || busy !== null}
+            >
+              {authorizing ? 'Opening…' : 'Set up auto-pay'}
+            </button>
+          ) : sub.status === 'active' ? (
             <>
               <button type="button" className="btn btn-ghost" onClick={() => void run('pause')} disabled={busy !== null}>
                 {busy === 'pause' ? 'Pausing…' : 'Pause'}

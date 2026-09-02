@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CADENCES, inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
+import { authorizeMandate, type MandateAuthorization } from "@/lib/mandate";
 import type { DbProductSize } from "@/lib/catalog.server";
 
 /** Subscribable pack tiers - the 3-count trial packs aren't offered on subscription. */
@@ -39,6 +40,12 @@ export function BoxBuilder() {
    *
    * A subscription belongs to an account (it has to: it recurs, and something
    * has to own it), so a guest is sent to sign in and returned here.
+   *
+   * TWO PHASES, and the second is what makes it recur. The POST creates the
+   * Razorpay plan and mandate; nothing is ever debited until her bank approves
+   * that mandate in the sheet `authorizeMandate` opens. Redirecting to the
+   * account page on the POST alone - which is what this used to do - showed her
+   * a live-looking plan for which no payment method had been agreed.
    */
   async function startSubscription() {
     if (submitting) return;
@@ -54,13 +61,30 @@ export function BoxBuilder() {
         router.push(`/login?next=${encodeURIComponent("/subscription#build")}`);
         return;
       }
-      if (res.ok) {
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        setError(body?.error ?? "We could not start your subscription. Please try again.");
+        return;
+      }
+
+      const { authorization } = (await res.json()) as { authorization: MandateAuthorization };
+      const outcome = await authorizeMandate(authorization, {
+        description: `Lumi9 ${size.size} · ${cadence.label}`,
+      });
+
+      if (outcome.ok) {
         router.push("/account?tab=subscription");
         router.refresh();
         return;
       }
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      setError(body?.error ?? "We could not start your subscription. Please try again.");
+      // Dismissing the bank screen is a change of mind, not an error. The plan
+      // is saved and unauthorised, and the account page offers to finish it -
+      // so say that instead of a failure she did not cause.
+      setError(
+        outcome.dismissed
+          ? "Saved. Finish setting up auto-pay from your account whenever you are ready."
+          : outcome.message,
+      );
     } catch {
       setError("Network error - please try again.");
     } finally {
@@ -70,7 +94,7 @@ export function BoxBuilder() {
 
   return (
     <section id="build" className="px-safe pt-5 pb-section">
-      <div className="mx-auto grid max-w-[1080px] grid-cols-1 items-start gap-block rounded-panel border border-moss-tint bg-canvas p-card-lg lg:grid-cols-[1fr_minmax(280px,340px)]">
+      <div className="mx-auto grid max-w-[1080px] grid-cols-1 items-start gap-stack rounded-panel border border-moss-tint bg-canvas p-card-lg lg:grid-cols-[1fr_minmax(280px,340px)]">
         <div>
           <h2 className="m-0 mb-7.5 font-display text-[clamp(24px,3vw,32px)] font-normal">Build your box</h2>
 
@@ -157,7 +181,7 @@ export function BoxBuilder() {
             disabled={submitting}
             className="btn btn-cream mb-3.5 w-full disabled:opacity-60"
           >
-            {submitting ? "Starting…" : "Start subscription"}
+            {submitting ? "Setting up auto-pay…" : "Start subscription"}
           </button>
           <div className="text-center text-xs leading-[1.5] opacity-70">
             Skip, pause or cancel anytime from{" "}

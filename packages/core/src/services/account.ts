@@ -163,7 +163,18 @@ export interface AccountAddress {
   primary: boolean
 }
 
-export type SubStatus = 'active' | 'paused' | 'cancelled'
+/**
+ * Mirrors the `SubscriptionStatus` enum. `pending_mandate` and `halted` are the
+ * two states a gateway-managed plan can be in that the customer has to ACT on:
+ *
+ *   pending_mandate — she started a plan and never finished authorising it, so
+ *                     nothing recurs and nothing is charged. The account page
+ *                     must offer to finish it, or the plan is invisible dead
+ *                     weight she believes is live.
+ *   halted          — Razorpay gave up after a run of failed debits. The mandate
+ *                     exists; her payment instrument does not work.
+ */
+export type SubStatus = 'pending_mandate' | 'active' | 'paused' | 'halted' | 'cancelled'
 
 export interface AccountSubscription {
   id: string // subscription id — the account page's Pause/Skip/Cancel controls PATCH by it
@@ -173,6 +184,17 @@ export interface AccountSubscription {
   nextDelivery: string
   saved: number
   status: SubStatus
+  /** Rupees the mandate debits each cycle; null on a legacy pay-later plan. */
+  chargeAmount: number | null
+  /** True once her bank approved the mandate. */
+  mandateActive: boolean
+  /**
+   * She has a gateway mandate that was never authorised, so the account page can
+   * re-open it. NOT `!mandateActive`: a LEGACY pay-later plan also has no
+   * mandate but has nothing to authorise, and a CTA rendered from the negation
+   * would 404 on every plan that predates this.
+   */
+  needsMandate: boolean
 }
 
 /** A reward code the customer owns. Redeeming used to flash the code once in
@@ -415,6 +437,9 @@ export async function getAccountData(brand: Brand, userId: string): Promise<Acco
     nextDelivery: fmtDate(s.nextDeliveryAt),
     saved: s.savedTotal,
     status: s.status as SubStatus,
+    chargeAmount: s.chargeAmount,
+    mandateActive: s.mandateAuthedAt != null,
+    needsMandate: s.razorpaySubscriptionId != null && s.mandateAuthedAt == null,
   }))
 
   const now = Date.now()

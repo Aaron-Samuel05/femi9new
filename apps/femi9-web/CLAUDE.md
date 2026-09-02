@@ -30,7 +30,7 @@ same exact Next version as `lumi9-web`.
 | Data | PostgreSQL via Prisma 6 (`prisma/schema.prisma`, ~60 models) |
 | Styling | Hand-written CSS in `src/styles/*.css` + colocated `*.css`. **No Tailwind.** |
 | Auth | Stateless HS256 JWTs in httpOnly cookies (`jose`) |
-| Payments | Razorpay (order + webhook + reconcile cron) |
+| Payments | Razorpay — one-off orders, **recurring mandates** (Subscriptions API), webhook, reconcile cron |
 | Messaging | Resend (email) · WhatsApp Cloud API (**sign-in OTP + order status**) · MSG91 (reward codes only) |
 | Tests | Vitest (`npm test`) · Playwright (`npm run test:ui`) |
 | Errors | Sentry (client/server/edge configs at app root) |
@@ -104,8 +104,32 @@ gone.
 **⚠️ The cron routes' admin fallback is now inert.** `/api/cron/*` accept either
 a matching `x-cron-secret` OR a signed-in admin. This app no longer mints an
 admin cookie, so that second path can never succeed — **`CRON_SECRET` must be
-set**, or subscription renewals and Thara cycle closing have no way in. The
-routes were left otherwise untouched on purpose: they move money.
+set**, or subscription skip-resumes, legacy renewals and Thara cycle closing have
+no way in. The routes were left otherwise untouched on purpose: they move money.
+
+**Subscriptions are billed by a Razorpay MANDATE — the gateway owns the
+calendar.** Three things follow, and all three are easy to get wrong:
+
+1. **A new plan is INERT.** `POST /api/subscriptions` writes `pending_mandate`
+   and creates the gateway subscription; nothing is EVER debited until the
+   customer's bank approves it through `src/lib/mandate.ts` and
+   `POST /api/subscriptions/[id]/authorize`. A 201 means "ready to authorise".
+   To finish an abandoned one, re-`GET` that route — never POST
+   `/api/subscriptions` again, or she gets two plans and two debits a cycle.
+2. **A recurring order is created by the `subscription.charged` webhook**, in
+   `recordSubscriptionCharge`, after the money has arrived — so it is born
+   `paid`, with a real Payment row, and it is NEVER refused. A stock shortfall
+   logs a backorder and still creates the order; refusing would mean the bank
+   had moved the money and we had recorded nothing.
+3. **`generateDueOrders` (the renew cron) serves LEGACY plans only** —
+   `razorpaySubscriptionId IS NULL`. Drop that filter and every mandated
+   subscriber gets two boxes a cycle, one of them unpaid and holding stock.
+
+"Skip next" is a pause plus a scheduled resume, because Razorpay has no
+skip-one-cycle primitive; `/api/cron/resume-subscriptions` performs it. And
+`RAZORPAY_WEBHOOK_SECRET` stops being optional here: a mandate debits with no
+browser involved, so an unverifiable webhook means charges taken and no orders
+created at all.
 
 **Two cookies, two audiences, never crossed.**
 `femi9_session` (aud `femi9-customer`, 30d) is this app's only session now.

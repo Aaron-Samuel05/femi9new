@@ -5,13 +5,24 @@
 # `CRON_SECRET` has been a placeholder secret in secrets.tf since this stack was
 # written, described as the "EventBridge -> /api/cron shared secret". There was
 # no EventBridge. Four `/api/cron/*` routes existed in femi9-web, all of them
-# reachable and none of them ever called:
+# reachable and none of them ever called. `resume-subscriptions` is the fifth,
+# added with the Razorpay mandates and scheduled from the start:
 #
-#   renew-subscriptions   every due Subscription generates its next order here.
-#                         Without it a subscription is a row that ships one box
-#                         and then nothing, forever, while the customer's
-#                         account page keeps showing a "next delivery" date that
-#                         quietly recedes into the past.
+#   renew-subscriptions   every due LEGACY (pay-later) Subscription generates
+#                         its next order here. Gateway-managed plans are NOT
+#                         renewed by it — Razorpay debits those on its own
+#                         schedule and the `subscription.charged` webhook creates
+#                         the order. Without this job the pay-later plans that
+#                         predate mandates ship one box and then nothing,
+#                         forever, while the account page keeps showing a "next
+#                         delivery" date that quietly recedes into the past.
+#   resume-subscriptions  un-pauses a plan whose SKIPPED cycle has passed.
+#                         Razorpay has no skip-one-cycle primitive, so "Skip next
+#                         box" pauses the mandate and schedules a resume. Without
+#                         this job that pause is PERMANENT: a customer who skips
+#                         one delivery silently never receives another, and her
+#                         account page shows a paused plan she did not choose to
+#                         pause indefinitely.
 #   reconcile             asks Razorpay what actually happened to every order
 #                         still `pending` after an hour. It is the backstop for
 #                         a missed webhook: money taken, order stuck pending,
@@ -81,6 +92,14 @@ locals {
       path     = "/api/cron/renew-subscriptions"
       schedule = "cron(30 20 * * ? *)" # 02:00 IST daily
     }
+    "femi9-resume-subscriptions" = {
+      app  = "femi9"
+      path = "/api/cron/resume-subscriptions"
+      # Runs BEFORE renew/charge time so a plan whose skip has expired is active
+      # again by the time the day's billing happens, rather than missing a whole
+      # further cycle because the resume landed an hour late.
+      schedule = "cron(0 20 * * ? *)" # 01:30 IST daily
+    }
     "femi9-reconcile" = {
       app  = "femi9"
       path = "/api/cron/reconcile"
@@ -106,6 +125,11 @@ locals {
       app      = "lumi9"
       path     = "/api/cron/renew-subscriptions"
       schedule = "cron(45 20 * * ? *)" # 02:15 IST daily — offset from Femi9's
+    }
+    "lumi9-resume-subscriptions" = {
+      app      = "lumi9"
+      path     = "/api/cron/resume-subscriptions"
+      schedule = "cron(15 20 * * ? *)" # 01:45 IST daily — offset from Femi9's
     }
     "lumi9-reconcile" = {
       app      = "lumi9"

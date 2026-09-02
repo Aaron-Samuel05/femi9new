@@ -65,6 +65,7 @@ import {
   type CyclePhase,
 } from '@femi9/core/cycle-math'
 import { AddressSheet, ProfileSheet, readFailure } from '@/components/member/sheets'
+import { authorizeMandate, type MandateAuthorization } from '@/lib/mandate'
 import type {
   AccountAddress,
   AccountCoupon,
@@ -143,13 +144,19 @@ interface SubPatch {
 }
 
 const SUB_LABEL: Record<SubStatus, string> = {
+  pending_mandate: 'Auto-pay not set up',
   active: 'Active',
   paused: 'Paused',
+  halted: 'Payment failed',
   cancelled: 'Cancelled',
 }
 const SUB_PILL: Record<SubStatus, string> = {
+  pending_mandate: '',
   active: ' f9d-pill--active',
   paused: '',
+  // Halted is not paused: Razorpay has stopped retrying and will not restart on
+  // its own, so it reads with the same weight as a cancellation.
+  halted: ' f9d-pill--danger',
   cancelled: ' f9d-pill--danger',
 }
 
@@ -1565,9 +1572,41 @@ function SubscriptionRow({
   notify: (msg: string) => void
   onApplied: (patch: SubPatch) => void
 }) {
+  const router = useRouter()
   const [busy, setBusy] = useState<SubAction | null>(null)
+  const [authorizing, setAuthorizing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  /**
+   * Finish a mandate she started and abandoned. Re-fetches the SAME
+   * authorization rather than creating a new plan — a second POST to
+   * /api/subscriptions leaves her with two plans and two debits a cycle.
+   */
+  async function finishAuthorization() {
+    if (authorizing) return
+    setAuthorizing(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/subscriptions/${sub.id}/authorize`)
+      if (!res.ok) {
+        setError((await readFailure(res)).message)
+        return
+      }
+      const { authorization } = (await res.json()) as { authorization: MandateAuthorization }
+      const outcome = await authorizeMandate(authorization, { description: sub.product })
+      if (outcome.ok) {
+        notify('Auto-pay is set up')
+        router.refresh()
+        return
+      }
+      if (!outcome.dismissed) setError(outcome.message)
+    } catch {
+      setError('We could not reach the server. Check your connection and try again.')
+    } finally {
+      setAuthorizing(false)
+    }
+  }
 
   async function run(action: SubAction) {
     if (busy) return
@@ -1631,7 +1670,21 @@ function SubscriptionRow({
           </span>
         ) : (
           <span className="f9d-sub__acts">
-            {sub.status === 'active' ? (
+            {/* An unauthorised plan gets ONE action. Falling through to the
+                "Resume" branch below offered a control that would ask Razorpay
+                to resume a mandate her bank has never approved. `needsMandate`,
+                NOT `!mandateActive` — a legacy pay-later plan also has no
+                mandate but nothing to authorise. */}
+            {sub.needsMandate ? (
+              <button
+                type="button"
+                className="f9d-order__again"
+                onClick={() => void finishAuthorization()}
+                disabled={authorizing || busy !== null}
+              >
+                {authorizing ? 'Opening…' : 'Set up auto-pay'}
+              </button>
+            ) : sub.status === 'active' ? (
               <>
                 <button type="button" className="f9d-order__again" onClick={() => void run('pause')} disabled={busy !== null}>
                   {busy === 'pause' ? 'Pausing…' : 'Pause'}

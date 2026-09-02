@@ -68,9 +68,21 @@ export async function brandReadiness(brand: Brand): Promise<BrandReadiness> {
     // should not be taking traffic.
     if (!paymentsConfigured(brand)) blocking.push(`RAZORPAY_KEY_ID_${upper} / RAZORPAY_KEY_SECRET_${upper}`)
 
-    // Degraded, not broken: an unverifiable webhook means orders are marked
+    // For a ONE-OFF order this is degraded but not broken: the order is marked
     // paid by the browser callback alone, which still works.
-    if (!webhookConfiguredFor(brand)) warnings.push(`RAZORPAY_WEBHOOK_SECRET_${upper}`)
+    //
+    // For a SUBSCRIPTION it is total. A mandate debits on Razorpay's schedule
+    // with no browser anywhere near it, and `subscription.charged` is the only
+    // notification that it happened — so an unverifiable webhook means every
+    // recurring charge is taken from a customer's account and no order is ever
+    // created for it. Money in, nothing shipped, nothing logged.
+    //
+    // Still a warning rather than blocking, on this file's standing reasoning:
+    // pulling the task out of the load balancer turns a broken feature into a
+    // site-wide outage. But it is the most expensive warning here.
+    if (!webhookConfiguredFor(brand)) {
+      warnings.push(`RAZORPAY_WEBHOOK_SECRET_${upper}(subscription-charges-unrecorded)`)
+    }
 
     // Sign-in is by emailed link, so no mail means no new sessions — but
     // browsing, and every already-signed-in shopper, is unaffected.
@@ -101,12 +113,14 @@ export async function brandReadiness(brand: Brand): Promise<BrandReadiness> {
       warnings.push(`WHATSAPP_TOKEN_${upper} / WHATSAPP_PHONE_NUMBER_ID_${upper}`)
     }
 
-    // Without this, the four `/api/cron/*` routes refuse every caller and no
-    // scheduled job runs: subscriptions ship one box and then nothing, and an
-    // order whose webhook was missed sits `pending` forever holding its stock.
-    // A WARNING, not blocking — the storefront serves perfectly well without it,
-    // which is exactly why nobody notices. cronSecretOk() treats Terraform's
-    // "TODO-" placeholder as unset, so `configuredEnv` is the right test here.
+    // Without this, every `/api/cron/*` route refuses every caller and no
+    // scheduled job runs: a legacy pay-later subscription ships one box and then
+    // nothing, a customer who skips ONE delivery is paused permanently because
+    // `resume-subscriptions` never runs, and an order whose webhook was missed
+    // sits `pending` forever holding its stock. A WARNING, not blocking — the
+    // storefront serves perfectly well without it, which is exactly why nobody
+    // notices. cronSecretOk() treats Terraform's "TODO-" placeholder as unset,
+    // so `configuredEnv` is the right test here.
     if (!configuredEnv('CRON_SECRET')) warnings.push('CRON_SECRET(scheduled-jobs-disabled)')
   }
 

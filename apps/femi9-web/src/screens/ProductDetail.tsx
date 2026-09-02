@@ -25,6 +25,7 @@ import type { SizeOption } from '@/lib/size-run'
 import { usePublicSettings } from '@/lib/use-public-settings'
 import { useAddPulse } from '@/lib/use-add-pulse'
 import { track } from '@/lib/track'
+import { authorizeMandate, type MandateAuthorization } from '@/lib/mandate'
 
 interface Props {
   product: ProductWithVariants
@@ -111,6 +112,10 @@ export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOp
   const [sizeIdx, setSizeIdx] = useState(sizeFromUrl >= 0 ? sizeFromUrl : 1)
   const [mode, setMode] = useState<'once' | 'sub'>('once')
   const [cadence, setCadence] = useState(CADENCES[0].id)
+  /* Held across the whole two-phase subscribe (create plan → authorise mandate),
+     because the Razorpay sheet is a real wait and a second tap behind it would
+     create a SECOND plan she would then be debited for twice. */
+  const [subBusy, setSubBusy] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const [specsOpen, setSpecsOpen] = useState(true)
@@ -307,6 +312,14 @@ export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOp
     }
 
     if (mode === 'sub') {
+      // Two phases, and the second one is what makes this a subscription.
+      // The POST creates the plan and the Razorpay mandate but authorises
+      // nothing; until her bank approves it below, nothing will ever be
+      // debited. Reporting "Subscription started" off the back of the POST
+      // alone — which is what this used to do — told her she was subscribed
+      // when no payment method had been agreed at all.
+      if (subBusy) return
+      setSubBusy(true)
       try {
         const res = await fetch('/api/subscriptions', {
           method: 'POST',
@@ -318,12 +331,34 @@ export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOp
           return
         }
         if (!res.ok) {
-          notify('Sorry, we could not start your subscription')
+          const body = (await res.json().catch(() => null)) as { error?: string } | null
+          notify(body?.error ?? 'Sorry, we could not start your subscription')
           return
         }
-        notify(`Subscription started · ${product.name}`)
+        const { authorization } = (await res.json()) as {
+          authorization: MandateAuthorization
+        }
+
+        const outcome = await authorizeMandate(authorization, {
+          description: `${product.name} · ${CADENCES.find((c) => c.id === cadence)?.label ?? ''}`,
+        })
+        if (outcome.ok) {
+          notify(`Subscription started · ${product.name}`)
+          router.push('/account?tab=subscriptions')
+          return
+        }
+        // Dismissed is not a failure: the plan is saved and unauthorised, and
+        // the account page offers to finish it. Say that rather than nothing,
+        // so she is not left wondering whether the tap registered.
+        notify(
+          outcome.dismissed
+            ? 'Saved — finish setting up auto-pay from your account'
+            : outcome.message,
+        )
       } catch {
         notify('Sorry, we could not start your subscription')
+      } finally {
+        setSubBusy(false)
       }
       return
     }
@@ -549,8 +584,15 @@ export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOp
                   <span>{qty}</span>
                   <button onClick={() => setQty((q) => q + 1)} aria-label="Increase">+</button>
                 </div>
-                <button className={`add-to-bag-btn${ctaPulsing ? ' is-added' : ''}`} onClick={submit}>
-                  <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
+                <button
+                  className={`add-to-bag-btn${ctaPulsing ? ' is-added' : ''}`}
+                  onClick={submit}
+                  disabled={subBusy}
+                >
+                  <Bag />{' '}
+                  {subBusy
+                    ? 'Setting up auto-pay…'
+                    : `${mode === 'sub' ? 'Start subscription' : 'Add to bag'} - ${rupees(effPrice * qty)}`}
                 </button>
               </div>
 
@@ -748,8 +790,11 @@ export function ProductDetail({ product, extra, reviews, relatedProducts, sizeOp
           related strip below it and no way back. `display:none` above 768px, so
           desktop never sees it. */}
       <div className="pdp-mobile-bar">
-        <button className="btn btn-primary" onClick={submit}>
-          <Bag /> {mode === 'sub' ? 'Start subscription' : 'Add to bag'} - {rupees(effPrice * qty)}
+        <button className="btn btn-primary" onClick={submit} disabled={subBusy}>
+          <Bag />{' '}
+          {subBusy
+            ? 'Setting up auto-pay…'
+            : `${mode === 'sub' ? 'Start subscription' : 'Add to bag'} - ${rupees(effPrice * qty)}`}
         </button>
       </div>
 

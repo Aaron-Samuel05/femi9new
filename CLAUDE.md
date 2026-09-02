@@ -272,18 +272,29 @@ because a load balancer has no session and never will.
 **The scheduled jobs live in `infra/terraform/cron.tf`.** EventBridge rule →
 API Destination → the app's own `/api/cron/*` route, authenticated by
 `CRON_SECRET` in an `x-cron-secret` header (`@femi9/core/cron-auth` compares it
-in constant time and treats Terraform's `TODO-` placeholder as unset). Four jobs
-for Femi9, two for Lumi9.
+in constant time and treats Terraform's `TODO-` placeholder as unset). Five jobs
+for Femi9, three for Lumi9.
 
 Two things about it are worth knowing before you touch it. **Setting the real
 secret out of band does not reach the EventBridge connection** — the connection
 holds the value, not a reference, so `put-secret-value` must be followed by
 `terraform apply` or every scheduled call presents the placeholder and is
 refused. And **an unscheduled cron fails silently and expensively**: without
-`renew-subscriptions` a subscription ships one box and then nothing forever,
-while the customer's account page keeps showing a next-delivery date; without
-`reconcile` an order whose webhook was missed sits `pending` indefinitely,
-holding its stock, with the money already taken. Nothing on any dashboard looks
-wrong in either case. The health probes report a missing `CRON_SECRET` as a
-warning for that reason, and failed runs land in the `cron_dead_letter_queue`
-output — an empty queue is the healthy state.
+`resume-subscriptions` a customer who skips ONE delivery is paused permanently
+and never gets another box; without `renew-subscriptions` a legacy pay-later
+subscription ships one box and then nothing forever, while the account page keeps
+showing a next-delivery date; without `reconcile` an order whose webhook was
+missed sits `pending` indefinitely, holding its stock, with the money already
+taken. Nothing on any dashboard looks wrong in any of those cases. The health
+probes report a missing `CRON_SECRET` as a warning for that reason, and failed
+runs land in the `cron_dead_letter_queue` output — an empty queue is the healthy
+state.
+
+**Subscriptions are billed by a Razorpay MANDATE, and the gateway owns the
+calendar.** `packages/core/src/services/subscriptions.ts` is the whole story;
+the two things to know before touching anything near it are that a new plan is
+INERT until the customer's bank authorises it (`pending_mandate`, nothing is ever
+debited), and that a recurring order is created by the `subscription.charged`
+WEBHOOK after the money has arrived — not by cron, and never refused, because by
+then the bank has already moved the money. `razorpaySubscriptionId IS NULL` is
+the discriminator that keeps the legacy pay-later plans working unchanged.

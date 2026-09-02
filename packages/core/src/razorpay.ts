@@ -215,3 +215,287 @@ export async function refundPayment(brand: Brand, paymentId: string, amountRupee
   const data = (await res.json()) as { id: string }
   return { id: data.id, mock: false }
 }
+
+// ─────────────────────────── Subscriptions (mandates) ────────────────────────
+//
+// The Subscriptions API is a DIFFERENT money object from the Orders API above.
+// An Order is one charge we initiate; a Subscription is a MANDATE the customer's
+// bank or UPI app authorises once, after which RAZORPAY decides when to debit,
+// retries a failure on its own schedule, and reports each success to us as a
+// `subscription.charged` webhook. Nothing here charges anybody — creating a plan
+// and a subscription only sets up the rails; money moves when the gateway says.
+//
+// The shape is always: Plan (amount + rhythm) → Subscription (a customer's
+// mandate against that plan) → Checkout authorises it → webhooks thereafter.
+
+const PLANS_URL = 'https://api.razorpay.com/v1/plans'
+const SUBSCRIPTIONS_URL = 'https://api.razorpay.com/v1/subscriptions'
+
+/** Razorpay's billing rhythms. `interval` multiplies whichever is chosen. */
+export type PlanPeriod = 'daily' | 'weekly' | 'monthly' | 'yearly'
+
+/** Shared POST helper for the subscription endpoints — same auth, same error
+ *  shape, so each call below is just its URL and body. */
+async function postJson<T>(brand: Brand, url: string, body: unknown, label: string): Promise<T> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Razorpay ${label} failed (${res.status}): ${detail}`)
+  }
+  return (await res.json()) as T
+}
+
+export interface GatewayPlan {
+  id: string
+  mock: boolean
+}
+
+/**
+ * Create a Plan: an amount charged on a rhythm, with no customer attached.
+ *
+ * Plans are immutable on Razorpay and cheap to create but impossible to delete,
+ * so callers MUST go through services/subscription-plans.ts, which caches one
+ * per (amount, period, interval) rather than minting a fresh plan per subscribe
+ * click.
+ */
+export async function createPlan(
+  brand: Brand,
+  {
+    period,
+    interval,
+    name,
+    amountRupees,
+    notes,
+  }: {
+    period: PlanPeriod
+    interval: number
+    name: string
+    amountRupees: number
+    notes?: Record<string, string>
+  },
+): Promise<GatewayPlan> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return { id: `mock_plan_${period}_${interval}_${Math.round(amountRupees * 100)}`, mock: true }
+  }
+  const data = await postJson<{ id: string }>(
+    brand,
+    PLANS_URL,
+    {
+      period,
+      interval,
+      item: { name, amount: Math.round(amountRupees * 100), currency: 'INR' },
+      notes,
+    },
+    'createPlan',
+  )
+  return { id: data.id, mock: false }
+}
+
+export interface GatewaySubscription {
+  id: string
+  status: string
+  shortUrl: string | null
+  currentEnd: Date | null
+  mock: boolean
+}
+
+/** Razorpay returns epoch SECONDS (or null) for every timestamp on these
+ *  entities. Anything else — including 0 — is treated as absent rather than
+ *  becoming 1 Jan 1970 on a customer's "next delivery" line. */
+function epochToDate(v: unknown): Date | null {
+  return typeof v === 'number' && v > 0 ? new Date(v * 1000) : null
+}
+
+type SubscriptionEntity = {
+  id: string
+  status: string
+  short_url?: string | null
+  current_end?: number | null
+  customer_id?: string | null
+  plan_id?: string | null
+}
+
+function toGatewaySubscription(data: SubscriptionEntity): GatewaySubscription {
+  return {
+    id: data.id,
+    status: data.status,
+    shortUrl: data.short_url ?? null,
+    currentEnd: epochToDate(data.current_end),
+    mock: false,
+  }
+}
+
+/**
+ * Open a subscription against a plan. The returned id is what the browser hands
+ * to Checkout as `subscription_id`; until the customer authorises there, the
+ * subscription sits at status `created` and NOTHING is ever debited.
+ *
+ * `totalCount` is how many cycles the mandate covers — Razorpay requires a
+ * finite number, so an open-ended refill plan asks for a long horizon (see
+ * MANDATE_TOTAL_COUNT in services/subscriptions.ts) rather than pretending to be
+ * infinite.
+ *
+ * `customerNotify: 0` keeps Razorpay's own emails off: the customer already gets
+ * our order confirmation from `markOrderPaid`, and two unrelated receipts for one
+ * debit is worse than one.
+ */
+export async function createSubscription(
+  brand: Brand,
+  {
+    planId,
+    totalCount,
+    quantity = 1,
+    notes,
+    startAt,
+  }: {
+    planId: string
+    totalCount: number
+    quantity?: number
+    notes?: Record<string, string>
+    startAt?: Date
+  },
+): Promise<GatewaySubscription> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return {
+      id: `mock_sub_${planId}_${Math.random().toString(36).slice(2, 10)}`,
+      status: 'created',
+      shortUrl: null,
+      currentEnd: null,
+      mock: true,
+    }
+  }
+  const data = await postJson<SubscriptionEntity>(
+    brand,
+    SUBSCRIPTIONS_URL,
+    {
+      plan_id: planId,
+      total_count: totalCount,
+      quantity,
+      customer_notify: 0,
+      notes,
+      ...(startAt ? { start_at: Math.floor(startAt.getTime() / 1000) } : {}),
+    },
+    'createSubscription',
+  )
+  return toGatewaySubscription(data)
+}
+
+/** Read a subscription back from the gateway — the source of truth whenever a
+ *  webhook was missed or a local row looks stale. */
+export async function fetchSubscription(
+  brand: Brand,
+  id: string,
+): Promise<GatewaySubscription | null> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return null
+  }
+  const res = await fetch(`${SUBSCRIPTIONS_URL}/${encodeURIComponent(id)}`, {
+    headers: { authorization: basicAuthHeader(brand) },
+  })
+  if (res.status === 404) return null
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Razorpay fetchSubscription failed (${res.status}): ${detail}`)
+  }
+  return toGatewaySubscription((await res.json()) as SubscriptionEntity)
+}
+
+/**
+ * Pause billing. `pause_at: 'now'` stops the next debit immediately rather than
+ * at the cycle boundary — which is what a customer pressing "Pause" means, and
+ * the only variant that also serves `skipNext`.
+ */
+export async function pauseSubscription(
+  brand: Brand,
+  id: string,
+): Promise<GatewaySubscription | null> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return null
+  }
+  return toGatewaySubscription(
+    await postJson<SubscriptionEntity>(
+      brand,
+      `${SUBSCRIPTIONS_URL}/${encodeURIComponent(id)}/pause`,
+      { pause_at: 'now' },
+      'pauseSubscription',
+    ),
+  )
+}
+
+export async function resumeSubscription(
+  brand: Brand,
+  id: string,
+): Promise<GatewaySubscription | null> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return null
+  }
+  return toGatewaySubscription(
+    await postJson<SubscriptionEntity>(
+      brand,
+      `${SUBSCRIPTIONS_URL}/${encodeURIComponent(id)}/resume`,
+      { resume_at: 'now' },
+      'resumeSubscription',
+    ),
+  )
+}
+
+/**
+ * Cancel the mandate. `atCycleEnd` defaults to FALSE — a customer who presses
+ * "Cancel" expects the debits to stop, not one more to land. Pass true only
+ * where the cycle has already been paid for and is still to be delivered.
+ */
+export async function cancelSubscription(
+  brand: Brand,
+  id: string,
+  atCycleEnd = false,
+): Promise<GatewaySubscription | null> {
+  if (!isConfigured(brand)) {
+    if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
+    return null
+  }
+  return toGatewaySubscription(
+    await postJson<SubscriptionEntity>(
+      brand,
+      `${SUBSCRIPTIONS_URL}/${encodeURIComponent(id)}/cancel`,
+      { cancel_at_cycle_end: atCycleEnd ? 1 : 0 },
+      'cancelSubscription',
+    ),
+  )
+}
+
+/**
+ * Verify the signature Checkout returns after a MANDATE is authorised.
+ *
+ * The signed payload is `payment_id|subscription_id` — note the order, which is
+ * the REVERSE of the `order_id|payment_id` used for a one-off payment above.
+ * Getting it backwards produces a valid-looking HMAC that never matches, and the
+ * failure reads as "the customer's bank declined" rather than "we signed the
+ * wrong string", so the two verifiers are kept apart deliberately rather than
+ * sharing a parameterised helper.
+ */
+export function verifySubscriptionSignature(
+  brand: Brand,
+  {
+    subscriptionId,
+    paymentId,
+    signature,
+  }: {
+    subscriptionId: string
+    paymentId: string
+    signature: string
+  },
+): boolean {
+  const secret = keySecretFor(brand)
+  if (!secret) return false
+  const expected = createHmac('sha256', secret).update(`${paymentId}|${subscriptionId}`).digest('hex')
+  return safeEqual(expected, signature)
+}
