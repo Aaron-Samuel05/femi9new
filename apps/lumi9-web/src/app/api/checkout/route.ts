@@ -68,7 +68,38 @@ export async function POST(req: NextRequest) {
     const token = await getGuestToken();
     if (!token) return badRequest("Your bag is empty.");
 
+    /*
+     * Sign-in is REQUIRED here, not merely preferred.
+     *
+     * `proxy.ts` guards `/checkout` and its comment explains the decision at
+     * length: "Lumi9 requires an account instead, so every order has a real
+     * identity behind it from the first request rather than one
+     * reverse-engineered from the phone number typed into the form."
+     *
+     * That matcher covers the PAGE. It never covered this route, so the whole
+     * gate was one `fetch` away from irrelevant — a POST straight here placed a
+     * real order, with a real order number and a real payment intent, from no
+     * account at all. Verified against a running server before this line
+     * existed: `201 {"orderNo":"LM-00001"}` with no session cookie.
+     *
+     * And the guest path is not merely "an order without a user". `placeOrder`
+     * identifies the buyer by the PHONE in the request body and adopts an
+     * existing customer row that matches it — writing the submitted name onto
+     * that account. So an unauthenticated caller who knows a shopper's mobile
+     * number could put an order on her account and rename her.
+     *
+     * 401 rather than a redirect: this is an API, and the form that calls it
+     * handles the status. The shared service is untouched — `placeOrder`'s
+     * guest path stays valid for Femi9, which deliberately allows guest
+     * checkout.
+     */
     const session = await getSession("lumi9");
+    if (!session) {
+      return NextResponse.json(
+        { error: "Please sign in to place your order.", code: "auth_required" },
+        { status: 401 },
+      );
+    }
 
     const raw = await req.json().catch(() => null);
     const parsed = CheckoutSchema.safeParse(raw);
@@ -87,7 +118,8 @@ export async function POST(req: NextRequest) {
         "lumi9",
         token,
         { ...parsed.data, couponCode },
-        session?.sub,
+        // Non-null: the 401 above is what guarantees it.
+        session.sub,
       );
       // An unguessable capability token, so the confirmation page can authorise
       // a guest without exposing anyone's details to orderNo guessing.

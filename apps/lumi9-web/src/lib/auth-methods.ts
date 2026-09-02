@@ -1,7 +1,7 @@
 import "server-only";
 import { googleConfigured } from "@femi9/core/google-oauth";
 import { mailConfigured } from "@femi9/core/mail-identity";
-import { smsConfigured } from "@femi9/core/otp";
+import { whatsappConfigured } from "@femi9/core/whatsapp";
 import { mockProvidersAllowed } from "@femi9/core/runtime-mode";
 
 /**
@@ -11,10 +11,16 @@ import { mockProvidersAllowed } from "@femi9/core/runtime-mode";
  * The login card offered three methods unconditionally. That is only honest
  * when all three providers are set up, and right now none of them is: Google
  * has credentials but `GOOGLE_REDIRECT_URI` still names Femi9's host, so the
- * consent screen answers `redirect_uri_mismatch`; MSG91 has no key; and
- * `RESEND_API_KEY` is deliberately blank. In production every one of those is a
- * button that takes a shopper somewhere broken - which is worse than a button
- * that is not there, because she cannot tell whether the fault is hers.
+ * consent screen answers `redirect_uri_mismatch`; and WhatsApp has no token. In
+ * production every one of those is a button that takes a shopper somewhere
+ * broken - which is worse than a button that is not there, because she cannot
+ * tell whether the fault is hers.
+ *
+ * The email probe asks `mailConfigured('lumi9')`, which now answers for SES:
+ * this brand sends through SES, where there is no API key at all and the thing
+ * that can be missing is the From address. Probing `RESEND_API_KEY` directly
+ * would have passed on the SHARED key - Femi9's - and offered an emailed link
+ * that Lumi9 cannot send.
  *
  * ── The rule ────────────────────────────────────────────────────────────────
  * A method is available when its provider is configured, OR when non-production
@@ -47,7 +53,7 @@ export interface AuthMethods {
  * `AUTH_GOOGLE_ENABLED` / `AUTH_PHONE_ENABLED` / `AUTH_EMAIL_ENABLED`.
  *
  * Unset means "follow the provider probe" - the useful default, so a deployment
- * that configures MSG91 gets phone sign-in without also having to remember a
+ * that configures WhatsApp gets phone sign-in without also having to remember a
  * second variable. Only the exact string `false` disables; anything else is
  * ignored rather than guessed at, because a typo'd flag must not silently take
  * a sign-in method off a live storefront.
@@ -60,7 +66,7 @@ export function availableAuthMethods(): AuthMethods {
   const mock = mockProvidersAllowed();
 
   const google = !switchedOff("AUTH_GOOGLE_ENABLED") && (googleConfigured() || mock);
-  const phone = !switchedOff("AUTH_PHONE_ENABLED") && (smsConfigured() || mock);
+  const phone = !switchedOff("AUTH_PHONE_ENABLED") && (whatsappConfigured("lumi9") || mock);
   const email = !switchedOff("AUTH_EMAIL_ENABLED") && (mailConfigured("lumi9") || mock);
 
   // Never hand back a card with nothing on it. See "fail CLOSED" above.
@@ -73,7 +79,7 @@ export function availableAuthMethods(): AuthMethods {
 export function noAuthMethodConfigured(): boolean {
   const mock = mockProvidersAllowed();
   const google = !switchedOff("AUTH_GOOGLE_ENABLED") && (googleConfigured() || mock);
-  const phone = !switchedOff("AUTH_PHONE_ENABLED") && (smsConfigured() || mock);
+  const phone = !switchedOff("AUTH_PHONE_ENABLED") && (whatsappConfigured("lumi9") || mock);
   const email = !switchedOff("AUTH_EMAIL_ENABLED") && (mailConfigured("lumi9") || mock);
   return !google && !phone && !email;
 }

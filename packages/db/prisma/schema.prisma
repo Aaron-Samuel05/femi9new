@@ -68,8 +68,17 @@ enum CouponType {
 }
 
 enum SubscriptionStatus {
+  // Created locally, mandate NOT yet approved by the customer's bank/UPI app.
+  // A plan in this state has never been authorised and must never be treated as
+  // live: it is what `createSubscription` writes BEFORE the shopper completes
+  // Razorpay Checkout, and what she is left in if she closes the sheet.
+  pending_mandate
   active
   paused
+  // Razorpay exhausted its retries on a failed charge. The mandate still exists
+  // but the gateway has stopped attempting to debit; only the customer fixing
+  // her payment instrument (or a fresh mandate) revives it.
+  halted
   cancelled
 }
 
@@ -138,16 +147,33 @@ model Product {
   /// INVARIANT: only an `active` product is ever featured. Archiving or
   /// un-publishing one clears this — a draft on the landing page would link to a
   /// 404, and it would hold a slot nobody could see was taken.
-  featured        Boolean       @default(false)
+  featured   Boolean   @default(false)
   /// When it was featured, and therefore its place in the rail (oldest first).
   ///
   /// Ordering by `createdAt` instead would mean featuring a new product silently
   /// reshuffles the four already there; ordering by nothing would leave the row
   /// order to the planner. NULL exactly when `featured` is false.
-  featuredAt      DateTime?
+  featuredAt DateTime?
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  /// The weight band this size fits, as NUMBERS.
+  ///
+  /// `specs` already carries "7-12 kg" for the size chips, and the size-up tool
+  /// carried its own `SIZE_BOUNDS` array beside it with a comment conceding the
+  /// two "must be kept in step" by hand. They were not: renaming a range in the
+  /// console moved what a parent READ and not what the projector CALCULATED,
+  /// and nothing anywhere reported the divergence.
+  ///
+  /// Parsing the display string at runtime was the other option and is worse —
+  /// it lets a copy edit ("about 7 to 12 kg") silently change the maths.
+  ///
+  /// Nullable because it is meaningless for a Femi9 pad, and because a Lumi9
+  /// product with neither bound set simply drops out of the size projection
+  /// rather than defaulting into a band it was never measured for.
+  minWeightKg Float?
+  maxWeightKg Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   variants   ProductVariant[]
   images     ProductImage[]
@@ -168,10 +194,40 @@ model ProductVariant {
   label     String // "9 pcs" | "M"
   packCount Int? // pads
   size      String? // panties
-  price     Int
-  sku       String?     @unique
-  stock     Int         @default(0)
-  active    Boolean     @default(true)
+
+  /// WHAT THE CART CHARGES. Every price a shopper is shown and every rupee
+  /// Razorpay takes resolves through this column — `placeOrder` prices each
+  /// line from it (services/checkout.ts) and `OrderItem` snapshots it.
+  ///
+  /// It is DERIVED now, not typed: the console takes `mrp` and `discountPct`
+  /// and the admin product service computes this from them, inside the same
+  /// transaction that saves them. Nothing else may write it.
+  ///
+  /// That derivation is the whole point. The three worst findings in the launch
+  /// audit shared one shape — the number a customer saw, the number the server
+  /// charged, and the number the business booked were computed in three
+  /// different places — and a "10% off" badge rendered from a constant no
+  /// server code had ever read meant a card saying ₹404 while the gateway took
+  /// ₹449. A discount that is a percentage OF THIS PRODUCT'S OWN MRP, applied
+  /// once, on the server, cannot drift from what is charged.
+  price Int
+
+  /// The undiscounted price — what this pack is worth, and the number struck
+  /// through beside the sale price.
+  ///
+  /// Nullable only because it was added to rows that predate it; the migration
+  /// backfills it to `price`, so an untouched product reads mrp == price with
+  /// discountPct 0 and displays exactly as it did before. The admin service
+  /// treats a null as "same as price" and writes a real value on the next save.
+  mrp         Int?
+  /// Whole percent off `mrp`, 0 when the product is sold at full price. The
+  /// console clamps it to 0-90: a 100% discount is a free order, which is a
+  /// decision nobody makes by typing in a price field.
+  discountPct Int  @default(0)
+
+  sku    String? @unique
+  stock  Int     @default(0)
+  active Boolean @default(true)
 
   cartItems     CartItem[]
   orderItems    OrderItem[]
@@ -263,6 +319,10 @@ model User {
   wallReplies   WallReply[]
   events        EventLog[]
   notifications NotificationLog[]
+
+  // Lumi9 only — the parenting tools. Femi9 has no page that writes either.
+  babyProfile    BabyProfile?
+  parentingLeads ParentingLead[]
 
   tharaMembership       TharaMembership?
   tharaReferralReceived TharaReferral?            @relation("TharaReferralReceived")
@@ -377,6 +437,13 @@ model Order {
   placedAt           DateTime                  @default(now())
   updatedAt          DateTime                  @updatedAt
 
+  /// The plan this order was generated by, when it was not placed by hand.
+  /// Set both by the legacy cron (`generateDueOrders`) and by a gateway charge
+  /// (`recordSubscriptionCharge`), so "which orders did this subscription
+  /// actually produce" is a query rather than a guess from timestamps.
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
   items    OrderItem[]
   payments Payment[]
   events   AffiliateEvent[]
@@ -384,6 +451,7 @@ model Order {
 
   @@index([userId])
   @@index([status])
+  @@index([subscriptionId])
 }
 
 model OrderItem {
@@ -455,8 +523,69 @@ model Subscription {
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 
+  // ── Razorpay-managed mandate (the gateway owns the billing calendar) ──────
+  //
+  // A row with `razorpaySubscriptionId` set is GATEWAY-MANAGED: Razorpay holds
+  // the mandate, decides when to debit, retries failures, and tells us what
+  // happened over the `subscription.*` webhooks. Orders for it are created by
+  // `recordSubscriptionCharge` when the money actually arrives.
+  //
+  // A row with it NULL is LEGACY - the pay-later plans that existed before
+  // mandates, whose orders `generateDueOrders` still generates from cron. The
+  // null-ness IS the discriminator; see services/subscriptions.ts. Keeping both
+  // is what lets this deploy without stranding the subscriptions already live.
+  razorpaySubscriptionId String?   @unique
+  razorpayPlanId         String?
+  razorpayCustomerId     String?
+  /// Rupees Razorpay debits per cycle. FIXED at mandate time - the plan amount
+  /// cannot be changed on an authorised mandate, so a price change means a new
+  /// subscription, not an update. Held here so ops can see what is being taken
+  /// without a gateway round-trip, and so a `subscription.charged` whose amount
+  /// disagrees can be rejected rather than silently booked.
+  chargeAmount           Int?
+  /// When the customer's bank/UPI app approved the mandate.
+  mandateAuthedAt        DateTime?
+  /// Razorpay's own status string, verbatim (`created`, `authenticated`,
+  /// `active`, `pending`, `halted`, `cancelled`, `completed`). Our enum is a
+  /// lossy projection of it; this keeps the untranslated value for support.
+  gatewayStatus          String?
+  /// End of the cycle Razorpay has currently charged for, from the webhook.
+  /// This is the gateway's calendar, not ours - `nextDeliveryAt` is re-synced
+  /// FROM it rather than computed, because under a mandate Razorpay decides
+  /// when the next debit lands and our arithmetic is only ever a guess at it.
+  currentEnd             DateTime?
+  /// Set by `skipNext` on a gateway-managed plan: the moment the resume cron
+  /// should un-pause this subscription. Razorpay has no skip-one-cycle
+  /// primitive, so a skip is a pause plus a scheduled resume.
+  resumeAt               DateTime?
+
+  orders Order[]
+
   @@index([userId])
   @@index([status, nextDeliveryAt])
+  @@index([status, resumeAt])
+}
+
+/// A Razorpay Plan we have created, cached so we create each one ONCE.
+///
+/// A plan on Razorpay is just (amount, period, interval) - it carries no
+/// customer and no product. So the natural key is exactly those three values,
+/// and every subscription that bills the same rupees on the same rhythm can
+/// share one. Without this cache a plan would be created on every subscribe
+/// click, leaving thousands of identical plans on the account.
+///
+/// `fingerprint` is that natural key rendered as a string (see
+/// services/subscription-plans.ts). It is unique, and the get-or-create races
+/// on it deliberately: a concurrent creator loses the insert with P2002 and
+/// re-reads the winner's row.
+model RazorpayPlan {
+  id             String   @id @default(cuid())
+  fingerprint    String   @unique
+  razorpayPlanId String   @unique
+  amount         Int // rupees per cycle
+  period         String // "daily" | "weekly" | "monthly" | "yearly"
+  interval       Int
+  createdAt      DateTime @default(now())
 }
 
 // ─────────────────────────── Loyalty & programs ────────────────────────
@@ -1061,4 +1190,218 @@ model TharaReferral {
   createdAt DateTime @default(now())
 
   @@index([referrerId])
+}
+
+// ────────────────────────── Parenting tools ───────────────────────────
+// Lumi9's /parenting-tools surface. Femi9 has no equivalent and never uses
+// these tables — the schema is shared, the ROWS are not, and a brand simply
+// never writes to a model it has no page for (the same stance ProductType's
+// unused enum values already take).
+//
+// The whole surface used to live in the browser: one localStorage blob and two
+// hardcoded data modules. That was defensible while the tools were a
+// calculator, and it stopped being defensible the moment the page started
+// promising a parent something — an emailed plan, a "3 done / 1 due now"
+// count, a size the console can rename. None of it survived a cleared cache,
+// none of it reached a second device, and nobody at Lumi9 could see or change
+// any of it.
+//
+// The privacy promise is kept where it was made: a SIGNED-OUT parent still
+// stores nothing here. localStorage remains the store for a guest, and these
+// rows exist only for a shopper who has an account to attach them to.
+
+enum BabySex {
+  male
+  female
+}
+
+enum BloodGroup {
+  A_POS  @map("A+")
+  A_NEG  @map("A-")
+  B_POS  @map("B+")
+  B_NEG  @map("B-")
+  AB_POS @map("AB+")
+  AB_NEG @map("AB-")
+  O_POS  @map("O+")
+  O_NEG  @map("O-")
+}
+
+enum VaccineTrack {
+  /// India's Universal Immunization Programme — free at any public health centre.
+  UIP
+  /// Indian Academy of Pediatrics — adds optional vaccines usually given privately.
+  IAP
+}
+
+/// The unit a published schedule STATES a dose's age in.
+///
+/// Deliberately not normalised to days. "9 months" means the 9th of the birth
+/// month, not 274 days after birth, and flattening the three units to one
+/// drifts by days on exactly the doses a parent diarises.
+enum DoseAgeUnit {
+  weeks
+  months
+  years
+}
+
+enum VaccinationStatus {
+  given
+  skipped
+}
+
+/// One baby, belonging to one signed-in parent.
+///
+/// `userId` is UNIQUE: one profile per account, which is what every surface on
+/// the page assumes ("Tell us about your baby", "Aarav's dashboard"). Siblings
+/// are a real future ask and the fix is dropping this constraint plus a primary
+/// picker in the UI — not a `babyId` threaded through code that has no screen
+/// to choose one with today.
+model BabyProfile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name             String?
+  /// Stored as a DATE, not a timestamp: a birthday has no time and no zone, and
+  /// a UTC-midnight timestamp read back in IST is the day before.
+  dob              DateTime    @db.Date
+  /// Required. WHO growth tables are sex-specific, so a percentile without it
+  /// is meaningless rather than merely less precise.
+  sex              BabySex
+  /// The LATEST measurement — `BabyMeasurement` holds the history. Denormalised
+  /// because every tool on the page wants "how big is this baby now" and none
+  /// of them wants a series.
+  weightKg         Float?
+  heightCm         Float?
+  /// Below 37 corrects the age used for GROWTH only. Null means term.
+  /// Vaccination dates are never corrected for prematurity.
+  gestationalWeeks Int?
+  /// Informational — shown on the card and in the emailed plan, never used in
+  /// any calculation.
+  bloodGroup       BloodGroup?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  measurements BabyMeasurement[]
+  vaccinations BabyVaccination[]
+}
+
+/// Weight and height over time.
+///
+/// A row is written whenever a parent saves a measurement that differs from the
+/// last one, so the growth tool has a series rather than a single point that
+/// each edit destroys. `takenOn` is a date for the same reason `dob` is.
+model BabyMeasurement {
+  id     String      @id @default(cuid())
+  babyId String
+  baby   BabyProfile @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  takenOn  DateTime @db.Date
+  weightKg Float?
+  heightCm Float?
+
+  createdAt DateTime @default(now())
+
+  /// One reading per baby per day — a parent nudging the weight field three
+  /// times in a sitting is one measurement, not three.
+  @@unique([babyId, takenOn])
+  @@index([babyId, takenOn])
+}
+
+/// One dose on a published immunisation schedule.
+///
+/// The schedule is REFERENCE data that a government revises, not a constant —
+/// it was a TypeScript array, so correcting a dose age meant a deploy, and the
+/// IAP track existed as an empty tab nobody could fill. `code` is the stable
+/// key the seed and every `BabyVaccination` row point at.
+model VaccineDose {
+  id   String @id @default(cuid())
+  code String @unique // "penta-1", "mr-2"
+
+  vaccine String // "Pentavalent"
+  dose    String // "1" | "Booster" | "Birth dose"
+
+  /// When it becomes due. For a published RANGE this is the earliest age in it,
+  /// and `note` carries the full window so it is not lost.
+  ageUnit  DoseAgeUnit
+  ageValue Int
+
+  /// A dose can sit on both schedules; UIP's list is a subset of IAP's in
+  /// practice, so this is a set rather than a single track.
+  tracks VaccineTrack[]
+
+  note     String?
+  /// Ordering within the same due age, so the console can group a visit's doses
+  /// the way the published table prints them.
+  position Int     @default(0)
+  active   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  records BabyVaccination[]
+
+  @@index([active, position])
+}
+
+/// A dose a parent has marked given (or deliberately skipped).
+///
+/// Without this the dashboard's "3 done" was inferred purely from the calendar
+/// — it counted doses whose due date had passed, which says nothing about
+/// whether the baby was actually taken. `givenOn` is nullable because `skipped`
+/// has no date.
+model BabyVaccination {
+  id     String      @id @default(cuid())
+  babyId String
+  baby   BabyProfile @relation(fields: [babyId], references: [id], onDelete: Cascade)
+
+  doseId String
+  dose   VaccineDose @relation(fields: [doseId], references: [id], onDelete: Cascade)
+
+  status  VaccinationStatus
+  givenOn DateTime?         @db.Date
+  note    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([babyId, doseId])
+  @@index([babyId])
+}
+
+/// An email address a parent gave the tools to receive their care plan.
+///
+/// The route sent the message and kept nothing, so the one piece of first-party
+/// data the whole surface collects reached the outbox and no further: no list to
+/// follow up, no way to see whether the feature is used, and no record that the
+/// address was given for THIS purpose — which is what makes a later marketing
+/// send defensible or not. `NewsletterSubscriber` deliberately stays separate:
+/// asking for a plan is not subscribing to a newsletter.
+model ParentingLead {
+  id    String @id @default(cuid())
+  email String @unique
+
+  /// The baby details as submitted, so the plan can be re-sent or reviewed
+  /// without asking again. Nullable throughout: this is a lead, not a profile.
+  babyName   String?
+  dob        DateTime?   @db.Date
+  sex        BabySex?
+  bloodGroup BloodGroup?
+
+  /// Which tool page the address came from ("/parenting-tools", "…/growth").
+  source String?
+  /// Set when the parent was signed in. Null for a guest — the address is the
+  /// only identity we have then, which is the whole point of the row.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  /// Bumped on every re-request, so a returning parent is one row with a count
+  /// rather than a `@unique` violation the route has to swallow.
+  planCount  Int      @default(1)
+  lastSentAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId])
 }

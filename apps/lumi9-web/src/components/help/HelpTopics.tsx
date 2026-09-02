@@ -2,12 +2,22 @@
 
 import { useState } from "react";
 import { Accordion } from "@/components/ui/Accordion";
-import { FAQS, FAQ_TOPICS, type FaqTopic } from "@/lib/content";
+import { FAQ_TOPICS, type Faq, type FaqTopic } from "@/lib/content";
 
-/** Topic chips + single-open Q&A accordion. */
-export function HelpTopics() {
+/**
+ * Topic chips + single-open Q&A accordion.
+ *
+ * The list arrives as a PROP rather than being imported here, because two
+ * answers quote the console's free-shipping threshold and subscription
+ * discount. Reading those needs the database, `/help` is a server component
+ * that already can, and this is the client half - so the server builds the
+ * list once and the same array feeds both this accordion and the FAQPage
+ * JSON-LD beside it. One list, so a crawler and a reader cannot be told
+ * different things.
+ */
+export function HelpTopics({ items }: { items: Faq[] }) {
   const [topic, setTopic] = useState<FaqTopic>("All");
-  const faqs = FAQS.filter((faq) => topic === "All" || faq.topic === topic);
+  const faqs = items.filter((faq) => topic === "All" || faq.topic === topic);
 
   return (
     <>

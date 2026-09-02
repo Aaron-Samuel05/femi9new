@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageFrame } from "@/components/tools/ToolPageFrame";
 import { SizeUpPredictor } from "@/components/tools/SizeUpPredictor";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "When Will My Baby Size Up? Diaper Size Predictor | Lumi9";
 const DESCRIPTION =
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/parenting-tools/size-up"),
-  openGraph: { type: "website", url: absoluteUrl("/parenting-tools/size-up"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/parenting-tools/size-up"), title: TITLE, description: DESCRIPTION }),
 };
 
 export default function SizeUpPage() {

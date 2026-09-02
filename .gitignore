@@ -30,6 +30,21 @@ out/
 !/infra/terraform/*.tfvars.example
 /infra/terraform/*.plan
 /infra/terraform/backend.hcl
+#
+# A PLAN is as sensitive as state and is easier to leave lying around. `plan.json`
+# and its variants carry `master_password` — the generated Aurora credential —
+# and `secret_string` for every Secrets Manager value the stack manages;
+# `terraform show -json` output carries the same. They are working files nobody
+# thinks of as secrets, they accumulate one debugging session at a time
+# (plan.json, plan-nr.json, plan-lumi9.json, state-now.json, tfplan-check.out…),
+# and `*.plan` above matched none of them because nothing here is named `.plan`.
+#
+# This matters more since `lumi9` became the auto-deploying branch: one
+# `git add -A` would push the database password to a public repo AND ship a
+# release in the same command.
+/infra/terraform/*.json
+/infra/terraform/*.out
+/infra/terraform/*.bak
 
 # Raw 3D source drops. The 22 MB Tripo export at the root is the INPUT to the
 # gltf-transform pipeline; only the optimised result belongs in git, under

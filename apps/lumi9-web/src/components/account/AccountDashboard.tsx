@@ -7,6 +7,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
 import { useSession } from "@/lib/auth-context";
 import { inr } from "@/lib/catalog";
+import { authorizeMandate, type MandateAuthorization } from "@/lib/mandate";
 import type {
   AccountUser,
   AccountOrder,
@@ -78,6 +79,22 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
 }
 
 /**
+ * One label per status, so a state nobody anticipated cannot be silently
+ * rendered as something else. The ternary this replaces read
+ * `active ? "Active" : paused ? "Paused" : "Cancelled"`, which showed a plan
+ * awaiting its mandate - and a plan Razorpay had HALTED after failed debits -
+ * as "Cancelled": the one word that tells a parent to stop expecting boxes and
+ * stop looking for the problem.
+ */
+const SUB_LABEL: Record<AccountSubscription["status"], string> = {
+  pending_mandate: "Auto-pay not set up",
+  active: "Active",
+  paused: "Paused",
+  halted: "Payment failed",
+  cancelled: "Cancelled",
+};
+
+/**
  * Skip / pause / resume / cancel, against PATCH /api/subscriptions/[id].
  *
  * Ownership is enforced server-side - the service scopes every mutation by
@@ -91,7 +108,39 @@ function OrderRow({ order, action }: { order: AccountOrder; action?: React.React
 function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [authorizing, setAuthorizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Finish a mandate she started and abandoned.
+   *
+   * It re-fetches the SAME authorization rather than building a new plan: a
+   * second POST to /api/subscriptions would leave her with two subscriptions
+   * and, once both were authorised, two debits a cycle for one box.
+   */
+  async function finishAuthorization() {
+    if (authorizing) return;
+    setAuthorizing(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/subscriptions/${plan.id}/authorize`);
+      if (!res.ok) {
+        setError("We could not reopen the auto-pay setup. Please try again.");
+        return;
+      }
+      const { authorization } = (await res.json()) as { authorization: MandateAuthorization };
+      const outcome = await authorizeMandate(authorization, { description: plan.product });
+      if (outcome.ok) {
+        router.refresh();
+        return;
+      }
+      if (!outcome.dismissed) setError(outcome.message);
+    } catch {
+      setError("Network error - please try again.");
+    } finally {
+      setAuthorizing(false);
+    }
+  }
 
   async function act(action: "pause" | "resume" | "skip" | "cancel") {
     if (busy) return;
@@ -131,7 +180,24 @@ function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
           Change size or pack
         </Link>
 
-        {plan.status === "active" && (
+        {/* An unauthorised plan has exactly one useful action. Skip and Pause
+            would be meaningless on a mandate her bank has never approved, and
+            offering them implies the box is coming when nothing is scheduled.
+            `needsMandate`, NOT `!mandateActive` - a legacy pay-later plan also
+            has no mandate but has nothing to authorise, and this button would
+            404 on every one of them. */}
+        {plan.needsMandate && plan.status !== "cancelled" && (
+          <button
+            type="button"
+            onClick={() => void finishAuthorization()}
+            disabled={authorizing || busy !== null}
+            className="btn btn-dark btn-sm py-3.25 disabled:opacity-60"
+          >
+            {authorizing ? "Opening…" : "Set up auto-pay"}
+          </button>
+        )}
+
+        {!plan.needsMandate && plan.status === "active" && (
           <>
             <button type="button" onClick={() => act("skip")} disabled={busy !== null} className={ghost}>
               {busy === "skip" ? "Skipping…" : "Skip next box"}
@@ -142,7 +208,7 @@ function SubscriptionControls({ plan }: { plan: AccountSubscription }) {
           </>
         )}
 
-        {plan.status === "paused" && (
+        {!plan.needsMandate && plan.status === "paused" && (
           <button type="button" onClick={() => act("resume")} disabled={busy !== null} className={ghost}>
             {busy === "resume" ? "Resuming…" : "Resume"}
           </button>
@@ -365,7 +431,7 @@ export function AccountDashboard({
                 <div className="mb-6.5 flex flex-wrap items-start justify-between gap-4.5">
                   <div>
                     <div className="mb-2.5 text-xs font-bold tracking-[0.14em] text-moss-deep">
-                      {plan.status === "active" ? "ACTIVE PLAN" : plan.status.toUpperCase() + " PLAN"}
+                      {SUB_LABEL[plan.status].toUpperCase()} PLAN
                     </div>
                     <h2 className="m-0 mb-1.5 font-display text-[clamp(22px,2.8vw,28px)] font-normal">
                       {plan.product}
@@ -383,7 +449,7 @@ export function AccountDashboard({
                         : "bg-moss-tint text-muted"
                     }`}
                   >
-                    {plan.status === "active" ? "Active" : plan.status === "paused" ? "Paused" : "Cancelled"}
+                    {SUB_LABEL[plan.status]}
                     {plan.saved > 0 && plan.status === "active" && <> · saving {inr(plan.saved)}</>}
                   </span>
                 </div>
@@ -393,6 +459,18 @@ export function AccountDashboard({
                     { label: "Next delivery", value: plan.status === "active" ? plan.nextDelivery : "-" },
                     { label: "Every", value: plan.frequency },
                     { label: "Pack size", value: `${plan.qty} pants` },
+                    // What her bank is authorised to take, and when it is not
+                    // authorised to take anything. A recurring charge she cannot
+                    // see the amount of is the thing people chargeback.
+                    {
+                      label: "Auto-pay",
+                      value:
+                        plan.chargeAmount == null
+                          ? "Pay per delivery"
+                          : plan.mandateActive
+                            ? `${inr(plan.chargeAmount)} per box`
+                            : "Not set up",
+                    },
                   ].map((item) => (
                     <div key={item.label} className="rounded-chip bg-paper p-[clamp(14px,1.8vw,20px)]">
                       <div className="mb-1.5 text-xs text-muted">{item.label}</div>

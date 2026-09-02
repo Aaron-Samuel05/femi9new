@@ -10,11 +10,24 @@ import { listSubscriptions, SUBSCRIPTION_STATUSES } from '@femi9/core/services/a
  */
 export const dynamic = 'force-dynamic'
 
-// Badge tone per status — active green, paused amber, cancelled gray.
+// Badge tone per status. `halted` is RED, not amber: Razorpay has given up
+// retrying that mandate and it will not restart on its own, so it needs someone
+// to contact the customer rather than to wait.
 const STATUS_BADGE: Record<SubscriptionStatus, string> = {
+  pending_mandate: 'adm-badge--amber',
   active: 'adm-badge--green',
   paused: 'adm-badge--amber',
+  halted: 'adm-badge--red',
   cancelled: 'adm-badge--gray',
+}
+
+// "pending_mandate" is not a word. The chips and the badge both read this.
+const STATUS_LABEL: Record<SubscriptionStatus, string> = {
+  pending_mandate: 'Awaiting auto-pay',
+  active: 'Active',
+  paused: 'Paused',
+  halted: 'Payment failed',
+  cancelled: 'Cancelled',
 }
 
 const fmtDate = (d: Date) =>
@@ -39,7 +52,7 @@ export default async function SubscriptionsPage(props: {
 
   const chips: { label: string; value?: string }[] = [
     { label: 'All' },
-    ...SUBSCRIPTION_STATUSES.map((v) => ({ label: v[0].toUpperCase() + v.slice(1), value: v })),
+    ...SUBSCRIPTION_STATUSES.map((v) => ({ label: STATUS_LABEL[v], value: v })),
   ]
 
   return (
@@ -87,6 +100,7 @@ export default async function SubscriptionsPage(props: {
                 <th>Product</th>
                 <th className="adm-td-num">Qty</th>
                 <th>Cadence</th>
+                <th>Auto-pay</th>
                 <th>Next delivery</th>
                 <th>Status</th>
               </tr>
@@ -103,10 +117,28 @@ export default async function SubscriptionsPage(props: {
                     <div className="adm-cell-muted">{r.variantLabel}</div>
                   </td>
                   <td className="adm-td-num">{r.qty}</td>
+                  {/* What the mandate takes, and the gateway handle to look it
+                      up with when a customer calls about a charge. A support
+                      conversation about a recurring debit is unanswerable
+                      without both. */}
                   <td className="adm-cell-muted">{r.frequency}</td>
+                  <td className="adm-td-num">
+                    {r.chargeAmount == null ? (
+                      <span className="adm-cell-muted">Pay later</span>
+                    ) : (
+                      <>
+                        Rs.{r.chargeAmount.toLocaleString('en-IN')}
+                        {r.razorpaySubscriptionId && (
+                          <div className="adm-cell-muted">{r.razorpaySubscriptionId}</div>
+                        )}
+                      </>
+                    )}
+                  </td>
                   <td className="adm-cell-muted">{fmtDate(r.nextDelivery)}</td>
                   <td>
-                    <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>
+                    <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>
+                      {STATUS_LABEL[r.status]}
+                    </span>
                   </td>
                 </tr>
               ))}

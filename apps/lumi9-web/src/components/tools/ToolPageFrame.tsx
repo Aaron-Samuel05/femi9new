@@ -65,7 +65,7 @@ export function ToolPageFrame({
         <p className="m-0 max-w-[68ch] text-lead text-muted">{subtitle}</p>
       </header>
 
-      <div className="px-safe gap-block mx-auto flex max-w-[var(--page-max)] flex-col pb-section">
+      <div className="px-safe gap-stack mx-auto flex max-w-[var(--page-max)] flex-col pb-section">
         <Reveal>
           <BabyProfileCard />
         </Reveal>

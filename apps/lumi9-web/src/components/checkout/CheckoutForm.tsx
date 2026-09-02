@@ -9,6 +9,7 @@ import {
 } from "@/lib/razorpay-client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { PromoField } from "@/components/cart/PromoField";
 import { useCart } from "@/lib/cart";
 import { useQuote } from "@/lib/quote";
 import { inr, shippingLabel } from "@/lib/catalog";
@@ -76,7 +77,7 @@ export function CheckoutForm({
   prefill?: CheckoutPrefill;
 }) {
   const router = useRouter();
-  const { lines, subtotal, ready } = useCart();
+  const { lines, subtotal, ready, markConsumed } = useCart();
   // The same quote the cart showed, from the same provider - including any
   // coupon the shopper applied there. Nothing on this screen computes a total.
   const { quote } = useQuote();
@@ -183,7 +184,14 @@ export function CheckoutForm({
       }
 
       const { orderNo, token, payment } = body;
-      const done = () => router.push(`/confirmation?order=${orderNo}&t=${token}`);
+      const done = () => {
+        // The order exists, so the server-side cart is already deleted — see
+        // `markConsumed`. Without this the bag badge and the drawer kept
+        // listing the items she had just paid for, all the way to the next hard
+        // reload, which reads as "the order did not go through".
+        markConsumed();
+        router.push(`/confirmation?order=${orderNo}&t=${token}`);
+      };
 
       // No live keys → no gateway to open. Simulate the capture and be honest
       // on screen that it is a test.
@@ -247,8 +255,9 @@ export function CheckoutForm({
 
   return (
     <form
+      method="post"
       onSubmit={onSubmit}
-      className="page-wrap grid grid-cols-1 items-start gap-block py-[clamp(28px,4vw,48px)] lg:grid-cols-[1fr_minmax(320px,400px)]"
+      className="page-wrap grid grid-cols-1 items-start gap-stack py-[clamp(28px,4vw,48px)] lg:grid-cols-[1fr_minmax(320px,400px)]"
     >
       <div>
         <h1 className="m-0 mb-8.5 font-display text-[clamp(26px,7vw,42px)] md:text-[clamp(28px,3.4vw,42px)] font-normal">Checkout</h1>
@@ -452,6 +461,12 @@ export function CheckoutForm({
             </span>
           </div>
         </div>
+
+        {/* A code can be entered HERE, not only on /cart. The discount row above
+            and the `couponCode` this form submits were both already wired to the
+            quote; the input was the only missing piece, and its absence sent a
+            shopper holding a code back a screen to use it. */}
+        <PromoField className="mb-5" />
 
         <div className="mb-6 flex items-baseline justify-between border-t border-moss-tint pt-4.5">
           <span className="text-base font-bold">Total</span>

@@ -19,7 +19,7 @@ import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
 import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { loadCatalog } from "@/lib/catalog.server";
 import { MASCOT_URL } from "@/lib/mascot";
-import { absoluteUrl, canonical, jsonLd, SITE_NAME, SITE_URL } from "@/lib/seo";
+import { absoluteUrl, canonical, jsonLd, SITE_URL, og } from "@/lib/seo";
 
 const HOME_TITLE = "Baby Diapers & Baby Diaper Pants Online | Lumi9 by Femi9";
 const HOME_DESCRIPTION =
@@ -47,13 +47,7 @@ export const metadata: Metadata = {
     "Femi9 Lumi9",
   ],
   alternates: canonical("/"),
-  openGraph: {
-    type: "website",
-    url: SITE_URL,
-    siteName: SITE_NAME,
-    title: HOME_TITLE,
-    description: HOME_DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: SITE_URL, title: HOME_TITLE, description: HOME_DESCRIPTION }),
   twitter: { card: "summary_large_image", title: HOME_TITLE, description: HOME_DESCRIPTION },
 };
 
@@ -109,7 +103,11 @@ const FEATURE_TILES = [
 ];
 
 export default async function HomePage() {
-  const { sizes } = await loadCatalog();
+  // `subscribeSavePct` rides along on the payload this page already loads, so
+  // the CTA quotes the console's discount at no extra cost. It used to read
+  // "save 20%" from a literal while a renewal was discounted by the console's
+  // 15 - the same disagreement /subscription had in its hero.
+  const { sizes, subscribeSavePct } = await loadCatalog();
   return (
     <>
       {/* useGLTF can only request the model after the bundle loads and hydrates -
@@ -271,7 +269,7 @@ export default async function HomePage() {
             className="absolute top-[10%] right-[6%] size-[clamp(80px,12vw,150px)] rounded-full bg-moss-tint opacity-60"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
+          <div className="relative z-2 mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-stack md:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
             <Reveal className="relative">
               {/*
                * SQUARE, and no parallax overscan - both deliberate.
@@ -345,7 +343,7 @@ export default async function HomePage() {
             className="absolute right-[4%] bottom-[10%] size-[clamp(70px,10vw,120px)] rounded-full bg-moss-soft opacity-40"
             aria-hidden
           />
-          <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block lg:grid-cols-[minmax(260px,1fr)_auto]">
+          <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-stack lg:grid-cols-[minmax(260px,1fr)_auto]">
             <Reveal className="mx-auto mb-[clamp(16px,2.2vw,30px)] max-w-[680px] text-center lg:mx-0 lg:mb-0 lg:text-left">
               <SectionHeading eyebrow="The Lumi9 difference">
                 Designed for every <Em>little</Em> milestone.
@@ -435,7 +433,7 @@ export default async function HomePage() {
               </p>
               <div className="flex flex-wrap gap-3.5">
                 <Link href="/subscription" className="btn btn-cream max-[520px]:w-full">
-                  Start my box - save 20%
+                  Start my box - save {subscribeSavePct}%
                 </Link>
                 <Link
                   href="#tech"

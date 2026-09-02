@@ -1,5 +1,5 @@
 import { ageInMonths, formatMonthYear, type IsoDate } from "@/lib/baby-age";
-import { scheduleFor } from "@/lib/immunisation-schedule";
+import { scheduleFor, type VaccineDose } from "@/lib/immunisation-schedule";
 import type { BabySex } from "@/lib/baby-profile";
 
 /**
@@ -96,14 +96,25 @@ export type CarePlan = {
 const DISCLAIMER =
   "This is general guidance to keep alongside your paediatrician's advice, not a substitute for it. Vaccination dates run from your baby's actual birthday and are never adjusted for being born early.";
 
-export function buildCarePlan(input: CarePlanInput): CarePlan {
+/**
+ * `doses` is the schedule to date from, and the route passes the DATABASE'S.
+ *
+ * Leaving it to `scheduleFor`'s default would have been the same bug this whole
+ * change is about, one layer deeper: the page would show the console's schedule
+ * while the email a parent keeps in their inbox quoted the bundled module. Two
+ * different answers to "when is the next dose", and the printable one wrong.
+ *
+ * The default survives for the unit tests, which build a plan without a
+ * database.
+ */
+export function buildCarePlan(input: CarePlanInput, doses?: VaccineDose[]): CarePlan {
   const today = input.today ?? new Date().toISOString().slice(0, 10);
   const ageMonths = ageInMonths(input.dob, today);
   const babyName = input.name?.trim() || "your baby";
 
   const block = tipsForAge(ageMonths);
 
-  const schedule = scheduleFor({ dob: input.dob, today, track: "UIP" });
+  const schedule = scheduleFor({ dob: input.dob, today, track: "UIP" }, doses);
   const dueNow = schedule
     .filter((d) => d.status === "due")
     .map((d) => ({ vaccine: d.vaccine, dose: d.dose, dueOn: d.dueOn }));

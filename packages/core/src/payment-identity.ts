@@ -68,12 +68,29 @@ export function webhookSecretFor(brand: Brand): string | undefined {
 /**
  * The publishable key the checkout widget uses.
  *
- * NEXT_PUBLIC_* values are inlined into the client bundle at build time, so a
- * per-brand override only works if that brand's app was built with it — which
- * is fine, because each brand builds its own image.
+ * It falls back to `RAZORPAY_KEY_ID`, and that is not a convenience: it is the
+ * SAME VALUE. Razorpay issues one key_id/key_secret pair per account, and the
+ * key id is the public half — it is precisely what every Checkout integration
+ * puts in the browser. The two variable names exist so that the code handing a
+ * value to the client can only ever read a `NEXT_PUBLIC_`-prefixed name, which
+ * is what stops a key SECRET being wired into a client payload by mistake. They
+ * were never two different credentials.
+ *
+ * Without the fallback, a deployment that set `RAZORPAY_KEY_ID` and forgot the
+ * `NEXT_PUBLIC_` twin handed Checkout `key: ""`. The payment sheet then never
+ * opened, and nothing anywhere reported it — no server error, because nothing
+ * had failed on the server; the browser simply received a blank merchant id.
+ * An account we can authenticate to Razorpay with can always name itself to
+ * Checkout, so there is no state in which returning '' is more correct than
+ * returning the key id we already hold.
+ *
+ * Note this is read on the SERVER — the services pass it to the browser in an
+ * API response rather than a client component reading `process.env`. So a
+ * runtime value works, and the usual "NEXT_PUBLIC_* is inlined at build time"
+ * caveat does not apply to this path: no rebuild is needed to change it.
  */
 export function publicKeyIdFor(brand: Brand): string {
-  return perBrand('NEXT_PUBLIC_RAZORPAY_KEY_ID', brand) ?? ''
+  return perBrand('NEXT_PUBLIC_RAZORPAY_KEY_ID', brand) ?? keyIdFor(brand) ?? ''
 }
 
 /** True when this brand can create a charge. */

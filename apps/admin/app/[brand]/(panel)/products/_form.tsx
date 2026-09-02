@@ -24,7 +24,14 @@ export interface VariantValue {
   label: string
   packCount: number | null
   size: string | null
+  /** What the cart charges. DERIVED on the server from mrp + discountPct — sent
+   *  back for display only, never edited here. */
   price: number
+  /** What the pack is worth, before any discount. Null on rows that predate the
+   *  column, which the server reads as "same as price". */
+  mrp: number | null
+  /** Whole percent off `mrp`. 0 means the product sells at MRP. */
+  discountPct: number
   sku: string
   stock: number
   active: boolean
@@ -86,7 +93,8 @@ interface VariantRow {
   label: string
   packCount: string
   size: string
-  price: string
+  mrp: string
+  discountPct: string
   sku: string
   stock: string
   active: boolean
@@ -117,11 +125,34 @@ function blankVariant(kind: 'pack' | 'size' = 'pack'): VariantRow {
     label: '',
     packCount: '',
     size: '',
-    price: '',
+    mrp: '',
+    discountPct: '0',
     sku: '',
     stock: '0',
     active: true,
   }
+}
+
+/**
+ * What the shopper will be charged for this row.
+ *
+ * The SAME expression the server uses (`chargedPrice` in
+ * services/admin/products.ts), reimplemented here for one reason only: so the
+ * admin can see the result while typing. It is a PREVIEW — the number that is
+ * saved is the one the server computes from the mrp and percent in the payload,
+ * and this field is never submitted.
+ *
+ * If the two ever disagree, the server is right and this is a display bug. That
+ * asymmetry is deliberate: a form that computed a price the server then trusted
+ * is exactly how the storefront came to advertise a 10% discount that no server
+ * code applied, on all five products, with the gateway charging full price.
+ */
+function previewPrice(mrp: string, discountPct: string): number | null {
+  const m = Number(mrp)
+  if (!mrp.trim() || !Number.isFinite(m) || m <= 0) return null
+  const raw = Number(discountPct)
+  const pct = Math.min(90, Math.max(0, Number.isFinite(raw) ? Math.round(raw) : 0))
+  return Math.round(m * (1 - pct / 100))
 }
 
 function toVariantRow(v: VariantValue): VariantRow {
@@ -132,7 +163,10 @@ function toVariantRow(v: VariantValue): VariantRow {
     label: v.label,
     packCount: v.packCount != null ? String(v.packCount) : '',
     size: v.size ?? '',
-    price: String(v.price),
+    // A row saved before this column existed carries a null mrp; its price IS
+    // its undiscounted price, so that is what the field shows.
+    mrp: String(v.mrp ?? v.price),
+    discountPct: String(v.discountPct ?? 0),
     sku: v.sku ?? '',
     stock: String(v.stock),
     active: v.active,
@@ -342,7 +376,11 @@ export default function ProductForm({
         // Only the field that matches the kind is sent; the API nulls the rest.
         packCount: v.kind === 'pack' ? (v.packCount.trim() === '' ? null : Number(v.packCount)) : null,
         size: v.kind === 'size' ? v.size.trim() : null,
-        price: v.price.trim() === '' ? 0 : Number(v.price),
+        // MRP and percent only. `price` is deliberately absent: the server
+        // computes it, and a client that sent one would be offering a second
+        // opinion about what to charge.
+        mrp: v.mrp.trim() === '' ? 0 : Number(v.mrp),
+        discountPct: v.discountPct.trim() === '' ? 0 : Number(v.discountPct),
         sku: v.sku.trim() || null,
         stock: v.stock.trim() === '' ? 0 : Number(v.stock),
         active: v.active,
@@ -399,6 +437,30 @@ export default function ProductForm({
   }
 
   const err = (k: string) => errors[k]?.[0]
+
+  // ── What the headline price will be ───────────────────────────────────────
+  // The server mirrors `basePrice` onto the LEADING pack — the tier whose
+  // charged price already equalled the stored base price, which is the tier the
+  // shop card and the PDP open on. Reproduced here only to show the admin the
+  // number before they save; the server's value is the one that is written.
+  //
+  // Matching on the stored base price (not on MRP) is what keeps a discounted
+  // product leading with the same tier it led with yesterday.
+  const packRows = variants.filter((v) => v.kind === 'pack')
+  const hasPackVariants = packRows.length > 0
+  const leadPackPrice = (() => {
+    if (!hasPackVariants) return null
+    const stored = initial?.basePrice
+    const lead =
+      packRows.find((v) => previewPrice(v.mrp, v.discountPct) === stored) ??
+      packRows.find((v) => Number(v.mrp) === stored) ??
+      // Same fallback the server uses for a product whose base price matches no
+      // tier: the smallest pack that is not the trial pack, when there are three.
+      (packRows.length > 2
+        ? [...packRows].sort((a, b) => Number(a.packCount || 0) - Number(b.packCount || 0))[1]
+        : packRows[0])
+    return lead ? previewPrice(lead.mrp, lead.discountPct) : null
+  })()
 
   return (
     <form ref={formRef} onSubmit={onSubmit} noValidate>
@@ -458,18 +520,44 @@ export default function ProductForm({
                 ))}
               </select>
             </div>
-            <div className="adm-field">
-              <label className="adm-label" htmlFor="p-price">Base price (₹)</label>
-              <input
-                id="p-price"
-                className="adm-input"
-                inputMode="numeric"
-                value={basePrice}
-                onChange={(e) => setBasePrice(e.target.value)}
-                placeholder="225"
-              />
-              {err('basePrice') && <span className="adm-error">{err('basePrice')}</span>}
-            </div>
+            {/* ── Base price ────────────────────────────────────────────
+                On a PACK-TIERED product this is a MIRROR, not an input: the
+                server sets it to whatever the leading pack charges, and the
+                field is shown read-only so nobody types a fourth number into a
+                screen that already has three.
+
+                It used to be editable everywhere and it reached nothing — the
+                storefront priced every line from a pack variant, so an admin
+                changed "Base price", watched the console's own list agree with
+                them, and the shop did not move. Now it says what the shop says.
+
+                A product with SIZE variants (Femi9's panties: every size costs
+                the same) has no pack to mirror, so there it stays the real,
+                editable price. */}
+            {hasPackVariants ? (
+              <div className="adm-field">
+                <label className="adm-label">Base price (₹)</label>
+                <div className="adm-input" style={{ background: 'transparent', display: 'flex', alignItems: 'center' }}>
+                  <strong>{leadPackPrice != null ? `₹${leadPackPrice}` : '—'}</strong>
+                </div>
+                <span className="adm-hint">
+                  Set by the leading pack below. Edit that pack&rsquo;s MRP or discount to change it.
+                </span>
+              </div>
+            ) : (
+              <div className="adm-field">
+                <label className="adm-label" htmlFor="p-price">Base price (₹)</label>
+                <input
+                  id="p-price"
+                  className="adm-input"
+                  inputMode="numeric"
+                  value={basePrice}
+                  onChange={(e) => setBasePrice(e.target.value)}
+                  placeholder="225"
+                />
+                {err('basePrice') && <span className="adm-error">{err('basePrice')}</span>}
+              </div>
+            )}
           </div>
 
           <div className="adm-row">
@@ -928,15 +1016,54 @@ export default function ProductForm({
                   )}
 
                   <div className="adm-field" style={{ flex: '0 1 110px' }}>
-                    <label className="adm-label" htmlFor={`v-price-${i}`}>Price (₹)</label>
+                    <label className="adm-label" htmlFor={`v-mrp-${i}`}>MRP (₹)</label>
                     <input
-                      id={`v-price-${i}`}
+                      id={`v-mrp-${i}`}
                       className="adm-input"
                       inputMode="numeric"
-                      value={v.price}
-                      onChange={(e) => updateVariant(v._key, { price: e.target.value })}
-                      placeholder="225"
+                      value={v.mrp}
+                      onChange={(e) => updateVariant(v._key, { mrp: e.target.value })}
+                      placeholder="449"
                     />
+                  </div>
+
+                  <div className="adm-field" style={{ flex: '0 1 95px' }}>
+                    <label className="adm-label" htmlFor={`v-disc-${i}`}>Discount %</label>
+                    <input
+                      id={`v-disc-${i}`}
+                      className="adm-input"
+                      inputMode="numeric"
+                      value={v.discountPct}
+                      onChange={(e) => updateVariant(v._key, { discountPct: e.target.value })}
+                      placeholder="0"
+                    />
+                  </div>
+
+                  {/* Read-only, and read-only on purpose. This is the number the
+                      cart charges, and it is computed from the two fields to the
+                      left by the SERVER. Showing it as an input would invite an
+                      admin to type a third number into a form that cannot honour
+                      it. */}
+                  <div className="adm-field" style={{ flex: '0 1 130px' }}>
+                    <label className="adm-label">Shopper pays</label>
+                    <div className="adm-input" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'transparent' }}>
+                      {(() => {
+                        const charged = previewPrice(v.mrp, v.discountPct)
+                        if (charged === null) return <span style={{ opacity: 0.5 }}>—</span>
+                        const pct = Math.min(90, Math.max(0, Math.round(Number(v.discountPct) || 0)))
+                        return (
+                          <>
+                            <strong>₹{charged}</strong>
+                            {pct > 0 && (
+                              <>
+                                <s style={{ opacity: 0.55 }}>₹{Number(v.mrp)}</s>
+                                <span style={{ fontSize: 12, opacity: 0.75 }}>−{pct}%</span>
+                              </>
+                            )}
+                          </>
+                        )
+                      })()}
+                    </div>
                   </div>
 
                   <div className="adm-field" style={{ flex: '0 1 100px' }}>

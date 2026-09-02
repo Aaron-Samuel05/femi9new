@@ -49,7 +49,13 @@ next_public_razorpay_key_id = "" # e.g. "rzp_live_xxxxxxxx"
 next_public_sentry_dsn      = "" # e.g. "https://public@o0.ingest.sentry.io/0"
 
 # ── Provider configuration ──
-msg91_template_id = "" # DLT-approved OTP template id
+msg91_template_id = "" # DLT-approved template; reward codes only, not sign-in
+# WhatsApp Cloud API sender id (the numeric phone_number_id, NOT the number).
+# Phone sign-in delivers its OTP over WhatsApp and has no SMS fallback, so an
+# empty value here removes the storefront's primary way in. The token itself
+# lives in Secrets Manager as WHATSAPP_TOKEN, never here.
+whatsapp_phone_number_id   = "" # e.g. "323448914175098"
+whatsapp_template_language = "" # empty = en; must match the approved templates
 email_from        = "" # e.g. "Femi9 <login@femi9.in>" (must be verified in Resend)
 
 # ── Optional features ──

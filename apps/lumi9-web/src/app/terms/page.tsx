@@ -3,7 +3,7 @@ import Link from "next/link";
 import { PageShell } from "@/components/site/PageShell";
 import { NAV_LINKS } from "@/components/site/Nav";
 import { BRAND, TERMS_SECTIONS, TERMS_UPDATED } from "@/lib/content";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Terms & Conditions | Lumi9";
 const DESCRIPTION =
@@ -13,13 +13,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/terms"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/terms"),
-    siteName: SITE_NAME,
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/terms"), title: TITLE, description: DESCRIPTION }),
 };
 
 /**
@@ -47,7 +41,7 @@ export default function TermsPage() {
         <p className="m-0 text-base text-muted">{TERMS_UPDATED}</p>
       </header>
 
-      <section className="px-safe mx-auto grid max-w-[900px] grid-cols-1 items-start gap-block pt-5 pb-section md:grid-cols-[minmax(160px,220px)_1fr]">
+      <section className="px-safe mx-auto grid max-w-[900px] grid-cols-1 items-start gap-stack pt-5 pb-section md:grid-cols-[minmax(160px,220px)_1fr]">
         <nav
           aria-label="On this page"
           className="scroll-row gap-x-4 gap-y-2.5 max-md:-mx-[var(--spacing-gutter)] max-md:px-[var(--spacing-gutter)] max-md:pb-2 md:sticky md:top-24 md:flex-col"

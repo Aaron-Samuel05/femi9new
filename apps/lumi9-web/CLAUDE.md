@@ -30,11 +30,12 @@ So right now:
 | Account orders | ✅ real, with an order page at `/order/[orderNo]` |
 | Account profile + addresses | ✅ editable — name, email, mobile, full address CRUD |
 | Coupons | ✅ the cart's promo box validates against the real `Coupon` rows |
-| Subscriptions | ✅ real plans, skip/pause/resume/cancel, renewed by a scheduled job |
+| Subscriptions | ✅ real plans on a **Razorpay mandate** (UPI Autopay / card / e-NACH) — skip/pause/resume/cancel, orders created by the `subscription.charged` webhook |
 | Newsletter + contact | ✅ persisted / delivered — both used to discard the input |
 | Journal | ✅ **in the `lumi9` schema** — editable at `/lumi9/content/blog` |
 | Reviews (home rail + PDP) | ✅ **`Review` rows** — the console's moderation queue is the gate |
 | PDP copy | ✅ `description` · `longDescription` · Key Benefits, all from the console |
+| Parenting tools | ✅ **baby profile, vaccination schedule and care-plan leads all in the `lumi9` schema** — console page at `/lumi9/parenting` |
 | Moments (home Instagram rail) | ⛔ `src/lib/moments.ts` — media is in S3, but the LIST is hand-written |
 | Marketing chrome | ⛔ `src/lib/content.ts` — no table models it, no console page owns it |
 
@@ -99,12 +100,37 @@ so a console change moved what a shopper was CHARGED without moving what she was
 SHOWN. And checkout offered "Express delivery ₹79", which existed in that file
 and nowhere else: it added ₹79 to the on-screen total, was never sent to
 `/api/checkout`, never reached an `Order` row, and never changed how the parcel
-shipped. `FREE_SHIPPING_THRESHOLD` survives for the "free over ₹999" sentence in
-marketing copy and for nothing else.
+shipped.
 
-Same shape, same fix, for `subscribeSavePct`: the page promised a hardcoded 20%
-while `generateDueOrders()` discounts renewals by the console's value (default
-15). It rides along on the catalogue payload now — `useCatalogData()` returns it.
+**Every sentence that quotes one of those numbers now reads it too.** That did
+NOT used to be true, and the gap outlived the fix above by long enough to be
+worth naming: the components were corrected and the COPY was not. `₹999` stayed
+a literal in six places (the /shop hero and its meta description, the /cart line,
+the PDP policy accordion and two site FAQ answers) and "save 20%" in two more —
+so `/subscription` promised 20% in its hero and rendered the console's 15% in the
+box builder eight hundred pixels below, on one screen, and the higher number was
+the false one.
+
+`src/lib/settings.server.ts` is where server-rendered copy gets them now
+(`storefrontNumbers()`, React-`cache`d so it costs one query per request), the
+client gets them from `useQuote()` and `useCatalogData()`, and `faqs()` /
+`pdpPolicyAccordion()` in `content.ts` are FUNCTIONS of those numbers rather than
+strings. `FREE_SHIPPING_THRESHOLD` survives only as the client-side fallback for
+the first paint before a quote resolves.
+
+The same sweep deleted a THIRD number that was never real: the site FAQ sold
+"Express (1-2 days) is ₹79", a delivery tier checkout had already removed as a
+fiction — so the help centre was advertising a service nobody could buy, as
+FAQPage structured data.
+
+**`LAUNCH_OFFER` in `content.ts` is `null`, and must stay null until a server
+charges it.** It was `{ percent: 10 }` and nothing server-side had ever heard of
+it, so every pack card on the HOME page — the main buying surface — led with a
+price about 10% below what Razorpay took, struck the real price through beside
+it and stamped "10% off" on the difference. A discount has to exist where money
+is computed: drop the price in `/lumi9/products`, or make a coupon. See the note
+on the constant, and `test/advertised-price.test.ts`, which fails if it comes
+back.
 
 ## The signed-in surface, and how a shopper reaches it
 
@@ -149,12 +175,34 @@ reorder could leave the basket showing one item while the server held three.
 
 **The login card offers only what the deployment can honour.**
 `src/lib/auth-methods.ts` probes each provider — `GOOGLE_CLIENT_ID`,
-`MSG91_AUTH_KEY` + `MSG91_TEMPLATE_ID`, `RESEND_API_KEY` — treating Terraform's
-`TODO-` values as unset, and `/login` renders only the methods that pass. In
-production today **all three fail that probe**: the placeholders are unreplaced,
-and Lumi9 is not given `MSG91_TEMPLATE_ID` at all (`ecs.tf` sets it for femi9
-only, because the original plan was "Lumi9 signs in by emailed link and sends no
-SMS"). Configure a provider and its method appears; no code change, no flag.
+`WHATSAPP_TOKEN` + `WHATSAPP_PHONE_NUMBER_ID`, and `mailConfigured('lumi9')` —
+treating Terraform's `TODO-` values as unset, and `/login` renders only the
+methods that pass. Configure a provider and its method appears; no code change,
+no flag.
+
+The email probe asks `mailConfigured`, not `RESEND_API_KEY`, and that
+distinction is this brand's whole mail story. **Lumi9 sends through Amazon SES**
+as `Lumi9 <no-reply@lumi9.in>`, reply-to `support@lumi9.in`; Femi9 is live on
+Resend. `packages/core/src/mailer.ts` is the single transport and
+`mail-identity.ts` picks the provider from `MAIL_PROVIDER_LUMI9` — stated, never
+inferred, because this task also carries the SHARED `RESEND_API_KEY` (Femi9's
+account) and a probe that found it would have offered an emailed sign-in link
+sent from a domain that account has never verified.
+
+SES has no key: the task role is the credential and the IAM policy pins the From
+address. What can be wrong lives outside the app — DKIM records missing from the
+`lumi9.in` zone (every send rejected), or the account still in the SES sandbox
+(every recipient it has not individually verified refused). `terraform output
+ses_identity_status` is where that is visible, not the health probe.
+
+Bounces and complaints arrive at `/api/webhooks/ses` through SNS rather than as
+a signed webhook, and land on the `NotificationLog` row so `sent` stops meaning
+"we hope so".
+
+The phone probe asks about **WhatsApp, not MSG91**. The OTP is delivered on an
+approved WhatsApp template and there is no SMS fallback, so a deployment with a
+live MSG91 key and no WhatsApp token would have offered a sign-in method that
+mints a code and delivers it nowhere.
 
 `AUTH_GOOGLE_ENABLED` / `AUTH_PHONE_ENABLED` / `AUTH_EMAIL_ENABLED` override the
 probe, and ONLY the exact string `false` disables — a typo must not quietly
@@ -173,6 +221,17 @@ hiding a button is presentation, and `/api/auth/google` is a plain GET.
 
 **⚠️ Checkout requires an account HERE and does not on Femi9.** This is the one
 place the two brands deliberately diverge, so do not "align" it without asking.
+
+The gate is enforced in **two** places and needs both. `proxy.ts` covers the
+PAGE; `/api/checkout` re-checks and answers 401. For a long time only the first
+existed, which made the whole decision one `fetch` away from irrelevant — a POST
+straight to the route placed a real order, with a real order number and a real
+payment intent, from no account at all. Worse than an anonymous order:
+`placeOrder`'s guest path identifies the buyer by the PHONE in the body and
+adopts an existing customer row that matches it, writing the submitted name onto
+her account. A matcher is a routing rule, not an authorisation — the same
+sentence this file already applies to `/account`.
+
 Femi9's matcher is `/account`, `/dashboard`, `/welcome`; its checkout page
 prefills from a session and shrugs without one; and `placeOrder` takes
 `userId: string | null` precisely so a guest can buy. Lumi9 adds `/checkout` to
@@ -234,10 +293,44 @@ looks live costs more trust than an absent one.
 
 ## Subscriptions
 
-Real, on the shared service Femi9 already used. `/subscription` builds a plan and
-POSTs it to `/api/subscriptions`; `/account?tab=subscription` skips, pauses,
-resumes and cancels through `/api/subscriptions/[id]`; renewals are generated by
-`/api/cron/renew-subscriptions`, scheduled from `infra/terraform/cron.tf`.
+Real, on the shared service Femi9 already used, and billed by a **Razorpay
+mandate** — the gateway owns the calendar.
+
+```
+/subscription  ──▶ POST /api/subscriptions       plan + mandate created, NOTHING billed
+               ──▶ Razorpay Checkout             her bank approves the mandate
+               ──▶ POST /api/subscriptions/[id]/authorize
+               ──▶ subscription.charged webhook  ──▶ a PAID order, every cycle
+```
+
+**A 201 from `POST /api/subscriptions` does not mean "subscribed".** It means
+"ready to authorise". The row is written `pending_mandate` and nothing will ever
+be debited until her bank approves; the box builder used to redirect to the
+account page on that 201 alone, showing her a live-looking plan for which no
+payment method had been agreed. `src/lib/mandate.ts` is what opens the approval
+sheet, and the account page re-opens it for a plan she abandoned — never POST a
+second time to "retry", or she ends up with two plans and two debits a cycle.
+
+**Orders are created by the webhook, not by cron.** `subscription.charged`
+arrives after the bank has moved the money, and `recordSubscriptionCharge`
+records it as an order that is already paid. That is the whole point of the
+design: the previous pay-later renewal created a `pending` order with no Payment
+row, which could not be paid online and which nobody was ever asked to pay.
+
+**`/api/cron/renew-subscriptions` now serves LEGACY plans only** — the pay-later
+rows that predate mandates, identified by `razorpaySubscriptionId IS NULL`.
+A mandated plan renewed by cron as well as by the gateway means two boxes a
+cycle, one of them unpaid and holding stock forever.
+
+**"Skip next box" is a pause plus a scheduled resume**, because Razorpay has no
+skip-one-cycle primitive. `/api/cron/resume-subscriptions` performs the resume;
+without it a parent who skips ONE delivery is paused permanently and never
+receives another box.
+
+**`RAZORPAY_WEBHOOK_SECRET_LUMI9` is load-bearing here in a way it is not for a
+one-off order.** A one-off falls back to the browser callback; a mandate has no
+browser anywhere near it, so an unverifiable webhook means every recurring charge
+is taken and no order is ever created for it.
 
 **`Cadence` rows must be seeded into the `lumi9` schema or every subscribe is a
 400.** `CADENCES` in `src/lib/catalog.ts` is the single source: `prisma/seed.ts`
@@ -245,11 +338,13 @@ writes a row per entry and the box builder posts the `code` back. Lumi9's codes
 (`2w`/`4w`/`6w`) are its own — Femi9's are period-cycle shaped, and the two
 brands' rows live in separate schemas.
 
-**The renewal job is what makes a subscription a subscription.** Without
-`CRON_SECRET` set AND the EventBridge rule applied, a plan ships one box and then
-nothing, forever, while the account page keeps showing a next-delivery date. The
-health probe reports a missing `CRON_SECRET` as a warning for exactly that
-reason — nothing else about the site looks wrong.
+**The cron jobs still matter, for a narrower reason than before.** A mandated
+plan is billed by Razorpay whether or not anything of ours runs, so a missing
+`CRON_SECRET` no longer stops recurring revenue. What it does stop is
+`resume-subscriptions` — so a parent who skips one box stays paused forever — and
+`renew-subscriptions` for the legacy pay-later plans. The health probe reports a
+missing `CRON_SECRET` as a warning for exactly that reason: nothing else about
+the site looks wrong.
 
 ## The Journal, and where SEO lives
 
@@ -291,7 +386,7 @@ collapsing eat every separator. No HTML is ever interpreted.
 moves the whole site between staging and production.
 
 ```
-SITE_URL=https://thelumi9.com     # server-only, read at RUNTIME
+SITE_URL=https://lumi9.in     # server-only, read at RUNTIME
 ```
 
 It is deliberately NOT a `NEXT_PUBLIC_` name. Next inlines every
@@ -301,14 +396,20 @@ see into the image — and `robots.ts`'s staging guard could never fire. Nothing
 in `seo.ts` is imported by a client component. `NEXT_PUBLIC_SITE_URL` is still
 honoured as a fallback because the email-link verifier already reads it.
 
-`CANONICAL_ORIGIN` in that file is the production domain from the SEO brief
-(`thelumi9.com`). The Terraform examples still say `shop.lumi9.in`, and
-`brandConfig('lumi9').host` says `lumi9.in` — three names for one site, and
-**the domain is still undecided**. If it ships on anything but `thelumi9.com`,
-change that one constant, or every canonical tag points at a domain that does
-not serve the page.
+`CANONICAL_ORIGIN` in that file is **`https://lumi9.in`** — decided, and the
+same host `brandConfig('lumi9').host` records. `test/canonical-origin.test.ts`
+now asserts those two agree, so changing one without the other fails the suite.
+The repo used to carry three names for this site (`thelumi9.com` here,
+`shop.lumi9.in` in the Terraform examples, `lumi9.in` in the brand config) and
+only this constant was ever consulted.
 
-Until then the mismatch is at least LOUD rather than silent: `noindexReason()`
+The third place is outside that test's reach: Terraform's `sites` block and the
+`SITE_URL` on the lumi9 task must name the same host. `NEXT_PUBLIC_SITE_URL`
+does NOT count — Next inlines it at build time, so the value in a task
+definition is inert; `SITE_URL` is the one the running server reads, and it was
+missing from the task entirely until it was added in `ecs.tf`.
+
+A mismatch is at least LOUD rather than silent: `noindexReason()`
 in `seo.ts` explains it, `/api/health` reports it as a `NOT_INDEXABLE:` warning,
 and the task logs it once at boot. It is a warning and never blocking — a
 mis-set origin must not pull tasks out of the load balancer — but a site that
@@ -326,6 +427,84 @@ the `hidden` attribute instead of unmounting them, and the article FAQ is a
 plain `<dl>`. FAQPage structured data whose answers a crawler cannot find in the
 document is a manual-action risk, not a shortcut to a rich result. Whatever
 replaces either component has to keep that property.
+
+## The parenting tools
+
+`/parenting-tools` and its four tool pages. The whole surface used to be a
+browser feature: one localStorage blob and two hardcoded modules.
+
+```
+lumi9 schema ──▶ getParentingPayload('lumi9', userId)   @femi9/core
+             ──▶ loadParenting()          parenting.server.ts — maps to this app's shapes
+             ──▶ <ParentingProvider>      app/parenting-tools/layout.tsx, ONE query
+             ──▶ useParenting()           schedule · tracks · ready · signedIn
+```
+
+**The provider is a SEGMENT layout, not the root one.** The catalogue is on every
+page; a vaccination schedule is on five. Putting this query in `app/layout.tsx`
+would run it for every homepage, product page and article that will never read it.
+
+**The stores are local-first, and the copy on the card says which.** Signed out,
+the baby profile and the vaccination ticks are localStorage and nothing else —
+the original privacy promise, still literally true for a guest. Signed in, they
+are `BabyProfile` / `BabyVaccination` rows, mirrored into localStorage so the
+tools still answer instantly and still work offline. `useProfileOrigin()` is what
+the card binds its sentence to: a page that says "stays on this device" while
+POSTing a child's date of birth is lying.
+
+Adoption happens ONCE per page load, in `ParentingProvider`, guarded by a ref —
+`payload` is a new object on every navigation between tools, and re-adopting on
+each one would re-push a guest's profile on every tab change. Signing in with an
+existing device profile MIGRATES it up; a server profile always wins over a
+device copy, because two machines silently fighting over a child's weight is
+worse than losing one stale edit.
+
+**The email is not stored anywhere on the device.** It used to live in the
+profile blob, so an address typed once was re-sent on every later save. It
+belongs to the care-plan REQUEST: the server keeps a `ParentingLead` (a record of
+consent, with an owner and a `source`) and the browser keeps nothing.
+
+**"Done" is what the parent ticked, never what the calendar passed.** The
+dashboard used to count doses whose due date had gone by, so a six-week-old with
+no vaccinations at all read as fully up to date the day after their six-week
+appointment, and no control anywhere could say otherwise. Un-ticking DELETES the
+record rather than storing a "not given" — a list where a mis-tap cannot be taken
+back is one nobody trusts.
+
+**`immunisation-schedule.data.ts` is the SEED's input now**, the same
+relationship `catalog.ts` has to the catalogue:
+
+```bash
+DATABASE_URL_LUMI9="postgresql://…/db?schema=lumi9" npm run db:seed-vaccines
+```
+
+Its own command, not part of `db:seed`, for the reason the journal seed is
+separate: re-seeding a price must not rewrite a medical table somebody has since
+corrected in the console. A dose the module no longer lists is DEACTIVATED, never
+deleted — deleting cascades to `BabyVaccination` and would erase a parent's
+record that their child had a dose that was later withdrawn.
+
+**An EMPTY schedule is a real state and the UI says so.** `useParenting().ready`
+is false when nothing is seeded, and both the tool page and the dashboard say the
+list is not available rather than rendering an empty one — or, worse,
+congratulating a parent on being "all caught up". This mattered when the doses
+were a module and matters more now: an unseeded schema is far easier to reach
+than a half-written file ever was.
+
+**`Product.minWeightKg` / `maxWeightKg` are where the size bands live.**
+`SIZE_BOUNDS` in `size-projection.ts` was a second copy of the catalogue's weight
+ranges, carrying a comment conceding the two "must be kept in step" by hand. They
+were not: renaming "7-12 kg" in the console moved what a parent READ and never
+what the projector CALCULATED, with no error anywhere. `useCatalogData()` now
+returns `sizeBounds` and every call site passes it; `SIZE_BOUNDS` survives as the
+fallback for a catalogue seeded before the migration, and as the tests' fixture.
+Do not parse `fits` at runtime — that lets a copy edit change the maths.
+
+**The care-plan email dates from the DATABASE'S schedule.** `buildCarePlan` takes
+the doses as an argument and the route passes the rows. Leaving it on
+`scheduleFor`'s default would have been the same class of bug one layer deeper:
+the page showing the console's schedule while the email a parent keeps in their
+inbox quoted the bundled module.
 
 ## The Moments rail, and where its media lives
 
@@ -375,6 +554,7 @@ in `packages/db`. Seed data is brand-specific, which is why it lives with the ap
 ```bash
 DATABASE_URL_LUMI9="postgresql://…/db?schema=lumi9" npm run db:seed
 DATABASE_URL_LUMI9="…" npm run db:seed-zones
+DATABASE_URL_LUMI9="…" npm run db:seed-vaccines   # the immunisation schedule
 ```
 
 `prisma/seed.ts` reads `src/lib/catalog.ts` and writes one `Product` per size

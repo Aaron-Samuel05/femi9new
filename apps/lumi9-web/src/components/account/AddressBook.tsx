@@ -159,6 +159,7 @@ export function AddressBook({ addresses }: { addresses: AccountAddress[] }) {
 
       {editing !== null && (
         <form
+          method="post"
           className="mb-6 rounded-card border-[1.5px] border-moss-soft bg-paper p-card"
           onSubmit={save}
         >

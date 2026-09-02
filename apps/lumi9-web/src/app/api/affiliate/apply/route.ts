@@ -30,7 +30,14 @@ const ApplySchema = z.object({
   handle: z.string().trim().min(1, "Please add your social handle").max(60),
   platform: z.preprocess(blankToUndef, z.string().trim().max(80).optional()),
   followerBand: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
-  email: z.string().trim().email("Enter a valid email").max(200),
+  // Lowercased at the boundary, matching `normalizeEmail` in the auth service.
+  // Without it "Priya@Gmail.com" is a different `User.email` from the one every
+  // sign-in path writes, so an approved creator with a live promo code could not
+  // reach her own dashboard — the affiliate row hung off a user she could never
+  // sign in as. `apply()` normalises too; both, because a schema is where a
+  // boundary value should be made canonical and the service must not depend on
+  // its only caller having done so.
+  email: z.string().trim().toLowerCase().email("Enter a valid email").max(200),
 });
 
 export async function POST(req: NextRequest) {

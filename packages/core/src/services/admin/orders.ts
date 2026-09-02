@@ -1,12 +1,14 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
-import type { OrderStatus, Prisma } from '@prisma/client'
+import type { CouponType, OrderStatus, Prisma } from '@prisma/client'
 import * as razorpay from '../../razorpay'
 import { sendOrderStatusEmail } from '../order-mail'
+import { sendOrderStatusWhatsapp } from '../order-whatsapp'
 import {
   reverseTharaCreditForRefund,
   reverseTharaPointsForRefund,
 } from '../thara'
+import { reverseOrderCommission } from '../affiliate'
 
 /**
  * Admin orders service — the single seam between the DB and the Ops console's
@@ -153,6 +155,22 @@ export interface OrderAddress {
   phone: string | null
 }
 
+/**
+ * The coupon an order was placed with, when one still exists.
+ *
+ * `discount` on the order is the money that actually came off, and it is the
+ * only part that is a fact about the ORDER. This is read through the relation,
+ * so `type`/`value` are the coupon's rule as it stands TODAY, not necessarily
+ * the rule that priced this order - a 10% code later edited to 15% reports 15%
+ * beside a discount computed at 10%. The code is the useful half; the rule is
+ * context for it, never a recomputation of the total.
+ */
+export interface OrderCoupon {
+  code: string
+  type: CouponType
+  value: number
+}
+
 export interface OrderDetail {
   id: string
   orderNo: string
@@ -161,6 +179,10 @@ export interface OrderDetail {
   placedAt: Date
   subtotal: number
   discount: number
+  /** Null when the order carried no coupon, or when that coupon has since been
+   *  hard-deleted - the relation is optional, so the delete nulls `couponId`
+   *  and leaves `discount` behind with nothing naming it. */
+  coupon: OrderCoupon | null
   shipping: number
   total: number
   customer: OrderCustomer | null
@@ -177,6 +199,7 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
       include: {
         user: { select: { name: true, email: true, phone: true } },
         address: true,
+        coupon: { select: { code: true, type: true, value: true } },
         items: { orderBy: { productName: 'asc' } },
       },
     })
@@ -190,6 +213,9 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
       placedAt: r.placedAt,
       subtotal: r.subtotal,
       discount: r.discount,
+      coupon: r.coupon
+        ? { code: r.coupon.code, type: r.coupon.type, value: r.coupon.value }
+        : null,
       shipping: r.shipping,
       total: r.total,
       customer: r.user
@@ -254,9 +280,12 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
       // Either the order does not exist or it was already in this status.
       return getOrder(brand, id)
     }
-    if (status === 'shipped') {
+    if (status === 'shipped' || status === 'delivered') {
       const order = await prisma.order.findUnique({ where: { id }, select: { orderNo: true } })
-      if (order) await sendOrderStatusEmail(brand, order.orderNo, 'shipped')
+      // Dispatch is email-only: there is no approved WhatsApp template for
+      // `shipped`, and the delivered one says the order "has been" completed.
+      if (order && status === 'shipped') await sendOrderStatusEmail(brand, order.orderNo, 'shipped')
+      if (order && status === 'delivered') await sendOrderStatusWhatsapp(brand, order.orderNo, 'delivered')
     }
     return getOrder(brand, id)
   }
@@ -297,10 +326,18 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
       await tx.order.update({ where: { id }, data: { status: 'cancelled' } })
     }
 
-    return { kind: 'ok' as const }
+    // Only a REAL transition tells the customer. An order that was already
+    // cancelled goes through this branch every time an ops click re-submits it,
+    // and "we're sorry to inform you" is not a message to send twice. The
+    // dedupeKey would catch it too; this keeps the row out of the log entirely.
+    const transitioned = claimed.count > 0 || order.status !== 'cancelled'
+    return { kind: 'ok' as const, transitioned, orderNo: order.orderNo }
   })
 
   if (outcome.kind === 'missing') return null
+  // Outside the transaction: a Meta round-trip has no business holding a stock
+  // restore open, and sendOrderStatusWhatsapp never throws.
+  if (outcome.transitioned) await sendOrderStatusWhatsapp(brand, outcome.orderNo, 'cancelled')
   return getOrder(brand, id)
 }
 
@@ -415,6 +452,10 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
 
     // Thara: reverse any reward-points earned for this order (mirror-signed).
     await reverseTharaPointsForRefund(tx, id)
+
+    // The creator's commission, same treatment: a refunded order is not a sale,
+    // and the console's Earnings column is what an operator pays out from.
+    await reverseOrderCommission(tx, id)
 
     return { kind: 'ok' as const }
   })

@@ -1,5 +1,6 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
+import { brandConfig } from '../brands'
 import { logger } from '../logger'
 import { sendEmailNotification } from './notifications'
 
@@ -23,13 +24,24 @@ import { sendEmailNotification } from './notifications'
 
 const money = (rupees: number) => `Rs.${rupees.toLocaleString('en-IN')}`
 
+/**
+ * The subject lines take the BRAND, because there is one set of templates and
+ * two brands sending from them.
+ *
+ * These read `Your Femi9 order LM-00001 is confirmed` for every Lumi9 order —
+ * a receipt for baby diapers, from a company the customer has never heard of,
+ * signed off "organic period care". `sendOrderStatusEmail` has always taken
+ * `brand`; it just never reached the copy.
+ */
 const COPY = {
   paid: {
-    subject: (orderNo: string) => `Your Femi9 order ${orderNo} is confirmed`,
+    subject: (brand: Brand, orderNo: string) =>
+      `Your ${brandConfig(brand).name} order ${orderNo} is confirmed`,
     lead: 'Thank you - your payment went through and we are getting your order ready.',
   },
   shipped: {
-    subject: (orderNo: string) => `Your Femi9 order ${orderNo} is on its way`,
+    subject: (brand: Brand, orderNo: string) =>
+      `Your ${brandConfig(brand).name} order ${orderNo} is on its way`,
     lead: 'Good news - your order has left our warehouse.',
   },
 } as const
@@ -89,7 +101,7 @@ export async function sendOrderStatusEmail(brand: Brand, orderNo: string, status
       `Total paid: ${money(order.total)}`,
       addr ? `Shipping to: ${addr}` : '',
       '',
-      'Femi9 · organic period care',
+      brandConfig(brand).tagline,
     ]
       .filter((l) => l !== null)
       .join('\n')
@@ -105,12 +117,12 @@ export async function sendOrderStatusEmail(brand: Brand, orderNo: string, status
       .join('')}</ul>
 <p><strong>Total paid: ${money(order.total)}</strong></p>
 ${addr ? `<p>Shipping to: ${escapeHtml(addr)}</p>` : ''}
-<p>Femi9 &middot; organic period care</p>`
+<p>${escapeHtml(brandConfig(brand).tagline)}</p>`
 
     await sendEmailNotification(brand, {
       userId: order.userId ?? undefined,
       to,
-      subject: copy.subject(orderNo),
+      subject: copy.subject(brand, orderNo),
       text,
       html,
       template: `order-${status}`,

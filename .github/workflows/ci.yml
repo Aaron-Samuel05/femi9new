@@ -388,6 +388,18 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Unit tests, and they were MISSING from this job entirely — the Femi9 job
+      # has run its suite since it was written, and Lumi9's 90-odd tests have
+      # never once run on `lumi9`, which is the branch that deploys. Every one of
+      # them passed locally and gated nothing.
+      #
+      # No database and no `if:` guard: `vitest.config.mts` runs on `node` with
+      # no DOM, everything under test is a pure function, and the whole suite is
+      # a couple of seconds. It belongs with Lint and Build in the ALWAYS-ON
+      # block, not below the RUN_E2E line with the things that need a server.
+      - name: Unit tests
+        run: npm test
+
       - name: Build (production)
         run: npm run build
 

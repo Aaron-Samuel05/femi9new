@@ -190,6 +190,28 @@ jobs:
           # than the one this stack's IAM policies name.
           allowed-account-ids: "851725383246"
 
+      # ── Will this deployment be able to become healthy? ─────────────────
+      # /api/health fails CLOSED on missing payment credentials, which is the
+      # right call and an unhelpful failure mode on its own: with Terraform's
+      # TODO- placeholders still in Secrets Manager the tasks never enter the
+      # load balancer, the rollout below sits at "waiting for service
+      # stability" for its whole timeout, and then rolls back reporting nothing
+      # about the cause. Terraform cannot catch it either — it seeds those
+      # secrets and then ignores their values, by design.
+      #
+      # So it is checked here, before an image is built, against the same rules
+      # the health probe uses. Warnings print and pass; only a value that would
+      # keep tasks out of service fails the job.
+      #
+      # SCOPED TO THIS SERVICE. Each brand fails its health check on its OWN
+      # credentials, so blocking a Femi9 rollout because Lumi9's secret is a
+      # placeholder would stop a deploy that was going to be perfectly healthy
+      # — and a check that cries wolf is one somebody turns off before the day
+      # it is right. `admin` blocks on nothing: the console's health probe gates
+      # on the platform database and AUTH_SECRET, never on a payment gateway.
+      - name: Preflight - secrets the health check treats as blocking
+        run: bash infra/scripts/preflight.sh "${PROJECT}-${ENVIRONMENT}" "${AWS_REGION}" "${{ matrix.app }}"
+
       - uses: aws-actions/amazon-ecr-login@v2
         id: ecr
 
@@ -273,8 +295,90 @@ jobs:
           task-definition: ${{ steps.render.outputs.task-definition }}
           cluster: ${{ steps.names.outputs.cluster }}
           service: ${{ steps.names.outputs.service }}
-          # Wait, so a rollout that never goes healthy fails the workflow
-          # instead of reporting success while ECS quietly rolls back. Every
-          # image runs `prisma migrate deploy` before serving and every
-          # /api/health fails closed, so an unreachable database shows up here.
-          wait-for-service-stability: true
+          # The wait is the next step's, and it asks a different question.
+          #
+          # This action watches the deployment IT created, and fails when that
+          # object disappears: "Deployment ecs-svc/… not found after
+          # stabilization. The deployment was likely rolled back by the
+          # deployment circuit breaker." A circuit breaker is one way to make it
+          # disappear. A `terraform apply` is the other, and it is the one that
+          # actually happens here — Terraform owns the task definition, so an
+          # apply registers a new revision and starts a NEW deployment that
+          # supersedes this one. Run one by hand while a rollout is in flight
+          # and the action reports a rollback that never occurred.
+          #
+          # 83cdec8 is the worked example: the rollout went healthy at 01:08,
+          # an apply adding Lumi9's SES variables superseded it at 01:09 with
+          # the SAME image, and the workflow failed at 01:17 over a service
+          # that was serving the right commit the whole time.
+          wait-for-service-stability: false
+
+      # Ask what is SERVING, not which deployment object survived.
+      #
+      # The rollout is good when the service settles AND settles on the image
+      # this run built. A supersede carrying the same image is then a non-event,
+      # while a real circuit-breaker rollback — which leaves the PREVIOUS image
+      # running — still fails, and now says which image it found instead.
+      #
+      # The original reason for waiting at all is unchanged: every image runs
+      # `prisma migrate deploy` before serving and every /api/health fails
+      # closed, so an unreachable database has to surface here rather than as a
+      # green check over a service that quietly reverted.
+      - name: Wait for the service to settle on this image
+        env:
+          CLUSTER: ${{ steps.names.outputs.cluster }}
+          SERVICE: ${{ steps.names.outputs.service }}
+          EXPECTED_IMAGE: ${{ steps.ecr.outputs.registry }}/${{ steps.names.outputs.repository }}:${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # Fifteen minutes. A cold rollout is an image pull, the migrations and
+          # then the ALB's health checks, comfortably inside that; the ceiling
+          # exists so a stuck service fails here instead of hanging until the
+          # job timeout.
+          DEADLINE=$(( $(date +%s) + 900 ))
+
+          while :; do
+            PRIMARY=$(aws ecs describe-services               --cluster "$CLUSTER" --services "$SERVICE" --output json               | jq -c '.services[0].deployments[] | select(.status == "PRIMARY")')
+
+            if [ -n "$PRIMARY" ]; then
+              # rolloutState is absent on a service without the circuit breaker,
+              # so an unset value means "still going", not "done".
+              ROLLOUT=$(jq -r '.rolloutState // "IN_PROGRESS"' <<<"$PRIMARY")
+              REASON=$(jq -r '.rolloutStateReason // ""' <<<"$PRIMARY")
+              TASKDEF=$(jq -r '.taskDefinition' <<<"$PRIMARY")
+              RUNNING=$(jq -r '.runningCount' <<<"$PRIMARY")
+              DESIRED=$(jq -r '.desiredCount' <<<"$PRIMARY")
+
+              IMAGE=$(aws ecs describe-task-definition --task-definition "$TASKDEF"                 --query 'taskDefinition.containerDefinitions[?name==`app`]|[0].image'                 --output text)
+
+              if [ "$ROLLOUT" = "FAILED" ]; then
+                echo "::error::$SERVICE rollout FAILED — $REASON"
+                exit 1
+              fi
+
+              if [ "$ROLLOUT" = "COMPLETED" ] && [ "$RUNNING" -ge "$DESIRED" ]; then
+                if [ "$IMAGE" = "$EXPECTED_IMAGE" ]; then
+                  echo "$SERVICE is steady on $IMAGE"
+                  exit 0
+                fi
+                # Steady, but on something this run did not build: a rollback to
+                # the previous revision, or an apply that pinned another tag.
+                # Either way this commit is not what is serving.
+                echo "::error::$SERVICE settled on $IMAGE, not $EXPECTED_IMAGE — something deployed over this run."
+                exit 1
+              fi
+
+              STATUS="rolloutState=$ROLLOUT running=$RUNNING/$DESIRED image=$IMAGE"
+            else
+              STATUS="no PRIMARY deployment yet"
+            fi
+
+            if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+              echo "::error::$SERVICE did not settle within 15 minutes — $STATUS"
+              exit 1
+            fi
+
+            echo "waiting: $SERVICE $STATUS"
+            sleep 15
+          done

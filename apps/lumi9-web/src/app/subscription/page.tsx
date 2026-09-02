@@ -8,7 +8,8 @@ import { BoxBuilder } from "@/components/subscription/BoxBuilder";
 import { Em } from "@/components/ui/bits";
 import { Icon } from "@/components/ui/Icon";
 import { FEATURE_IMAGES, SUBSCRIPTION_BENEFITS, SUBSCRIPTION_STEPS } from "@/lib/content";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
+import { storefrontNumbers } from "@/lib/settings.server";
 
 const TITLE = "Baby Diaper Subscription | Monthly Diaper Delivery | Lumi9";
 const DESCRIPTION =
@@ -22,11 +23,16 @@ export const metadata: Metadata = {
     "baby diaper pants combo pack", "jumbo pack diapers", "Lumi9 baby diapers",
   ],
   alternates: canonical("/subscription"),
-  openGraph: { type: "website", url: absoluteUrl("/subscription"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/subscription"), title: TITLE, description: DESCRIPTION }),
 };
 
 
-export default function SubscriptionPage() {
+export default async function SubscriptionPage() {
+  // The hero used to promise a hardcoded 20% while the BoxBuilder below it
+  // rendered the console value - two different discounts on one screen, and the
+  // one a shopper reads first was the wrong one.
+  const { subscribeSavePct } = await storefrontNumbers();
+
   return (
     <PageShell links={NAV_LINKS}>
       {/* HERO */}
@@ -40,14 +46,15 @@ export default function SubscriptionPage() {
           className="absolute top-[20%] left-[8%] size-[clamp(70px,10vw,120px)] rounded-full bg-butter opacity-50"
           aria-hidden
         />
-        <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[1.1fr_1fr]">
+        <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-stack md:grid-cols-[1.1fr_1fr]">
           <div>
             <div className="eyebrow mb-4.5">The Lumi9 subscription</div>
             <h1 className="m-0 mb-5.5 font-display text-[clamp(32px,8.6vw,72px)] md:text-[clamp(38px,5vw,72px)] font-normal leading-none">
               Never run out at <Em>2am</Em> again.
             </h1>
             <p className="m-0 mb-8 max-w-[50ch] text-lead leading-[1.6] text-muted">
-              A monthly box that grows with your baby. Auto size-up, save 20%, skip or cancel anytime.
+              A monthly box that grows with your baby. Auto size-up, save {subscribeSavePct}%, skip or cancel
+              anytime.
             </p>
             <Link href="#build" className="btn btn-dark font-bold">
               Build my box

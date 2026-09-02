@@ -71,7 +71,7 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-media border border-moss-tint bg-canvas p-card-lg shadow-hero">
+    <form method="post" onSubmit={onSubmit} className="rounded-media border border-moss-tint bg-canvas p-card-lg shadow-hero">
       <div className="flex flex-col gap-4">
         <div className="grid grid-cols-1 gap-[clamp(10px,1.4vw,14px)] min-[420px]:grid-cols-2">
           <input

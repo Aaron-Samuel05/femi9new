@@ -4,7 +4,7 @@ import { NAV_LINKS } from "@/components/site/Nav";
 import { AffiliatePanel } from "@/components/affiliate/AffiliatePanel";
 import { Em } from "@/components/ui/bits";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Lumi9 Creator Programme | Earn With Every Referral";
 const DESCRIPTION =
@@ -14,13 +14,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/affiliate"),
-  openGraph: {
-    type: "website",
-    url: absoluteUrl("/affiliate"),
-    siteName: SITE_NAME,
-    title: TITLE,
-    description: DESCRIPTION,
-  },
+  openGraph: og({ type: "website", url: absoluteUrl("/affiliate"), title: TITLE, description: DESCRIPTION }),
 };
 
 /**
@@ -62,7 +56,7 @@ const STEPS: { icon: IconName; title: string; body: string }[] = [
 export default function AffiliatePage() {
   return (
     <PageShell links={NAV_LINKS}>
-      <section className="page-wrap grid grid-cols-1 items-start gap-block pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">
+      <section className="page-wrap grid grid-cols-1 items-start gap-stack pt-[clamp(40px,5.5vw,72px)] pb-section md:grid-cols-2">
         <div>
           <div className="eyebrow mb-4">Creator programme</div>
           <h1 className="m-0 mb-5 font-display text-[clamp(29px,7.8vw,58px)] md:text-[clamp(34px,4.4vw,58px)] font-normal leading-[1.02]">

@@ -6,9 +6,12 @@ import {
   clearBabyProfile,
   saveBabyProfile,
   useBabyProfile,
+  useProfileOrigin,
+  useProfileSync,
   type BabySex,
   type BloodGroup,
 } from "@/lib/baby-profile";
+import { useParenting } from "@/lib/parenting-context";
 
 /**
  * One profile, read by every tool.
@@ -17,12 +20,22 @@ import {
  * they just type more. That is why there is no "continue" step and no validation
  * beyond what the maths genuinely needs.
  *
- * The ONE thing that leaves the device is an email address, and only if the
- * parent adds one: saving then sends a single care + vaccination plan. Everything
- * else stays in localStorage.
+ * **Where it is stored depends on who is asking, and the card says which.**
+ * Signed out, it is localStorage and nothing else — the original promise, still
+ * literally true. Signed in, it is a row on the account, mirrored to the device
+ * so the tools keep answering instantly and keep working offline. A page that
+ * says "stays on this device" while POSTing a child's date of birth is lying, so
+ * the sentence under the heading is bound to `origin` rather than written once.
+ *
+ * The email is never stored either way. It belongs to the care-plan REQUEST, not
+ * to the baby: the server keeps a `ParentingLead` because that is a record of
+ * consent with an owner, and the browser keeps nothing.
  */
 export function BabyProfileCard() {
   const profile = useBabyProfile();
+  const origin = useProfileOrigin();
+  const sync = useProfileSync();
+  const { signedIn } = useParenting();
   const [editing, setEditing] = useState(false);
 
   const [name, setName] = useState(profile?.name ?? "");
@@ -32,7 +45,10 @@ export function BabyProfileCard() {
   const [height, setHeight] = useState(profile?.heightCm?.toString() ?? "");
   const [preterm, setPreterm] = useState(profile?.gestationalWeeks?.toString() ?? "");
   const [bloodGroup, setBloodGroup] = useState<BloodGroup | "">(profile?.bloodGroup ?? "");
-  const [email, setEmail] = useState(profile?.email ?? "");
+  // Deliberately NOT seeded from the profile: it is not stored any more, so
+  // there is nothing to seed it from. A parent who wants a second plan types the
+  // address again, which is the honest amount of friction for "send me an email".
+  const [email, setEmail] = useState("");
 
   const [mail, setMail] = useState<
     { state: "idle" } | { state: "sending" } | { state: "sent"; to: string } | { state: "error"; msg: string }
@@ -45,7 +61,10 @@ export function BabyProfileCard() {
   async function save() {
     if (!canSave) return;
     const trimmedEmail = email.trim().toLowerCase();
-    saveBabyProfile({
+
+    // Awaited, so the account write is in flight (and its failure already
+    // surfaced) before the card flips back to its summary view.
+    await saveBabyProfile({
       name: name.trim() || undefined,
       dob,
       sex: sex as BabySex,
@@ -53,7 +72,6 @@ export function BabyProfileCard() {
       heightCm: height ? Number(height) : undefined,
       gestationalWeeks: preterm ? Number(preterm) : undefined,
       bloodGroup: bloodGroup || undefined,
-      email: trimmedEmail || undefined,
     });
     setEditing(false);
 
@@ -66,7 +84,16 @@ export function BabyProfileCard() {
       const res = await fetch("/api/parenting/care-plan", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail, name, dob, sex, bloodGroup }),
+        body: JSON.stringify({
+          email: trimmedEmail,
+          name,
+          dob,
+          sex,
+          bloodGroup,
+          // Which tool page asked, so the lead list can tell an entry point that
+          // works from one that nobody ever reaches.
+          source: window.location.pathname,
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (res.ok && data.ok) setMail({ state: "sent", to: trimmedEmail });
@@ -74,6 +101,10 @@ export function BabyProfileCard() {
     } catch {
       setMail({ state: "error", msg: "We couldn't send the email just now." });
     }
+    // Cleared whichever way it went: the field is a one-shot request, not a
+    // stored preference, and leaving an address sitting in an input on a page
+    // about somebody's child is the kind of thing a shared laptop punishes.
+    setEmail("");
   }
 
   function beginEdit() {
@@ -84,7 +115,7 @@ export function BabyProfileCard() {
     setHeight(profile?.heightCm?.toString() ?? "");
     setPreterm(profile?.gestationalWeeks?.toString() ?? "");
     setBloodGroup(profile?.bloodGroup ?? "");
-    setEmail(profile?.email ?? "");
+    setEmail("");
     setEditing(true);
   }
 
@@ -104,16 +135,39 @@ export function BabyProfileCard() {
                 ? ` · born at ${profile.gestationalWeeks} weeks`
                 : ""}
             </div>
+            {/* Bound to the sync state as well as the origin.
+                `origin` flips to "account" the moment a session is seen, which
+                is BEFORE any write has succeeded — so on its own it promised
+                "follows you to any device" directly above an amber line saying
+                the sync had failed. When the write did not land, the failure
+                line below is the only true statement about where this is, and
+                it says so; a second sentence here would only contradict it. */}
+            {sync.state === "error" ? null : (
+              <div className="mt-1.5 text-[13px] text-muted">
+                {origin === "account"
+                  ? "Saved to your account, so it follows you to any device."
+                  : "Saved on this device only."}
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button type="button" className="btn btn-ghost" onClick={beginEdit}>
               Edit
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => clearBabyProfile()}>
+            <button type="button" className="btn btn-ghost" onClick={() => void clearBabyProfile()}>
               Clear
             </button>
           </div>
         </div>
+
+        {/* The account write, separately from the email. A profile that saved on
+            the device but failed to reach the account is a working page with a
+            silent gap in it, which is exactly the class of failure this whole
+            surface used to be made of. */}
+        {sync.state === "error" ? (
+          <p className="mt-3 text-sm text-[#b45309]">{sync.message}</p>
+        ) : null}
+
         {mail.state === "sending" ? (
           <p className="mt-3 text-sm text-muted">Sending your plan…</p>
         ) : mail.state === "sent" ? (
@@ -133,9 +187,22 @@ export function BabyProfileCard() {
         Tell us about your baby
       </h2>
       <p className="m-0 mb-5 max-w-[95ch] text-sm text-muted">
-        Fill this in once and every tool uses it. Baby&apos;s details stay on this device - the only
-        thing we use is your email, and only to send you a one-time care &amp; vaccination plan. You
-        can skip it and use the tools directly.
+        Fill this in once and every tool uses it.{" "}
+        {signedIn ? (
+          <>
+            It saves to your Lumi9 account, so it&apos;s there on your phone as well as here. Add an
+            email below only if you also want the plan sent to you.
+          </>
+        ) : (
+          <>
+            Baby&apos;s details stay on this device -{" "}
+            <a href="/login?next=%2Fparenting-tools" className="underline">
+              sign in
+            </a>{" "}
+            if you&apos;d rather keep them on your account. You can skip it all and use the tools
+            directly.
+          </>
+        )}
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -228,7 +295,7 @@ export function BabyProfileCard() {
         </label>
         <label className="block">
           <span className="mb-1.5 block text-sm font-semibold text-midnight">
-            Your email (optional)
+            Email me the plan (optional)
           </span>
           <input
             type="email"
@@ -242,15 +309,20 @@ export function BabyProfileCard() {
           />
           <span className="mt-1 block text-[13px] text-muted">
             {emailValid
-              ? "We'll email you a care plan + upcoming vaccination dates. Nothing else."
+              ? "One email with a care plan and the upcoming vaccination dates. We keep the address so we can send it, and nothing else."
               : "That doesn't look like an email address."}
           </span>
         </label>
       </div>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <button type="button" className="btn btn-dark" disabled={!canSave} onClick={save}>
-          {email.trim() ? "Save & email my plan" : "Save"}
+        <button
+          type="button"
+          className="btn btn-dark"
+          disabled={!canSave || sync.state === "saving"}
+          onClick={() => void save()}
+        >
+          {sync.state === "saving" ? "Saving…" : email.trim() ? "Save & email my plan" : "Save"}
         </button>
         {profile ? (
           <button type="button" className="btn btn-ghost" onClick={() => setEditing(false)}>

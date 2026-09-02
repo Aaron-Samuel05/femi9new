@@ -8,6 +8,7 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, QuoteCard, SectionHeading } from "@/components/ui/bits";
 import { ProductBuyBox } from "@/components/pdp/ProductBuyBox";
+import { storefrontNumbers } from "@/lib/settings.server";
 import { FEATURE_IMAGES } from "@/lib/content";
 import { listReviews } from "@femi9/core/services/products";
 import { inr, type SizeCode } from "@/lib/catalog";
@@ -117,6 +118,9 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
 
   const path = `/product/${size.size.toLowerCase()}`;
   const prices = size.packs.map((pack) => pack.price);
+  // Passed down so the "Shipping & returns" policy line is right in the SERVER
+  // HTML, not corrected after hydration. See the note in ProductBuyBox.
+  const { freeShipThreshold } = await storefrontNumbers();
 
   /**
    * Real reviews, from the console's moderation queue - `PDP_REVIEWS` in
@@ -201,7 +205,7 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
           <span className="text-midnight">Cloud Soft - {size.name}</span>
         </nav>
 
-        <ProductBuyBox size={size} />
+        <ProductBuyBox size={size} freeShipThreshold={freeShipThreshold} />
       </section>
 
       {/* FEATURE BAND */}

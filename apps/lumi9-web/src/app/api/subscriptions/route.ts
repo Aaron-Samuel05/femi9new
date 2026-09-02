@@ -1,6 +1,15 @@
 import { z } from "zod";
-import { badRequest, created, handle, ok, unauthorized } from "@femi9/core/api";
+import {
+  badRequest,
+  created,
+  handle,
+  ok,
+  serviceUnavailable,
+  unauthorized,
+} from "@femi9/core/api";
 import { requireUser } from "@femi9/core/auth";
+import { ProviderConfigurationError } from "@femi9/core/runtime-mode";
+import { UnsupportedCadenceError } from "@femi9/core/services/subscription-plans";
 import {
   createSubscription,
   listForUser,
@@ -23,6 +32,12 @@ import {
  * The auth check runs BEFORE the body is read, so an unauthenticated POST is a
  * 401 that has created nothing; the box builder relies on that 401 to send a
  * guest to /login and back.
+ *
+ * POST is the FIRST half of a two-phase flow. It creates the Razorpay plan and
+ * subscription but authorises nothing: the response carries an `authorization`
+ * block the browser hands to Razorpay Checkout, and the box only starts billing
+ * once her bank approves the mandate. A 201 means "ready to authorise", NOT
+ * "subscribed".
  */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,14 +68,23 @@ export async function POST(req: Request) {
     if (!parsed.success) return badRequest("Invalid subscription", parsed.error.flatten());
 
     try {
-      const subscription = await createSubscription("lumi9", u.sub, parsed.data);
-      return created({ subscription });
+      return created(await createSubscription("lumi9", u.sub, parsed.data));
     } catch (err) {
       // An unknown cadence means the `Cadence` rows were never seeded into this
       // schema - a deploy problem, not a client one, but a 400 with the reason
       // is more use to whoever is looking than a 500 with none.
       if (err instanceof CadenceNotFoundError) return badRequest(err.message);
       if (err instanceof VariantNotFoundError) return badRequest(err.message);
+      // A cadence whose day count has no Razorpay rhythm is a misconfigured
+      // Cadence row - not something the shopper can fix, and not a 500 either.
+      if (err instanceof UnsupportedCadenceError) {
+        return serviceUnavailable("That delivery frequency is unavailable right now.");
+      }
+      // No live gateway credentials: we cannot take a mandate, and a plan we can
+      // never bill is worse than refusing to start one.
+      if (err instanceof ProviderConfigurationError) {
+        return serviceUnavailable("Subscriptions are temporarily unavailable.");
+      }
       throw err;
     }
   });

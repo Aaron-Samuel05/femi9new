@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ToolPageFrame } from "@/components/tools/ToolPageFrame";
 import { ImmunisationSchedule } from "@/components/tools/ImmunisationSchedule";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Baby Vaccination Schedule (India, UIP) | Lumi9";
 const DESCRIPTION =
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: { absolute: TITLE },
   description: DESCRIPTION,
   alternates: canonical("/parenting-tools/vaccination"),
-  openGraph: { type: "website", url: absoluteUrl("/parenting-tools/vaccination"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/parenting-tools/vaccination"), title: TITLE, description: DESCRIPTION }),
 };
 
 export default function VaccinationPage() {

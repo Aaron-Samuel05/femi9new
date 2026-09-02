@@ -93,8 +93,12 @@ describe('otp provider configuration flags', () => {
     mutableEnv.NODE_ENV = 'production'
     try {
       await expect(sendSms('9999999999', '123456')).rejects.toThrow('MSG91 is not configured')
+      // Names the provider the brand is SUPPOSED to use, which is no longer
+      // always Resend — Lumi9 sends through SES, and with nothing configured at
+      // all there is no provider to name. The assertion that matters is that it
+      // REFUSES rather than falling back to a mock in production.
       await expect(sendMagicLink('femi9', 'a@example.test', 'https://example.test/link')).rejects.toThrow(
-        'Resend is not configured',
+        'is not configured',
       )
     } finally {
       if (previous === undefined) delete mutableEnv.NODE_ENV

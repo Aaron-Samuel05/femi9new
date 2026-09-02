@@ -479,7 +479,7 @@ export default function LoginPage() {
                       </p>
                     ) : (
                       <p className="m-field__hint" id="login-phone-hint">
-                        Indian mobile numbers only (+91). We will text you a 6-digit code.
+                        Indian mobile numbers only (+91). We will send you a 6-digit code on WhatsApp.
                       </p>
                     )}
                   </div>
@@ -492,7 +492,7 @@ export default function LoginPage() {
               ) : (
                 <form className="m-form" onSubmit={verifyCode} noValidate>
                   <p className="auth-sentto">
-                    We sent a 6-digit code to <b>+91 {phone}</b>. It expires in 5 minutes.
+                    We sent a 6-digit code on WhatsApp to <b>+91 {phone}</b>. It expires in 5 minutes.
                   </p>
 
                   {devCode && (

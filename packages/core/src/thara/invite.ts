@@ -1,18 +1,26 @@
 import 'server-only'
+import { mailConfigured } from '../mail-identity'
+import { sendMail } from '../mailer'
 import { mockProvidersAllowed } from '../runtime-mode'
 
 /**
  * Thara invite email — sender for referral invitations.
  *
- * Mirrors src/lib/otp.ts::sendMagicLink so ops sees the same shape and any
- * future switch from Resend to SES is a single-file swap. Configuration:
+ * Thara is a FEMI9 programme — `brandConfig('lumi9').modules` excludes it — so
+ * this always sends as femi9, and the brand is not a parameter. It goes through
+ * `mailer.ts` like every other message on the platform, which is what finally
+ * makes the old promise in this comment ("a future switch from Resend to SES is
+ * a single-file swap") true: that file is the single file, and Femi9 moving to
+ * SES becomes a variable rather than an edit here.
  *
- *   RESEND_API_KEY, EMAIL_FROM  → real send via api.resend.com
+ *   configured per mail-identity → real send
  *   otherwise + ALLOW_MOCK_PROVIDERS=true → returns { mock: true } and does nothing
  */
 
+const BRAND = 'femi9' as const
+
 function configured(): boolean {
-  return Boolean(process.env.RESEND_API_KEY?.trim() && process.env.EMAIL_FROM?.trim())
+  return mailConfigured(BRAND)
 }
 
 export interface TharaInviteResult {
@@ -62,28 +70,18 @@ interface SendInput {
   text: string
 }
 
-/** Deliver an invite via Resend. Mock-safe when the flag allows it. */
+/** Deliver an invite through Femi9's configured provider. Mock-safe when the
+ *  flag allows it. */
 export async function sendTharaInviteEmail(input: SendInput): Promise<TharaInviteResult> {
   if (!configured()) {
     if (!mockProvidersAllowed()) throw new TharaInviteProviderNotConfiguredError()
     return { mock: true }
   }
-  const apiKey = process.env.RESEND_API_KEY as string
-  const from = process.env.EMAIL_FROM as string
-  const res = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      from,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-    }),
+  await sendMail(BRAND, {
+    to: input.to,
+    subject: input.subject,
+    html: input.html,
+    text: input.text,
   })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`Resend sendTharaInvite failed (${res.status}): ${detail}`)
-  }
   return { mock: false }
 }

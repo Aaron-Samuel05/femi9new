@@ -20,7 +20,7 @@ export default function PrivacyPage() {
         <p className="m-0 text-base text-muted">{LEGAL_UPDATED}</p>
       </header>
 
-      <section className="px-safe mx-auto grid max-w-[900px] grid-cols-1 items-start gap-block pt-5 pb-section md:grid-cols-[minmax(160px,220px)_1fr]">
+      <section className="px-safe mx-auto grid max-w-[900px] grid-cols-1 items-start gap-stack pt-5 pb-section md:grid-cols-[minmax(160px,220px)_1fr]">
         <nav aria-label="On this page" className="scroll-row gap-x-4 gap-y-2.5 max-md:-mx-[var(--spacing-gutter)] max-md:px-[var(--spacing-gutter)] max-md:pb-2 md:sticky md:top-24 md:flex-col">
           {LEGAL_SECTIONS.map((section) => (
             <a key={section.id} href={`#${section.id}`} className="inline-flex items-center coarse:min-h-11 text-sm whitespace-nowrap text-muted hover:text-midnight">

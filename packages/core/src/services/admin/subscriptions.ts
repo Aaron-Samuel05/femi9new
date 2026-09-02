@@ -13,7 +13,17 @@ import { dbFor, type Brand } from '@femi9/db'
 
 // Source of truth for the filter chips + the filter guard. Matches the
 // SubscriptionStatus enum in schema.prisma exactly.
-export const SUBSCRIPTION_STATUSES = ['active', 'paused', 'cancelled'] as const
+//
+// `pending_mandate` is the one ops most needs a chip for: those are shoppers who
+// started a plan and never finished authorising it, so nothing recurs and
+// nothing is charged. They look like customers and are not yet.
+export const SUBSCRIPTION_STATUSES = [
+  'pending_mandate',
+  'active',
+  'paused',
+  'halted',
+  'cancelled',
+] as const
 
 /** True when `s` is a real SubscriptionStatus — guards the URL-supplied filter. */
 function isStatus(s: string): s is SubscriptionStatus {
@@ -32,6 +42,13 @@ export interface AdminSubscriptionRow {
   nextDelivery: Date // formatted by the (server-component) page
   status: SubscriptionStatus
   savedTotal: number
+  /** Rupees the mandate debits per cycle; null on a legacy pay-later plan. */
+  chargeAmount: number | null
+  /** The Razorpay subscription id, for looking the mandate up in their
+   *  dashboard when a customer calls about a charge. Null on a legacy plan. */
+  razorpaySubscriptionId: string | null
+  /** False when the customer never completed the bank approval. */
+  mandateActive: boolean
 }
 
 /**
@@ -68,6 +85,9 @@ export async function listSubscriptions(brand: Brand, {
       nextDelivery: r.nextDeliveryAt,
       status: r.status,
       savedTotal: r.savedTotal,
+      chargeAmount: r.chargeAmount,
+      razorpaySubscriptionId: r.razorpaySubscriptionId,
+      mandateActive: r.mandateAuthedAt != null,
     }))
   } catch {
     return []

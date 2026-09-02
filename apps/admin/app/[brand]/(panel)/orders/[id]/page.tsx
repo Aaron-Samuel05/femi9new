@@ -53,6 +53,10 @@ interface OrderDetail {
   placedAt: string
   subtotal: number
   discount: number
+  /** The coupon this order was placed with. Null when it carried none — and
+   *  also when the coupon has since been hard-deleted, which nulls `couponId`
+   *  and leaves the discount with nothing naming it. */
+  coupon: { code: string; type: 'flat' | 'percent'; value: number } | null
   shipping: number
   total: number
   customer: { name: string; email: string | null; phone: string | null } | null
@@ -221,7 +225,18 @@ export default function OrderDetailPage(props: { params: Promise<{ id: string }>
       {/* Totals */}
       <div className="adm-card" style={{ maxWidth: 320, marginLeft: 'auto', marginTop: 16 }}>
         <TotalRow label="Subtotal" value={inr(order.subtotal)} />
-        {order.discount > 0 && <TotalRow label="Discount" value={'−' + inr(order.discount)} />}
+        {order.discount > 0 && (
+          /* Name the coupon, not just the money. The row said only "Discount",
+             so a support call about "why is this order ₹50 less" could not be
+             answered from the order at all — the code lived on the storefront's
+             quote and nowhere the console could see. Falls back to the bare
+             label when there is no coupon row to name: a deleted coupon nulls
+             the relation and leaves the discount behind. */
+          <TotalRow
+            label={order.coupon ? `Discount (${order.coupon.code})` : 'Discount'}
+            value={'−' + inr(order.discount)}
+          />
+        )}
         <TotalRow label="Shipping" value={order.shipping === 0 ? 'Free' : inr(order.shipping)} />
         <div style={{ borderTop: '1px solid var(--line)', margin: '8px 0' }} />
         <TotalRow label="Total" value={inr(order.total)} strong />

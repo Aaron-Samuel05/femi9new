@@ -7,7 +7,7 @@ import { SizeMatcher } from "@/components/size-guide/SizeMatcher";
 import { Em, NumberedCard } from "@/components/ui/bits";
 import { FEATURE_IMAGES, FIT_TIPS } from "@/lib/content";
 import { loadCatalog } from "@/lib/catalog.server";
-import { absoluteUrl, canonical, SITE_NAME } from "@/lib/seo";
+import { absoluteUrl, canonical, og } from "@/lib/seo";
 
 const TITLE = "Baby Diaper Size Chart | Find the Right Diaper Size | Lumi9";
 const DESCRIPTION =
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     "diapers for 4-8 kg baby", "diapers for 9-14 kg baby", "diapers for 12-17 kg baby",
   ],
   alternates: canonical("/size-guide"),
-  openGraph: { type: "website", url: absoluteUrl("/size-guide"), siteName: SITE_NAME, title: TITLE, description: DESCRIPTION },
+  openGraph: og({ type: "website", url: absoluteUrl("/size-guide"), title: TITLE, description: DESCRIPTION }),
 };
 
 export default async function SizeGuidePage() {

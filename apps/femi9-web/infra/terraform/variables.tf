@@ -212,7 +212,19 @@ variable "enable_rate_limit_redis" {
 }
 
 variable "msg91_template_id" {
-  description = "DLT-approved MSG91 OTP template id."
+  description = "DLT-approved MSG91 OTP template id. No longer on the sign-in path — that is WhatsApp now. This and MSG91_FLOW_TEMPLATE_ID are what deliver a redeemed reward code to a phone-only customer."
+  type        = string
+  default     = ""
+}
+
+variable "whatsapp_phone_number_id" {
+  description = "WhatsApp Cloud API sender id — the numeric phone_number_id, NOT the phone number. Phone sign-in delivers its OTP over WhatsApp and nothing else, so leaving this empty removes the storefront's primary way in as well as every order confirmation."
+  type        = string
+  default     = ""
+}
+
+variable "whatsapp_template_language" {
+  description = "Language code the WhatsApp templates were approved under, e.g. en or en_US. Empty = the app default (en). A wrong code fails with the same error as a template that does not exist."
   type        = string
   default     = ""
 }

@@ -79,6 +79,18 @@ export function availableTracks(doses: VaccineDose[] = DOSES): VaccineTrack[] {
   );
 }
 
+/**
+ * Does the SEED's input have any doses in it?
+ *
+ * Not what a page should ask any more. The storefront reads the schedule from
+ * the database through `useParenting()`, whose `ready` flag is the equivalent
+ * question about the rows that actually render — an unseeded `lumi9` schema is
+ * a far easier state to reach than an empty module ever was, and this function
+ * would answer "yes, of course" while the page showed nothing.
+ *
+ * Kept for `prisma/seed-vaccines.ts`, which is the one caller for which "does
+ * the module have data" is the right question.
+ */
 export function hasScheduleData(): boolean {
   return DOSES.length > 0;
 }

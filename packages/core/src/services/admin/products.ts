@@ -28,13 +28,45 @@ const VariantInput = z.object({
   // packCount belongs to packs, size to sizes; the other is null (enforced below).
   packCount: z.coerce.number().int().min(0).nullable().optional(),
   size: z.string().trim().min(1).nullable().optional(),
-  price: z.coerce.number().int().min(0, 'Price must be ≥ 0'),
+
+  // ── What the admin types, and what the server works out ──────────────────
+  // The console asks for the MRP and, optionally, a discount. The CHARGED price
+  // is computed from them by `chargedPrice` below and written in the same
+  // transaction, so the strikethrough, the badge and the cart line are three
+  // renderings of one number rather than three numbers that have to agree.
+  //
+  // `price` is still ACCEPTED here, and ignored when an mrp is present. Older
+  // callers (and the seed) post a bare price; treating that as "mrp with no
+  // discount" keeps them working and makes the row consistent on the way in.
+  mrp: z.coerce.number().int().min(0, 'MRP must be ≥ 0').optional(),
+  // Whole percent. Capped at 90 rather than 100: a free order is not a decision
+  // anybody makes by typing into a price field, and a 100% line breaks the
+  // gateway's minimum charge anyway.
+  discountPct: z.coerce
+    .number()
+    .int()
+    .min(0, 'Discount must be ≥ 0%')
+    .max(90, 'Discount is capped at 90% — a free order is not a price edit')
+    .default(0),
+  // OPTIONAL, and only a fallback. The console omits `price` on purpose and
+  // lets the server derive it; declaring it required meant z.coerce ran
+  // Number(undefined) on every save from the product form and rejected it
+  // with "expected number, received NaN" — discount or no discount.
+  price: z.coerce.number().int().min(0, 'Price must be ≥ 0').optional(),
   // Empty SKU is normalised to null so many variants can share "no SKU" without
   // tripping the unique index (Postgres allows multiple NULLs, not multiple '').
   sku: z.string().trim().optional().nullable(),
   stock: z.coerce.number().int().min(0).default(0),
   active: z.boolean().default(true),
 })
+  // Exactly one of them is always present in practice — the console sends
+  // `mrp`, the catalog import sends a bare `price` — but neither is
+  // individually required, so the pair has to be checked here rather than
+  // silently pricing the row at zero.
+  .refine((v) => v.mrp !== undefined || v.price !== undefined, {
+    message: 'Either an MRP or a price is required',
+    path: ['mrp'],
+  })
 
 /** A Key Benefits entry. The PDP reads the first six and mirrors them three per
  *  side, so order is meaningful — position follows array index. */
@@ -213,8 +245,43 @@ async function resolveSlug(brand: Brand, source: string, excludeId?: string): Pr
   }
 }
 
+/**
+ * THE ONE PLACE A DISCOUNT BECOMES A PRICE.
+ *
+ * `mrp` is what the pack is worth and `discountPct` is what is coming off it;
+ * this is the only expression that turns the pair into the number a cart line
+ * is priced from. Rounded to whole rupees because every price in this schema is
+ * an integer — there are no paise anywhere, and a half-rupee line total would
+ * disagree with the gateway.
+ *
+ * Exported so the console can show the admin the result BEFORE they save, from
+ * this function rather than from a copy of the arithmetic in the form. A form
+ * that computes its own preview is how the storefront ended up advertising a
+ * 10% discount no server had ever applied.
+ */
+export function chargedPrice(mrp: number, discountPct: number): number {
+  if (!Number.isFinite(mrp) || mrp <= 0) return 0
+  const pct = Math.min(90, Math.max(0, Math.round(discountPct)))
+  return Math.round(mrp * (1 - pct / 100))
+}
+
+/**
+ * The MRP and discount a variant input actually carries.
+ *
+ * An input with no `mrp` is a caller from before this field existed — the seed,
+ * an older client, a script. Its `price` IS the undiscounted price, so it reads
+ * as an MRP with no discount, and the row it writes is consistent rather than
+ * half-populated.
+ */
+function pricingOf(v: VariantInputT): { mrp: number; discountPct: number; price: number } {
+  const mrp = v.mrp ?? v.price ?? 0
+  const discountPct = v.mrp === undefined ? 0 : v.discountPct
+  return { mrp, discountPct, price: chargedPrice(mrp, discountPct) }
+}
+
 /** Strip a variant to the DB columns, coercing kind-specific fields + SKU. */
 function cleanVariant(v: VariantInputT) {
+  const { mrp, discountPct, price } = pricingOf(v)
   return {
     kind: v.kind,
     label: v.label,
@@ -222,7 +289,11 @@ function cleanVariant(v: VariantInputT) {
     // row switched pack↔size can't leave a stale value behind.
     packCount: v.kind === 'pack' ? v.packCount ?? null : null,
     size: v.kind === 'size' ? v.size ?? null : null,
-    price: v.price,
+    // NEVER v.price. The client's number is a stale preview at best and a
+    // contradiction at worst; the server recomputes from mrp + discountPct.
+    price,
+    mrp,
+    discountPct,
     sku: v.sku && v.sku.length > 0 ? v.sku : null,
     stock: v.stock,
     active: v.active,
@@ -371,29 +442,33 @@ export async function createProduct(brand: Brand, input: ProductInput) {
  * and the shop did not move. Nothing errored, which is the worst version of it.
  *
  * ── The rule ────────────────────────────────────────────────────────────────
- * Whichever of the two the admin actually edited wins, and the other follows:
+ * ON A PACK-TIERED PRODUCT, `basePrice` IS A MIRROR. It always becomes the
+ * CHARGED price of the tier the storefront leads with, and the console shows it
+ * read-only. There is nothing to edit there and nothing to keep in step by hand.
  *
- *   - base price edited  → every pack that was priced at the OLD base price
- *     moves to the new one. That is the tier the storefront leads with, so the
- *     edit shows up AND is what the shopper is charged.
- *   - a pack price edited → `basePrice` follows the leading pack, so the
- *     console's products list stops disagreeing with the shop.
- *   - both edited        → the pack wins. It is the more specific field and the
- *     only one a cart line is priced from; `basePrice` follows it.
+ * It used to be two-way — a base-price edit repriced the leading pack — and that
+ * was the right rule while the pack price was a number an admin typed. It stops
+ * being right now the price is DERIVED from `mrp` and `discountPct`: "charge
+ * ₹225 for this tier" has no single answer any more (does the MRP drop to 225
+ * and keep the 50% badge, or does it back-solve to 450?), and every answer to
+ * that question is a surprise to somebody. So the field that was ambiguous
+ * became the field that is derived, and the pack's own MRP and discount are the
+ * only place a price is stated.
  *
- * Products with no pack variants (Femi9's panties) are untouched: there
- * `basePrice` is the genuine price and has nothing to be reconciled against.
+ * Products with no pack variants (Femi9's panties, whose sizes all cost the
+ * same) are untouched: there `basePrice` is the genuine price, it stays
+ * editable, and there is nothing to mirror.
  */
 function syncBasePriceWithPacks(args: {
   storedBasePrice: number
   storedVariants: { id: string; kind: string; price: number }[]
   input: ProductInput
-}): { basePrice: number; repriceVariantIds: string[] } {
+}): { basePrice: number } {
   const { storedBasePrice, storedVariants, input } = args
 
   const storedById = new Map(storedVariants.map((v) => [v.id, v]))
   const incomingPacks = input.variants.filter((v) => v.kind === 'pack')
-  if (incomingPacks.length === 0) return { basePrice: input.basePrice, repriceVariantIds: [] }
+  if (incomingPacks.length === 0) return { basePrice: input.basePrice }
 
   // The tiers that carried the old base price — what the storefront leads with.
   let leaders = incomingPacks.filter(
@@ -419,39 +494,16 @@ function syncBasePriceWithPacks(args: {
     if (fallback?.id) leaders = [fallback]
   }
 
-  const baseChanged = input.basePrice !== storedBasePrice
-  const leaderPriceChanged = leaders.some(
-    (v) => v.price !== storedById.get(v.id as string)?.price,
-  )
+  // The leading tier's CHARGED price, recomputed from what this save carries.
+  // Not the client's `price` field, which is a preview the server does not
+  // trust, and not the stored one, which is what we are replacing.
+  const leader = leaders[0]
+  if (leader) return { basePrice: pricingOf(leader).price }
 
-  // A pack edit is the more specific statement, so it wins and base follows.
-  if (leaderPriceChanged) {
-    const winner = leaders.find((v) => v.price !== storedById.get(v.id as string)?.price)
-    return { basePrice: winner?.price ?? input.basePrice, repriceVariantIds: [] }
-  }
-
-  // Base price edited: carry it onto the tier that mirrored it — including a
-  // drifted product, where that is the whole point. This is the admin saying
-  // "this is the price", so it becomes the charged one.
-  if (baseChanged && leaders.length > 0) {
-    return {
-      basePrice: input.basePrice,
-      repriceVariantIds: leaders.map((v) => v.id as string),
-    }
-  }
-
-  // A drifted product saved WITHOUT touching the price heals the other way:
-  // base follows the tier, so the console stops reporting a number nobody is
-  // charged. Deliberately not a reprice — somebody editing stock or a
-  // description must not move what a shopper pays as a side effect, and the
-  // charged price is the one with real orders behind it.
-  if (drifted && leaders.length > 0) {
-    const leader = leaders[0]
-    const price = leader.price ?? storedById.get(leader.id as string)?.price
-    if (typeof price === 'number') return { basePrice: price, repriceVariantIds: [] }
-  }
-
-  return { basePrice: input.basePrice, repriceVariantIds: [] }
+  // No tier could be identified even after the drift fallback — a product with
+  // packs that all have new ids, say. Leave the field alone rather than guess:
+  // the next save, once the rows have ids, resolves it.
+  return { basePrice: input.basePrice }
 }
 
 export async function updateProduct(brand: Brand, id: string, input: ProductInput) {
@@ -558,12 +610,11 @@ export async function updateProduct(brand: Brand, id: string, input: ProductInpu
       await tx.productVariant.deleteMany({ where: { id: { in: toDelete } } })
     }
 
-    const reprice = new Set(sync.repriceVariantIds)
     for (const v of input.variants) {
+      // `price` inside is derived from mrp + discountPct — see cleanVariant.
+      // Nothing outside that function may set it, which is why the old
+      // base-price reprice branch is gone rather than adapted.
       const data = cleanVariant(v)
-      // A base-price edit is carried onto the tier that mirrored it, so the
-      // number the admin typed is the number the shopper is charged.
-      if (v.id && reprice.has(v.id)) data.price = sync.basePrice
       if (v.id && existingIds.has(v.id)) {
         await tx.productVariant.update({ where: { id: v.id }, data })
       } else {

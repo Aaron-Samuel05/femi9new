@@ -1,7 +1,13 @@
 import type { NextRequest } from 'next/server'
 import { badRequest, ok, handle, serviceUnavailable } from '@femi9/core/api'
 import { webhookConfigured, verifyWebhookSignature } from '@femi9/core/razorpay'
+import { logger } from '@femi9/core/logger'
 import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/checkout'
+import {
+  confirmMandate,
+  recordSubscriptionCharge,
+  syncGatewayStatus,
+} from '@femi9/core/services/subscriptions'
 
 /**
  * POST /api/webhooks/razorpay — the ASYNCHRONOUS capture path.
@@ -9,10 +15,22 @@ import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/c
  * Razorpay POSTs signed events here. We authenticate with
  * HMAC_SHA256(rawBody, RAZORPAY_WEBHOOK_SECRET) against the x-razorpay-signature
  * header, so the body MUST be read as raw text (a re-serialized JSON would not
- * match the signature byte-for-byte). On a payment.captured / order.paid event
- * we resolve our order from the gateway order id and mark it paid idempotently —
- * this is the source of truth even if the shopper closed the tab before the sync
- * verify call ran.
+ * match the signature byte-for-byte).
+ *
+ * Two families of event arrive here and they mean different things:
+ *
+ *   payment.captured / order.paid   — a ONE-OFF checkout payment. We resolve our
+ *                                     order from the gateway order id and mark it
+ *                                     paid; this is the source of truth even if
+ *                                     the shopper closed the tab before the sync
+ *                                     verify call ran.
+ *   subscription.*                  — the MANDATE lifecycle. `subscription.charged`
+ *                                     is where a recurring box's order is born,
+ *                                     already paid. The rest is state we cannot
+ *                                     learn any other way: a customer revoking her
+ *                                     mandate in her banking app never touches our
+ *                                     UI, and Razorpay halting a plan after a run
+ *                                     of failed debits is a decision we do not make.
  *
  * Unverified calls are rejected (400). Unconfigured (no keys) → no real webhooks
  * can arrive and there's no secret to verify with, so we just 200 and do nothing.
@@ -21,13 +39,69 @@ import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/c
 export const dynamic = 'force-dynamic'
 
 // Minimal shape of the events we act on. Razorpay sends the payment entity on
-// payment.captured, and both the order and payment entities on order.paid.
+// payment.captured, both the order and payment entities on order.paid, and the
+// subscription entity (plus a payment entity on `charged`) on subscription.*.
 type RazorpayWebhookEvent = {
   event?: string
   payload?: {
-    payment?: { entity?: { id?: string; order_id?: string; method?: string } }
+    payment?: {
+      entity?: { id?: string; order_id?: string; method?: string; amount?: number }
+    }
     order?: { entity?: { id?: string } }
+    subscription?: {
+      entity?: { id?: string; status?: string; current_end?: number | null }
+    }
   }
+}
+
+/**
+ * The mandate lifecycle.
+ *
+ * `subscription.charged` is the ONLY place a gateway-managed renewal order comes
+ * into existence, and it arrives AFTER the bank has moved the money. Everything
+ * it does downstream (order, Payment row, loyalty points, the confirmation
+ * email) records something that has already happened rather than authorising
+ * something that might.
+ */
+async function handleSubscriptionEvent(event: RazorpayWebhookEvent): Promise<void> {
+  const sub = event.payload?.subscription?.entity
+  if (!sub?.id) return
+
+  const currentEnd =
+    typeof sub.current_end === 'number' && sub.current_end > 0
+      ? new Date(sub.current_end * 1000)
+      : null
+
+  if (event.event === 'subscription.charged') {
+    const payment = event.payload?.payment?.entity
+    // A charge with no payment entity cannot be booked: there is no gateway
+    // payment id to be idempotent on and no amount to reconcile against. Log it
+    // rather than guess — inventing a payment would corrupt the money path, and
+    // Razorpay will redeliver.
+    if (!payment?.id || !payment.order_id || typeof payment.amount !== 'number') {
+      logger.error('[webhook] subscription.charged without a usable payment entity', {
+        razorpaySubscriptionId: sub.id,
+      })
+      return
+    }
+    await recordSubscriptionCharge('femi9', {
+      razorpaySubscriptionId: sub.id,
+      razorpayPaymentId: payment.id,
+      razorpayOrderId: payment.order_id,
+      amountPaise: payment.amount,
+      method: payment.method,
+      currentEnd,
+    })
+    return
+  }
+
+  if (event.event === 'subscription.authenticated' || event.event === 'subscription.activated') {
+    await confirmMandate('femi9', sub.id, sub.status ?? 'authenticated')
+    return
+  }
+
+  // pending / paused / resumed / halted / cancelled / completed — pure state.
+  await syncGatewayStatus('femi9', sub.id, sub.status ?? '', currentEnd)
 }
 
 export async function POST(req: NextRequest) {
@@ -55,6 +129,11 @@ export async function POST(req: NextRequest) {
       event = JSON.parse(rawBody) as RazorpayWebhookEvent
     } catch {
       return badRequest('Malformed webhook body')
+    }
+
+    if (event.event?.startsWith('subscription.')) {
+      await handleSubscriptionEvent(event)
+      return ok({ ok: true })
     }
 
     if (event.event === 'payment.captured' || event.event === 'order.paid') {

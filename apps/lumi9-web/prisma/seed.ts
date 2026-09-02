@@ -92,6 +92,11 @@ async function main() {
       basePrice: fallback.price,
       meta: `${fallback.count} diapers · ${size.range}`,
       flow: ratedFor(size),
+      // The numeric weight band behind `size.range`. The size-up projector reads
+      // these columns now instead of its own SIZE_BOUNDS array, so a range
+      // renamed in the console moves the maths as well as the words.
+      minWeightKg: size.minWeightKg,
+      maxWeightKg: size.maxWeightKg,
       description,
       longDescription: materials,
       status: 'active' as const,
@@ -115,7 +120,17 @@ async function main() {
         kind: 'pack' as const,
         label: `${pack.count} pcs`,
         packCount: pack.count,
+        // The seed's catalogue is the LIST price, so mrp and price are the same
+        // number and there is no discount. Writing both keeps a seeded row
+        // consistent with one the console saved, rather than leaving mrp null
+        // for the reader to interpret.
+        //
+        // Re-running this therefore RESETS any discount an operator set in the
+        // console for a seeded variant. That is the same hazard as every other
+        // field here — the seed is the catalogue's starting point, not a merge.
         price: pack.price,
+        mrp: pack.price,
+        discountPct: 0,
         active: true,
       }
       if (found) {
@@ -128,7 +143,7 @@ async function main() {
       }
     }
 
-    // ── Images: replace wholesale, since position matters and the set is small
+    // ── Images: replaced wholesale WHEN there is a bucket, untouched without one
     //
     // The bytes go to S3 and the row stores the `/uploads/…` URL CloudFront
     // serves back. This used to write `packImage(...)` - `/assets/products/
@@ -141,11 +156,26 @@ async function main() {
     // with a container path. A product with no photo is visibly missing one,
     // which is the honest state and the one the console is there to fix; a
     // bundled path looks finished and quietly is not.
-    await db.productImage.deleteMany({ where: { productId: product.id } })
+    //
+    // The delete is INSIDE the bucket branch, and that placement is the whole
+    // point. It used to run unconditionally, one line above the `if` — so a
+    // re-seed without a bucket deleted every row and then warned that it had
+    // seeded no photos. That reads as "nothing happened"; what actually
+    // happened is that every photograph ops had uploaded through the console
+    // was destroyed. Nothing surfaced it either: `catalog.server.ts` falls back
+    // to `packImage()`, so the storefront kept rendering a perfectly good
+    // picture from inside the container, just not the one anybody chose.
+    //
+    // The seed is documented as safe to re-run and ships in the image as a
+    // one-off ECS task. A task definition missing UPLOADS_BUCKET is therefore
+    // one `npm run db:seed` away from wiping the brand's photography, silently,
+    // in production. Without a bucket this now leaves the rows alone.
     if (uploadsBucket()) {
       const urls = await Promise.all(
         size.packs.map((pack) => uploadPublicFile('lumi9', packImage(size.size, pack.count))),
       )
+      // Replace wholesale, since position matters and the set is small.
+      await db.productImage.deleteMany({ where: { productId: product.id } })
       await db.productImage.createMany({
         data: size.packs.map((pack, index) => ({
           productId: product.id,
@@ -155,9 +185,11 @@ async function main() {
         })),
       })
     } else {
+      const kept = await db.productImage.count({ where: { productId: product.id } })
       console.warn(
-        `  ! UPLOADS_BUCKET unset - no photos seeded for ${size.size}. ` +
-          'Upload them in the console, or re-run with a bucket configured.',
+        `  ! UPLOADS_BUCKET unset - no photos seeded for ${size.size}` +
+          (kept > 0 ? `; kept the ${kept} already on this product.` : '.') +
+          ' Upload them in the console, or re-run with a bucket configured.',
       )
     }
 

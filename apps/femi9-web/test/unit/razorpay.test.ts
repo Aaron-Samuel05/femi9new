@@ -3,6 +3,7 @@ import { createHmac } from 'node:crypto'
 import {
   isConfigured,
   createOrder,
+  publicKeyId,
   verifyPaymentSignature,
   verifyWebhookSignature,
 } from '@femi9/core/razorpay'
@@ -13,7 +14,13 @@ import {
  * before every test (clean "unconfigured" baseline) and restore afterward so no
  * test leaks credentials into another file/test.
  */
-const KEYS = ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'RAZORPAY_WEBHOOK_SECRET'] as const
+const KEYS = [
+  'RAZORPAY_KEY_ID',
+  'RAZORPAY_KEY_SECRET',
+  'RAZORPAY_WEBHOOK_SECRET',
+  'NEXT_PUBLIC_RAZORPAY_KEY_ID',
+  'NEXT_PUBLIC_RAZORPAY_KEY_ID_FEMI9',
+] as const
 let saved: Record<string, string | undefined>
 
 beforeEach(() => {
@@ -28,6 +35,42 @@ afterEach(() => {
     if (saved[k] === undefined) delete process.env[k]
     else process.env[k] = saved[k]
   }
+})
+
+/**
+ * The key id the browser gets.
+ *
+ * `RAZORPAY_KEY_ID` and `NEXT_PUBLIC_RAZORPAY_KEY_ID` hold the SAME value —
+ * Razorpay issues one key_id/key_secret pair and the key id is the public half.
+ * The two names exist so the code handing a value to the client can only read a
+ * NEXT_PUBLIC_-prefixed one, never the secret. Because they are the same value,
+ * a deployment that sets one and forgets the other must still work: an empty
+ * key reaches Checkout as a blank merchant id, the sheet never opens, and
+ * nothing server-side reports a thing.
+ */
+describe('razorpay publicKeyId', () => {
+  it('prefers the NEXT_PUBLIC_ value when it is set', () => {
+    process.env.RAZORPAY_KEY_ID = 'rzp_test_server'
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID = 'rzp_test_public'
+    expect(publicKeyId('femi9')).toBe('rzp_test_public')
+  })
+
+  it('falls back to RAZORPAY_KEY_ID rather than handing Checkout an empty key', () => {
+    process.env.RAZORPAY_KEY_ID = 'rzp_test_server'
+    expect(publicKeyId('femi9')).toBe('rzp_test_server')
+  })
+
+  it('treats a TODO- placeholder as unset on both names', () => {
+    // Terraform seeds placeholders; a half-configured stack must read as
+    // unconfigured rather than shipping "TODO-..." to the payment sheet.
+    process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID = 'TODO-change-me'
+    process.env.RAZORPAY_KEY_ID = 'TODO-rzp_live_xxxxxxxx'
+    expect(publicKeyId('femi9')).toBe('')
+  })
+
+  it('is empty when nothing is configured at all', () => {
+    expect(publicKeyId('femi9')).toBe('')
+  })
 })
 
 describe('razorpay verifyPaymentSignature', () => {

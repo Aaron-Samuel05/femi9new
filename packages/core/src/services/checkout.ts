@@ -6,8 +6,9 @@ import { logger } from '../logger'
 import { PAID_ORDER_STATUSES } from '../order-status'
 import { IdentityConflictError, attachIdentity } from './auth'
 import { sendOrderStatusEmail } from './order-mail'
+import { sendOrderStatusWhatsapp } from './order-whatsapp'
 import { getSettings } from './settings'
-import { refCookieName, attributeOrder } from './affiliate'
+import { refCookieName, attributeOrder, bookOrderCommission } from './affiliate'
 import { applyZonePrice, resolveZone } from './pricing'
 import * as razorpay from '../razorpay'
 import {
@@ -664,12 +665,12 @@ export async function placeOrder(brand: Brand,
     // when (and only when) the order actually becomes 'paid'.
 
     // ── AFFILIATE ────────────────────────────────────────────────────────────
-    // Attribute the order to the referring creator, if the ref cookie maps to an
-    // approved affiliate. attributeOrder writes the commission event (inside this
-    // same transaction) and returns the affiliate id to stamp on the order; it's
-    // a no-op for an unknown/pending/suspended code.
+    // ATTRIBUTION only — who referred this order. The commission itself is a
+    // payable and is booked in markOrderPaid, for exactly the reason stated
+    // three lines above about Bloom points: this order is still 'pending' and
+    // may never be paid at all. See `bookOrderCommission`.
     if (refCode) {
-      const affiliateId = await attributeOrder(brand, refCode, order.id, subtotal, tx)
+      const affiliateId = await attributeOrder(brand, refCode, tx)
       if (affiliateId) {
         await tx.order.update({ where: { id: order.id }, data: { affiliateId } })
       }
@@ -895,13 +896,25 @@ export async function markOrderPaid(brand: Brand, {
     // eligibility as commission; empties into an Amazon voucher at cycle close.
     await accrueTharaPoints(brand, tx, order.id)
 
+    // The creator's commission, booked HERE and not at placement — the order is
+    // paid, so the payable is real. Idempotent, and a no-op for an order with
+    // no referring affiliate.
+    await bookOrderCommission(brand, tx, order.id)
+
     return { ok: true as const, status: 'paid' as const, alreadyPaid: false }
   })
 
-  // Outside the transaction: a mail provider round-trip has no business holding
-  // a payment-capture lock open, and sendOrderStatusEmail is idempotent on its
-  // own dedupeKey so the webhook/verify/cron race cannot triple-send.
-  if (!result.alreadyPaid) await sendOrderStatusEmail(brand, orderNo, 'paid')
+  // Outside the transaction: a provider round-trip has no business holding a
+  // payment-capture lock open, and both senders are idempotent on their own
+  // dedupeKey so the webhook/verify/cron race cannot triple-send.
+  //
+  // WhatsApp is not a duplicate of the email — it is the only confirmation a
+  // phone-only account ever gets, because `order.user.email` is null for every
+  // OTP signup and sendOrderStatusEmail returns without sending.
+  if (!result.alreadyPaid) {
+    await sendOrderStatusEmail(brand, orderNo, 'paid')
+    await sendOrderStatusWhatsapp(brand, orderNo, 'paid')
+  }
   return result
 }
 
@@ -909,8 +922,34 @@ export async function markOrderPaid(brand: Brand, {
  * Reconcile old pending orders with Razorpay. Captured payments are fulfilled;
  * orders with no capture after the expiry window are cancelled and release the
  * stock/coupon reservation exactly once.
+ *
+ * ── What "pending" does NOT mean here ───────────────────────────────────────
+ * This sweep exists for ONE shape: a shopper who reached the gateway and never
+ * came back. Its whole premise is that the order has a payment intent to ask
+ * Razorpay about. It used to select on `status: 'pending'` alone, and a second
+ * kind of pending order exists that it therefore destroyed:
+ * `generateDueOrders()` writes a subscription renewal as `status: 'pending'`
+ * with NO Payment row at all — a pay-later box, not an abandoned checkout.
+ *
+ * With no intent there is nothing to ask the gateway, so `capture` stayed
+ * undefined and every renewal fell straight through to the cancel branch below.
+ * Lumi9 runs both jobs — `lumi9-renew-subscriptions` nightly and
+ * `lumi9-reconcile` hourly — so each box was created and then cancelled within
+ * the hour, its stock returned, for the whole life of the subscription. Nothing
+ * reported it: the cancellation is a normal outcome for this sweep, and
+ * `runRenewalTxn` has already advanced `nextDeliveryAt` and incremented
+ * `savedTotal` by then, so the account page keeps showing an active plan with a
+ * next delivery date and a growing saving against zero boxes ever shipped.
+ *
+ * `placeOrder` always writes its intent before it commits (and compensates the
+ * reservation if the gateway write fails), so an order with no intent is never
+ * an abandoned checkout. Skipping it is safe, and it is counted rather than
+ * silently passed over so the count going up is visible to ops.
  */
-export async function reconcilePendingOrders(brand: Brand, olderThanMinutes = 60): Promise<{ paid: number; cancelled: number }> {
+export async function reconcilePendingOrders(
+  brand: Brand,
+  olderThanMinutes = 60,
+): Promise<{ paid: number; cancelled: number; skippedPayLater: number }> {
   const prisma = dbFor(brand)
   const cutoff = new Date(Date.now() - Math.max(15, olderThanMinutes) * 60_000)
   const orders = await prisma.order.findMany({
@@ -923,15 +962,24 @@ export async function reconcilePendingOrders(brand: Brand, olderThanMinutes = 60
   })
   let paid = 0
   let cancelled = 0
+  let skippedPayLater = 0
 
   for (const order of orders) {
     const intent = order.payments[0]
+
+    // No intent ⇒ nothing was ever opened at the gateway ⇒ this is not an
+    // abandoned checkout. See the header: cancelling these silently deleted
+    // every subscription renewal Lumi9 has ever generated.
+    if (!intent) {
+      skippedPayLater += 1
+      continue
+    }
     let capture: Awaited<ReturnType<typeof razorpay.listOrderPayments>>[number] | undefined
-    if (intent?.razorpayOrderId && !intent.razorpayOrderId.startsWith('mock_')) {
+    if (intent.razorpayOrderId && !intent.razorpayOrderId.startsWith('mock_')) {
       const payments = await razorpay.listOrderPayments(brand, intent.razorpayOrderId)
       capture = payments.find((p) => p.status === 'captured' && p.amount === order.total * 100)
     }
-    if (capture && intent?.razorpayOrderId) {
+    if (capture && intent.razorpayOrderId) {
       await markOrderPaid(brand, {
         orderNo: order.orderNo,
         razorpayPaymentId: capture.id,
@@ -957,7 +1005,7 @@ export async function reconcilePendingOrders(brand: Brand, olderThanMinutes = 60
     })
     if (released) cancelled += 1
   }
-  return { paid, cancelled }
+  return { paid, cancelled, skippedPayLater }
 }
 
 /**

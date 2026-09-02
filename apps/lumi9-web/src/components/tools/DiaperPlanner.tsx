@@ -13,12 +13,14 @@ export function DiaperPlanner() {
   // The catalogue from the DATABASE, not the SIZES array in lib/catalog.ts -
   // that module is the seed's input, so the monthly cost quoted here was
   // computed from constants a console price change never moved.
-  const { sizes, getSize } = useCatalogData();
+  const { sizes, getSize, sizeBounds } = useCatalogData();
   const profile = useBabyProfile();
   const today = new Date().toISOString().slice(0, 10);
 
   const ageMonths = profile ? ageInMonths(profile.dob, today) : 0;
-  const suggestedSize = profile?.weightKg ? sizeForWeight(profile.weightKg) : null;
+  // Bands from the CATALOGUE, not the module: a weight range renamed in the
+  // console now moves the size this planner suggests, which it never did.
+  const suggestedSize = profile?.weightKg ? sizeForWeight(profile.weightKg, sizeBounds) : null;
 
   const [size, setSize] = useState<SizeCode | null>(null);
   const [perDay, setPerDay] = useState<number | null>(null);

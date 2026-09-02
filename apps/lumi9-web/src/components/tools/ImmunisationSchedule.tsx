@@ -2,23 +2,38 @@
 
 import { useState } from "react";
 import { useBabyProfile } from "@/lib/baby-profile";
+import { setVaccination, useVaccinations } from "@/lib/baby-vaccinations";
 import {
-  availableTracks,
-  hasScheduleData,
   IAP_SOURCE,
   SCHEDULE_REVISED_ON,
   scheduleFor,
   UIP_SOURCE,
+  type ScheduledDose,
   type VaccineTrack,
 } from "@/lib/immunisation-schedule";
+import { useParenting } from "@/lib/parenting-context";
 import { ToolDisclaimer } from "./ToolDisclaimer";
 
+/**
+ * The schedule, dated from the baby's birthday, with what the parent has
+ * actually ticked off.
+ *
+ * The doses come from the DATABASE now (`useParenting()`), not from
+ * `immunisation-schedule.data.ts` — that module is the seed's input, the same
+ * relationship `catalog.ts` has to the catalogue. Correcting a published dose
+ * age is a console edit, not a deploy.
+ *
+ * The ticks are new, and they are the point. `status` here is still the
+ * CALENDAR's answer — due, upcoming, past — and a calendar knows nothing about
+ * whether a baby was taken. A record the parent sets is the only thing that
+ * does, which is why the dashboard's "done" count reads these and not the dates.
+ */
 export function ImmunisationSchedule() {
   const profile = useBabyProfile();
-  const tracks = availableTracks();
+  const { schedule, tracks, ready, signedIn } = useParenting();
+  const records = useVaccinations();
   const [track, setTrack] = useState<VaccineTrack>(tracks[0] ?? "UIP");
   const today = new Date().toISOString().slice(0, 10);
-  const ready = hasScheduleData();
 
   return (
     <section id="immunisation" className="panel p-card scroll-mt-[calc(var(--nav-h,68px)+16px)]">
@@ -32,8 +47,9 @@ export function ImmunisationSchedule() {
 
       {!ready ? (
         /* Says plainly that it is not ready rather than rendering an empty list
-           that reads as a bug. Nothing here is guessed while the real schedule
-           is unsourced. */
+           that reads as a bug. This mattered when the doses were a module and
+           matters MORE now: an unseeded `lumi9` schema is a far easier state to
+           reach than a half-written file ever was. */
         <p className="m-0 rounded-chip border border-moss-tint px-4 py-3 text-sm text-muted">
           We&apos;re finalising this against the current published Indian schedules and will turn it
           on once it&apos;s verified. In the meantime your paediatrician or any public health centre
@@ -75,29 +91,14 @@ export function ImmunisationSchedule() {
             <>
               <p className="m-0 mb-4 text-[13px] text-muted">
                 Dates run from your baby&apos;s actual birthday. Vaccination is never adjusted for
-                being born early, even when growth is.
+                being born early, even when growth is. Tick each one off as it&apos;s given -{" "}
+                {signedIn
+                  ? "your ticks are saved to your account."
+                  : "your ticks stay on this device."}
               </p>
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
-                {scheduleFor({ dob: profile.dob, today, track }).map((dose) => (
-                  <li
-                    key={dose.id}
-                    className={`flex flex-wrap items-baseline justify-between gap-2 rounded-chip border border-moss-tint px-4 py-3 ${
-                      dose.status === "past" ? "opacity-55" : ""
-                    }`}
-                  >
-                    <span className="text-sm font-semibold text-midnight">
-                      {dose.vaccine} <span className="font-normal text-muted">· {dose.dose}</span>
-                      {dose.note ? (
-                        <span className="mt-0.5 block text-[12px] font-normal text-muted">
-                          {dose.note}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span className="text-sm whitespace-nowrap text-muted">
-                      {dose.dueOn}
-                      {dose.status === "due" ? " · due now" : ""}
-                    </span>
-                  </li>
+                {scheduleFor({ dob: profile.dob, today, track }, schedule).map((dose) => (
+                  <DoseRow key={dose.id} dose={dose} given={records[dose.id]?.status === "given"} />
                 ))}
               </ul>
             </>
@@ -110,5 +111,62 @@ export function ImmunisationSchedule() {
         </>
       )}
     </section>
+  );
+}
+
+/**
+ * One dose.
+ *
+ * The tick is a checkbox, not a button, because that is what it is: a
+ * two-state, reversible claim about a real event. Un-ticking DELETES the record
+ * rather than storing a "not given" — a vaccination list where a mis-tap cannot
+ * be taken back is one nobody will trust enough to use.
+ *
+ * `today` is read here rather than passed down because it is only the date
+ * stamped on a tick the parent has just made; a row rendered at 23:59 and
+ * ticked at 00:01 should carry the later day, which is the one they would write
+ * on the card.
+ */
+function DoseRow({ dose, given }: { dose: ScheduledDose; given: boolean }) {
+  return (
+    <li
+      className={`flex flex-wrap items-baseline justify-between gap-2 rounded-chip border px-4 py-3 transition-colors ${
+        given
+          ? "border-moss-soft bg-moss-tint/30"
+          : dose.status === "past"
+            ? "border-moss-tint opacity-55"
+            : "border-moss-tint"
+      }`}
+    >
+      <label className="flex flex-1 cursor-pointer items-baseline gap-3">
+        <input
+          type="checkbox"
+          checked={given}
+          onChange={(e) =>
+            void setVaccination(
+              dose.id,
+              e.target.checked ? "given" : null,
+              new Date().toISOString().slice(0, 10),
+            )
+          }
+          /* 13px by default and the only control in the row - the coarse box
+             gives it a thumb-sized target without changing how it looks with a
+             mouse, the same treatment the diapers-per-day slider gets. */
+          className="mt-1 size-4 shrink-0 cursor-pointer accent-moss-deep coarse:size-6"
+        />
+        <span className={`text-sm font-semibold text-midnight ${given ? "line-through decoration-moss-deep/40" : ""}`}>
+          {dose.vaccine} <span className="font-normal text-muted">· {dose.dose}</span>
+          {dose.note ? (
+            <span className="mt-0.5 block text-[12px] font-normal text-muted no-underline">
+              {dose.note}
+            </span>
+          ) : null}
+        </span>
+      </label>
+      <span className="text-sm whitespace-nowrap text-muted">
+        {dose.dueOn}
+        {given ? " · done" : dose.status === "due" ? " · due now" : ""}
+      </span>
+    </li>
   );
 }
