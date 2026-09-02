@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 const CHANNELS: { icon: IconName; label: string; value: string; href?: string }[] = [
   { icon: "mail", label: "Email", value: BRAND.email, href: `mailto:${BRAND.email}` },
   { icon: "phone", label: "Phone", value: BRAND.phone, href: `tel:${BRAND.phone.replace(/\s/g, "")}` },
-  { icon: "chat", label: "WhatsApp", value: BRAND.whatsapp, href: "https://wa.me/919042916499" },
+  { icon: "chat", label: "WhatsApp", value: BRAND.whatsapp, href: "https://wa.me/919500716499" },
   { icon: "pin", label: "Head office", value: BRAND.fullAddress },
 ];
 

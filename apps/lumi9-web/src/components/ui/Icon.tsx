@@ -74,10 +74,8 @@ export function Icon({
 
 export const SOCIALS = [
   { name: "Instagram", href: "https://instagram.com/lumi9official" },
-  { name: "Facebook", href: "https://facebook.com/lumi9official" },
-  { name: "YouTube", href: "https://youtube.com/@lumi9official" },
-  { name: "LinkedIn", href: "https://linkedin.com/company/lumi9" },
-  { name: "WhatsApp", href: "https://wa.me/919042916499" },
+  { name: "Facebook", href: "https://www.facebook.com/share/1BxAYfJdEJ/?mibextid=wwXIfr" },
+  { name: "WhatsApp", href: "https://wa.me/919500716499" },
 ] as const;
 
 export type SocialName = (typeof SOCIALS)[number]["name"];
@@ -109,20 +107,6 @@ export function SocialIcon({ name }: { name: SocialName }) {
       return (
         <svg {...common}>
           <path d="M14 8h2V5h-2a3 3 0 0 0-3 3v2H9v3h2v6h3v-6h2l1-3h-3V8a1 1 0 0 1 1-1z" />
-        </svg>
-      );
-    case "YouTube":
-      return (
-        <svg {...common}>
-          <rect x="3" y="6" width="18" height="12" rx="3" />
-          <path d="M11 9.5l4 2.5-4 2.5z" fill="currentColor" />
-        </svg>
-      );
-    case "LinkedIn":
-      return (
-        <svg {...common}>
-          <rect x="3" y="3" width="18" height="18" rx="3" />
-          <path d="M7 10v7M7 7v.01M11 17v-4a2 2 0 0 1 4 0v4M11 11v6" />
         </svg>
       );
     case "WhatsApp":
