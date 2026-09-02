@@ -42,7 +42,51 @@ export const WHATSAPP_TEMPLATES = {
   orderCancelled: 'order_status_cancell',
 } as const
 
-export type WhatsappTemplate = (typeof WHATSAPP_TEMPLATES)[keyof typeof WHATSAPP_TEMPLATES]
+declare const configuredBrand: unique symbol
+
+/**
+ * A template name that comes from the environment rather than from the list
+ * above, because it is not approved yet.
+ *
+ * Branded so it cannot be conjured from an arbitrary string: the ONLY way to
+ * obtain one is `invoiceTemplateName()`, which reads the env var. That keeps
+ * the doctrine at the top of this file intact — nobody can invent a template
+ * name at a call site — while still allowing a name that Meta has approved
+ * after this code shipped.
+ */
+export type ConfiguredWhatsappTemplate = string & { readonly [configuredBrand]: true }
+
+export type WhatsappTemplate =
+  | (typeof WHATSAPP_TEMPLATES)[keyof typeof WHATSAPP_TEMPLATES]
+  | ConfiguredWhatsappTemplate
+
+/**
+ * The approved template that carries the receipt PDF, if there is one yet.
+ *
+ * ── Why this is env-configured and not a constant ──────────────────────────
+ * A PDF can only ride along on a template whose APPROVED definition declares a
+ * DOCUMENT header. `order_status_confirmation` does not — it is body-only, so
+ * adding a header component to it fails at send time with a 132000 (parameter
+ * count mismatch), which reads like an outage and is not one. The attachment
+ * therefore needs a NEW template, approved on the WABA, and the approval is an
+ * ops action with a multi-day turnaround that no deploy can shortcut.
+ *
+ * So: unset means "not approved yet", and the order path keeps sending today's
+ * body-only confirmation. Set it to the approved name and the PDF starts
+ * riding along, with no deploy. The variable holds the NAME rather than a
+ * boolean precisely because the name is Meta's to grant, not ours to guess.
+ *
+ * The new template's body must declare the same four variables in the same
+ * order as `order_status_confirmation` — {customername}, {ordernumber},
+ * {orderproductlist}, {ordertotalprice} — because both paths send the same
+ * params array. A template approved with a different body shape will send, and
+ * will render the wrong values in the wrong places, which is worse than a
+ * failure.
+ */
+export function invoiceTemplateName(): ConfiguredWhatsappTemplate | null {
+  const name = process.env.WHATSAPP_INVOICE_TEMPLATE?.trim()
+  return name ? (name as ConfiguredWhatsappTemplate) : null
+}
 
 /** `WHATSAPP_TOKEN_LUMI9`, else the shared `WHATSAPP_TOKEN`. */
 export function whatsappTokenFor(brand: Brand): string | undefined {
@@ -124,12 +168,80 @@ export interface WhatsappSendResult {
   reason?: string
 }
 
+/** A PDF to attach, already uploaded to Meta by `uploadWhatsappDocument`. */
+export interface WhatsappDocument {
+  /** The media id from the upload. NOT a URL - see uploadWhatsappDocument. */
+  mediaId: string
+  /** What WhatsApp shows under the paperclip, and what saving it writes. */
+  filename: string
+}
+
 export interface WhatsappTemplateInput {
   /** Any form of the customer's number; normalised here. */
   to: string
   template: WhatsappTemplate
   /** Body variables, IN THE ORDER THEY APPEAR IN THE APPROVED TEMPLATE. */
   params: (string | number | null | undefined)[]
+  /**
+   * Attach a document to the template's HEADER.
+   *
+   * Only valid when the approved template declares a document header. Sending
+   * one to a body-only template is a 132000, so callers must pair this with a
+   * template name that has the header — see `invoiceTemplateName()`.
+   */
+  document?: WhatsappDocument
+}
+
+/**
+ * Upload a PDF to Meta and get back a media id.
+ *
+ * ── Why a media id rather than a link ──────────────────────────────────────
+ * The Cloud API accepts either `{ link }` or `{ id }` for a document header.
+ * `link` requires the PDF to sit at a publicly fetchable HTTPS URL, which for a
+ * receipt means publishing a document containing a customer's name, full postal
+ * address and phone number to an unauthenticated endpoint so that Meta's
+ * crawler can read it. Every order receipt would be one URL guess from public.
+ *
+ * Uploading gets an opaque, account-scoped id instead, and nothing about the
+ * receipt is ever reachable without a WABA token. The id is good for 30 days,
+ * which is far longer than the seconds we need it for.
+ *
+ * Returns null rather than throwing: a failed upload must degrade to the
+ * body-only confirmation, never to no message at all.
+ */
+export async function uploadWhatsappDocument(
+  brand: Brand,
+  file: { bytes: Uint8Array; filename: string },
+): Promise<string | null> {
+  if (!whatsappConfigured(brand)) return null
+
+  const form = new FormData()
+  form.append('messaging_product', 'whatsapp')
+  form.append('type', 'application/pdf')
+  // Copied into a fresh ArrayBuffer: a Uint8Array from a pooled buffer can be a
+  // VIEW onto a larger allocation, and handing that straight to Blob uploads
+  // the whole pool - here, whatever else happened to share it.
+  const bytes = new Uint8Array(file.bytes.byteLength)
+  bytes.set(file.bytes)
+  form.append('file', new Blob([bytes], { type: 'application/pdf' }), file.filename)
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/${apiVersion()}/${whatsappPhoneIdFor(brand)}/media`,
+      {
+        method: 'POST',
+        // No content-type header: fetch must set the multipart boundary itself,
+        // and setting it by hand produces a body Meta cannot parse.
+        headers: { authorization: `Bearer ${whatsappTokenFor(brand)}` },
+        body: form,
+      },
+    )
+    if (!res.ok) return null
+    const body = (await res.json()) as { id?: unknown }
+    return typeof body.id === 'string' && body.id.length > 0 ? body.id : null
+  } catch {
+    return null
+  }
 }
 
 /**
@@ -155,6 +267,28 @@ export async function sendWhatsappTemplate(
   if (!to) return { sent: false, mock: false, reason: 'Not a valid 10-digit mobile number' }
 
   const url = `https://graph.facebook.com/${apiVersion()}/${whatsappPhoneIdFor(brand)}/messages`
+
+  // The header comes FIRST when there is one. Meta matches components to the
+  // approved template by their `type`, not by position, but an out-of-order
+  // array is the kind of thing a future reader "fixes" - keeping it in the
+  // template's own order removes the question.
+  const components: unknown[] = []
+  if (input.document) {
+    components.push({
+      type: 'header',
+      parameters: [
+        {
+          type: 'document',
+          document: { id: input.document.mediaId, filename: input.document.filename },
+        },
+      ],
+    })
+  }
+  components.push({
+    type: 'body',
+    parameters: input.params.map((p) => ({ type: 'text', text: templateParam(p) })),
+  })
+
   const body = {
     messaging_product: 'whatsapp',
     recipient_type: 'individual',
@@ -163,12 +297,7 @@ export async function sendWhatsappTemplate(
     template: {
       name: input.template,
       language: { code: templateLanguage() },
-      components: [
-        {
-          type: 'body',
-          parameters: input.params.map((p) => ({ type: 'text', text: templateParam(p) })),
-        },
-      ],
+      components,
     },
   }
 

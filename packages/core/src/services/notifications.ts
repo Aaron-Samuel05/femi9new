@@ -7,6 +7,7 @@ import {
   sendWhatsappTemplate,
   toWhatsappNumber,
   whatsappConfigured,
+  type WhatsappDocument,
   type WhatsappTemplate,
 } from '../whatsapp'
 
@@ -75,6 +76,8 @@ export interface WhatsappNotification {
   template: WhatsappTemplate
   /** Body variables, in the order the approved template declares them. */
   params: (string | number | null | undefined)[]
+  /** A PDF for the template's document header, if it declares one. */
+  document?: WhatsappDocument
   dedupeKey: string
 }
 
@@ -107,6 +110,19 @@ export async function sendWhatsappNotification(
     },
   })
 
+  // A retry under the same key may be a DIFFERENT template from the one that
+  // failed - the order path attempts the invoice-carrying template first and
+  // falls back to the body-only one under the same dedupe key, which is what
+  // stops the shopper getting two confirmations. Without this the row would
+  // still name the template that never sent, and the audit trail would be a
+  // record of a message that was not the one delivered.
+  if (existing && existing.template !== input.template) {
+    await prisma.notificationLog.update({
+      where: { id: log.id },
+      data: { template: input.template },
+    })
+  }
+
   if (!whatsappConfigured(brand)) {
     if (!mockProvidersAllowed()) {
       await prisma.notificationLog.update({
@@ -126,6 +142,7 @@ export async function sendWhatsappNotification(
     to: input.to,
     template: input.template,
     params: input.params,
+    document: input.document,
   })
   if (!result.sent) {
     await prisma.notificationLog.update({

@@ -167,6 +167,33 @@ export default async function OrderPage(props: {
                 items={order.items.map((item) => ({ variantId: item.variantId, qty: item.qty }))}
               />
             </div>
+
+            {/*
+              The receipt, as a PDF.
+
+              A plain <a>, not a fetch-and-blob: the browser's own download is
+              the thing that works on iOS Safari, survives a slow render without
+              a spinner this page would have to own, and lets her long-press to
+              share it - which is what a parent actually does with a receipt.
+
+              The capability token is carried through when there is one. A guest
+              arrived here by `?t=` and has no session, so without it the route
+              answers 404 to the very person the button is for. A signed-in
+              shopper has no `t` in the URL and does not need one; the route
+              falls back to session ownership.
+            */}
+            <a
+              href={`/api/orders/${encodeURIComponent(order.orderNo)}/invoice${
+                token ? `?t=${encodeURIComponent(token)}` : ""
+              }`}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-pill border-[1.5px] border-moss-tint px-6 py-3.25 text-sm font-semibold text-midnight transition-colors hover:border-moss-soft"
+              // A cross-origin referrer would leak the token; same-origin keeps
+              // the download working without publishing it.
+              referrerPolicy="same-origin"
+            >
+              <Icon name="save" size={16} strokeWidth={1.8} />
+              Download receipt (PDF)
+            </a>
           </div>
 
           {/* ADDRESS */}

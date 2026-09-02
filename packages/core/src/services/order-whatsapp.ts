@@ -1,7 +1,13 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
 import { logger } from '../logger'
-import { WHATSAPP_TEMPLATES } from '../whatsapp'
+import {
+  invoiceTemplateName,
+  uploadWhatsappDocument,
+  WHATSAPP_TEMPLATES,
+  type WhatsappDocument,
+} from '../whatsapp'
+import { generateInvoicePdf } from './invoice'
 import { sendWhatsappNotification } from './notifications'
 
 /**
@@ -85,12 +91,47 @@ export async function sendOrderStatusWhatsapp(
         .map((it) => `${it.productName} - ${it.variantLabel} x${it.qty} - ${money(it.lineTotal)}`)
         .join('; ')
 
+      const params = [customerName, orderNo, productList, money(order.total)]
+      // ONE key for both attempts below. The invoice-carrying template and the
+      // body-only fallback are two attempts to send the SAME confirmation, and
+      // a second key would put two of them on her phone.
+      const dedupeKey = `wa-order-paid:${orderNo}`
+
+      /*
+       * Attach the receipt when there is a template approved to carry one.
+       *
+       * `attachReceipt` returns null for every reason there is - no approved
+       * template, a PDF that would not render, an upload Meta refused - and
+       * each one falls through to the body-only confirmation that has always
+       * been sent. That ordering is the whole point: the message is what she
+       * needs, the PDF is what makes it nicer, and a missing attachment must
+       * never cost her the notification that her payment went through.
+       */
+      const invoiceTemplate = invoiceTemplateName()
+      if (invoiceTemplate) {
+        const document = await attachReceipt(brand, orderNo)
+        if (document) {
+          const withInvoice = await sendWhatsappNotification(brand, {
+            userId: order.userId ?? undefined,
+            to,
+            template: invoiceTemplate,
+            params,
+            document,
+            dedupeKey,
+          })
+          if (withInvoice.sent) return
+          // Fell through: the row is now `failed` under this key, which is what
+          // lets the plain send below reuse it rather than being deduped away.
+          logger.warn('order_whatsapp_invoice_fallback', { orderNo, template: invoiceTemplate })
+        }
+      }
+
       await sendWhatsappNotification(brand, {
         userId: order.userId ?? undefined,
         to,
         template: WHATSAPP_TEMPLATES.orderConfirmation,
-        params: [customerName, orderNo, productList, money(order.total)],
-        dedupeKey: `wa-order-paid:${orderNo}`,
+        params,
+        dedupeKey,
       })
       return
     }
@@ -116,5 +157,35 @@ export async function sendOrderStatusWhatsapp(
     })
   } catch (err) {
     logger.error('order_whatsapp_failed', { orderNo, status, err: String(err) })
+  }
+}
+
+/**
+ * Render the receipt and hand it to Meta, or give up quietly.
+ *
+ * Never throws and never returns a partial result: the caller's fallback is
+ * only correct if "no document" is the single failure signal. pdf-lib throwing
+ * on an unencodable character in a product name, an oversized PDF, a Graph
+ * timeout - all of them are the same answer here, and all of them are logged
+ * rather than swallowed, because a permanently-failing attachment looks exactly
+ * like a working one from the outside.
+ */
+async function attachReceipt(brand: Brand, orderNo: string): Promise<WhatsappDocument | null> {
+  try {
+    const pdf = await generateInvoicePdf(brand, orderNo)
+    if (!pdf) return null
+
+    const mediaId = await uploadWhatsappDocument(brand, {
+      bytes: pdf.bytes,
+      filename: pdf.filename,
+    })
+    if (!mediaId) {
+      logger.warn('order_whatsapp_media_upload_failed', { orderNo })
+      return null
+    }
+    return { mediaId, filename: pdf.filename }
+  } catch (err) {
+    logger.error('order_whatsapp_invoice_render_failed', { orderNo, err: String(err) })
+    return null
   }
 }
