@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
-import type { ProfileField } from "@/lib/auth-context";
+import { useSession, type ProfileField } from "@/lib/auth-context";
 
 /**
  * The onboarding form.
@@ -41,6 +41,7 @@ export function WelcomeFlow({
   next: string | null;
 }) {
   const router = useRouter();
+  const { refresh } = useSession();
   const [missing, setMissing] = useState<ProfileField[]>(initialMissing);
   const [step, setStep] = useState<Step>("details");
 
@@ -71,7 +72,17 @@ export function WelcomeFlow({
     if (step === "code") codeRef.current?.focus();
   }, [step]);
 
-  function done() {
+  async function done() {
+    /*
+     * Same reason as the sign-in card: the profile was completed by a fetch,
+     * so the client-side session - read once when <SessionProvider> mounted -
+     * still holds the account as it was before this form, without a name and
+     * with `missing` non-empty. `router.refresh()` re-runs the server
+     * components but not that effect, so the nav would greet her by initials
+     * she has just replaced with a name.
+     */
+    await refresh();
+
     router.replace(next ?? "/account");
     // Every signed-in surface is server-rendered from the cookie, so without
     // this the next paint still shows the pre-onboarding render.
@@ -118,7 +129,7 @@ export function WelcomeFlow({
       }
 
       if (body.profileComplete === true) {
-        done();
+        await done();
         return;
       }
 
@@ -149,7 +160,7 @@ export function WelcomeFlow({
         return;
       }
       if (body.profileComplete === true) {
-        done();
+        await done();
         return;
       }
       setMissing(Array.isArray(body.missing) ? (body.missing as ProfileField[]) : []);

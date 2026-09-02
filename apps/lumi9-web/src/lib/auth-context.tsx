@@ -100,6 +100,34 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     setMe(await read());
   }, [read]);
 
+  /*
+   * Re-read when the tab comes back to the front.
+   *
+   * The mount-once read above is correct for a document load and wrong for
+   * everything that changes the cookie without one: signing in from another
+   * tab, following the emailed link in a second window, or a session that has
+   * simply expired while this tab sat open. Callers that know they changed the
+   * session call refresh() directly - this only catches the ones that cannot,
+   * because they did not happen in this tab at all.
+   *
+   * It is one conditional GET on a surface the shopper has just looked at, and
+   * it converges in the harmless direction either way: a stale "signed out"
+   * becomes signed in, a stale "signed in" becomes signed out before she
+   * presses anything that would have bounced her.
+   */
+  useEffect(() => {
+    const sync = () => {
+      if (document.visibilityState !== "visible") return;
+      void refresh();
+    };
+    document.addEventListener("visibilitychange", sync);
+    window.addEventListener("focus", sync);
+    return () => {
+      document.removeEventListener("visibilitychange", sync);
+      window.removeEventListener("focus", sync);
+    };
+  }, [refresh]);
+
   const signOut = useCallback(async () => {
     try {
       await fetch("/api/auth/logout", { method: "POST" });

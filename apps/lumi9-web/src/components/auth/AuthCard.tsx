@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { useSession } from "@/lib/auth-context";
 import type { AuthMethods } from "@/lib/auth-methods";
 import { safeNextPath } from "@/lib/safe-next";
 
@@ -124,6 +125,7 @@ function str(value: unknown): string | null {
 export function AuthCard({ methods }: { methods: AuthMethods }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refresh } = useSession();
 
   // Where the guard was sending her before it bounced her here.
   const nextPath = resolveNext(searchParams.get("next"));
@@ -174,7 +176,24 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
 
   /** Send her onward after a successful verify. */
   const land = useCallback(
-    (needsProfile: boolean) => {
+    async (needsProfile: boolean) => {
+      /*
+       * Re-read the session BEFORE navigating, and await it.
+       *
+       * OTP verify is a plain fetch: the cookie changes without a document
+       * load, so <SessionProvider> - which reads /api/auth/me once, on mount -
+       * is still holding `user: null`. `router.refresh()` below re-runs the
+       * server components but not that client-side effect, so every surface
+       * reading useSession() stayed signed out until a hard reload: the nav
+       * kept offering "Sign in", and the bag's CTA kept saying "Sign in to
+       * check out" to somebody who had just signed in.
+       *
+       * Awaiting matters as much as calling. Navigating first would paint the
+       * destination with the stale session and correct it a beat later, which
+       * is the flicker `ready` exists to prevent.
+       */
+      await refresh();
+
       const destination = nextPath ?? DEFAULT_NEXT;
       if (needsProfile) {
         router.replace(
@@ -187,7 +206,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
       // this the next paint still shows the signed-out chrome.
       router.refresh();
     },
-    [nextPath, router],
+    [nextPath, refresh, router],
   );
 
   async function requestOtp(resend = false) {
@@ -231,7 +250,7 @@ export function AuthCard({ methods }: { methods: AuthMethods }) {
         setError(str(body.error) ?? "That code is not right. Try again.");
         return;
       }
-      land(body.needsProfile === true);
+      await land(body.needsProfile === true);
     } catch {
       setError("Could not reach the server. Check your connection and try again.");
     } finally {
