@@ -253,29 +253,15 @@ locals {
   alb_ingress_ports = { https = 443, http = 80 }
 }
 
-# ── ADOPT the rule that is serving, do not replace it ───────────────────────
-# The live rule was repaired by hand during the 1 September outage: it is the
-# same rule that was created as alb_edge["https"], moved from port 443 to 80
-# with modify-security-group-rules, and then removed from state — so the group
-# is correct and Terraform no longer knows about it.
+# ── Only ONE prefix-list rule fits this group ───────────────────────────────
+# The CloudFront origin-facing list counts as its max_entries (55) against the
+# security group's 60-rule quota, so a second prefix-list rule cannot be added
+# alongside this one — a plan that creates one while another exists is refused.
+# That is why the port is changed in place here rather than by adding a rule.
 #
-# It has to be ADOPTED rather than recreated, and that is not a preference.
-# Only ONE prefix-list rule fits the group (55 entries against a limit of 60),
-# so a plan that creates this one while the live one still exists is refused,
-# and a plan that deletes the live one first is an outage for as long as the
-# apply takes. Import is the only transition with neither.
-#
-# `terraform import` cannot do it: importing evaluates the WHOLE configuration,
-# and aws_route_table_association.public counts on length(aws_subnet.public),
-# which is unknowable while this stack runs on an existing network. An import
-# block is evaluated during plan, where that same expression resolves.
-#
-# Remove this block once it has been applied — a one-shot instruction, not a
-# permanent declaration.
-import {
-  to = aws_vpc_security_group_ingress_rule.alb_edge[0]
-  id = "sgr-02258160c466a68bf"
-}
+# The live rule (sgr-02258160c466a68bf), repaired by hand during the
+# 1 September outage, was adopted into state by a one-shot `import` block that
+# has served its purpose and been removed. Terraform manages it now.
 
 resource "aws_vpc_security_group_ingress_rule" "alb_edge" {
   count = var.alb_ingress_source == "cloudfront" ? 1 : 0
