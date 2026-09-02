@@ -105,7 +105,7 @@ export function ParentingDashboard() {
       : null;
 
   return (
-    <section aria-label="Your dashboard" className="gap-block flex flex-col">
+    <section aria-label="Your dashboard" className="gap-stack flex flex-col">
       <h2 className="m-0 font-display text-[clamp(20px,2.6vw,28px)] font-normal leading-tight">
         {profile.name ? `${profile.name}'s` : "Your"} dashboard
       </h2>

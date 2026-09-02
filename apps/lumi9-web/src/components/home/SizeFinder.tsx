@@ -18,7 +18,7 @@ export function SizeFinder() {
 
   return (
     <section id="sizes" className="px-safe bg-butter py-section">
-      <div className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-2">
+      <div className="mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-stack md:grid-cols-2">
         <Reveal>
           <SectionHeading eyebrow="Find your Lumi9 size" size="md" className="mb-4.5">
             Find the right baby diaper size <Em>in one tap.</Em>

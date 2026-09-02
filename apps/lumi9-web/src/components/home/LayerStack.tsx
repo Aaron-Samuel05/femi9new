@@ -117,7 +117,7 @@ export function LayerStack() {
         className="absolute -top-15 -right-15 size-[clamp(180px,26vw,340px)] rounded-full bg-butter/12"
         aria-hidden
       />
-      <div className="mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-2">
+      <div className="mx-auto grid w-full max-w-[var(--page-max)] grid-cols-1 items-center gap-stack md:grid-cols-2">
         {/* Copy panel - cross-fades on change */}
         <div>
           <div className="eyebrow mb-4 text-butter opacity-80">5-Layer Protection System</div>

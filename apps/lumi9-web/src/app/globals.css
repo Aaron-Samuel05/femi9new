@@ -56,7 +56,14 @@
   --spacing-section: clamp(64px, 8.4vw, 120px); /* section vertical rhythm */
   --spacing-section-lg: clamp(72px, 9vw, 130px);
   --spacing-section-sm: clamp(48px, 6vw, 90px);
-  --spacing-block: clamp(28px, 4.4vw, 64px); /* gap between column halves */
+  /* Gap between column halves / stacked blocks.
+     NOT named `block`. A `--spacing-<name>` token makes Tailwind mint every
+     spacing utility for it, and `inline-<name>` is one of them - so
+     `--spacing-block` generated a second `.inline-block { inline-size: ... }`
+     rule that landed AFTER the display utility and won the cascade. Every
+     `inline-block` in the app silently became 64px wide, wrapping its label
+     mid-word. Any new token here must not collide with a real utility name. */
+  --spacing-stack: clamp(28px, 4.4vw, 64px);
   --spacing-card: clamp(20px, 2.6vw, 34px); /* card inner padding */
   --spacing-card-lg: clamp(24px, 3.4vw, 48px);
 

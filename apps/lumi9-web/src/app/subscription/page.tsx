@@ -46,7 +46,7 @@ export default async function SubscriptionPage() {
           className="absolute top-[20%] left-[8%] size-[clamp(70px,10vw,120px)] rounded-full bg-butter opacity-50"
           aria-hidden
         />
-        <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-block md:grid-cols-[1.1fr_1fr]">
+        <div className="relative z-2 mx-auto grid max-w-[var(--page-max)] grid-cols-1 items-center gap-stack md:grid-cols-[1.1fr_1fr]">
           <div>
             <div className="eyebrow mb-4.5">The Lumi9 subscription</div>
             <h1 className="m-0 mb-5.5 font-display text-[clamp(32px,8.6vw,72px)] md:text-[clamp(38px,5vw,72px)] font-normal leading-none">

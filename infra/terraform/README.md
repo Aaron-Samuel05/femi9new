@@ -280,6 +280,25 @@ aws ecs run-task \
 Then `./prisma/seed-zones.ts` the same way. Both are idempotent — slugs and SKUs
 are stable, so a rerun updates in place rather than duplicating.
 
+**Lumi9 has a THIRD seed, and skipping it is invisible from every dashboard.**
+
+```bash
+… --overrides '{"containerOverrides":[{"name":"app","command":["npx","tsx","./prisma/seed-vaccines.ts"]}]}'
+```
+
+`seed-vaccines.ts` loads the published immunisation schedule into
+`lumi9."VaccineDose"`. Without it that table is empty, and an empty table is a
+state the storefront renders rather than errors on: the parenting dashboard
+shows `0 done / 0 due now / 0 upcoming` with "The vaccination schedule isn't
+available yet", and `/parenting-tools/vaccination` says the list is being
+finalised. Nothing 500s, nothing alarms, and the page looks deliberate — which
+is why this went unnoticed on the running environment until somebody asked why
+the counts were zero. It is idempotent (upserts on the dose `code`, and retires
+rather than deletes), so rerunning it is always safe.
+
+It is NOT part of `seed.ts`, deliberately: re-seeding a price must not silently
+rewrite a medical table somebody has since corrected in the console.
+
 ### 7. Create the first admin
 
 There is no self-service sign-up, and there should not be.

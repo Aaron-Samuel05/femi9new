@@ -111,7 +111,7 @@ export function ProductBuyBox({
   ];
 
   return (
-    <div className="grid grid-cols-1 items-start gap-block md:grid-cols-[1.1fr_1fr]">
+    <div className="grid grid-cols-1 items-start gap-stack md:grid-cols-[1.1fr_1fr]">
       {/* GALLERY */}
       <div className="md:sticky md:top-24">
         <div className="relative aspect-square overflow-hidden rounded-media bg-shell shadow-deep">
