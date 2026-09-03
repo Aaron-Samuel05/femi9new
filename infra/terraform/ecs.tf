@@ -292,6 +292,51 @@ locals {
   }
 }
 
+# ─────────────────────────────────────────────────────────────────────────────
+# What each service is ACTUALLY running.
+#
+# Terraform and the deploy workflow are both writers of the same task
+# definition, and they disagree by design: CI deploys by git SHA on every push,
+# while the tag Terraform applies is typed into terraform.tfvars by hand. So the
+# two drift apart on every deploy, and an apply made from a stale tfvars is not
+# an error — it is a silent, successful ROLLBACK of every service whose tag has
+# moved on. `terraform.tfvars` is gitignored, so the pin lives on one machine
+# and nobody else can see it is stale.
+#
+# This is the same class of gap infra/scripts/preflight.sh was written for:
+# something that plans clean, applies clean, and is wrong afterwards. The
+# precondition on the task definition below turns it into a refusal.
+#
+# The SERVICE's task definition is read rather than the family's newest
+# revision, because the newest revision is not necessarily the one serving —
+# a failed rollout leaves a revision behind that nobody is running.
+data "aws_ecs_service" "running" {
+  for_each = var.verify_running_image ? local.apps : {}
+
+  service_name = "${local.name_prefix}-${each.key}"
+  cluster_arn  = aws_ecs_cluster.this.arn
+}
+
+data "aws_ecs_container_definition" "running" {
+  for_each = var.verify_running_image ? local.apps : {}
+
+  task_definition = data.aws_ecs_service.running[each.key].task_definition
+  container_name  = "app"
+}
+
+locals {
+  # The tag half of "<repo-url>:<tag>", or null when the check is off or the
+  # service does not exist yet. A null always PASSES the precondition: a brand
+  # new environment has nothing to be inconsistent with, and this guard must
+  # never be the reason a first apply cannot run.
+  running_image_tag = {
+    for k, _ in local.apps : k => try(
+      element(split(":", data.aws_ecs_container_definition.running[k].image), 1),
+      null
+    )
+  }
+}
+
 resource "aws_ecs_task_definition" "app" {
   for_each = local.apps
 
@@ -300,6 +345,22 @@ resource "aws_ecs_task_definition" "app" {
   # The account guardrail policy denies ecs:DeregisterTaskDefinition, so
   # Terraform must not try to delete old revisions when it registers a new one.
   skip_destroy = true
+
+  lifecycle {
+    precondition {
+      condition = (
+        local.running_image_tag[each.key] == null ||
+        local.running_image_tag[each.key] == each.value.image_tag
+      )
+      error_message = join("", [
+        "${each.key}: terraform.tfvars pins image tag '${each.value.image_tag}' ",
+        "but the service is running '${try(local.running_image_tag[each.key], "unknown")}'. ",
+        "Applying would roll ${each.key} back to the pinned image. Set ",
+        "${each.key}_image_tag (or container_image_tag) to the running tag, or ",
+        "pass -var verify_running_image=false if the rollback is intended.",
+      ])
+    }
+  }
 
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"

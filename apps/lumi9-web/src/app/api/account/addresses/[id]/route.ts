@@ -16,13 +16,10 @@ const PatchSchema = z.object({
   name: z.string().trim().min(2, "Enter the recipient name").max(120).optional(),
   line: z.string().trim().min(3, "Enter the flat, street and area").max(300).optional(),
   city: z.string().trim().min(2, "Enter the city").max(120).optional(),
-  state: z.string().trim().max(120).optional(),
-  pincode: z
-    .string()
-    .trim()
-    .regex(/^\d{6}$/, "Enter a 6-digit pincode")
-    .optional()
-    .or(z.literal("")),
+  // `.optional()` is PATCH semantics — a field not sent is unchanged. What is
+  // gone is the empty string: an edit may omit the pincode, never blank it.
+  state: z.string().trim().min(2, "Enter the state").max(120).optional(),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a 6-digit pincode").optional(),
   phone: z
     .string()
     .trim()

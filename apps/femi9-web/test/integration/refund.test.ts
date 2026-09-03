@@ -137,4 +137,77 @@ describe('refund', () => {
     const reversals = await prisma.pointsLedger.count({ where: { delta: -expectedPoints } })
     expect(reversals).toBe(1)
   })
+  /**
+   * The interrupted-refund state, and why it must be RESUMED rather than
+   * refused.
+   *
+   * The gateway call happens outside any transaction, so a crash (or a lost
+   * reply) can land between "money returned" and "books reversed". That leaves
+   * payment='refunded' while order='paid' — the resume marker. Refusing here
+   * would strand the order forever: stock never given back, points never clawed
+   * back, and an operator with no way forward except editing the database.
+   *
+   * Running the refund again must therefore complete the reversal, and must do
+   * it exactly once. (The gateway half is what stops the money moving twice —
+   * refundPayment adopts the existing refund; see the unit tests.)
+   */
+  it('resumes an interrupted refund (payment refunded, order still paid) without double-reversing', async () => {
+    const { order, variant, qty, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
+
+    const stockBefore = await stockOf(variant.id)
+    expect(stockBefore).toBe(initialStock - qty)
+
+    // Simulate the crash window: the claim was taken and the money went back,
+    // then the process died before the books were reversed.
+    await prisma.payment.updateMany({
+      where: { orderId: order.id },
+      data: { status: 'refunded' },
+    })
+    expect((await prisma.order.findUniqueOrThrow({ where: { id: order.id } })).status).toBe('paid')
+
+    const detail = await refundOrder('femi9', order.id)
+    expect(detail!.status).toBe('refunded')
+
+    // The reversal completed — exactly once.
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+    expect(await prisma.pointsLedger.count()).toBe(2)
+    const reversals = await prisma.pointsLedger.count({ where: { delta: -expectedPoints } })
+    expect(reversals).toBe(1)
+
+    // And it is now genuinely finished: a further attempt is refused.
+    await expect(refundOrder('femi9', order.id)).rejects.toBeInstanceOf(NotRefundableError)
+    expect(await stockOf(variant.id)).toBe(initialStock)
+  })
+
+  /**
+   * Two operators clicking Refund at the same instant. Both can pass the status
+   * guard (it is a read), so the once-only guarantee has to come from the two
+   * compare-and-swaps — on the payment row before the money moves, and on the
+   * order row before the books are touched. Neither caller may throw, and the
+   * side effects must land exactly once.
+   */
+  it('is safe under concurrent refunds: stock and points reverse exactly once', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
+
+    const results = await Promise.allSettled([
+      refundOrder('femi9', order.id),
+      refundOrder('femi9', order.id),
+    ])
+    // Both settle without an unhandled failure; at least one refunds.
+    const fulfilled = results.filter((r) => r.status === 'fulfilled')
+    expect(fulfilled.length).toBeGreaterThanOrEqual(1)
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(after.status).toBe('refunded')
+
+    // The whole point: one restore, one clawback.
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+    expect(await prisma.pointsLedger.count({ where: { delta: -expectedPoints } })).toBe(1)
+  })
 })

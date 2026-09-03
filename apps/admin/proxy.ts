@@ -25,7 +25,16 @@ export const config = {
   // /api/health has to be out here rather than handled below, because the guard
   // reads the first path segment as a brand: "api" is not one, so the probe
   // would 404 and every task would be pulled out of the target group.
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|login|api/auth|api/health).*)'],
+  //
+  // `uploads` is out for the same structural reason and one more. It is not a
+  // brand either, so the guard 404s it — and in DEVELOPMENT the upload route's
+  // disk branch writes here, under this app's `public/`, which makes the console
+  // the only server that can serve a locally uploaded product photo or popup
+  // GIF back to a storefront. Guarded, every one of them was a 404 in dev and
+  // nothing said why. Nothing is exposed by letting them through: in production
+  // these bytes are in S3 and CloudFront already serves the same prefix to
+  // anonymous visitors, which is what makes them work on the live site at all.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|uploads|login|api/auth|api/health).*)'],
 }
 
 export async function proxy(req: NextRequest) {

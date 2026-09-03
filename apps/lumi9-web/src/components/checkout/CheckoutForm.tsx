@@ -140,8 +140,13 @@ export function CheckoutForm({
           email: get("email") || undefined,
           line: line2 ? `${get("line")}, ${line2}` : get("line"),
           city: get("city"),
-          state: get("state") || undefined,
-          pincode: get("pincode") || undefined,
+          // Sent as typed, blank included. These used to be `|| undefined`,
+          // which erased an empty box into an absent field — and the schema
+          // treated an absent state or pincode as fine, so the order went
+          // through with no way to deliver it. A blank must reach the server
+          // as a blank so the server can say what is wrong with it.
+          state: get("state"),
+          pincode: get("pincode"),
           // The code the shopper applied in the cart. Sent, not assumed: the
           // service re-validates it and claims its use inside the order
           // transaction, so a code that was quoted but has since been spent
@@ -285,15 +290,19 @@ export function CheckoutForm({
 
         <Fieldset step={2} title="Shipping address">
           <div className="grid grid-cols-1 gap-[clamp(10px,1.4vw,14px)] min-[420px]:grid-cols-2">
-            <input
-              name="firstName" aria-label="First name"
-              placeholder="First name"
-              required
-              autoComplete="given-name"
-              value={firstName}
-              onChange={(event) => setFirstName(event.target.value)}
-              className="field"
-            />
+            {/* `name` is one server field built from two boxes, so its error
+                binds to the first — there is nowhere else to put it. */}
+            <FieldError error={fieldErrors.name?.[0]}>
+              <input
+                name="firstName" aria-label="First name"
+                placeholder="First name"
+                required
+                autoComplete="given-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                className="field w-full"
+              />
+            </FieldError>
             <input
               name="lastName"
               aria-label="Last name"
@@ -303,38 +312,46 @@ export function CheckoutForm({
               className="field"
               defaultValue={prefilled.last}
             />
-            <input
-              name="line" aria-label="Address"
-              placeholder="Address"
-              required
-              autoComplete="address-line1"
-              className="field min-[420px]:col-span-2"
-              defaultValue={prefill?.line ?? ""}
-            />
+            <div className="min-[420px]:col-span-2">
+              <FieldError error={fieldErrors.line?.[0]}>
+                <input
+                  name="line" aria-label="Address"
+                  placeholder="Address"
+                  required
+                  autoComplete="address-line1"
+                  className="field w-full"
+                  defaultValue={prefill?.line ?? ""}
+                />
+              </FieldError>
+            </div>
             <input
               name="line2" aria-label="Apartment, suite (optional)"
               placeholder="Apartment, suite (optional)"
               autoComplete="address-line2"
               className="field min-[420px]:col-span-2"
             />
-            <input
-              name="city" aria-label="City"
-              placeholder="City"
-              required
-              autoComplete="address-level2"
-              value={city}
-              onChange={(event) => setCity(event.target.value)}
-              className="field"
-            />
-            <input
-              name="state"
-              aria-label="State"
-              placeholder="State"
-              required
-              autoComplete="address-level1"
-              className="field"
-              defaultValue={prefill?.state ?? ""}
-            />
+            <FieldError error={fieldErrors.city?.[0]}>
+              <input
+                name="city" aria-label="City"
+                placeholder="City"
+                required
+                autoComplete="address-level2"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+                className="field w-full"
+              />
+            </FieldError>
+            <FieldError error={fieldErrors.state?.[0]}>
+              <input
+                name="state"
+                aria-label="State"
+                placeholder="State"
+                required
+                autoComplete="address-level1"
+                className="field w-full"
+                defaultValue={prefill?.state ?? ""}
+              />
+            </FieldError>
             <FieldError error={fieldErrors.pincode?.[0]}>
               <input
                 name="pincode" aria-label="PIN code"

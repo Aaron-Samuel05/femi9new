@@ -62,6 +62,23 @@ variable "enable_nat" {
 
 # ── Container images ─────────────────────────────────────────────────────────
 
+variable "verify_running_image" {
+  description = <<-EOT
+    Refuse to apply when a service's pinned image tag is not the tag it is
+    already running. Leave this on.
+
+    The tags in terraform.tfvars are maintained BY HAND while CI deploys by git
+    SHA automatically, so they drift every time anyone pushes — and an apply
+    with a stale tag is not an error, it is a successful rollback. Nothing in a
+    plan says so: the image line is one changed attribute among many.
+
+    Set false ONLY for the first apply of a brand-new environment, where the
+    services do not exist yet and there is nothing to compare against.
+  EOT
+  type        = bool
+  default     = true
+}
+
 variable "container_image_tag" {
   description = "Image tag every service runs. THIS STACK OWNS THE TASK DEFINITION, so an apply moves the services onto whatever this names — set it to a tag that exists. The deploy workflow pushes each build twice, as the git SHA and as `latest`, so this default resolves to the most recent build rather than to nothing; pin it to a SHA for a reproducible environment, and bump it after a deploy you want an apply to preserve."
   type        = string

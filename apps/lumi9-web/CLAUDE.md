@@ -132,6 +132,23 @@ is computed: drop the price in `/lumi9/products`, or make a coupon. See the note
 on the constant, and `test/advertised-price.test.ts`, which fails if it comes
 back.
 
+**The LAUNCH POPUP is not that, and must not become it.** `Settings.launchPopup`
+(one Json row, edited in the console under Settings → Launch popup) is an
+IMAGE the root layout shows once per visit, dismissible with an X and
+auto-closing after a configurable number of seconds. It advertises whatever the
+artwork says and changes no price anywhere — which is precisely the trap: a GIF
+reading "10% off" is the same false promise `LAUNCH_OFFER` was, just drawn
+instead of computed. Whoever uploads one has to make the discount real first, in
+`/lumi9/products` or as a coupon.
+
+Three things about it are easy to get wrong. The image is a plain `<img>`, not
+`next/image` — the optimizer re-encodes a GIF to a still frame, and the
+animation IS the creative. `getLaunchPopup` reads the row through
+`normalizeLaunchPopup`, never raw, because `seconds` is what closes the modal
+and a missing or malformed one is a promo that covers the storefront until she
+finds the X. And `isLaunchPopupLive` requires artwork as well as the switch, so
+a popup enabled before its upload is absent rather than broken.
+
 ## The signed-in surface, and how a shopper reaches it
 
 Femi9's storefront flow, on this app's tokens. Nothing about Femi9's palette or

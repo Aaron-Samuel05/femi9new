@@ -357,62 +357,142 @@ export class NotRefundableError extends Error {
 /**
  * Refund a paid order end-to-end and return the refreshed detail.
  *
- * One transaction guards the whole reversal so a partial failure can never leave
- * money refunded but stock/points un-restored (or vice versa):
- *   1. Re-read the order under the txn and REQUIRE status 'paid' — this is also
- *      the idempotency gate, so a double-click on an already-'refunded' order is
- *      rejected instead of restoring stock / reversing points twice.
- *   2. Reverse the money at the gateway (razorpay.refundPayment, mock-safe: no
- *      network call until real keys are set) for the full order total.
- *   3. Flip the order and its Payment row(s) to 'refunded'.
- *   4. Restore each line's variant stock — the mirror of checkout's decrement.
- *   5. Write ONE negative PointsLedger row clawing back exactly the points that
- *      were awarded for this order (base + any welcome bonus), with a running
- *      balanceAfter so the customer's points history still reads like a statement.
+ * ORDER OF OPERATIONS MATTERS HERE, and it is not the obvious one. The whole
+ * reversal used to sit inside a single transaction with the gateway call in the
+ * middle of it, which read as maximally safe and was the opposite: an
+ * interactive transaction has a 5s budget (see PRISMA_TRANSACTION_TIMEOUT_MS),
+ * `fetch` had no timeout, and a slow-but-successful refund therefore rolled the
+ * database back AFTER the money had already left. The order stayed 'paid', so
+ * the status guard — the thing standing between an operator and a second
+ * refund — waved the retry straight through. Money gone twice, nothing in the
+ * data to say so.
+ *
+ * So the money moves OUTSIDE any transaction, and the sequence is built to be
+ * safely repeatable rather than atomic-or-nothing:
+ *
+ *   1. Read and REQUIRE status 'paid'. A completed refund leaves 'refunded',
+ *      so a double-click is still rejected here.
+ *   2. CLAIM the payment row ('captured' -> 'refunded') with a compare-and-swap.
+ *      This is what serialises two operators clicking at the same instant: only
+ *      one update returns count 1, and it happens before any money moves.
+ *   3. Reverse the money at the gateway, with a bounded timeout and no
+ *      transaction open. razorpay.refundPayment adopts an existing refund
+ *      rather than creating a second one, so a retry converges.
+ *   4. Reverse the books in ONE transaction — order + payments to 'refunded',
+ *      stock restored, loyalty/Thara/commission clawed back — gated by its own
+ *      compare-and-swap so those side effects run exactly once.
+ *
+ * The in-between state (payment 'refunded', order still 'paid') is deliberate
+ * and is the resume marker: it means the money went back but the books did not
+ * finish. Running the refund again from there re-enters at step 3, adopts the
+ * existing gateway refund, and completes step 4. A stuck order is therefore
+ * fixed by clicking Refund again — never by refunding a second time.
  *
  * Returns null when no such order exists (clean 404 at the route); throws
  * NotRefundableError when the order isn't 'paid'.
  */
 export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail | null> {
   const prisma = dbFor(brand)
+
+  // ── 1. Read + guard ────────────────────────────────────────────────────────
+  const order = await prisma.order.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      orderNo: true,
+      status: true,
+      total: true,
+      payments: { select: { id: true, status: true, razorpayPaymentId: true } },
+    },
+  })
+  if (!order) return null
+  if (order.status !== 'paid') throw new NotRefundableError(order.status)
+
+  // Prefer the row carrying a gateway payment id — that is the captured one.
+  const payment = order.payments.find((p) => p.razorpayPaymentId) ?? order.payments[0] ?? null
+
+  // ── 2. Claim ───────────────────────────────────────────────────────────────
+  // Scoped to `status: not refunded` so exactly one caller can win. A count of
+  // 0 means either a concurrent operator won the race or an earlier attempt
+  // died between here and step 4 — both are resumed, not refused, because the
+  // order is demonstrably still 'paid' and therefore its books are unreversed.
+  let claimed = false
+  if (payment) {
+    const claim = await prisma.payment.updateMany({
+      where: { id: payment.id, status: { not: 'refunded' } },
+      data: { status: 'refunded' },
+    })
+    claimed = claim.count === 1
+    if (!claimed) {
+      console.warn(
+        `[refund] ${order.orderNo}: payment already marked refunded while the order is still paid — ` +
+          `resuming an interrupted refund rather than starting a new one.`,
+      )
+    }
+  }
+
+  // ── 3. Gateway — no transaction open, bounded, idempotent ──────────────────
+  if (payment?.razorpayPaymentId) {
+    try {
+      const refund = await razorpay.refundPayment(brand, payment.razorpayPaymentId, order.total)
+      if (refund.adopted) {
+        console.warn(
+          `[refund] ${order.orderNo}: adopted existing gateway refund ${refund.id} — ` +
+            `a previous attempt had already returned the money.`,
+        )
+      }
+    } catch (err) {
+      // Give the claim back ONLY when the gateway is known not to have acted.
+      // A timeout or a 5xx is ambiguous: the refund may well have gone through
+      // and the reply been lost, so the claim stays and the operator retries
+      // into the adoption path above instead of into a second refund.
+      if (claimed && err instanceof razorpay.GatewayNotExecutedError) {
+        await prisma.payment.updateMany({
+          where: { id: payment.id },
+          data: { status: payment.status },
+        })
+      } else if (claimed) {
+        console.error(
+          `[refund] ${order.orderNo}: gateway outcome UNKNOWN for payment ${payment.razorpayPaymentId}. ` +
+            `The claim is held and the order left 'paid' — retry the refund to converge.`,
+          err,
+        )
+      }
+      throw err
+    }
+  }
+
+  // ── 4. Reverse the books ───────────────────────────────────────────────────
   const outcome = await prisma.$transaction(async (tx) => {
-    // Pull items (to give stock back), payments (to refund + flip), and the
-    // loyalty rows tied to this order (to reverse) in the same read the guard
-    // sees, so the decision and the writes share one consistent snapshot.
-    const order = await tx.order.findUnique({
+    // Compare-and-swap on 'paid' — the once-only gate for every side effect
+    // below, so a concurrent caller that also got past step 1 cannot
+    // double-restore stock or double-reverse points.
+    const claimedOrder = await tx.order.updateMany({
+      where: { id, status: 'paid' },
+      data: { status: 'refunded' },
+    })
+    if (claimedOrder.count === 0) return { kind: 'already' as const }
+
+    const detail = await tx.order.findUnique({
       where: { id },
-      include: {
+      select: {
+        couponId: true,
         items: { select: { variantId: true, qty: true } },
-        payments: true,
-        points: true,
+        points: { select: { userId: true, delta: true } },
       },
     })
-    if (!order) return { kind: 'missing' as const }
-    if (order.status !== 'paid') return { kind: 'not_paid' as const, status: order.status }
+    if (!detail) return { kind: 'already' as const }
 
-    // Reverse the money first. Prefer the captured row (the one carrying a
-    // gateway payment id) and refund the full order total. razorpayPaymentId is
-    // nullable in the schema, so only call the gateway when we actually have one
-    // — in mock mode markOrderPaid still stamps a synthetic id, so a normal paid
-    // order always does.
-    const payment = order.payments.find((p) => p.razorpayPaymentId) ?? order.payments[0] ?? null
-    if (payment?.razorpayPaymentId) {
-      await razorpay.refundPayment(brand, payment.razorpayPaymentId, order.total)
-    }
-
-    // Order + payment(s) → refunded. updateMany covers the (normal) single
-    // captured row without needing to thread its id through.
-    await tx.order.update({ where: { id }, data: { status: 'refunded' } })
     await tx.payment.updateMany({ where: { orderId: id }, data: { status: 'refunded' } })
-    if (order.couponId) {
+    if (detail.couponId) {
       await tx.coupon.updateMany({
-        where: { id: order.couponId, usedCount: { gt: 0 } },
+        where: { id: detail.couponId, usedCount: { gt: 0 } },
         data: { usedCount: { decrement: 1 } },
       })
     }
 
     // Give the reserved stock back.
-    for (const it of order.items) {
+    for (const it of detail.items) {
       await tx.productVariant.update({
         where: { id: it.variantId },
         data: { stock: { increment: it.qty } },
@@ -421,14 +501,14 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
 
     // Reverse the loyalty award. Summing the ledger rows tied to this order gives
     // exactly what checkout granted (a single positive row: base points + bonus);
-    // the status guard means no prior refund row can be in this set. Skip when
-    // nothing was awarded — a guest order carries no user, and PointsLedger.userId
-    // is non-null, so there is no row to reverse against.
-    const awarded = order.points.reduce((sum, p) => sum + p.delta, 0)
+    // the compare-and-swap above means no prior refund row can be in this set.
+    // Skip when nothing was awarded — a guest order carries no user, and
+    // PointsLedger.userId is non-null, so there is no row to reverse against.
+    const awarded = detail.points.reduce((sum, p) => sum + p.delta, 0)
     if (awarded > 0) {
       // Every award row shares the customer's id; take it from the row rather
       // than the nullable Order.userId so the reversal lands on the right ledger.
-      const userId = order.points[0].userId
+      const userId = detail.points[0].userId
       const prior = await tx.pointsLedger.aggregate({
         where: { userId },
         _sum: { delta: true },
@@ -460,7 +540,8 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     return { kind: 'ok' as const }
   })
 
-  if (outcome.kind === 'missing') return null
-  if (outcome.kind === 'not_paid') throw new NotRefundableError(outcome.status)
+  if (outcome.kind === 'already') {
+    console.warn(`[refund] ${order.orderNo}: books were already reversed by a concurrent refund.`)
+  }
   return getOrder(brand, id)
 }

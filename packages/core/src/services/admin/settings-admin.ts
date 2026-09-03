@@ -1,7 +1,14 @@
 import 'server-only'
 import { Prisma } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
-import { getSettings, type Settings } from '../settings'
+import {
+  getLaunchPopup,
+  getSettings,
+  LAUNCH_POPUP_KEY,
+  normalizeLaunchPopup,
+  type LaunchPopup,
+  type Settings,
+} from '../settings'
 
 /**
  * Admin settings service — the write-side of the "customizable backend".
@@ -25,9 +32,25 @@ const NUMERIC_KEYS = new Set<keyof Settings>([
 
 export type SettingsPatch = Partial<Settings>
 
+/**
+ * What the console's one settings screen edits: the business numbers plus the
+ * launch popup, which is a Json row rather than a scalar and so cannot join
+ * `Settings` itself. One payload because it is one form with one Save button —
+ * an admin switching the popup on should not have to remember that the number
+ * above it saves through a different request.
+ */
+export interface ConsoleSettings extends Settings {
+  launchPopup: LaunchPopup
+}
+
+export interface ConsoleSettingsPatch extends SettingsPatch {
+  launchPopup?: LaunchPopup
+}
+
 /** Current editable settings, defaulted — the form's initial values. */
-export async function getEditableSettings(brand: Brand): Promise<Settings> {
-  return getSettings(brand)
+export async function getEditableSettings(brand: Brand): Promise<ConsoleSettings> {
+  const [settings, launchPopup] = await Promise.all([getSettings(brand), getLaunchPopup(brand)])
+  return { ...settings, launchPopup }
 }
 
 /**
@@ -35,9 +58,13 @@ export async function getEditableSettings(brand: Brand): Promise<Settings> {
  * upserts in one transaction so a partial failure never leaves the config in a
  * half-applied state.
  */
-export async function updateSettings(brand: Brand, patch: SettingsPatch): Promise<Settings> {
+export async function updateSettings(
+  brand: Brand,
+  patch: ConsoleSettingsPatch,
+): Promise<ConsoleSettings> {
   const prisma = dbFor(brand)
-  const ops = (Object.entries(patch) as [keyof Settings, Settings[keyof Settings]][])
+  const { launchPopup, ...scalars } = patch
+  const ops = (Object.entries(scalars) as [keyof Settings, Settings[keyof Settings]][])
     .filter(([, value]) => value !== undefined)
     .map(([key, value]) => {
       // Coerce numeric keys to Int here (belt-and-braces alongside the zod layer)
@@ -52,7 +79,22 @@ export async function updateSettings(brand: Brand, patch: SettingsPatch): Promis
       })
     })
 
+  // The popup is one whole Json object in one row, so it is upserted as itself
+  // rather than field by field — and normalised on the way IN as well as on the
+  // way out, so the row can never hold a shape `getLaunchPopup` would have to
+  // fall back from. Same transaction as the scalars: one Save, one outcome.
+  if (launchPopup !== undefined) {
+    const stored = normalizeLaunchPopup(launchPopup) as unknown as Prisma.InputJsonValue
+    ops.push(
+      prisma.setting.upsert({
+        where: { key: LAUNCH_POPUP_KEY },
+        create: { key: LAUNCH_POPUP_KEY, value: stored },
+        update: { value: stored },
+      }),
+    )
+  }
+
   if (ops.length) await prisma.$transaction(ops)
 
-  return getSettings(brand)
+  return getEditableSettings(brand)
 }

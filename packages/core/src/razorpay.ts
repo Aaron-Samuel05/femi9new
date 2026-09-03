@@ -32,6 +32,44 @@ import {
  */
 
 const ORDERS_URL = 'https://api.razorpay.com/v1/orders'
+const PAYMENTS_URL = 'https://api.razorpay.com/v1/payments'
+
+/**
+ * Ceiling on any single gateway HTTP call.
+ *
+ * `fetch` has no default timeout: a gateway that accepts a connection and then
+ * stops talking hangs the caller until the platform gives up, which for a
+ * refund means an admin request pinned open with money already moved. Bounding
+ * it turns that into a definite, reportable failure.
+ */
+const GATEWAY_TIMEOUT_MS = Number(process.env.RAZORPAY_TIMEOUT_MS) || 15_000
+
+/**
+ * Raised only when the gateway is KNOWN not to have acted — it answered, and
+ * the answer was a refusal (4xx that is not a rate limit). Callers may safely
+ * undo whatever they staged in anticipation.
+ *
+ * Everything else — a timeout, a dropped socket, a 5xx, a 429 — is deliberately
+ * NOT this error, because none of them distinguish "never reached Razorpay"
+ * from "Razorpay did it and the reply was lost". That ambiguity is the whole
+ * reason a refund claim must survive a failure rather than be rolled back.
+ */
+export class GatewayNotExecutedError extends Error {
+  readonly status: number
+  constructor(operation: string, status: number, detail: string) {
+    super(`Razorpay ${operation} refused (${status}): ${detail}`)
+    this.name = 'GatewayNotExecutedError'
+    this.status = status
+  }
+}
+
+/** A 4xx that is not a 429 means the request was understood and declined. */
+function classifyFailure(operation: string, status: number, detail: string): Error {
+  if (status >= 400 && status < 500 && status !== 429) {
+    return new GatewayNotExecutedError(operation, status, detail)
+  }
+  return new Error(`Razorpay ${operation} failed (${status}): ${detail}`)
+}
 
 /** Live only when BOTH halves of the API credential are present. A half-set
  *  config (one env var) would fail every real call, so we treat it as unset. */
@@ -98,10 +136,11 @@ export async function createOrder(brand: Brand, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
     body: JSON.stringify({ amount: amountPaise, currency: 'INR', receipt }),
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay createOrder failed (${res.status}): ${detail}`)
+    throw classifyFailure('createOrder', res.status, detail)
   }
   const data = (await res.json()) as { id: string; amount: number }
   return { id: data.id, amount: data.amount, mock: false }
@@ -156,6 +195,9 @@ export function verifyWebhookSignature(
 export interface GatewayRefund {
   id: string
   mock: boolean
+  /** True when this refund already existed at the gateway and was adopted
+   *  rather than created — i.e. a retry converged instead of paying twice. */
+  adopted: boolean
 }
 
 export interface GatewayPayment {
@@ -174,10 +216,11 @@ export async function listOrderPayments(brand: Brand, orderId: string): Promise<
   }
   const res = await fetch(`${ORDERS_URL}/${encodeURIComponent(orderId)}/payments`, {
     headers: { authorization: basicAuthHeader(brand) },
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay listOrderPayments failed (${res.status}): ${detail}`)
+    throw classifyFailure('listOrderPayments', res.status, detail)
   }
   const data = await res.json() as {
     items?: Array<{ id: string; order_id: string; amount: number; status: string; method?: string }>
@@ -191,29 +234,74 @@ export async function listOrderPayments(brand: Brand, orderId: string): Promise<
   }))
 }
 
+/** Refunds already recorded against a payment, newest first. Amounts in paise. */
+async function listRefunds(brand: Brand, paymentId: string): Promise<Array<{ id: string; amount: number }>> {
+  const res = await fetch(`${PAYMENTS_URL}/${encodeURIComponent(paymentId)}/refunds`, {
+    headers: { authorization: basicAuthHeader(brand) },
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw classifyFailure('listRefunds', res.status, detail)
+  }
+  const data = (await res.json()) as { items?: Array<{ id: string; amount: number }> }
+  return data.items ?? []
+}
+
 /**
  * Refund a captured payment (full, or partial when `amountRupees` is given).
  * Configured → real Refunds API; mock → a synthetic refund id, no network call.
+ *
+ * IDEMPOTENT BY READ-BEFORE-WRITE. Razorpay's Refunds API has no idempotency
+ * key, so a retry after an ambiguous failure (timeout, dropped socket, 5xx)
+ * would otherwise return the customer's money a second time — real money, with
+ * nothing in our data to say it happened. Every call therefore asks what has
+ * already been refunded against this payment and ADOPTS a matching refund
+ * instead of creating one, which makes the whole operation safe to retry until
+ * it converges.
+ *
+ * Existing refunds that do NOT cover the requested amount are refused rather
+ * than topped up: that is a partial-refund history this console never creates,
+ * so it means something else has touched the payment and a human should look
+ * before any more money moves.
  */
 export async function refundPayment(brand: Brand, paymentId: string, amountRupees?: number): Promise<GatewayRefund> {
   if (!isConfigured(brand)) {
     if (!mockProvidersAllowed()) throw new ProviderConfigurationError('Razorpay')
-    return { id: `mock_refund_${paymentId}`, mock: true }
+    return { id: `mock_refund_${paymentId}`, mock: true, adopted: false }
   }
 
-  const res = await fetch(`https://api.razorpay.com/v1/payments/${paymentId}/refund`, {
+  const wantPaise = amountRupees != null ? Math.round(amountRupees * 100) : null
+
+  const existing = await listRefunds(brand, paymentId)
+  if (existing.length > 0) {
+    const refunded = existing.reduce((sum, r) => sum + r.amount, 0)
+    // `null` means "full refund" and cannot be compared against a total, so any
+    // existing refund counts as this operation already having happened.
+    if (wantPaise == null || refunded >= wantPaise) {
+      return { id: existing[0].id, mock: false, adopted: true }
+    }
+    throw new Error(
+      `Razorpay refund refused: payment ${paymentId} already has ${existing.length} refund(s) ` +
+      `totalling ${refunded} paise, short of the ${wantPaise} paise requested. ` +
+      `Reconcile by hand — refunding again would return more than was charged.`,
+    )
+  }
+
+  const res = await fetch(`${PAYMENTS_URL}/${encodeURIComponent(paymentId)}/refund`, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
     // Omit the body for a full refund; Razorpay refunds the full amount when no
     // amount is supplied. Partial refunds pass the amount in paise.
-    body: amountRupees != null ? JSON.stringify({ amount: Math.round(amountRupees * 100) }) : undefined,
+    body: wantPaise != null ? JSON.stringify({ amount: wantPaise }) : undefined,
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay refund failed (${res.status}): ${detail}`)
+    throw classifyFailure('refund', res.status, detail)
   }
   const data = (await res.json()) as { id: string }
-  return { id: data.id, mock: false }
+  return { id: data.id, mock: false, adopted: false }
 }
 
 // ─────────────────────────── Subscriptions (mandates) ────────────────────────
@@ -241,10 +329,11 @@ async function postJson<T>(brand: Brand, url: string, body: unknown, label: stri
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: basicAuthHeader(brand) },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   })
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay ${label} failed (${res.status}): ${detail}`)
+    throw classifyFailure(label, res.status, detail)
   }
   return (await res.json()) as T
 }
@@ -398,11 +487,12 @@ export async function fetchSubscription(
   }
   const res = await fetch(`${SUBSCRIPTIONS_URL}/${encodeURIComponent(id)}`, {
     headers: { authorization: basicAuthHeader(brand) },
+    signal: AbortSignal.timeout(GATEWAY_TIMEOUT_MS),
   })
   if (res.status === 404) return null
   if (!res.ok) {
     const detail = await res.text().catch(() => '')
-    throw new Error(`Razorpay fetchSubscription failed (${res.status}): ${detail}`)
+    throw classifyFailure('fetchSubscription', res.status, detail)
   }
   return toGatewaySubscription((await res.json()) as SubscriptionEntity)
 }

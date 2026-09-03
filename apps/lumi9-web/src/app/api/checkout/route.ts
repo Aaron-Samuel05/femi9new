@@ -42,13 +42,26 @@ const CheckoutSchema = z.object({
   name: z.string().trim().min(1, "Please enter your name").max(120),
   phone: z.string().trim().regex(/^\d{10}$/, "Enter a valid 10-digit mobile number"),
   email: z.preprocess(blankToUndef, z.string().trim().email("Enter a valid email").optional()),
+  /*
+   * The WHOLE address is required, and that is a change.
+   *
+   * `state` and `pincode` used to be `.optional()` here while the form marked
+   * both `required` — so the rule existed only in HTML, which is a hint to a
+   * browser and nothing to a POST. The form itself sent `get("state") ||
+   * undefined`, so a blank was not even rejected on the way out: it was erased
+   * into a field the schema then had no opinion about.
+   *
+   * Two things ride on those two fields. A parcel cannot be delivered in India
+   * without a pincode, and `placeOrder` resolves the PRICE ZONE from
+   * `{ state, pincode }` — so an address missing both is priced in the default
+   * zone by omission rather than by geography. Neither failure is visible: the
+   * order is created, paid and confirmed, and only the packing slip is short of
+   * an address.
+   */
   line: z.string().trim().min(1, "Please enter your address").max(300),
   city: z.string().trim().min(1, "Please enter your city").max(120),
-  state: z.preprocess(blankToUndef, z.string().trim().max(120).optional()),
-  pincode: z.preprocess(
-    blankToUndef,
-    z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit pincode").optional(),
-  ),
+  state: z.string().trim().min(1, "Please enter your state").max(120),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a valid 6-digit pincode"),
   couponCode: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
   addressLabel: z.preprocess(blankToUndef, z.string().trim().max(40).optional()),
 });

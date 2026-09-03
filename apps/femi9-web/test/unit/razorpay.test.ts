@@ -4,8 +4,10 @@ import {
   isConfigured,
   createOrder,
   publicKeyId,
+  refundPayment,
   verifyPaymentSignature,
   verifyWebhookSignature,
+  GatewayNotExecutedError,
 } from '@femi9/core/razorpay'
 
 /**
@@ -162,5 +164,122 @@ describe('razorpay createOrder (mock mode)', () => {
       if (previous === undefined) delete mutableEnv.NODE_ENV
       else mutableEnv.NODE_ENV = previous
     }
+  })
+})
+/**
+ * Refund idempotency.
+ *
+ * Razorpay's Refunds API has no idempotency key, and a refund is the one call
+ * in this module that moves money OUT. An ambiguous failure — a timeout, a
+ * dropped socket, a 502 — leaves the caller unable to tell "never happened"
+ * from "happened, reply lost", and retrying the wrong guess pays the customer
+ * twice out of the merchant's own balance. So refundPayment reads what already
+ * exists against the payment before it creates anything.
+ */
+describe('razorpay refundPayment idempotency', () => {
+  const realFetch = globalThis.fetch
+
+  function configure() {
+    process.env.RAZORPAY_KEY_ID = 'rzp_test_key'
+    process.env.RAZORPAY_KEY_SECRET = 'rzp_test_secret'
+  }
+
+  /** Stub fetch with a per-URL handler and record every call made. */
+  function stubFetch(handler: (url: string, init?: RequestInit) => unknown) {
+    const calls: Array<{ url: string; method: string }> = []
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      calls.push({ url, method: (init?.method ?? 'GET').toUpperCase() })
+      const result = handler(url, init) as { status?: number; body?: unknown }
+      const status = result.status ?? 200
+      return {
+        ok: status >= 200 && status < 300,
+        status,
+        json: async () => result.body,
+        text: async () => JSON.stringify(result.body ?? ''),
+      }
+    }) as typeof globalThis.fetch
+    return calls
+  }
+
+  afterEach(() => {
+    globalThis.fetch = realFetch
+  })
+
+  it('creates a refund when the payment has none', async () => {
+    configure()
+    const calls = stubFetch((url) => {
+      if (url.endsWith('/refunds')) return { body: { items: [] } }
+      return { body: { id: 'rfnd_new' } }
+    })
+
+    const refund = await refundPayment('femi9', 'pay_1', 500)
+    expect(refund.id).toBe('rfnd_new')
+    expect(refund.adopted).toBe(false)
+
+    // Read first, then write — never a blind create.
+    expect(calls[0].url).toContain('/payments/pay_1/refunds')
+    expect(calls[0].method).toBe('GET')
+    expect(calls[1].url).toContain('/payments/pay_1/refund')
+    expect(calls[1].method).toBe('POST')
+  })
+
+  it('ADOPTS an existing refund instead of returning the money twice', async () => {
+    configure()
+    // The state left behind by a refund that succeeded at Razorpay while our
+    // side timed out: the money is already back with the customer.
+    const calls = stubFetch((url) => {
+      if (url.endsWith('/refunds')) return { body: { items: [{ id: 'rfnd_prior', amount: 50000 }] } }
+      throw new Error('must not create a second refund')
+    })
+
+    const refund = await refundPayment('femi9', 'pay_1', 500)
+    expect(refund.adopted).toBe(true)
+    expect(refund.id).toBe('rfnd_prior')
+
+    // Exactly one call, and it was the read.
+    expect(calls).toHaveLength(1)
+    expect(calls[0].method).toBe('GET')
+  })
+
+  it('refuses rather than topping up when existing refunds fall short', async () => {
+    configure()
+    stubFetch((url) => {
+      if (url.endsWith('/refunds')) return { body: { items: [{ id: 'rfnd_partial', amount: 20000 }] } }
+      throw new Error('must not create a second refund')
+    })
+
+    // A partial-refund history this console never creates means something else
+    // touched the payment; topping it up automatically could over-refund.
+    await expect(refundPayment('femi9', 'pay_1', 500)).rejects.toThrow(/already has 1 refund/)
+  })
+
+  it('classifies a 4xx as definitively not executed, and a 5xx as ambiguous', async () => {
+    configure()
+    stubFetch((url) => {
+      if (url.endsWith('/refunds')) return { body: { items: [] } }
+      return { status: 400, body: { error: 'bad request' } }
+    })
+    await expect(refundPayment('femi9', 'pay_1', 500)).rejects.toBeInstanceOf(GatewayNotExecutedError)
+
+    stubFetch((url) => {
+      if (url.endsWith('/refunds')) return { body: { items: [] } }
+      return { status: 502, body: { error: 'bad gateway' } }
+    })
+    const err = await refundPayment('femi9', 'pay_1', 500).catch((e) => e)
+    expect(err).toBeInstanceOf(Error)
+    // NOT GatewayNotExecutedError: a 502 cannot rule out that the refund ran.
+    expect(err).not.toBeInstanceOf(GatewayNotExecutedError)
+  })
+
+  it('makes no network call at all in mock mode', async () => {
+    // Unconfigured baseline from the outer beforeEach.
+    const calls = stubFetch(() => {
+      throw new Error('mock mode must not touch the network')
+    })
+    const refund = await refundPayment('femi9', 'pay_1', 500)
+    expect(refund.mock).toBe(true)
+    expect(refund.adopted).toBe(false)
+    expect(calls).toHaveLength(0)
   })
 })
