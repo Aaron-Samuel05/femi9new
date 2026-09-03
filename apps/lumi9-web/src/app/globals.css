@@ -100,6 +100,12 @@
   --animate-marquee-rev: marquee-rev 26s linear infinite;
   --animate-floaty: floaty 7s ease-in-out infinite;
   --animate-ring: ring-spin 0.8s linear infinite;
+  /* The launch popup's arrival. Two curves rather than one: the scrim fades
+     flat, and the card lifts - a card that faded WITH its scrim reads as the
+     page dimming, not as something arriving. Both are applied under
+     `motion-safe:`, so a reduced-motion visitor simply gets the popup. */
+  --animate-popup-scrim: popup-scrim 240ms var(--ease-reveal) both;
+  --animate-popup-card: popup-card 320ms var(--ease-reveal) both;
 
   @keyframes marquee {
     from {
@@ -129,6 +135,24 @@
   @keyframes ring-spin {
     to {
       transform: rotate(360deg);
+    }
+  }
+  @keyframes popup-scrim {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes popup-card {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
     }
   }
 }

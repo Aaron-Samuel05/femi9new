@@ -102,6 +102,21 @@ const nextConfig: NextConfig = {
    * proxy to itself.
    */
   async rewrites() {
+    /*
+     * In DEVELOPMENT the bytes are on the console's disk, not in S3.
+     *
+     * `/<brand>/api/upload` falls back to writing under `public/uploads` when
+     * no bucket is configured, and `process.cwd()` there is apps/admin — so a
+     * photo or a popup GIF uploaded locally exists only on :3002. Sending this
+     * app's `/uploads/*` to SITE_URL in dev pointed it at ITSELF, where the
+     * file has never been, so every locally uploaded image 404'd while the same
+     * code was correct in production. Point it at the console instead;
+     * UPLOADS_ORIGIN overrides for anyone running it on another port.
+     */
+    if (process.env.NODE_ENV !== "production") {
+      const dev = process.env.UPLOADS_ORIGIN || "http://127.0.0.1:3002";
+      return [{ source: "/uploads/:path*", destination: `${dev}/uploads/:path*` }];
+    }
     const origin = process.env.SITE_URL || process.env.NEXT_PUBLIC_SITE_URL;
     if (!origin) return [];
     return [{ source: "/uploads/:path*", destination: `${origin}/uploads/:path*` }];

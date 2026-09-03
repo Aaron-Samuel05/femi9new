@@ -85,6 +85,20 @@ export interface BrandConfig {
    * offering a toggle that changes nothing a shopper sees.
    */
   featuredSlots: number
+  /**
+   * Whether this brand's storefront renders the launch popup.
+   *
+   * Same reasoning as `featuredSlots: 0` above, and the same rule: the console
+   * hides the control and the route refuses the field, rather than offering a
+   * switch that changes nothing a shopper sees. `apps/lumi9-web` reads the
+   * `launchPopup` Setting row in its root layout; the Femi9 storefront has no
+   * such surface, so an admin there could switch on a promo that never appears
+   * and have no way to tell it had not.
+   *
+   * Turning it on for Femi9 means adding the component to that app FIRST — the
+   * flag follows the storefront, it does not create it.
+   */
+  launchPopup: boolean
 }
 
 export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
@@ -100,6 +114,8 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     productTypes: ['pad', 'panty'],
     // The landing page's "Choose Your Perfect Fit" rail.
     featuredSlots: 5,
+    // No popup surface in apps/femi9-web — see the note on the field.
+    launchPopup: false,
     modules: [
       'dashboard',
       'catalog',
@@ -128,6 +144,8 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
     accentInk: '#ffffff',
     orderPrefix: 'LM',
     productTypes: ['diaper'],
+    // The root layout renders it, once per visit, over whatever page she landed on.
+    launchPopup: true,
     // No rail. The homepage's product section IS the size run — see the note on
     // BrandConfig.featuredSlots.
     featuredSlots: 0,
@@ -200,6 +218,12 @@ export function featuredSlots(brand: Brand): number {
 /** Whether a brand has a featured rail to put products on. */
 export function allowsFeatured(brand: Brand): boolean {
   return BRAND_CONFIG[brand].featuredSlots > 0
+}
+
+/** Whether a brand's storefront shows the launch popup. Both the console's card
+ *  and the settings route ask this — one answer, two enforcement points. */
+export function hasLaunchPopup(brand: Brand): boolean {
+  return BRAND_CONFIG[brand].launchPopup
 }
 
 /** The `FM-00001` / `LM-00001` prefix for this brand's order numbers. */

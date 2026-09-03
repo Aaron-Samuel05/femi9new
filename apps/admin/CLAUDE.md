@@ -269,6 +269,30 @@ clone or Docker build must run `prisma generate` for **both** packages.
 **Turbopack warns "Dynamic filesystem access causes tracing of the whole
 project"** on build. That is Prisma's engine loader, not a defect.
 
+**The LAUNCH POPUP is Lumi9's, and the console says so.** Settings → Launch
+popup writes ONE Json `Setting` row (`launchPopup`: enabled · image · seconds ·
+alt) that `apps/lumi9-web`'s root layout reads. Femi9's storefront has no such
+surface, so `BrandConfig.launchPopup` is false there — the card is hidden AND
+the route refuses the field, the same pair `featuredSlots: 0` uses. Turning it
+on for Femi9 means building the component in that app first; the flag follows
+the storefront, it does not create it.
+
+**The upload route accepts GIF, and gives it 8MB.** Every other type stays at
+5MB. A promo animation is routinely 2-3MB where the same frame as a still is
+200KB, and that is the format working, not a careless original. The size check
+is two-stage on purpose: the largest allowance guards what is buffered into
+memory, and the per-type limit is applied only AFTER the magic-number sniff, so
+a caller cannot claim `.gif` to buy the bigger ceiling.
+
+**`/uploads` is out of `proxy.ts`'s matcher.** It has to be for the same reason
+`/api/health` is — the guard reads the first path segment as a brand and `uploads`
+is not one — and in DEV it is load-bearing: the upload route's disk branch writes
+under THIS app's `public/`, so the console is the only server that can hand a
+locally uploaded image back to a storefront. `apps/lumi9-web`'s `/uploads/*`
+rewrite points here in development for the same reason (it used to point at
+itself, where the file has never been). In production the bytes are in S3 and
+CloudFront already serves that prefix to anonymous visitors.
+
 **Product images are UPLOADED, never typed.** The product form's free-text
 "Image URL" rows are gone; both it and the blog cover field are upload buttons
 over `/<brand>/api/upload`, which sniffs the magic number (so a spoofed

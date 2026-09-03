@@ -59,3 +59,11 @@ out/
 # file holding a live Postgres password. One `git add -A` would have published
 # the credential.
 /env
+
+# Dev image uploads. `/<brand>/api/upload` falls back to writing under the
+# console's `public/uploads` when no S3 bucket is configured, so this directory
+# fills up with whatever anyone uploaded while testing locally — product photos,
+# blog covers, launch-popup GIFs. In production those bytes are in S3 and this
+# path holds nothing; committing them would pin megabytes of scratch artwork
+# into history for files no deployed image ever reads.
+/apps/*/public/uploads/

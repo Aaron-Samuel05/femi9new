@@ -1,6 +1,11 @@
 import "server-only";
 import { cache } from "react";
-import { getSettings } from "@femi9/core/services/settings";
+import {
+  getLaunchPopup,
+  getSettings,
+  isLaunchPopupLive,
+  type LaunchPopup,
+} from "@femi9/core/services/settings";
 
 /**
  * The console's business numbers, for the SENTENCES that quote them.
@@ -48,3 +53,24 @@ export const storefrontNumbers = cache(async () => {
 });
 
 export type StorefrontNumbers = Awaited<ReturnType<typeof storefrontNumbers>>;
+
+/**
+ * The console's launch popup, or `null` when there is nothing to show.
+ *
+ * Separate from `storefrontNumbers()` because it is a separate row and a
+ * separate question: the numbers are quoted by copy on many pages, while this
+ * is read once, by the root layout, for the whole site. Bundling them would put
+ * a second query behind every sentence that mentions free delivery.
+ *
+ * `isLaunchPopupLive` is what decides, not `enabled` alone - a popup switched on
+ * before its artwork was uploaded would otherwise be a full-screen modal with a
+ * broken image in it, on every visitor's first page. The narrowed return type is
+ * that guarantee carried through to the caller: a layout that gets a popup back
+ * has an `imageUrl`, and needs no assertion to say so.
+ */
+export const launchPopup = cache(
+  async (): Promise<(LaunchPopup & { imageUrl: string }) | null> => {
+    const popup = await getLaunchPopup("lumi9");
+    return isLaunchPopupLive(popup) ? popup : null;
+  },
+);

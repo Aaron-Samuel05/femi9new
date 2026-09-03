@@ -8,7 +8,9 @@ import { CartUIProvider } from "@/lib/cart-ui";
 import { CartQuoteProvider } from "@/lib/quote";
 import { SessionProvider } from "@/lib/auth-context";
 import { CartDrawer } from "@/components/cart/CartDrawer";
+import { LaunchPopup } from "@/components/site/LaunchPopup";
 import { Toast } from "@/components/ui/Toast";
+import { launchPopup } from "@/lib/settings.server";
 import {
   DEFAULT_OG_IMAGE,
   IS_CANONICAL_HOST,
@@ -177,7 +179,9 @@ export const dynamic = "force-dynamic";
  * comes from that single query rather than from a hardcoded module.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const catalog = await loadCatalog();
+  // Both reads are per-request and independent, so they go together rather than
+  // adding the popup's query to the end of the catalogue's.
+  const [catalog, popup] = await Promise.all([loadCatalog(), launchPopup()]);
 
   return (
     // data-scroll-behavior keeps route changes instant while in-page anchors stay smooth
@@ -210,6 +214,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {children}
                   <CartDrawer />
                   <Toast />
+                  {/* The launch offer. Rendered only when the console has one
+                      switched on WITH artwork, so the component is absent from
+                      the tree entirely the rest of the time - not mounted and
+                      returning null. Sibling of the drawer and the toast
+                      because it is chrome, not a page. */}
+                  {popup && (
+                    <LaunchPopup
+                      imageUrl={popup.imageUrl}
+                      alt={popup.alt}
+                      seconds={popup.seconds}
+                    />
+                  )}
                 </CartQuoteProvider>
               </CartProvider>
             </CartUIProvider>

@@ -29,6 +29,22 @@ export const dynamic = 'force-dynamic'
 // full-resolution originals before we buffer them into memory.
 const MAX_BYTES = 5 * 1024 * 1024
 
+/**
+ * GIFs get a higher ceiling, because a GIF carries every frame.
+ *
+ * The launch popup's artwork is an animation: a few seconds of a promo loop is
+ * routinely 2-3MB where the same picture as a still is 200KB, and that is the
+ * format doing its job, not an admin uploading a careless original. Capping it
+ * at the photo limit would reject the one asset this format exists for.
+ */
+const MAX_GIF_BYTES = 8 * 1024 * 1024
+
+/** The cap for a verified type. Checked AFTER the sniff, so the extension a
+ *  caller claims cannot buy it the larger allowance. */
+function maxBytesFor(ext: 'png' | 'jpg' | 'webp' | 'gif'): number {
+  return ext === 'gif' ? MAX_GIF_BYTES : MAX_BYTES
+}
+
 export async function POST(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
   const auth = await requireConsoleApi((await params).brand, 'support')
   if (!auth.ok) return auth.response
@@ -41,7 +57,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
     // A missing field, or a text field masquerading as `file`, is a bad request.
     if (!(file instanceof File)) return badRequest('No file uploaded')
     if (file.size === 0) return badRequest('The uploaded file is empty')
-    if (file.size > MAX_BYTES) return badRequest('Image is too large (max 5MB)')
+    // Two-stage size check. This one is the memory guard: it uses the LARGEST
+    // allowance any type has, so nothing bigger than that is ever buffered. The
+    // per-type limit is applied below, once the sniff has said what this
+    // actually is — a client-declared `.gif` must not raise its own ceiling.
+    if (file.size > MAX_GIF_BYTES) return badRequest('Image is too large (max 8MB)')
 
     const bytes = Buffer.from(await file.arrayBuffer())
 
@@ -51,7 +71,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ bra
     // Sniff the magic number to confirm a genuine raster image; this rejects
     // SVG and HTML (and anything else) outright.
     const sniffed = sniffImageType(bytes)
-    if (!sniffed) return badRequest('Only PNG, JPEG, or WebP images are allowed')
+    if (!sniffed) return badRequest('Only GIF, PNG, JPEG, or WebP images are allowed')
+
+    const limit = maxBytesFor(sniffed.ext)
+    if (bytes.length > limit) {
+      return badRequest(`Image is too large (max ${Math.round(limit / (1024 * 1024))}MB)`)
+    }
 
     // Extension comes SOLELY from the verified type — never from file.name.
     const safeName = safeFileName(file.name, sniffed.ext)
@@ -176,8 +201,14 @@ async function uploadToCloudinary(bytes: Buffer, safeName: string, contentType: 
  *   PNG : 89 50 4E 47
  *   JPEG: FF D8 FF
  *   WebP: 52 49 46 46 ("RIFF") .... 57 45 42 50 ("WEBP") at offset 8
+ *   GIF : 47 49 46 38 ("GIF8") + 37|39 + 61 — i.e. "GIF87a" or "GIF89a"
+ *
+ * GIF is allowed for the launch popup's animated artwork. It is a raster format
+ * like the other three — it cannot carry script, and the browser decodes it as
+ * an image regardless of what it is served as — so admitting it does not widen
+ * the stored-XSS surface this function exists to close.
  */
-function sniffImageType(bytes: Buffer): { ext: 'png' | 'jpg' | 'webp'; mime: string } | null {
+function sniffImageType(bytes: Buffer): { ext: 'png' | 'jpg' | 'webp' | 'gif'; mime: string } | null {
   if (
     bytes.length >= 4 &&
     bytes[0] === 0x89 &&
@@ -203,6 +234,17 @@ function sniffImageType(bytes: Buffer): { ext: 'png' | 'jpg' | 'webp'; mime: str
   ) {
     return { ext: 'webp', mime: 'image/webp' }
   }
+  if (
+    bytes.length >= 6 &&
+    bytes[0] === 0x47 &&
+    bytes[1] === 0x49 &&
+    bytes[2] === 0x46 &&
+    bytes[3] === 0x38 &&
+    (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+    bytes[5] === 0x61
+  ) {
+    return { ext: 'gif', mime: 'image/gif' }
+  }
   return null
 }
 
@@ -211,7 +253,7 @@ function sniffImageType(bytes: Buffer): { ext: 'png' | 'jpg' | 'webp'; mime: str
  *  odd filename can't traverse directories or blow up the path, then append the
  *  verified extension — which comes SOLELY from the sniffed type, never the
  *  client filename. */
-function safeFileName(name: string, ext: 'png' | 'jpg' | 'webp'): string {
+function safeFileName(name: string, ext: 'png' | 'jpg' | 'webp' | 'gif'): string {
   const base =
     (name.split(/[\\/]/).pop() || 'image')
       .replace(/\.[^.]*$/, '') // drop the client-supplied extension entirely
