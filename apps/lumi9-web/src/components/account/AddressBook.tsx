@@ -207,12 +207,16 @@ export function AddressBook({ addresses }: { addresses: AccountAddress[] }) {
                 disabled={busy}
               />
             </Field>
+            {/* Both required, matching the schema and matching checkout. They
+                were the only two address boxes here that were not — and they
+                are the two a courier cannot do without. */}
             <Field label="State" error={fieldErrors.state?.[0]}>
               <input
                 className="field"
                 autoComplete="address-level1"
                 value={draft.state}
                 onChange={(e) => set("state", e.target.value)}
+                required
                 disabled={busy}
               />
             </Field>
@@ -224,6 +228,7 @@ export function AddressBook({ addresses }: { addresses: AccountAddress[] }) {
                 maxLength={6}
                 value={draft.pincode}
                 onChange={(e) => set("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                required
                 disabled={busy}
               />
             </Field>

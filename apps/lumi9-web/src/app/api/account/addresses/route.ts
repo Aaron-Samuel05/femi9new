@@ -20,18 +20,22 @@ export const dynamic = "force-dynamic";
  * showing one generic sentence. `label` carries the shopper's own choice -
  * Home / Work / Other, or free text - not a hardcoded one.
  */
+/*
+ * A saved address is a DELIVERABLE address.
+ *
+ * `state` and `pincode` were optional here and blank was explicitly allowed
+ * (`.or(z.literal(""))`). That address book is what prefills checkout, and
+ * checkout now requires both — so a half-saved card would fill the form with a
+ * gap the shopper has to notice and fix at the moment she is trying to pay,
+ * having already "saved" the address once. One rule, in both places.
+ */
 const AddressSchema = z.object({
   label: z.string().trim().min(1, "Give this address a label").max(40),
   name: z.string().trim().min(2, "Enter the recipient name").max(120),
   line: z.string().trim().min(3, "Enter the flat, street and area").max(300),
   city: z.string().trim().min(2, "Enter the city").max(120),
-  state: z.string().trim().max(120).optional().default(""),
-  pincode: z
-    .string()
-    .trim()
-    .regex(/^\d{6}$/, "Enter a 6-digit pincode")
-    .optional()
-    .or(z.literal("")),
+  state: z.string().trim().min(2, "Enter the state").max(120),
+  pincode: z.string().trim().regex(/^\d{6}$/, "Enter a 6-digit pincode"),
   phone: z
     .string()
     .trim()
