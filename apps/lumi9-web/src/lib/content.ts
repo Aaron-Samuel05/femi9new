@@ -6,7 +6,16 @@
 import type { IconName } from "@/components/ui/Icon";
 // `catalog.ts` imports nothing, so this cannot cycle. `inr` is here so a rupee
 // amount in copy is formatted the one way the rest of the site formats one.
-import { inr } from "@/lib/catalog";
+//
+// Relative, not `@/` - `seed.ts` pulls this file in (for PDP_ACCORDION) with a
+// plain `../src/lib/content` import, and runs as a one-off ECS task from an
+// image that ships `prisma/` and `src/lib/` but no `tsconfig.json` (see the
+// Dockerfile's own note on why nothing under here gets relocated). An alias
+// import resolves fine inside Next's bundler and fails outside it with
+// "Cannot find module '@/lib/catalog'" - which is silent until someone runs
+// the seed task, by which point the image has already deployed and gone
+// healthy.
+import { inr } from "./catalog";
 
 export const BRAND = {
   tagline: "Happy day, every day - for every baby, in every home.",
