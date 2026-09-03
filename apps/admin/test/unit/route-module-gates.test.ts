@@ -79,6 +79,7 @@ const API_MODULE: Record<string, AdminModule | null> = {
   products: 'catalog',
   reviews: 'reviews',
   settings: 'settings',
+  subscriptions: 'subscriptions',
   thara: 'thara',
   wall: 'community',
   // Not a module of its own: the image uploader serves the product form and the

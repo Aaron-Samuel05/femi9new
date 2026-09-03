@@ -38,7 +38,9 @@ import { resolvePlanId } from './subscription-plans'
  *                                     instead of silently stopping.
  *
  * Ownership: every customer-facing mutation is scoped by { id, userId }, so one
- * shopper can never touch another's plan.
+ * shopper can never touch another's plan. `adminCancel` is the one exception —
+ * the console's cancel button, scoped by brand alone because the caller is not
+ * a customer.
  */
 
 // Flat courier fee below the free-shipping threshold. Mirrors checkout.SHIPPING_FEE
@@ -409,6 +411,15 @@ async function ownedView(brand: Brand, id: string, userId: string): Promise<Subs
   return sub ? toView(sub) : null
 }
 
+/** Same read, without the ownership scope — for the console, which is not the
+ *  customer and has no `userId` to filter by. Brand isolation (`dbFor(brand)`)
+ *  is what stands in its place. */
+async function viewById(brand: Brand, id: string): Promise<SubscriptionView | null> {
+  const prisma = dbFor(brand)
+  const sub = await prisma.subscription.findFirst({ where: { id }, include: subInclude })
+  return sub ? toView(sub) : null
+}
+
 /**
  * Re-open the authorisation sheet for a plan whose mandate was never completed.
  *
@@ -537,18 +548,50 @@ export async function syncGatewayStatus(
 }
 
 /**
- * Flip status, ownership-scoped, and tell the gateway.
+ * Flip status and tell the gateway. The shared core of every mutation below,
+ * including the console's — `where` is the ownership guard for a customer
+ * ({ id, userId }) or the brand-only scope for admin ({ id }), and it is used
+ * for BOTH the lookup and the update, so nothing between them can drift.
  *
  * The gateway call goes FIRST and a failure aborts: a local row that says
  * "paused" over a mandate that is still debiting is the worst of the available
- * wrong answers, because the customer sees the state she asked for and is
- * charged anyway. Better to fail the request and let her retry.
+ * wrong answers, because whoever asked for the change sees the state they
+ * wanted and the customer is charged anyway. Better to fail the request and
+ * let it be retried.
  *
- * updateMany's `where: { id, userId }` is the ownership guard (count 0 ⇒ not the
- * owner or gone ⇒ null ⇒ 404 at the route) so we never leak the existence of
- * another user's subscription — and it is checked BEFORE the gateway call, so a
- * request for someone else's plan cannot reach Razorpay at all.
+ * `updateMany`'s `where` is checked BEFORE the gateway call (count 0 ⇒ not
+ * found under this scope ⇒ null) so a request for a subscription outside it —
+ * someone else's plan, from a customer route — cannot reach Razorpay at all,
+ * and a caller can never learn whether an out-of-scope id exists.
  */
+async function applyStatus(
+  brand: Brand,
+  where: Prisma.SubscriptionWhereInput,
+  status: SubscriptionStatus,
+  gatewayCall: (razorpaySubscriptionId: string) => Promise<unknown>,
+  extra: Prisma.SubscriptionUpdateManyMutationInput = {},
+): Promise<boolean> {
+  const prisma = dbFor(brand)
+  const sub = await prisma.subscription.findFirst({ where })
+  if (!sub) return false
+
+  // Pausing, resuming or skipping a mandate the customer's bank never approved
+  // is meaningless, and asking Razorpay to do it fails with a gateway error that
+  // reads like an outage. The storefront hides these controls on such a plan;
+  // this is the guard that does not depend on the storefront being right.
+  // Cancelling is the exception — abandoning an unauthorised plan must work.
+  if (sub.razorpaySubscriptionId && !sub.mandateAuthedAt && status !== 'cancelled') {
+    return false
+  }
+
+  if (sub.razorpaySubscriptionId) {
+    await gatewayCall(sub.razorpaySubscriptionId)
+  }
+
+  const res = await prisma.subscription.updateMany({ where, data: { status, ...extra } })
+  return res.count > 0
+}
+
 async function setStatus(
   brand: Brand,
   id: string,
@@ -557,28 +600,8 @@ async function setStatus(
   gatewayCall: (razorpaySubscriptionId: string) => Promise<unknown>,
   extra: Prisma.SubscriptionUpdateManyMutationInput = {},
 ): Promise<SubscriptionView | null> {
-  const prisma = dbFor(brand)
-  const sub = await prisma.subscription.findFirst({ where: { id, userId } })
-  if (!sub) return null
-
-  // Pausing, resuming or skipping a mandate the customer's bank never approved
-  // is meaningless, and asking Razorpay to do it fails with a gateway error that
-  // reads like an outage. The storefront hides these controls on such a plan;
-  // this is the guard that does not depend on the storefront being right.
-  // Cancelling is the exception — abandoning an unauthorised plan must work.
-  if (sub.razorpaySubscriptionId && !sub.mandateAuthedAt && status !== 'cancelled') {
-    return null
-  }
-
-  if (sub.razorpaySubscriptionId) {
-    await gatewayCall(sub.razorpaySubscriptionId)
-  }
-
-  const res = await prisma.subscription.updateMany({
-    where: { id, userId },
-    data: { status, ...extra },
-  })
-  if (res.count === 0) return null
+  const applied = await applyStatus(brand, { id, userId }, status, gatewayCall, extra)
+  if (!applied) return null
   return ownedView(brand, id, userId)
 }
 
@@ -605,6 +628,33 @@ export function cancel(brand: Brand, id: string, userId: string): Promise<Subscr
     (rzpId) => razorpay.cancelSubscription(brand, rzpId, false),
     { resumeAt: null },
   )
+}
+
+/**
+ * Cancel a subscription from the CONSOLE — the one mutation in this file that
+ * is not scoped to a customer's own `userId`, because the caller is not the
+ * customer. Ops reaches for this when she rang support instead of using her
+ * account page, when a mandate is stuck in a state the storefront's own
+ * cancel button cannot reach, or when continuing to bill her is the wrong
+ * outcome regardless of what anyone asked for.
+ *
+ * Scoped by `{ id }` under `dbFor(brand)` — brand isolation is what replaces
+ * the ownership check; there is no second user to guard against here. Same
+ * gateway-first ordering and the same pending-mandate exception as the
+ * customer path (`cancel`, above), because the failure mode is identical: a
+ * local row that says cancelled over a mandate still live at Razorpay is the
+ * worst available wrong answer, whoever asked for it.
+ */
+export async function adminCancel(brand: Brand, id: string): Promise<SubscriptionView | null> {
+  const applied = await applyStatus(
+    brand,
+    { id },
+    'cancelled',
+    (rzpId) => razorpay.cancelSubscription(brand, rzpId, false),
+    { resumeAt: null },
+  )
+  if (!applied) return null
+  return viewById(brand, id)
 }
 
 /**

@@ -1,7 +1,12 @@
 import { requireConsole } from '@/lib/guard'
 import Link from 'next/link'
 import type { SubscriptionStatus } from '@prisma/client'
-import { listSubscriptions, SUBSCRIPTION_STATUSES } from '@femi9/core/services/admin/subscriptions'
+import {
+  ADMIN_CANCELLABLE_STATUSES,
+  listSubscriptions,
+  SUBSCRIPTION_STATUSES,
+} from '@femi9/core/services/admin/subscriptions'
+import { CancelButton } from './_cancel-button'
 
 /**
  * Subscriptions list — async server component. Reads the status filter straight
@@ -103,6 +108,7 @@ export default async function SubscriptionsPage(props: {
                 <th>Auto-pay</th>
                 <th>Next delivery</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -139,6 +145,9 @@ export default async function SubscriptionsPage(props: {
                     <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>
                       {STATUS_LABEL[r.status]}
                     </span>
+                  </td>
+                  <td>
+                    {ADMIN_CANCELLABLE_STATUSES.includes(r.status) && <CancelButton id={r.id} />}
                   </td>
                 </tr>
               ))}

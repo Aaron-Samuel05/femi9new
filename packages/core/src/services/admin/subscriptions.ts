@@ -1,14 +1,21 @@
 import 'server-only'
 import type { Prisma, SubscriptionStatus } from '@prisma/client'
 import { dbFor, type Brand } from '@femi9/db'
+import { adminCancel } from '../subscriptions'
 
 /**
- * Admin subscriptions service — the read side for the Ops console's subscription
- * table. One list read, shaped for the table (customer + product + cadence +
- * next-delivery), with an optional status filter for the chips.
+ * Admin subscriptions service — mostly the read side for the Ops console's
+ * subscription table: one list read, shaped for the table (customer + product
+ * + cadence + next-delivery), with an optional status filter for the chips.
  *
- * Read-only on purpose: subscription state is owned by the customer (pause / skip
- * / cancel via services/subscriptions.ts). Ops only observes the plans here.
+ * Subscription state is normally owned by the customer — pause / resume / skip
+ * are hers alone, via `services/subscriptions.ts`, and this module has no write
+ * for any of them. `cancelSubscription` below is the one exception: a plan a
+ * customer no longer wants can be stopped from here when she called support
+ * instead of using her account page, or when the mandate needs stopping
+ * regardless of who asks. It wraps `adminCancel`, the ONE mutation in the
+ * shared service that is not scoped to a customer's `userId` — see the note
+ * there for why the gateway call still comes first.
  */
 
 // Source of truth for the filter chips + the filter guard. Matches the
@@ -92,4 +99,28 @@ export async function listSubscriptions(brand: Brand, {
   } catch {
     return []
   }
+}
+
+/** True when `s` is one of the three statuses a plan can be cancelled FROM.
+ *  `cancelled` itself and `pending_mandate` — never authorised, nothing to
+ *  stop — are excluded so the console never offers a cancel that would do
+ *  nothing (the gateway has no cancel-a-`created`-subscription call this
+ *  reaches for) or that is already done. */
+export const ADMIN_CANCELLABLE_STATUSES: readonly SubscriptionStatus[] = ['active', 'paused', 'halted']
+
+/**
+ * Cancel one subscription, brand-scoped, from the console.
+ *
+ * Returns `null` when the id does not resolve under this brand — the route
+ * turns that into a 404, the same "not found" a customer's own cancel gives
+ * for an id that is not hers, so this cannot be used to probe for a
+ * subscription's existence either.
+ */
+export async function cancelSubscription(
+  brand: Brand,
+  id: string,
+): Promise<{ id: string; status: SubscriptionStatus } | null> {
+  const view = await adminCancel(brand, id)
+  if (!view) return null
+  return { id: view.id, status: view.status }
 }
