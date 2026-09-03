@@ -492,6 +492,47 @@ self-contained path.
 
 ## Things that will bite
 
+**⚠️ `sites` IS EMPTY, AND TWO HOSTNAMES ARE LIVE ANYWAY. DO NOT APPLY.**
+
+`var.sites` is unset in `terraform.tfvars`, so `local.effective_sites`
+synthesises one hostname-less distribution per app — `femi9`, `lumi9`, `admin`.
+That is not what is actually deployed. Two aliases were attached BY HAND, with
+certificates Terraform does not reference:
+
+| hostname | distribution | certificate (us-east-1) |
+| --- | --- | --- |
+| `lumi9.in` | `E3ST477DCXAFZQ` (`d3tv5g08ctpfsr`) | `…/b97b2d73-81d3-4ef9-b93a-fe0197e3414c` |
+| `admin.lumi9.in` | `E53RBDF6MG5GA` (`d2fu2vyhblxkim`) | `…/fa84c88e-c92c-4297-ac97-9390329472f4` |
+
+Both were attached with `sni-only`. The default configuration of a
+hostname-less distribution carries `SSLSupportMethod: "vip"`, which is inert
+while `CloudFrontDefaultCertificate` is true and therefore easy to copy forward
+by accident — but under a CUSTOM certificate `vip` provisions dedicated IP
+addresses at roughly $600 a month, per distribution, for a feature no browser
+has needed in a decade. Anything that re-attaches these certificates by hand
+must set `sni-only` explicitly; the bill is the only place the mistake shows up.
+
+An apply from this configuration therefore REMOVES both aliases and reverts both
+distributions to the default CloudFront certificate. The storefront and the
+console both go dark at the same moment, the apply reports success, and nothing
+on any dashboard looks wrong — CloudFront serves a certificate mismatch to the
+viewer, not an error to us.
+
+The permanent fix is to declare all four hostnames in `sites` so the config
+converges on reality instead of erasing it. Note before attempting it that
+changing the map's KEYS changes what `for_each` manages: `admin` disappearing in
+favour of `admin_femi9` / `admin_lumi9` DESTROYS `E53RBDF6MG5GA` and creates two
+new distributions on new `*.cloudfront.net` names, so the console's DNS has to be
+repointed in the same window. `femi9` and `lumi9` keep their keys and are updated
+in place, which is what lets `lumi9.in` converge without an outage. `sites` also
+validates that both storefronts appear once any site is declared, so a Femi9
+storefront hostname and its certificate are a prerequisite, not an afterthought.
+
+DNS for `lumi9.in` is on **Cloudflare**, not Route53. Both records are CNAMEs in
+that dashboard and both must be **DNS only** — proxying in front of CloudFront
+breaks the certificate chain and hides the `CloudFront-Viewer-Address` every
+per-IP rate limit on the platform keys on.
+
 **Certificates are per site, and always us-east-1.** Each entry in `sites` has
 its own `certificate_arn`, and it must be in **us-east-1** whatever
 `aws_region` says — CloudFront reads certificates from there and nowhere else.
