@@ -27,6 +27,17 @@ const ORDER_STATUSES = [
 ] as const
 type OrderStatus = (typeof ORDER_STATUSES)[number]
 
+/**
+ * Statuses where a change of address can still reach the parcel.
+ *
+ * Retyped rather than imported from `ADDRESS_EDITABLE_STATUSES`, because that
+ * constant lives in a `server-only` module and importing the VALUE here would
+ * pull the service — and its Prisma client — into a client bundle. The server
+ * is what enforces it; this only keeps the card from claiming an order is
+ * editable when the service would refuse.
+ */
+const EDITABLE_STATUSES: string[] = ['pending', 'paid', 'processing']
+
 const STATUS_BADGE: Record<OrderStatus, string> = {
   pending: 'adm-badge--gray',
   paid: 'adm-badge--plum',
@@ -69,6 +80,14 @@ interface OrderDetail {
     phone: string | null
   } | null
   items: OrderLine[]
+  /** The customer's one-time address correction. `open` folds in the status
+   *  check, so a grant on a shipped order reads as not open. */
+  addressEdit: {
+    grantedAt: string | null
+    grantedBy: string | null
+    usedAt: string | null
+    open: boolean
+  }
 }
 
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN')
@@ -187,6 +206,13 @@ export default function OrderDetailPage(props: { params: Promise<{ id: string }>
           ) : (
             <div className="adm-cell-muted">No shipping address on file</div>
           )}
+
+          <AddressEditControl
+            orderId={order.id}
+            status={order.status}
+            state={order.addressEdit}
+            onChanged={(addressEdit) => setOrder((o) => (o ? { ...o, addressEdit } : o))}
+          />
         </div>
 
         <StatusControl
@@ -391,6 +417,116 @@ function StatusControl({
           Status updated
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * Open or close the customer's ONE-TIME address correction.
+ *
+ * Support's side of `services/order-address.ts`. It lives under Shipping rather
+ * than beside the status dropdown deliberately: it is a fact about the ADDRESS,
+ * and the person reaching for it is looking at the address that is wrong.
+ *
+ * Three states are worth telling apart on a call, which is why the copy is not
+ * just an on/off label:
+ *  - never granted     → the normal state; offer to open it.
+ *  - granted, unused   → she can change it now; say who opened it, and offer to
+ *                        close it again in case it was opened by mistake.
+ *  - already used      → she has had her one change. Opening it again is a
+ *                        deliberate second grant, and the button says so.
+ *
+ * `state.open` already folds in the order status, so a grant left on an order
+ * that has since shipped reports as not actionable rather than as available —
+ * the service refuses it either way, and support should not promise it.
+ */
+function AddressEditControl({
+  orderId,
+  status,
+  state,
+  onChanged,
+}: {
+  orderId: string
+  status: OrderStatus
+  state: OrderDetail['addressEdit']
+  onChanged: (next: OrderDetail['addressEdit']) => void
+}) {
+  const { brand } = useParams<{ brand: string }>()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const granted = state.grantedAt !== null
+  const used = state.usedAt !== null
+  // Granted and unspent, but the parcel has gone. Naming this separately is the
+  // difference between support saying "it's open" and "it's too late".
+  const staleGrant = granted && !used && !state.open
+
+  async function set(next: boolean) {
+    if (busy) return
+    if (next && used && !confirm('She has already used her one change. Open a second one?')) return
+    setBusy(true)
+    setError(null)
+    try {
+      const res = await fetch(`/${brand}/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'address-edit', granted: next }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error ?? 'Could not change that.')
+      }
+      const body = (await res.json()) as { grantedAt: string | null; usedAt: string | null }
+      onChanged({
+        grantedAt: body.grantedAt,
+        grantedBy: next ? state.grantedBy : null,
+        usedAt: body.usedAt,
+        // Recomputed the same way the server does, so the card does not claim
+        // an order that has shipped is editable.
+        open: body.grantedAt !== null && body.usedAt === null && EDITABLE_STATUSES.includes(status),
+      })
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div style={{ marginTop: 16, borderTop: '1px solid rgba(52,32,78,.1)', paddingTop: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 13 }}>Customer address change</strong>
+        {state.open && <span className="adm-badge adm-badge--green">open</span>}
+        {used && <span className="adm-badge adm-badge--gray">used</span>}
+        {staleGrant && <span className="adm-badge adm-badge--amber">too late</span>}
+      </div>
+
+      <p className="adm-help" style={{ margin: '6px 0 10px' }}>
+        {used
+          ? `She changed the address herself${state.usedAt ? ' on ' + fmtDateTime(state.usedAt) : ''}. One change per grant — open another only if she has asked again.`
+          : state.open
+            ? `She can change the delivery address once, from her order page${state.grantedBy ? ' — opened by ' + state.grantedBy : ''}.`
+            : staleGrant
+              ? `This order is ${status}, so the address can no longer be changed even though a change was opened. The parcel has already gone.`
+              : 'Closed. Open it and she can correct the delivery address once, from her own order page — no need to read it out over the phone.'}
+      </p>
+
+      <button
+        type="button"
+        className={`adm-btn adm-btn--sm ${state.open ? 'adm-btn--secondary' : 'adm-btn--primary'}`}
+        onClick={() => set(!granted)}
+        disabled={busy}
+      >
+        {busy
+          ? 'Saving…'
+          : granted
+            ? 'Close address change'
+            : used
+              ? 'Open another change'
+              : 'Allow one address change'}
+      </button>
+
+      {error && <span className="adm-error" style={{ display: 'block', marginTop: 8 }}>{error}</span>}
     </div>
   )
 }

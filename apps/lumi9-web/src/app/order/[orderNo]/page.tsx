@@ -12,6 +12,8 @@ import { inr } from "@/lib/catalog";
 import { presentStatus } from "@/lib/order-status";
 import { RetryPayment } from "@/components/checkout/RetryPayment";
 import { ReorderButton } from "./ReorderButton";
+import { EditAddress } from "./EditAddress";
+import { getOrderAddressEditState } from "@femi9/core/services/order-address";
 
 // Reflects live order state (a status moves from paid to shipped without any
 // deploy), so it renders per request.
@@ -64,19 +66,34 @@ export default async function OrderPage(props: {
   const rawToken = searchParams?.t;
   const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   let authorized = verifyOrderToken(orderNo, token);
-  let signedIn = false;
-  if (!authorized) {
-    const session = await getSession("lumi9");
-    if (session) {
-      signedIn = true;
-      const owned = await dbFor("lumi9").order.findFirst({
-        where: { orderNo, userId: session.sub },
-        select: { id: true },
-      });
-      authorized = owned !== null;
-    }
+  // Hoisted, because the address correction below needs the customer's id and
+  // resolving the session twice in one render is two cookie reads and two
+  // verifications for one answer.
+  const session = await getSession("lumi9");
+  const signedIn = session !== null;
+  if (!authorized && session) {
+    const owned = await dbFor("lumi9").order.findFirst({
+      where: { orderNo, userId: session.sub },
+      select: { id: true },
+    });
+    authorized = owned !== null;
   }
   if (!authorized) notFound();
+
+  /*
+   * The one-time address correction, if support has opened one.
+   *
+   * Requires a SESSION, not the `?t=` capability token that also authorises
+   * this page: reading an order from a forwarded link is harmless, but writing
+   * a new delivery address from one is not. So this reads the SESSION, and a
+   * token holder who is also signed in still has to own the order —
+   * `getOrderAddressEditState` scopes its query by `userId`, so an order
+   * reached with a forwarded link but belonging to somebody else comes back
+   * null and no edit control renders.
+   */
+  const addressEdit = session
+    ? await getOrderAddressEditState("lumi9", orderNo, session.sub)
+    : null;
 
   const view = presentStatus(order.status);
   const placed = order.placedAt.toLocaleDateString("en-IN", {
@@ -221,6 +238,20 @@ export default async function OrderPage(props: {
               <p className="m-0 text-sm text-muted">
                 No delivery address is attached to this order.
               </p>
+            )}
+
+            {addressEdit?.open && (
+              <EditAddress
+                orderNo={order.orderNo}
+                current={{
+                  name: order.address?.name ?? "",
+                  line: order.address?.line ?? "",
+                  city: order.address?.city ?? "",
+                  state: order.address?.state ?? "",
+                  pincode: order.address?.pincode ?? "",
+                  phone: order.address?.phone ?? "",
+                }}
+              />
             )}
 
             <p className="mt-6 mb-0 flex items-start gap-2 text-[13px] leading-[1.55] text-muted">

@@ -9,6 +9,7 @@ import {
   reverseTharaPointsForRefund,
 } from '../thara'
 import { reverseOrderCommission } from '../affiliate'
+import { addressEditState } from '../order-address'
 
 /**
  * Admin orders service — the single seam between the DB and the Ops console's
@@ -188,6 +189,21 @@ export interface OrderDetail {
   customer: OrderCustomer | null
   address: OrderAddress | null
   items: OrderLine[]
+  /**
+   * The one-time address correction — see `services/order-address.ts`.
+   *
+   * Surfaced here because support is the only party who can open it, and they
+   * decide from this screen. `usedAt` is as important as `grantedAt`: without
+   * it the console cannot tell "she has not got round to it" from "she has
+   * already changed it once", and those want opposite answers on a call.
+   */
+  addressEdit: {
+    grantedAt: Date | null
+    grantedBy: string | null
+    usedAt: Date | null
+    /** Whether the customer can act on it right now, status included. */
+    open: boolean
+  }
 }
 
 /** Full order — items (purchase-time snapshots), customer and shipping. */
@@ -231,6 +247,12 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
             phone: r.address.phone,
           }
         : null,
+      addressEdit: {
+        grantedAt: r.addressEditGrantedAt,
+        grantedBy: r.addressEditGrantedBy,
+        usedAt: r.addressEditUsedAt,
+        open: addressEditState(r).open,
+      },
       items: r.items.map((it) => ({
         id: it.id,
         productName: it.productName,
@@ -544,4 +566,47 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     console.warn(`[refund] ${order.orderNo}: books were already reversed by a concurrent refund.`)
   }
   return getOrder(brand, id)
+}
+
+/**
+ * Open or close the one-time address correction on a single order.
+ *
+ * Granting CLEARS `addressEditUsedAt`. That is deliberate and is the only way
+ * a second correction is possible: the customer gets one save per grant, and
+ * support consciously giving her another is a different thing from her having
+ * an open-ended right to edit. Revoking leaves `usedAt` alone, because it is
+ * history — whether she already changed the address once stays true after the
+ * window is shut.
+ *
+ * `grantedBy` records which admin opened it. It is the admin's email as free
+ * text, not a relation: admin identity lives in the `platform` schema, which a
+ * brand's Prisma client cannot reach, so a foreign key is not expressible.
+ *
+ * Returns null when no such order exists, so the route answers 404 rather than
+ * reporting success for an order it never touched.
+ */
+export async function setOrderAddressEditGrant(
+  brand: Brand,
+  id: string,
+  granted: boolean,
+  grantedBy: string,
+): Promise<{ orderNo: string; grantedAt: Date | null; usedAt: Date | null } | null> {
+  const prisma = dbFor(brand)
+  try {
+    const updated = await prisma.order.update({
+      where: { id },
+      data: granted
+        ? { addressEditGrantedAt: new Date(), addressEditGrantedBy: grantedBy, addressEditUsedAt: null }
+        : { addressEditGrantedAt: null, addressEditGrantedBy: null },
+      select: { orderNo: true, addressEditGrantedAt: true, addressEditUsedAt: true },
+    })
+    return {
+      orderNo: updated.orderNo,
+      grantedAt: updated.addressEditGrantedAt,
+      usedAt: updated.addressEditUsedAt,
+    }
+  } catch {
+    // Prisma throws P2025 for a missing row; the caller only needs "not found".
+    return null
+  }
 }
