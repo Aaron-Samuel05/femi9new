@@ -229,6 +229,15 @@ model ProductVariant {
   stock  Int     @default(0)
   active Boolean @default(true)
 
+  /// Shipping weight of ONE pack, in kilograms — what `shippingForWeight()`
+  /// (services/checkout.ts) sums against cart quantity to price a courier.
+  ///
+  /// Nullable for the same reason `mrp` is: a row from a brand or a seed that
+  /// predates this column has no weight, and `shippingFor` reads that as "no
+  /// weight data for this cart" and falls back to the flat `SHIPPING_FEE`
+  /// rather than pricing a partially-known basket at a wrong slab.
+  weightKg Float?
+
   cartItems     CartItem[]
   orderItems    OrderItem[]
   subscriptions Subscription[]

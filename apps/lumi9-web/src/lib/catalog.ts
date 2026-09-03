@@ -60,7 +60,7 @@ export const SIZES: ProductSize[] = [
     packs: [
       { count: 3, price: 49, shipWeight: 0.04 },
       { count: 24, price: 349, shipWeight: 0.4 },
-      { count: 54, price: 749, shipWeight: 0.9 },
+      { count: 54, price: 749, shipWeight: 0.7 },
     ],
   },
   {

@@ -41,6 +41,12 @@ export interface CartDTO {
   subtotal: number
   /** Subtotal at standard prices; equals `subtotal` when no zone discount applies. */
   baseSubtotal: number
+  /** Sum of `ProductVariant.weightKg * qty` across every line — what
+   *  `shippingFor()` prices a courier slab from. Null when ANY line's variant
+   *  has no weight recorded, rather than silently treating it as weightless:
+   *  a cart mixing a weighed and an unweighed product has no honest total, and
+   *  `shippingFor` reads null as "fall back to the flat fee" for that reason. */
+  totalWeightKg: number | null
   count: number
   /** The zone these prices were computed at, for an honest line in the summary.
    *  Present only when the zone actually moved a price. `custom` is true when at
@@ -55,6 +61,7 @@ export const EMPTY_CART: CartDTO = {
   items: [],
   subtotal: 0,
   baseSubtotal: 0,
+  totalWeightKg: 0,
   count: 0,
   zone: null,
 }
@@ -130,10 +137,17 @@ export async function getCart(brand: Brand, token: string, zone?: ResolvedZone |
   const subtotal = items.reduce((sum, i) => sum + i.lineTotal, 0)
   const baseSubtotal = items.reduce((sum, i) => sum + i.baseUnitPrice * i.qty, 0)
   const count = items.reduce((sum, i) => sum + i.qty, 0)
+  // Every line needs a recorded weight for the total to mean anything — see
+  // the field's own doc comment on why a partial total is worse than none.
+  const everyLineWeighed = cart.items.every((item) => item.variant.weightKg !== null)
+  const totalWeightKg = everyLineWeighed
+    ? cart.items.reduce((sum, item) => sum + (item.variant.weightKg ?? 0) * item.qty, 0)
+    : null
   return {
     items,
     subtotal,
     baseSubtotal,
+    totalWeightKg,
     count,
     // Only worth surfacing when it actually moved the price. Tested against the
     // totals, not against `discountPct`: a zone can move a price with a custom

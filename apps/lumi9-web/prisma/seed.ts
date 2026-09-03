@@ -131,6 +131,9 @@ async function main() {
         price: pack.price,
         mrp: pack.price,
         discountPct: 0,
+        // What `shippingForWeight()` sums against cart quantity — see
+        // `size.packs[].shipWeight` above, which is this column's seed input.
+        weightKg: pack.shipWeight,
         active: true,
       }
       if (found) {

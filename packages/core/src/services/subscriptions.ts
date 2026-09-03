@@ -6,7 +6,7 @@ import { orderPrefix } from '../brands'
 import { logger } from '../logger'
 import * as razorpay from '../razorpay'
 import { mockProvidersAllowed } from '../runtime-mode'
-import { markOrderPaid } from './checkout'
+import { markOrderPaid, shippingForWeight } from './checkout'
 import { applyZonePrice, resolveZone, type ResolvedZone } from './pricing'
 import { getSettings } from './settings'
 import { resolvePlanId } from './subscription-plans'
@@ -43,8 +43,9 @@ import { resolvePlanId } from './subscription-plans'
  * a customer.
  */
 
-// Flat courier fee below the free-shipping threshold. Mirrors checkout.SHIPPING_FEE
-// (that constant isn't exported); kept here so renewal totals match a normal order.
+// Flat courier fee below the free-shipping threshold, for a plan whose variant
+// carries no `weightKg`. Mirrors checkout.SHIPPING_FEE (that constant isn't
+// exported); kept here so renewal totals match a normal order.
 const SHIPPING_FEE = 49
 
 /**
@@ -244,6 +245,7 @@ export function quoteCycle({
   variantId,
   subscribeSavePct,
   freeShipThreshold,
+  weightKg,
 }: {
   unitPrice: number
   qty: number
@@ -251,13 +253,22 @@ export function quoteCycle({
   variantId: string
   subscribeSavePct: number
   freeShipThreshold: number
+  /** `ProductVariant.weightKg` of the subscribed pack — null for a variant
+   *  seeded before that column existed, in which case shipping falls back to
+   *  the flat `SHIPPING_FEE` rather than pricing an unweighed box. */
+  weightKg: number | null
 }): CycleQuote {
   const fullUnit = applyZonePrice(unitPrice, zone, { variantId })
   const discountedUnit = Math.round((fullUnit * (100 - subscribeSavePct)) / 100)
   const subtotal = fullUnit * qty
   const discount = (fullUnit - discountedUnit) * qty
   const discountedSubtotal = subtotal - discount
-  const shipping = discountedSubtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
+  const shipping =
+    discountedSubtotal >= freeShipThreshold
+      ? 0
+      : weightKg !== null
+        ? shippingForWeight(weightKg * qty)
+        : SHIPPING_FEE
   return { fullUnit, subtotal, discount, shipping, total: discountedSubtotal + shipping }
 }
 
@@ -329,6 +340,7 @@ export async function createSubscription(
     variantId: variant.id,
     subscribeSavePct,
     freeShipThreshold,
+    weightKg: variant.weightKg,
   })
 
   // Plan first: it is idempotent per (amount, rhythm) and creating it cannot
@@ -860,6 +872,7 @@ export async function recordSubscriptionCharge(
     variantId: sub.variantId,
     subscribeSavePct,
     freeShipThreshold,
+    weightKg: sub.variant.weightKg,
   })
 
   if (quote.total !== charged) {
@@ -1065,6 +1078,7 @@ async function runRenewalTxn(
       variantId: variant.id,
       subscribeSavePct,
       freeShipThreshold,
+      weightKg: variant.weightKg,
     })
 
     const orderNo = await nextOrderNo(tx, brand)

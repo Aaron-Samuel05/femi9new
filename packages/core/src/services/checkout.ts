@@ -32,12 +32,36 @@ import type { OrderStatus } from '@prisma/client'
  * trusted for who/where to ship, never for what to charge.
  */
 
-// Flat courier fee below the free-shipping threshold. The threshold itself is
-// editable via Settings.
+// Flat courier fee below the free-shipping threshold, for a basket `shippingFor`
+// cannot weigh — a brand whose variants carry no `weightKg` (Femi9's pads, or a
+// Lumi9 row seeded before the column existed). The threshold itself is editable
+// via Settings.
 export const SHIPPING_FEE = 49
 
 /**
- * What this brand charges to deliver a `subtotal`-worth basket.
+ * Courier weight-slab rate card — what a diaper parcel costs to ship, by its
+ * OWN weight rather than a flat per-order fee. Sourced from the courier's rate
+ * card (Sept 2026): up to 0.5kg / 1kg / 2kg / 3kg. A basket heavier than the
+ * top slab is still charged the top slab's fee — the rate card gives us no
+ * per-kg rate past 3kg, and guessing one would be inventing a charge, not
+ * reading one off a document.
+ */
+const SHIPPING_WEIGHT_SLABS: readonly { upToKg: number; fee: number }[] = [
+  { upToKg: 0.5, fee: 30 },
+  { upToKg: 1, fee: 50 },
+  { upToKg: 2, fee: 70 },
+  { upToKg: 3, fee: 100 },
+]
+
+/** The slab fee for a basket weighing `totalWeightKg` in total. */
+export function shippingForWeight(totalWeightKg: number): number {
+  const slab = SHIPPING_WEIGHT_SLABS.find((s) => totalWeightKg <= s.upToKg)
+  return (slab ?? SHIPPING_WEIGHT_SLABS[SHIPPING_WEIGHT_SLABS.length - 1]!).fee
+}
+
+/**
+ * What this brand charges to deliver a `subtotal`-worth, `totalWeightKg`-heavy
+ * basket.
  *
  * Exported because "kept in sync with the storefront's cart hint" is not a
  * mechanism, and both storefronts proved it: each carried its own copy of the
@@ -50,9 +74,19 @@ export const SHIPPING_FEE = 49
  * One function, called by `placeOrder` and by the quote endpoint the checkout
  * summary reads. A shipping rule that can be shown and charged from two
  * different expressions will eventually show and charge two different numbers.
+ *
+ * `totalWeightKg` is null for a basket that cannot be weighed — see the field's
+ * own doc comment on `CartDTO` — and the flat `SHIPPING_FEE` is what a Lumi9
+ * shopper was charged before this existed, so it stays the honest fallback
+ * rather than pricing an unweighed basket at the lightest (or heaviest) slab.
  */
-export function shippingFor(subtotal: number, freeShipThreshold: number): number {
-  return subtotal >= freeShipThreshold ? 0 : SHIPPING_FEE
+export function shippingFor(
+  subtotal: number,
+  freeShipThreshold: number,
+  totalWeightKg: number | null,
+): number {
+  if (subtotal >= freeShipThreshold) return 0
+  return totalWeightKg !== null ? shippingForWeight(totalWeightKg) : SHIPPING_FEE
 }
 
 /**
@@ -185,7 +219,7 @@ export async function quoteCart(
   const cart = await getCart(brand, token)
   if (cart.items.length === 0) return empty
 
-  const shipping = shippingFor(cart.subtotal, freeShipThreshold)
+  const shipping = shippingFor(cart.subtotal, freeShipThreshold, cart.totalWeightKg)
 
   let discount = 0
   let couponCode: string | null = null
@@ -434,7 +468,13 @@ export async function placeOrder(brand: Brand,
       }
     })
 
-    const shipping = shippingFor(subtotal, freeShipThreshold)
+    // Same "every line or none" rule as `getCart`'s `totalWeightKg` — a basket
+    // mixing a weighed and an unweighed variant has no honest total to slab.
+    const everyLineWeighed = cart.items.every((item) => item.variant.weightKg !== null)
+    const totalWeightKg = everyLineWeighed
+      ? cart.items.reduce((sum, item) => sum + (item.variant.weightKg ?? 0) * item.qty, 0)
+      : null
+    const shipping = shippingFor(subtotal, freeShipThreshold, totalWeightKg)
 
     // ── WHO IS BUYING ────────────────────────────────────────────────────────
     // A signed-in shopper's order belongs to HER session row, full stop. This
