@@ -549,6 +549,33 @@ export async function updateProfile(brand: Brand,
   return { status: 'ok', user: toAccountUser(fresh) }
 }
 
+/**
+ * The shopper's saved address book alone — the same rows and the same shape
+ * `getAccountData` returns, without its other six queries. `getAccountData` is
+ * the whole dashboard; a caller that only needs to know "does she have a
+ * delivery address" (the subscription box builder, before it lets her pay)
+ * has no business paying for the orders, points and subscriptions reads too.
+ */
+export async function listAddresses(brand: Brand, userId: string): Promise<AccountAddress[]> {
+  const prisma = dbFor(brand)
+  const addressesRaw = await prisma.address.findMany({
+    where: { userId, archivedAt: null },
+    orderBy: [{ isPrimary: 'desc' }, { id: 'asc' }],
+  })
+  return addressesRaw.map((a) => ({
+    id: a.id,
+    label: a.label,
+    name: a.name,
+    line: a.line,
+    city: composeCity(a),
+    cityRaw: a.city,
+    state: a.state ?? '',
+    pincode: a.pincode ?? '',
+    phone: a.phone ?? '',
+    primary: a.isPrimary,
+  }))
+}
+
 export async function createAddress(brand: Brand, userId: string, input: AddressInput) {
   const prisma = dbFor(brand)
   return prisma.$transaction(async (tx) => {

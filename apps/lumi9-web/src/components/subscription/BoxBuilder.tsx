@@ -6,12 +6,26 @@ import { useState } from "react";
 import { CADENCES, inr, subscriptionPrice, type SizeCode } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
 import { authorizeMandate, type MandateAuthorization } from "@/lib/mandate";
+import { Icon } from "@/components/ui/Icon";
 import type { DbProductSize } from "@/lib/catalog.server";
 
 /** Subscribable pack tiers - the 3-count trial packs aren't offered on subscription. */
 function subscribablePacks(size: DbProductSize) {
   return size.packs.filter((pack) => pack.count >= 24);
 }
+
+/** The shape of the quick address form - a subset of the account address book's
+ *  fields, matching what `POST /api/account/addresses` actually requires. */
+interface AddressDraft {
+  name: string;
+  line: string;
+  city: string;
+  state: string;
+  pincode: string;
+  phone: string;
+}
+
+const BLANK_ADDRESS: AddressDraft = { name: "", line: "", city: "", state: "", pincode: "", phone: "" };
 
 export function BoxBuilder() {
   const router = useRouter();
@@ -25,21 +39,27 @@ export function BoxBuilder() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ── The address gate ─────────────────────────────────────────────────────
+  // A mandate authorised with no delivery address on file is a recurring
+  // charge for a box with nowhere to ship. `startSubscription` used to POST
+  // straight to /api/subscriptions and only ever discover a missing address
+  // the way every other field is discovered - by the order never arriving.
+  const [checkingAddress, setCheckingAddress] = useState(false);
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [addressDraft, setAddressDraft] = useState<AddressDraft>(BLANK_ADDRESS);
+  const [savingAddress, setSavingAddress] = useState(false);
+  const [addressError, setAddressError] = useState<string | null>(null);
+  const [addressFieldErrors, setAddressFieldErrors] = useState<Record<string, string[]>>({});
+
   const size = getSizeOrDefault(sizeCode);
   const packs = subscribablePacks(size);
   const pack = packs.find((option) => option.count === packCount) ?? packs[packs.length - 1];
   const cadence = CADENCES.find((c) => c.code === cadenceCode) ?? CADENCES[1]!;
 
   /**
-   * Start the subscription for real.
-   *
-   * "Start subscription" was a `<Link href="/checkout">`: it created nothing,
-   * carried none of the size, pack or frequency chosen above, and applied no
-   * discount - the shopper arrived at checkout with whatever was already in her
-   * cart, at full price, having been told she was subscribing at a saving.
-   *
-   * A subscription belongs to an account (it has to: it recurs, and something
-   * has to own it), so a guest is sent to sign in and returned here.
+   * Create the mandate and open the approval sheet. Assumes the caller has
+   * already confirmed there is somewhere to ship the box - see
+   * `handleStartClick`, which is what the button actually calls.
    *
    * TWO PHASES, and the second is what makes it recur. The POST creates the
    * Razorpay plan and mandate; nothing is ever debited until her bank approves
@@ -48,7 +68,6 @@ export function BoxBuilder() {
    * a live-looking plan for which no payment method had been agreed.
    */
   async function startSubscription() {
-    if (submitting) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -91,6 +110,80 @@ export function BoxBuilder() {
       setSubmitting(false);
     }
   }
+
+  /**
+   * What "Start subscription" actually calls. A guest has no address to check
+   * (she is not signed in yet, and `/api/account/addresses` answers 401 for
+   * exactly that), so this reads the same 401 checkout already relies on and
+   * sends her to sign in first; a signed-in shopper with nothing on file gets
+   * the quick address form BEFORE the mandate is ever created, not after.
+   */
+  async function handleStartClick() {
+    if (checkingAddress || submitting) return;
+    setCheckingAddress(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/account/addresses");
+      if (res.status === 401) {
+        router.push(`/login?next=${encodeURIComponent("/subscription#build")}`);
+        return;
+      }
+      if (!res.ok) {
+        setError("We could not check your saved addresses. Please try again.");
+        return;
+      }
+      const { addresses } = (await res.json()) as { addresses: unknown[] };
+      if (addresses.length === 0) {
+        setAddressError(null);
+        setAddressFieldErrors({});
+        setShowAddressModal(true);
+        return;
+      }
+      await startSubscription();
+    } catch {
+      setError("Network error - please try again.");
+    } finally {
+      setCheckingAddress(false);
+    }
+  }
+
+  async function saveAddressAndContinue(event: React.FormEvent) {
+    event.preventDefault();
+    if (savingAddress) return;
+    setSavingAddress(true);
+    setAddressError(null);
+    setAddressFieldErrors({});
+    try {
+      const res = await fetch("/api/account/addresses", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // First address on the account, so it becomes primary regardless -
+        // `createAddress` does that itself when the count is zero.
+        body: JSON.stringify({ label: "Home", isPrimary: true, ...addressDraft }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          details?: { fieldErrors?: Record<string, string[]> };
+        };
+        if (body.details?.fieldErrors) setAddressFieldErrors(body.details.fieldErrors);
+        setAddressError(body.error ?? "Could not save that address.");
+        return;
+      }
+      setShowAddressModal(false);
+      setAddressDraft(BLANK_ADDRESS);
+      await startSubscription();
+    } catch {
+      setAddressError("Could not reach the server. Check your connection and try again.");
+    } finally {
+      setSavingAddress(false);
+    }
+  }
+
+  const setField = <K extends keyof AddressDraft>(key: K, value: AddressDraft[K]) =>
+    setAddressDraft((prev) => ({ ...prev, [key]: value }));
+
+  const busy = checkingAddress || submitting;
 
   return (
     <section id="build" className="px-safe pt-5 pb-section">
@@ -177,11 +270,11 @@ export function BoxBuilder() {
           )}
           <button
             type="button"
-            onClick={startSubscription}
-            disabled={submitting}
+            onClick={handleStartClick}
+            disabled={busy}
             className="btn btn-cream mb-3.5 w-full disabled:opacity-60"
           >
-            {submitting ? "Setting up auto-pay…" : "Start subscription"}
+            {checkingAddress ? "Checking your address…" : submitting ? "Setting up auto-pay…" : "Start subscription"}
           </button>
           <div className="text-center text-xs leading-[1.5] opacity-70">
             Skip, pause or cancel anytime from{" "}
@@ -192,6 +285,138 @@ export function BoxBuilder() {
           </div>
         </div>
       </div>
+
+      {showAddressModal && (
+        <div
+          onClick={() => !savingAddress && setShowAddressModal(false)}
+          aria-hidden
+          className="fixed inset-0 z-110 flex items-center justify-center bg-midnight/45 p-4"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add a delivery address"
+            className="w-full max-w-[440px] rounded-card bg-canvas p-card-lg shadow-[0_0_60px_-10px_rgb(39_44_5_/_0.45)]"
+          >
+            <div className="mb-1.5 flex items-center gap-2.5">
+              <Icon name="pin" size={20} strokeWidth={1.8} />
+              <h2 className="m-0 font-display text-[clamp(19px,2.2vw,22px)] font-normal">Where should it ship?</h2>
+            </div>
+            <p className="m-0 mb-5.5 text-sm text-muted">
+              Add a delivery address before we set up auto-pay - every box needs somewhere to go.
+            </p>
+
+            <form onSubmit={saveAddressAndContinue} className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+              <Field label="Recipient name" error={addressFieldErrors.name?.[0]} full>
+                <input
+                  className="field"
+                  autoComplete="name"
+                  value={addressDraft.name}
+                  onChange={(e) => setField("name", e.target.value)}
+                  required
+                  disabled={savingAddress}
+                />
+              </Field>
+              <Field label="Flat, street and area" error={addressFieldErrors.line?.[0]} full>
+                <input
+                  className="field"
+                  autoComplete="street-address"
+                  value={addressDraft.line}
+                  onChange={(e) => setField("line", e.target.value)}
+                  required
+                  disabled={savingAddress}
+                />
+              </Field>
+              <Field label="City" error={addressFieldErrors.city?.[0]}>
+                <input
+                  className="field"
+                  autoComplete="address-level2"
+                  value={addressDraft.city}
+                  onChange={(e) => setField("city", e.target.value)}
+                  required
+                  disabled={savingAddress}
+                />
+              </Field>
+              <Field label="State" error={addressFieldErrors.state?.[0]}>
+                <input
+                  className="field"
+                  autoComplete="address-level1"
+                  value={addressDraft.state}
+                  onChange={(e) => setField("state", e.target.value)}
+                  required
+                  disabled={savingAddress}
+                />
+              </Field>
+              <Field label="Pincode" error={addressFieldErrors.pincode?.[0]}>
+                <input
+                  className="field"
+                  inputMode="numeric"
+                  autoComplete="postal-code"
+                  maxLength={6}
+                  value={addressDraft.pincode}
+                  onChange={(e) => setField("pincode", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  disabled={savingAddress}
+                />
+              </Field>
+              <Field label="Mobile for delivery" error={addressFieldErrors.phone?.[0]}>
+                <input
+                  className="field"
+                  inputMode="numeric"
+                  autoComplete="tel-national"
+                  maxLength={10}
+                  value={addressDraft.phone}
+                  onChange={(e) => setField("phone", e.target.value.replace(/\D/g, "").slice(-10))}
+                  disabled={savingAddress}
+                />
+              </Field>
+
+              <p className="m-0 min-h-5 text-[13px] text-[#b4232c] sm:col-span-2" role="alert" aria-live="polite">
+                {addressError ?? " "}
+              </p>
+
+              <div className="flex flex-wrap gap-3 sm:col-span-2">
+                <button type="submit" className="btn btn-dark btn-sm py-3.25 font-bold" disabled={savingAddress}>
+                  {savingAddress ? "Saving…" : "Save & continue to payment"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddressModal(false)}
+                  disabled={savingAddress}
+                  className="rounded-pill border-[1.5px] border-moss-tint px-6 py-3.25 text-sm font-semibold text-midnight transition-colors hover:border-moss-soft disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
+  );
+}
+
+function Field({
+  label,
+  error,
+  full = false,
+  children,
+}: {
+  label: string;
+  error?: string;
+  full?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className={`flex flex-col gap-2 ${full ? "sm:col-span-2" : ""}`}>
+      <span className="text-[12px] font-bold tracking-[0.04em] text-midnight uppercase">{label}</span>
+      {children}
+      {error && (
+        <span className="text-[12px] text-[#b4232c]" role="alert">
+          {error}
+        </span>
+      )}
+    </label>
   );
 }
