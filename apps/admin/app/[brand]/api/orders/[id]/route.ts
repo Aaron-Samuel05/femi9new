@@ -7,6 +7,7 @@ import {
   getOrder,
   updateOrderStatus,
   refundOrder,
+  setOrderAddressEditGrant,
   NotRefundableError,
   ORDER_STATUSES,
 } from '@femi9/core/services/admin/orders'
@@ -24,6 +25,11 @@ import {
 
 const PatchSchema = z.union([
   z.object({ action: z.literal('refund') }),
+  // Open or close the customer's one-time address correction. A separate action
+  // rather than a field on the status object: it changes what the CUSTOMER may
+  // do, not what the order is, and it must not be settable as a side effect of
+  // picking a status from a dropdown.
+  z.object({ action: z.literal('address-edit'), granted: z.boolean() }),
   // Reuse the service's canonical list so the API can never accept a status the
   // domain doesn't know about.
   z.object({ status: z.enum(ORDER_STATUSES) }),
@@ -52,6 +58,17 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
     const raw = await req.json().catch(() => null)
     const parsed = PatchSchema.safeParse(raw)
     if (!parsed.success) return badRequest('Invalid request', parsed.error.flatten())
+
+    if ('action' in parsed.data && parsed.data.action === 'address-edit') {
+      const { granted } = parsed.data
+      const result = await setOrderAddressEditGrant(brand, params.id, granted, session.email)
+      if (!result) return notFound('Order not found')
+      // Worth logging on both edges. Opening it lets a customer change where a
+      // paid parcel goes, which is the kind of thing that gets asked about
+      // afterwards; closing it explains why she suddenly could not.
+      await auditConsole(session, req, granted ? 'order.address-edit.grant' : 'order.address-edit.revoke', result.orderNo)
+      return ok(result)
+    }
 
     if ('action' in parsed.data) {
       try {
