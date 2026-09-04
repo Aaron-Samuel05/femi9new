@@ -121,6 +121,14 @@ interface OrderDetail {
   /** Whether the service would accept a refund. Computed server-side — the
    *  rule is no longer `status === 'paid'`, see the note on StatusControl. */
   refundable: boolean
+  /** What happened to the money, which the status alone does not say. */
+  money: {
+    captured: number | null
+    gatewayPaymentId: string | null
+    refundedAt: string | null
+    gatewayRefundId: string | null
+    paidThenCancelled: boolean
+  }
 }
 
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN')
@@ -252,6 +260,7 @@ export default function OrderDetailPage(props: { params: Promise<{ id: string }>
           orderId={order.id}
           current={order.status}
           refundable={order.refundable}
+          money={order.money}
           // Both PATCH branches answer with the refreshed order, so the whole
           // thing is replaced rather than patching `status` in by hand. That
           // used to be a local `{ ...o, status }`, which left every DERIVED
@@ -332,6 +341,7 @@ function StatusControl({
   orderId,
   current,
   refundable,
+  money,
   onRefreshed,
 }: {
   orderId: string
@@ -343,6 +353,8 @@ function StatusControl({
    * money is still ours and there is no other way to give it back.
    */
   refundable: boolean
+  /** The money story, so the card can say what the status cannot. */
+  money: OrderDetail['money']
   onRefreshed: (order: OrderDetail) => void
 }) {
   const { brand } = useParams<{ brand: string }>()
@@ -359,6 +371,20 @@ function StatusControl({
 
   async function save() {
     if (!dirty || saving) return
+    // Cancelling a PAID order does NOT return the money — it gives back the
+    // stock and the coupon and never touches the gateway. That is how orders
+    // ended up cancelled with the payment still ours, so say it before the
+    // click rather than explaining it afterwards.
+    if (selected === 'cancelled' && money.captured !== null && !money.refundedAt) {
+      const ok = confirm(
+        `This order was paid (${inr(money.captured)}). Cancelling does NOT return the money — ` +
+          `it only gives back the stock and the coupon.
+
+` +
+          `To refund her, use "Refund order" instead. Cancel anyway?`,
+      )
+      if (!ok) return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -422,6 +448,8 @@ function StatusControl({
         <h3 className="adm-card-title">Status</h3>
         <span className={`adm-badge ${STATUS_BADGE[current]}`}>{current}</span>
       </div>
+
+      <MoneyTrail money={money} status={current} />
 
       <div className="adm-field">
         <label className="adm-label" htmlFor="order-status">
@@ -672,6 +700,78 @@ function NotifyOutcome({ notified }: { notified: AddressChangeNotified }) {
       {/* The link is shown either way: an operator on a call needs to be able to
           read it out, and it is the same URL the message carries. */}
       <div style={{ marginTop: 4, wordBreak: 'break-all', opacity: 0.8 }}>{notified.url}</div>
+    </div>
+  )
+}
+
+/**
+ * What happened to the money, said plainly.
+ *
+ * The status badge above cannot say either of these things. `cancelled` covers
+ * both "she never paid" and "she paid and we are still holding it" — and until
+ * refundableFrom existed there was no way back from the second. `refunded` says
+ * the money went somewhere without saying WHICH gateway refund returned it,
+ * which is the only useful fact when one is disputed weeks later.
+ *
+ * The ids are rendered as selectable monospace text rather than a link: the
+ * Razorpay dashboard URL differs by account and mode, and a link that lands on
+ * the wrong account is worse than a string somebody pastes into its search box.
+ */
+function MoneyTrail({ money, status }: { money: OrderDetail['money']; status: OrderStatus }) {
+  // An order that never took money has nothing to report, and an empty panel on
+  // every pending order is noise on the screen that matters most.
+  if (money.captured === null) {
+    return status === 'cancelled' ? (
+      <p className="adm-help" style={{ margin: '0 0 12px' }}>
+        No payment was ever captured for this order — nothing to return.
+      </p>
+    ) : null
+  }
+
+  return (
+    <div
+      className={money.paidThenCancelled ? 'adm-error' : 'adm-help'}
+      style={{
+        margin: '0 0 14px',
+        padding: '9px 11px',
+        borderRadius: 6,
+        lineHeight: 1.6,
+        background: money.paidThenCancelled ? 'rgba(200,60,40,.07)' : 'rgba(52,32,78,.05)',
+      }}
+    >
+      {money.paidThenCancelled ? (
+        <div style={{ marginBottom: 6 }}>
+          <strong>Paid {inr(money.captured)} — cancelled, money NOT returned.</strong> Cancelling
+          gives back the stock and the coupon and never touches the gateway. She is still owed this.
+        </div>
+      ) : money.refundedAt ? (
+        <div style={{ marginBottom: 6 }}>
+          <strong>Paid {inr(money.captured)}, refunded in full</strong> on{' '}
+          {fmtDateTime(money.refundedAt)}.
+        </div>
+      ) : (
+        <div style={{ marginBottom: 6 }}>
+          <strong>Paid {inr(money.captured)}.</strong> Held.
+        </div>
+      )}
+
+      {money.gatewayPaymentId && <IdRow label="Payment" value={money.gatewayPaymentId} />}
+      {money.gatewayRefundId && <IdRow label="Refund" value={money.gatewayRefundId} />}
+      {/* A refund booked before the ids were recorded, or one adopted without
+          the gateway naming it. Better to admit the gap than to render a blank
+          row that reads as "there is no refund". */}
+      {money.refundedAt && !money.gatewayRefundId && (
+        <div style={{ opacity: 0.75 }}>No gateway refund id was recorded for this one.</div>
+      )}
+    </div>
+  )
+}
+
+function IdRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <span style={{ opacity: 0.75, minWidth: 58 }}>{label}</span>
+      <code style={{ fontSize: 11, wordBreak: 'break-all', userSelect: 'all' }}>{value}</code>
     </div>
   )
 }

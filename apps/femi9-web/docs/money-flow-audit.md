@@ -188,6 +188,54 @@ the Razorpay dashboard.** And on Femi9 there is a second problem:
 old single-app stack, not by the platform stack, so the handler is deployed but
 unreachable there. Lumi9 is fine (`lumi9.in` is the platform's CloudFront).
 
+### 3.5 The money story was invisible on the order screen — **both brands, fixed**
+
+Two facts an operator needs on a dispute, neither of which the status enum can
+carry:
+
+- **Was it ever paid?** `cancelled` covered both "she never paid" and "she paid
+  and we are still holding it". Only one of those owes somebody money, and until
+  §3.3 there was no way back from it.
+- **Which gateway refund returned it?** `refundPayment` had always *returned* the
+  refund id and nothing wrote it down — it reached one `console.warn` on the
+  adopt path and was discarded. Reconciling a disputed refund meant matching by
+  payment id and eyeballing timestamps in the dashboard.
+
+Migration `20260904140000_payment_refund_trail` adds `Payment.razorpayRefundId`
+and `Payment.refundedAt` (both nullable, purely additive). `refundOrder` writes
+them right after the gateway call and *outside* the reversal transaction — that
+is the only moment the id exists — and the webhook path writes them too,
+preferring the gateway's own `created_at` because a redelivered event can arrive
+long after the money moved.
+
+`OrderDetail.money` derives the rest from the Payment rows: captured amount,
+gateway payment id, refund id, refunded-at, and `paidThenCancelled`. The console
+renders it above the status select, loud when the money is still ours, and shows
+both ids as selectable text rather than a link — the dashboard URL differs by
+account and mode, and a link to the wrong account is worse than a string to
+paste into its search box.
+
+`refundedAt` is deliberately distinct from `Payment.createdAt`, which records
+when the payment **intent** was opened at checkout, not when money moved in
+either direction.
+
+**A pre-existing refund has no id.** The columns are nullable and nothing
+backfills them, so an order refunded before this shipped reads "no gateway
+refund id was recorded for this one" — which is honest, where a blank row would
+read as "there is no refund".
+
+### 3.6 Cancelling a paid order now warns first — **both brands, fixed**
+
+Paid orders **can** be cancelled and always could: `updateOrderStatus` accepts
+`cancelled` from any status and the console's dropdown offers every one of them.
+That is not itself wrong — an operator may need to mark an order cancelled after
+refunding out of band — but nothing said that cancelling keeps the money.
+
+Choosing `cancelled` on an order with a captured, unrefunded payment now asks
+for confirmation, names the amount, and points at Refund instead. It is a
+confirm, not a block: refusing the transition outright would strand the operator
+who has already returned the money by hand.
+
 ---
 
 ## 4. If you change one thing here

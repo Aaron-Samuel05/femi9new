@@ -293,6 +293,37 @@ describe('refund after cancel', () => {
     expect(settled!.refundable).toBe(false)
   })
 
+  it('flags a paid-then-cancelled order as still holding the money', async () => {
+    // The state the status badge cannot express: `cancelled` covers both "she
+    // never paid" and "she paid and we still have it", and only one of those
+    // owes somebody money.
+    const { order } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.money.paidThenCancelled).toBe(true)
+    expect(detail!.money.captured).toBe(order.total)
+    expect(detail!.money.refundedAt).toBeNull()
+    expect(detail!.money.gatewayPaymentId).toBe('pay_mock_1')
+
+    // Returning the money clears the flag and records the gateway's own id.
+    await refundOrder('femi9', order.id)
+    const settled = await getOrder('femi9', order.id)
+    expect(settled!.money.paidThenCancelled).toBe(false)
+    expect(settled!.money.refundedAt).not.toBeNull()
+    expect(settled!.money.gatewayRefundId).toBe('mock_refund_pay_mock_1')
+  })
+
+  it('does not flag a cancelled order that never took money', async () => {
+    const { order } = await placeTestOrder()
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.money.paidThenCancelled).toBe(false)
+    expect(detail!.money.captured).toBeNull()
+  })
+
   it('refuses a cancelled order that was never paid for', async () => {
     // No captured payment, so there is nothing to give back and the Refund
     // button must not appear on it.
@@ -412,6 +443,24 @@ describe('recordGatewayRefund', () => {
     const payments = await prisma.payment.findMany({ where: { orderId: order.id } })
     expect(payments.every((p) => p.status === 'refunded')).toBe(true)
     expect(await stockOf(variant.id)).toBe(initialStock - qty)
+  })
+
+  it('writes the gateway refund id and timestamp down', async () => {
+    // The id used to reach one console.warn and then be discarded, so a
+    // refunded order said 'refunded' with nothing to quote at Razorpay when it
+    // was disputed. The webhook is the only place a DASHBOARD refund's id is
+    // ever visible to us.
+    const { order } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    const refundedAt = new Date('2026-09-04T09:15:00Z')
+
+    await recordGatewayRefund('femi9', 'pay_mock_1', { id: 'rfnd_abc123', at: refundedAt })
+
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.money.gatewayRefundId).toBe('rfnd_abc123')
+    expect(detail!.money.refundedAt?.toISOString()).toBe(refundedAt.toISOString())
+    expect(detail!.money.captured).toBe(order.total)
+    expect(detail!.money.paidThenCancelled).toBe(false)
   })
 
   it('ignores a refund for a payment this brand has never seen', async () => {

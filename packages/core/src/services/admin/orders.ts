@@ -220,6 +220,37 @@ export interface OrderDetail {
    * money on the orders that most needed it.
    */
   refundable: boolean
+  /**
+   * What actually happened to the MONEY, as opposed to what the status says.
+   *
+   * The status is one enum on a linear pipeline, and it loses the two facts an
+   * operator most needs on a dispute. A `cancelled` order does not say whether
+   * it was ever paid — and cancelling never returned the money, so "cancelled"
+   * covered both "she never paid" and "she paid and we still have it". A
+   * `refunded` order does not say which gateway refund returned it, because
+   * `refundPayment` returned an id that nothing wrote down.
+   *
+   * So this reads the Payment rows, which know both.
+   */
+  money: {
+    /** Rupees the gateway captured, or null if it never did. */
+    captured: number | null
+    /** The gateway's payment id, to quote at Razorpay. */
+    gatewayPaymentId: string | null
+    /** Set once the money has gone back. */
+    refundedAt: Date | null
+    /** The gateway's refund id — the thing to search the dashboard for. */
+    gatewayRefundId: string | null
+    /**
+     * She paid, the order was cancelled, and the money is still ours.
+     *
+     * The state that most needs saying out loud, because nothing else on the
+     * screen says it: cancelling gives back the stock and the coupon and never
+     * touches the gateway. `refundable` is true here too, but this is the half
+     * that explains WHY a Refund button is showing on a cancelled order.
+     */
+    paidThenCancelled: boolean
+  }
 }
 
 /** Full order — items (purchase-time snapshots), customer and shipping. */
@@ -233,9 +264,19 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
         address: true,
         coupon: { select: { code: true, type: true, value: true } },
         items: { orderBy: { productName: 'asc' } },
-        // Not returned to the console — only `refundable` below is. See the
-        // note on that field for why the console must not derive it itself.
-        payments: { select: { status: true } },
+        // `refundable` and `money` are both derived from these; the rows
+        // themselves never reach the console. See the note on `refundable` for
+        // why it must not derive that rule itself.
+        payments: {
+          select: {
+            status: true,
+            amount: true,
+            razorpayPaymentId: true,
+            razorpayRefundId: true,
+            refundedAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     })
     if (!r) return null
@@ -275,6 +316,7 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
       // The same function refundOrder's guard calls, so the button and the
       // service cannot disagree about what is refundable.
       refundable: refundableFrom(r) !== null,
+      money: moneyTrail(r),
       items: r.items.map((it) => ({
         id: it.id,
         productName: it.productName,
@@ -448,6 +490,47 @@ type RefundableFrom = 'paid' | 'cancelled'
  * a cancelled order that was never paid for has no payment past `created` or
  * `failed` and stays correctly unrefundable.
  */
+/** One Payment row, as much of it as the two derivations below need. */
+interface PaymentFacts {
+  status: PaymentStatus
+  amount: number
+  razorpayPaymentId: string | null
+  razorpayRefundId: string | null
+  refundedAt: Date | null
+}
+
+/**
+ * Read the money story off the Payment rows.
+ *
+ * The "captured" row is the one that reached the gateway — `captured` today, or
+ * `refunded` if the money has since gone back. A `created` or `failed` row is
+ * an intent that never became money and must not be reported as an amount, or
+ * an abandoned checkout would read as a payment we are holding.
+ *
+ * Rows are already ordered newest-first by the caller, so `find` takes the most
+ * recent real one. An order can carry several intents: a shopper who dismissed
+ * the gateway and retried leaves a `created` row behind each time.
+ */
+function moneyTrail(order: {
+  status: OrderStatus
+  payments: readonly PaymentFacts[]
+}): OrderDetail['money'] {
+  const settled = order.payments.find(
+    (p) => p.status === 'captured' || p.status === 'refunded',
+  )
+  return {
+    captured: settled?.amount ?? null,
+    gatewayPaymentId: settled?.razorpayPaymentId ?? null,
+    refundedAt: settled?.refundedAt ?? null,
+    gatewayRefundId: settled?.razorpayRefundId ?? null,
+    // Money reached us and the order was cancelled without giving it back.
+    // `settled.status === 'captured'` rather than merely "a settled row exists":
+    // once it reads `refunded` the money has gone back and this is no longer
+    // the state that needs shouting about.
+    paidThenCancelled: order.status === 'cancelled' && settled?.status === 'captured',
+  }
+}
+
 function refundableFrom(order: {
   status: OrderStatus
   payments: readonly { status: PaymentStatus }[]
@@ -554,6 +637,16 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
             `a previous attempt had already returned the money.`,
         )
       }
+      // Write the gateway's own id down BEFORE the books are reversed, and
+      // outside their transaction. This is the only moment it exists: the id
+      // used to reach one console.warn and then be discarded, which left an
+      // operator holding a disputed refund with nothing to quote at Razorpay.
+      // Recorded even on the adopted path — an adopted refund is still the
+      // refund that returned this money, and it is the one the dashboard shows.
+      await prisma.payment.updateMany({
+        where: { id: payment.id },
+        data: { razorpayRefundId: refund.id, refundedAt: new Date() },
+      })
     } catch (err) {
       // Give the claim back ONLY when the gateway is known not to have acted.
       // A timeout or a 5xx is ambiguous: the refund may well have gone through
@@ -723,6 +816,11 @@ async function reverseBooksForRefund(
 export async function recordGatewayRefund(
   brand: Brand,
   razorpayPaymentId: string,
+  /** The gateway's id for the refund itself, and when IT says the money went
+   *  back. Both come off the `refund.processed` entity. Optional so a caller
+   *  with only a payment id still books the reversal; the trail is then thinner
+   *  but the money is still right. */
+  refund?: { id?: string; at?: Date },
 ): Promise<void> {
   const prisma = dbFor(brand)
   const payment = await prisma.payment.findUnique({
@@ -738,10 +836,18 @@ export async function recordGatewayRefund(
   if (order.status === 'refunded') return
 
   // True regardless of what happens to the order below: the gateway has
-  // returned this payment.
+  // returned this payment. The refund id and timestamp are written on the same
+  // pass — this is the one place a DASHBOARD refund's id is ever visible to us,
+  // and without it the order would say 'refunded' with nothing to reconcile
+  // against. `refundedAt` prefers the gateway's own timestamp over ours: a
+  // redelivered webhook can arrive long after the money moved.
   await prisma.payment.updateMany({
     where: { id: payment.id, status: { not: 'refunded' } },
-    data: { status: 'refunded' },
+    data: {
+      status: 'refunded',
+      ...(refund?.id ? { razorpayRefundId: refund.id } : {}),
+      refundedAt: refund?.at ?? new Date(),
+    },
   })
 
   // Re-read AFTER the payment write, and put the answer through the same

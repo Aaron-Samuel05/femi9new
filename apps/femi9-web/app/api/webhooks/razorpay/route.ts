@@ -53,7 +53,9 @@ type RazorpayWebhookEvent = {
     // what was returned. The payment entity rides along too, but the refund is
     // the authoritative half — a partial refund raises one event per refund
     // against the same payment.
-    refund?: { entity?: { id?: string; payment_id?: string; amount?: number } }
+    refund?: {
+      entity?: { id?: string; payment_id?: string; amount?: number; created_at?: number }
+    }
     subscription?: {
       entity?: { id?: string; status?: string; current_end?: number | null }
     }
@@ -158,9 +160,22 @@ export async function POST(req: NextRequest) {
      * the books twice.
      */
     if (event.event === 'refund.processed') {
-      const paymentId = event.payload?.refund?.entity?.payment_id ?? event.payload?.payment?.entity?.id
+      const entity = event.payload?.refund?.entity
+      const paymentId = entity?.payment_id ?? event.payload?.payment?.entity?.id
       if (paymentId) {
-        await recordGatewayRefund('femi9', paymentId)
+        // The refund's OWN id and timestamp are carried through and written to
+        // the Payment row. Without them a refunded order says 'refunded' with
+        // nothing to quote at Razorpay, which is the whole difficulty when one
+        // is disputed weeks later. The gateway's `created_at` is preferred over
+        // ours because a redelivered webhook can arrive long after the money
+        // moved.
+        await recordGatewayRefund('femi9', paymentId, {
+          id: entity?.id,
+          at:
+            typeof entity?.created_at === 'number' && entity.created_at > 0
+              ? new Date(entity.created_at * 1000)
+              : undefined,
+        })
       } else {
         logger.error('[webhook] refund.processed without a payment id', { event: event.event })
       }

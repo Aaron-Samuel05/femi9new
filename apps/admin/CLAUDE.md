@@ -296,6 +296,19 @@ must NOT restore stock (the cancel already did), which is why
 cancelled order counts a `refunded` payment as still-refundable, because that is
 the resume marker for a refund that died after the money went back.
 
+**The order screen says what happened to the MONEY, because the status cannot.**
+`OrderDetail.money` is derived from the Payment rows and rendered above the
+status select. Two things it carries that no status enum can: `paidThenCancelled`
+(she paid, it was cancelled, and cancelling never touches the gateway — so the
+money is still ours), and the **gateway refund id**, which `refundPayment` had
+always returned and nothing ever wrote down. Migration
+`20260904140000_payment_refund_trail` added `Payment.razorpayRefundId` /
+`refundedAt`; both are nullable and nothing backfills, so a refund issued before
+that shipped honestly reads as having no recorded id. Picking `cancelled` on an
+order holding a captured payment now confirms first and names the amount — a
+confirm, not a block, because an operator may be marking up a refund already
+made by hand.
+
 **A refund taken in the Razorpay DASHBOARD now reaches the database.**
 `refund.processed` → `recordGatewayRefund`, from both storefront webhooks. It
 was unhandled, so such a refund left the order `paid`, the payment `captured`,
