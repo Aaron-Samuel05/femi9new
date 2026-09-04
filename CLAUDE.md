@@ -182,6 +182,19 @@ out semicolon-separated rather than laid out like the email. And the **language
 code must match what the template was approved under**: a wrong `en` / `en_US`
 fails identically to a missing template.
 
+Two paths are written and waiting for a sixth and seventh name, each behind its
+own env variable rather than a constant: `WHATSAPP_INVOICE_TEMPLATE` (the
+receipt PDF, which needs a DOCUMENT header the body-only confirmation does not
+have) and `WHATSAPP_ADDRESS_CHANGE_TEMPLATE` (asking a customer to correct her
+delivery address). Unset means "not approved yet" and the code degrades to what
+it sent before; set it to the approved name and the message starts going out
+with no deploy. Neither may be satisfied by repurposing one of the five — the
+copy is fixed, and `order_status_delivered` telling a mother her order "has
+been" completed while asking for her address is worse than sending nothing.
+Both must be approved **body-only**: `sendWhatsappTemplate` builds `header` and
+`body` components and nothing else, so a URL-button template's dynamic suffix
+would never be sent.
+
 **A phone-only account gets no email and never has.** `order.user.email` is null
 for every OTP signup, so `sendOrderStatusEmail` returns without sending and the
 customer heard nothing after paying. `order-whatsapp.ts` is what reaches her —

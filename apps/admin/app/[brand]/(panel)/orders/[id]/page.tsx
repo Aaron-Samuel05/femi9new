@@ -38,6 +38,36 @@ type OrderStatus = (typeof ORDER_STATUSES)[number]
  */
 const EDITABLE_STATUSES: string[] = ['pending', 'paid', 'processing']
 
+/**
+ * What came back from the grant PATCH about telling the customer.
+ *
+ * Declared locally for the same reason as every other type in this file — the
+ * service is `server-only` and this module ships to the browser. Mirrors
+ * `AddressChangeNotifyResult` in packages/core.
+ */
+interface AddressChangeNotified {
+  url: string
+  email: { sent: boolean; reason: string | null }
+  whatsapp: { sent: boolean; reason: string | null }
+  unreachable: boolean
+  /** The correction cannot work for this order at all — see NotifyOutcome. */
+  blocked: 'guest-order' | null
+}
+
+/**
+ * Why a channel did not carry the message, in words an operator can act on.
+ *
+ * `template-not-approved` is the one that will be showing for a while: there
+ * is no approved WhatsApp template for an address request yet, so until one
+ * exists this reads on every grant and is not a fault in the customer's record.
+ */
+const NOTIFY_REASON: Record<string, string> = {
+  'template-not-approved': 'no approved WhatsApp template yet',
+  'no-email': 'no email on the account',
+  'no-phone': 'no phone on the account or the address',
+  'send-failed': 'the provider refused it',
+}
+
 const STATUS_BADGE: Record<OrderStatus, string> = {
   pending: 'adm-badge--gray',
   paid: 'adm-badge--plum',
@@ -88,6 +118,9 @@ interface OrderDetail {
     usedAt: string | null
     open: boolean
   }
+  /** Whether the service would accept a refund. Computed server-side — the
+   *  rule is no longer `status === 'paid'`, see the note on StatusControl. */
+  refundable: boolean
 }
 
 const inr = (n: number) => '₹' + n.toLocaleString('en-IN')
@@ -218,7 +251,13 @@ export default function OrderDetailPage(props: { params: Promise<{ id: string }>
         <StatusControl
           orderId={order.id}
           current={order.status}
-          onChanged={(status) => setOrder((o) => (o ? { ...o, status } : o))}
+          refundable={order.refundable}
+          // Both PATCH branches answer with the refreshed order, so the whole
+          // thing is replaced rather than patching `status` in by hand. That
+          // used to be a local `{ ...o, status }`, which left every DERIVED
+          // field describing the order as it was a moment ago — `refundable`
+          // most of all, since a paid order marked shipped is no longer one.
+          onRefreshed={setOrder}
         />
       </div>
 
@@ -288,15 +327,23 @@ function TotalRow({ label, value, strong }: { label: string; value: string; stro
   )
 }
 
-/** Status select + Save — PATCHes the order and reports the new status up. */
+/** Status select + Save — PATCHes the order and hands the refreshed one up. */
 function StatusControl({
   orderId,
   current,
-  onChanged,
+  refundable,
+  onRefreshed,
 }: {
   orderId: string
   current: OrderStatus
-  onChanged: (status: OrderStatus) => void
+  /**
+   * Whether the service would accept a refund right now. Computed by
+   * `getOrder`, never re-derived here: this used to read `current === 'paid'`,
+   * which hid the Refund button on a CANCELLED order — the one case where the
+   * money is still ours and there is no other way to give it back.
+   */
+  refundable: boolean
+  onRefreshed: (order: OrderDetail) => void
 }) {
   const { brand } = useParams<{ brand: string }>()
   const [selected, setSelected] = useState<OrderStatus>(current)
@@ -324,7 +371,7 @@ function StatusControl({
         const data = await res.json().catch(() => null)
         throw new Error(data?.error ?? 'Could not update status.')
       }
-      onChanged(selected)
+      onRefreshed((await res.json()) as OrderDetail)
       setToast(true)
       setTimeout(() => setToast(false), 2500)
     } catch (err) {
@@ -334,11 +381,21 @@ function StatusControl({
     }
   }
 
-  // Refund reverses the payment, restores stock and claws back loyalty points —
-  // a distinct action from a plain status change, and only valid while 'paid'.
+  // Refund reverses the payment and claws back loyalty points — a distinct
+  // action from a plain status change, and valid on a paid order or on a
+  // cancelled one whose money never went back.
+  //
+  // The confirm names the CANCELLED case separately because its side effects
+  // are not the same: that order's stock was already restored when it was
+  // cancelled, so the refund must not do it again, and an operator who is
+  // promised a stock restore and does not get one will go looking for a bug.
   async function refund() {
     if (refunding) return
-    if (!confirm('Refund this order? Stock is restored and loyalty points are reversed. This cannot be undone.')) return
+    const message =
+      current === 'cancelled'
+        ? 'Return the money for this cancelled order? Its stock came back when it was cancelled, so only the payment and the loyalty points are reversed. This cannot be undone.'
+        : 'Refund this order? Stock is restored and loyalty points are reversed. This cannot be undone.'
+    if (!confirm(message)) return
     setRefunding(true)
     setError(null)
     try {
@@ -351,7 +408,7 @@ function StatusControl({
         const data = await res.json().catch(() => null)
         throw new Error(data?.error ?? 'Could not refund this order.')
       }
-      onChanged('refunded')
+      onRefreshed((await res.json()) as OrderDetail)
     } catch (err) {
       setError((err as Error).message)
     } finally {
@@ -400,7 +457,7 @@ function StatusControl({
         {saving ? 'Saving…' : 'Save status'}
       </button>
 
-      {current === 'paid' && (
+      {refundable && (
         <button
           type="button"
           className="adm-btn adm-btn--danger adm-btn--sm"
@@ -408,8 +465,23 @@ function StatusControl({
           disabled={refunding}
           style={{ marginLeft: 8 }}
         >
-          {refunding ? 'Refunding…' : 'Refund order'}
+          {refunding
+            ? 'Refunding…'
+            : current === 'cancelled'
+              ? 'Return the money'
+              : 'Refund order'}
         </button>
+      )}
+
+      {/* A cancelled order that still holds its money is not a state anybody
+          chose — it is what the console produced every time an operator picked
+          "cancelled" on a paid order, which returned nothing. Say so where it
+          is discovered, not in a runbook. */}
+      {refundable && current === 'cancelled' && (
+        <p className="adm-help" style={{ margin: '8px 0 0' }}>
+          This order was cancelled but the payment was never returned — cancelling gives the stock
+          back, not the money. Use the button above.
+        </p>
       )}
 
       {toast && (
@@ -454,6 +526,10 @@ function AddressEditControl({
   const { brand } = useParams<{ brand: string }>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // What went out when this operator opened the window. Held only for the life
+  // of the screen: it describes THIS click, not the order, and a stale "we
+  // messaged her" on a page reload would be a claim nothing had checked.
+  const [notified, setNotified] = useState<AddressChangeNotified | null>(null)
 
   const granted = state.grantedAt !== null
   const used = state.usedAt !== null
@@ -476,7 +552,12 @@ function AddressEditControl({
         const data = await res.json().catch(() => null)
         throw new Error(data?.error ?? 'Could not change that.')
       }
-      const body = (await res.json()) as { grantedAt: string | null; usedAt: string | null }
+      const body = (await res.json()) as {
+        grantedAt: string | null
+        usedAt: string | null
+        notified: AddressChangeNotified | null
+      }
+      setNotified(body.notified)
       onChanged({
         grantedAt: body.grantedAt,
         grantedBy: next ? state.grantedBy : null,
@@ -508,8 +589,10 @@ function AddressEditControl({
             ? `She can change the delivery address once, from her order page${state.grantedBy ? ' — opened by ' + state.grantedBy : ''}.`
             : staleGrant
               ? `This order is ${status}, so the address can no longer be changed even though a change was opened. The parcel has already gone.`
-              : 'Closed. Open it and she can correct the delivery address once, from her own order page — no need to read it out over the phone.'}
+              : 'Closed. Opening it messages her a link to her own order page and lets her correct the delivery address once — no need to read it out over the phone.'}
       </p>
+
+      {notified && <NotifyOutcome notified={notified} />}
 
       <button
         type="button"
@@ -527,6 +610,68 @@ function AddressEditControl({
       </button>
 
       {error && <span className="adm-error" style={{ display: 'block', marginTop: 8 }}>{error}</span>}
+    </div>
+  )
+}
+
+/**
+ * What actually reached the customer when the window was opened.
+ *
+ * This is not decoration. Opening the window is a request for her to do
+ * something, and the two ways it fails silently look identical from this
+ * screen: she was told and has not got round to it, or she was never told at
+ * all. The second is common today — there is no approved WhatsApp template for
+ * an address request yet, and a phone-only account has no email — so an
+ * operator who is not shown this will close the ticket believing a message went
+ * out that did not.
+ *
+ * `unreachable` is therefore the loud state, and it names the remedy: the
+ * telephone. Everything else is a quiet confirmation.
+ */
+function NotifyOutcome({ notified }: { notified: AddressChangeNotified }) {
+  const reason = (value: string | null) => (value && NOTIFY_REASON[value]) || value || 'not sent'
+  const channels = [
+    notified.email.sent ? 'email' : null,
+    notified.whatsapp.sent ? 'WhatsApp' : null,
+  ].filter(Boolean)
+
+  return (
+    // Composes `adm-error` / `adm-help` rather than introducing a `.adm-note`
+    // of its own: admin.css IS the design system here and feature modules do
+    // not author component CSS. The box itself is inline because it is one
+    // panel on one screen, not a pattern.
+    <div
+      className={notified.unreachable ? 'adm-error' : 'adm-help'}
+      style={{
+        margin: '0 0 10px',
+        padding: '8px 10px',
+        borderRadius: 6,
+        lineHeight: 1.5,
+        background: notified.unreachable ? 'rgba(200,60,40,.07)' : 'rgba(52,32,78,.05)',
+      }}
+    >
+      {notified.blocked === 'guest-order' ? (
+        <>
+          <strong>This is a guest order, so she cannot use the correction at all.</strong> The
+          edit is scoped to the account that owns the order and a guest checkout has no account,
+          so no session could ever open the control. Nothing was sent, and closing the window
+          again changes nothing. This one still has to be corrected in the database.
+        </>
+      ) : notified.unreachable ? (
+        <>
+          <strong>She has not been told.</strong> Email — {reason(notified.email.reason)}. WhatsApp —{' '}
+          {reason(notified.whatsapp.reason)}. Call her, and read out the link below.
+        </>
+      ) : (
+        <>
+          <strong>Asked her by {channels.join(' and ')}.</strong>
+          {!notified.email.sent && ` Email skipped — ${reason(notified.email.reason)}.`}
+          {!notified.whatsapp.sent && ` WhatsApp skipped — ${reason(notified.whatsapp.reason)}.`}
+        </>
+      )}
+      {/* The link is shown either way: an operator on a call needs to be able to
+          read it out, and it is the same URL the message carries. */}
+      <div style={{ marginTop: 4, wordBreak: 'break-all', opacity: 0.8 }}>{notified.url}</div>
     </div>
   )
 }

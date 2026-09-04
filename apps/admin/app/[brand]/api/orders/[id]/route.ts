@@ -66,7 +66,25 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
       // Worth logging on both edges. Opening it lets a customer change where a
       // paid parcel goes, which is the kind of thing that gets asked about
       // afterwards; closing it explains why she suddenly could not.
-      await auditConsole(session, req, granted ? 'order.address-edit.grant' : 'order.address-edit.revoke', result.orderNo)
+      //
+      // The grant now also messages her, so the audit row records WHETHER she
+      // was reached and on which channel. Without it, "we opened it and she
+      // never used it" and "we opened it and she was never told" read the same
+      // way weeks later, and only one of those is the customer's doing.
+      await auditConsole(
+        session,
+        req,
+        granted ? 'order.address-edit.grant' : 'order.address-edit.revoke',
+        result.orderNo,
+        result.notified
+          ? {
+              email: result.notified.email.sent ? 'sent' : (result.notified.email.reason ?? 'skipped'),
+              whatsapp: result.notified.whatsapp.sent
+                ? 'sent'
+                : (result.notified.whatsapp.reason ?? 'skipped'),
+            }
+          : undefined,
+      )
       return ok(result)
     }
 

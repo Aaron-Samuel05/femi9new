@@ -183,6 +183,15 @@ locals {
     # Empty = the app default (en). Must match the language the templates were
     # approved under; a mismatch fails exactly like a missing template.
     { name = "WHATSAPP_TEMPLATE_LANGUAGE", value = var.whatsapp_template_language },
+    # The template that asks a customer to correct her delivery address. Empty
+    # until Meta approves one, and empty is READ AS "not approved" rather than
+    # as a fault: the console still opens the window and still emails her, and
+    # says on the order screen that WhatsApp was skipped. Set it to the approved
+    # name and the message starts going out with no code change — which is the
+    # whole reason it is a task variable and not a constant. In base_environment
+    # because the CONSOLE is what sends it, and the storefronts are where the
+    # rest of the WhatsApp path lives.
+    { name = "WHATSAPP_ADDRESS_CHANGE_TEMPLATE", value = var.whatsapp_address_change_template },
   ]
 
   service_environment = {

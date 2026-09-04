@@ -88,6 +88,49 @@ export function invoiceTemplateName(): ConfiguredWhatsappTemplate | null {
   return name ? (name as ConfiguredWhatsappTemplate) : null
 }
 
+/**
+ * The approved template that asks a customer to correct her delivery address,
+ * if there is one yet.
+ *
+ * ── Why this is env-configured and not a constant ──────────────────────────
+ * The same reason as `invoiceTemplateName()` above, and worth restating
+ * because the temptation here is stronger. None of the five approved templates
+ * says anything about an address: `order_status_confirmation` reads as a
+ * receipt and `order_status_delivered` says the order "has been" completed.
+ * Reaching for one of them to ask her to fix an address would land on her
+ * phone, render fluently, and tell her something that is not true — which is
+ * worse than sending nothing at all.
+ *
+ * So: unset means "not approved yet", and the grant path sends the EMAIL and
+ * records `template-not-approved` as the reason WhatsApp was skipped. Set it
+ * to the approved name and the message starts going out, with no deploy. That
+ * matters more here than for the invoice, because the customers this message
+ * is FOR are disproportionately the phone-only signups who have no email
+ * address at all — for them, no template means no notification.
+ *
+ * The template must be approved BODY-ONLY, with exactly three variables in
+ * this order:
+ *
+ *   {{1}}  her first name
+ *   {{2}}  the order number, e.g. LM-00014
+ *   {{3}}  the full https link to her order page
+ *
+ * A different variable COUNT fails at send time with a 132000 that reads like
+ * an outage. The same count in a different ORDER does not fail at all — it
+ * sends, and renders the link where the name goes. Neither is visible from
+ * here, so the shape above is the contract.
+ *
+ * And it must be body-only rather than a URL-BUTTON template, however much
+ * better a button would read: `sendWhatsappTemplate` builds `header` and
+ * `body` components and nothing else, so a button's dynamic suffix would never
+ * be sent and Meta would reject the whole message. Approving a button template
+ * means teaching the transport about button components first.
+ */
+export function addressChangeTemplateName(): ConfiguredWhatsappTemplate | null {
+  const name = process.env.WHATSAPP_ADDRESS_CHANGE_TEMPLATE?.trim()
+  return name ? (name as ConfiguredWhatsappTemplate) : null
+}
+
 /** `WHATSAPP_TOKEN_LUMI9`, else the shared `WHATSAPP_TOKEN`. */
 export function whatsappTokenFor(brand: Brand): string | undefined {
   return perBrandEnv('WHATSAPP_TOKEN', brand)

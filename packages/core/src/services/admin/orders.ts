@@ -1,6 +1,6 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
-import type { CouponType, OrderStatus, Prisma } from '@prisma/client'
+import type { CouponType, OrderStatus, PaymentStatus, Prisma } from '@prisma/client'
 import * as razorpay from '../../razorpay'
 import { sendOrderStatusEmail } from '../order-mail'
 import { sendOrderStatusWhatsapp } from '../order-whatsapp'
@@ -10,6 +10,10 @@ import {
 } from '../thara'
 import { reverseOrderCommission } from '../affiliate'
 import { addressEditState } from '../order-address'
+import {
+  sendAddressChangeRequest,
+  type AddressChangeNotifyResult,
+} from '../order-address-notify'
 
 /**
  * Admin orders service — the single seam between the DB and the Ops console's
@@ -204,6 +208,18 @@ export interface OrderDetail {
     /** Whether the customer can act on it right now, status included. */
     open: boolean
   }
+  /**
+   * Whether `refundOrder` would accept this order right now.
+   *
+   * Computed here rather than as `status === 'paid'` in the console, because
+   * the rule is no longer readable from the status alone: a CANCELLED order is
+   * refundable exactly while a payment row is still `captured`, and the console
+   * has no business seeing payment rows to work that out. Deriving it in two
+   * places is how the button came to disagree with the service in the first
+   * place — the old `current === 'paid'` hid the only control that could return
+   * money on the orders that most needed it.
+   */
+  refundable: boolean
 }
 
 /** Full order — items (purchase-time snapshots), customer and shipping. */
@@ -217,6 +233,9 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
         address: true,
         coupon: { select: { code: true, type: true, value: true } },
         items: { orderBy: { productName: 'asc' } },
+        // Not returned to the console — only `refundable` below is. See the
+        // note on that field for why the console must not derive it itself.
+        payments: { select: { status: true } },
       },
     })
     if (!r) return null
@@ -253,6 +272,9 @@ export async function getOrder(brand: Brand, id: string): Promise<OrderDetail | 
         usedAt: r.addressEditUsedAt,
         open: addressEditState(r).open,
       },
+      // The same function refundOrder's guard calls, so the button and the
+      // service cannot disagree about what is refundable.
+      refundable: refundableFrom(r) !== null,
       items: r.items.map((it) => ({
         id: it.id,
         productName: it.productName,
@@ -371,9 +393,71 @@ export async function updateOrderStatus(brand: Brand, id: string, status: OrderS
  */
 export class NotRefundableError extends Error {
   constructor(status: OrderStatus) {
-    super(`Only a paid order can be refunded (this order is "${status}").`)
+    super(
+      `This order cannot be refunded (it is "${status}" and holds no captured payment). ` +
+        `Only a paid order, or a cancelled one whose payment was never returned, can be.`,
+    )
     this.name = 'NotRefundableError'
   }
+}
+
+/**
+ * The states a refund may be issued FROM, and what each one has already undone.
+ *
+ * `paid` is the ordinary case and nothing has been reversed.
+ *
+ * `cancelled` is the case that had no way out at all. Cancelling a PAID order
+ * restores its stock and gives the coupon back — and touches neither the
+ * gateway nor the payment row, so the money stays with us. The order then reads
+ * `cancelled`, `refundOrder`'s guard was `status === 'paid'`, and the console
+ * only rendered the Refund button on a paid order: the money was stranded,
+ * unreturnable through this system, on an order whose books already said the
+ * sale was reversed. Recovering it meant a refund by hand in the Razorpay
+ * dashboard and a manual database correction, and nothing anywhere said so.
+ *
+ * The distinction matters for exactly one thing, and getting it wrong is a
+ * stock bug rather than a money one: a cancel from a reservation-holding status
+ * ALREADY restored the stock and the coupon, so refunding from `cancelled` must
+ * NOT do it a second time. Where the cancel did not restore them — a cancel
+ * from `delivered`, where the goods have gone — not restoring is also the right
+ * answer, so the same rule holds in both directions.
+ */
+type RefundableFrom = 'paid' | 'cancelled'
+
+/**
+ * Which state a refund may be issued from, or `null` for "not refundable".
+ *
+ * The single definition of the rule. `getOrder` calls it to decide whether the
+ * console draws a Refund button and `refundOrder` calls it to decide whether to
+ * act — the button used to say `status === 'paid'` on its own, and that second
+ * copy of a rule is how it came to hide the only control that could return
+ * money on the orders that most needed it.
+ *
+ * ── Why a cancelled order counts a REFUNDED payment as money to give back ───
+ * It reads backwards and it is the resume marker. `refundOrder` returns the
+ * money BEFORE it reverses the books, so a crash in between leaves the payment
+ * `refunded` while the order is still what it was; running it again re-enters
+ * at the gateway, adopts the existing refund, and finishes. For a `paid` order
+ * that resume works because the guard is the ORDER's status, which the
+ * interruption did not touch. Keying the cancelled case on `captured` alone
+ * would have broken it in a new way — the retry would be refused and the order
+ * stranded again — so it asks whether the payment ever REACHED capture instead.
+ *
+ * That admits nothing it should not: reversing the books is what moves an order
+ * to `refunded`, so a `cancelled` order by definition has unreversed books, and
+ * a cancelled order that was never paid for has no payment past `created` or
+ * `failed` and stays correctly unrefundable.
+ */
+function refundableFrom(order: {
+  status: OrderStatus
+  payments: readonly { status: PaymentStatus }[]
+}): RefundableFrom | null {
+  if (order.status === 'paid') return 'paid'
+  if (order.status !== 'cancelled') return null
+  const reachedCapture = order.payments.some(
+    (p) => p.status === 'captured' || p.status === 'refunded',
+  )
+  return reachedCapture ? 'cancelled' : null
 }
 
 /**
@@ -392,8 +476,11 @@ export class NotRefundableError extends Error {
  * So the money moves OUTSIDE any transaction, and the sequence is built to be
  * safely repeatable rather than atomic-or-nothing:
  *
- *   1. Read and REQUIRE status 'paid'. A completed refund leaves 'refunded',
- *      so a double-click is still rejected here.
+ *   1. Read and REQUIRE a refundable state — 'paid', or 'cancelled' while a
+ *      payment row is still 'captured' (see RefundableFrom: cancelling a paid
+ *      order never returned the money, and this is the only way to give it
+ *      back). A completed refund leaves 'refunded' and no captured payment, so
+ *      a double-click is still rejected here.
  *   2. CLAIM the payment row ('captured' -> 'refunded') with a compare-and-swap.
  *      This is what serialises two operators clicking at the same instant: only
  *      one update returns count 1, and it happens before any money moves.
@@ -409,6 +496,9 @@ export class NotRefundableError extends Error {
  * finish. Running the refund again from there re-enters at step 3, adopts the
  * existing gateway refund, and completes step 4. A stuck order is therefore
  * fixed by clicking Refund again — never by refunding a second time.
+ *
+ * A refund taken in the Razorpay DASHBOARD instead lands on the same step 4 via
+ * `recordGatewayRefund`, which the `refund.processed` webhook calls.
  *
  * Returns null when no such order exists (clean 404 at the route); throws
  * NotRefundableError when the order isn't 'paid'.
@@ -428,7 +518,8 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     },
   })
   if (!order) return null
-  if (order.status !== 'paid') throw new NotRefundableError(order.status)
+  const from = refundableFrom(order)
+  if (!from) throw new NotRefundableError(order.status)
 
   // Prefer the row carrying a gateway payment id — that is the captured one.
   const payment = order.payments.find((p) => p.razorpayPaymentId) ?? order.payments[0] ?? null
@@ -485,15 +576,45 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
   }
 
   // ── 4. Reverse the books ───────────────────────────────────────────────────
-  const outcome = await prisma.$transaction(async (tx) => {
-    // Compare-and-swap on 'paid' — the once-only gate for every side effect
-    // below, so a concurrent caller that also got past step 1 cannot
-    // double-restore stock or double-reverse points.
+  const outcome = await reverseBooksForRefund(brand, id, from, order.orderNo)
+
+  if (outcome === 'already') {
+    console.warn(`[refund] ${order.orderNo}: books were already reversed by a concurrent refund.`)
+  }
+  return getOrder(brand, id)
+}
+
+/**
+ * Step 4 of a refund, on its own so the two ways a refund can happen share it.
+ *
+ * `refundOrder` above is one of them. The other is `recordGatewayRefund`, for a
+ * refund somebody issued in the Razorpay dashboard — money that has genuinely
+ * left our account and that, before the webhook existed, nothing in this
+ * database ever heard about.
+ *
+ * Everything here is gated by ONE compare-and-swap on the status we came from,
+ * which is what makes it exactly-once under a redelivered webhook, a
+ * double-clicked button, or both at the same instant. `from` is not merely the
+ * expected status: it also decides whether the stock and coupon give-back runs
+ * at all — see `RefundableFrom` for why a cancelled order must not get its
+ * stock back twice.
+ */
+async function reverseBooksForRefund(
+  brand: Brand,
+  id: string,
+  from: RefundableFrom,
+  orderNo: string,
+): Promise<'ok' | 'already'> {
+  const prisma = dbFor(brand)
+  return prisma.$transaction(async (tx) => {
+    // Compare-and-swap on the status we read — the once-only gate for every
+    // side effect below, so a concurrent caller that also got past the guard
+    // cannot double-restore stock or double-reverse points.
     const claimedOrder = await tx.order.updateMany({
-      where: { id, status: 'paid' },
+      where: { id, status: from },
       data: { status: 'refunded' },
     })
-    if (claimedOrder.count === 0) return { kind: 'already' as const }
+    if (claimedOrder.count === 0) return 'already'
 
     const detail = await tx.order.findUnique({
       where: { id },
@@ -503,22 +624,28 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
         points: { select: { userId: true, delta: true } },
       },
     })
-    if (!detail) return { kind: 'already' as const }
+    if (!detail) return 'already'
 
     await tx.payment.updateMany({ where: { orderId: id }, data: { status: 'refunded' } })
-    if (detail.couponId) {
-      await tx.coupon.updateMany({
-        where: { id: detail.couponId, usedCount: { gt: 0 } },
-        data: { usedCount: { decrement: 1 } },
-      })
-    }
 
-    // Give the reserved stock back.
-    for (const it of detail.items) {
-      await tx.productVariant.update({
-        where: { id: it.variantId },
-        data: { stock: { increment: it.qty } },
-      })
+    // Stock and the coupon, ONLY when the cancel path has not already given
+    // them back. Running these on a cancelled order would invent inventory that
+    // does not exist and hand back a coupon use twice.
+    if (from === 'paid') {
+      if (detail.couponId) {
+        await tx.coupon.updateMany({
+          where: { id: detail.couponId, usedCount: { gt: 0 } },
+          data: { usedCount: { decrement: 1 } },
+        })
+      }
+
+      // Give the reserved stock back.
+      for (const it of detail.items) {
+        await tx.productVariant.update({
+          where: { id: it.variantId },
+          data: { stock: { increment: it.qty } },
+        })
+      }
     }
 
     // Reverse the loyalty award. Summing the ledger rows tied to this order gives
@@ -526,6 +653,10 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     // the compare-and-swap above means no prior refund row can be in this set.
     // Skip when nothing was awarded — a guest order carries no user, and
     // PointsLedger.userId is non-null, so there is no row to reverse against.
+    //
+    // This one runs for BOTH origins, unlike stock: cancelling an order does not
+    // touch the loyalty ledger, so a cancelled-then-refunded customer is still
+    // holding points for a purchase that was undone.
     const awarded = detail.points.reduce((sum, p) => sum + p.delta, 0)
     if (awarded > 0) {
       // Every award row shares the customer's id; take it from the row rather
@@ -540,7 +671,7 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
         data: {
           userId,
           delta: -awarded,
-          reason: `Refund ${order.orderNo}`,
+          reason: `Refund ${orderNo}`,
           orderId: id,
           balanceAfter,
         },
@@ -559,13 +690,86 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
     // and the console's Earnings column is what an operator pays out from.
     await reverseOrderCommission(tx, id)
 
-    return { kind: 'ok' as const }
+    return 'ok'
+  })
+}
+
+/**
+ * Book a refund that was issued OUTSIDE this console — in the Razorpay
+ * dashboard — and that we learn about from a `refund.processed` webhook.
+ *
+ * ── Why this has to exist ───────────────────────────────────────────────────
+ * The money has already gone back. Until this, nothing consumed that event:
+ * the order stayed `paid` (or `cancelled`), its `Payment` row stayed
+ * `captured`, the customer kept her loyalty points, the creator kept the
+ * commission, and every sales figure in the console counted a sale that had
+ * been reversed. Nothing looked wrong on any screen — which is the same shape
+ * as the missing-cron failures, and the reason the ops notes already tell you
+ * to subscribe to `refund.processed`.
+ *
+ * ── Why it refuses to guess ─────────────────────────────────────────────────
+ * It books a reversal from exactly the two states the console's own Refund can
+ * act on. A refund taken against a `processing`, `shipped` or `delivered` order
+ * is an action this platform has never modelled — whether the stock comes back
+ * depends on where the parcel physically is, and no webhook payload knows that.
+ * So the payment row is marked refunded (that much is simply true) and the rest
+ * is left alone and logged LOUDLY, for a human. Silently restoring stock for a
+ * box that is on a van is worse than an alert.
+ *
+ * Idempotent by the same compare-and-swap as the console path, because Razorpay
+ * redelivers an event until it is acknowledged and a partial refund raises one
+ * `refund.processed` per refund.
+ */
+export async function recordGatewayRefund(
+  brand: Brand,
+  razorpayPaymentId: string,
+): Promise<void> {
+  const prisma = dbFor(brand)
+  const payment = await prisma.payment.findUnique({
+    where: { razorpayPaymentId },
+    select: { id: true, status: true, order: { select: { id: true, orderNo: true, status: true } } },
+  })
+  // A refund for a payment this brand's schema has never seen. Both brands'
+  // webhooks call this, and each one only knows its own payments, so this is
+  // the normal answer on the wrong brand rather than an error.
+  if (!payment?.order) return
+
+  const { order } = payment
+  if (order.status === 'refunded') return
+
+  // True regardless of what happens to the order below: the gateway has
+  // returned this payment.
+  await prisma.payment.updateMany({
+    where: { id: payment.id, status: { not: 'refunded' } },
+    data: { status: 'refunded' },
   })
 
-  if (outcome.kind === 'already') {
-    console.warn(`[refund] ${order.orderNo}: books were already reversed by a concurrent refund.`)
+  // Re-read AFTER the payment write, and put the answer through the same
+  // function the console's guard uses rather than re-stating the rule here —
+  // the point of the whole change was that this rule existed in two places and
+  // the two disagreed.
+  const refreshed = await prisma.order.findUnique({
+    where: { id: order.id },
+    select: { status: true, payments: { select: { status: true } } },
+  })
+  if (!refreshed) return
+
+  const from = refundableFrom(refreshed)
+  if (!from) {
+    console.error(
+      `[refund] ${order.orderNo}: a gateway refund arrived for an order that is "${refreshed.status}". ` +
+        `The payment row is marked refunded; the order status, stock and loyalty are UNCHANGED ` +
+        `because whether the goods can come back is not something this event knows. Resolve by hand.`,
+    )
+    return
   }
-  return getOrder(brand, id)
+
+  const outcome = await reverseBooksForRefund(brand, order.id, from, order.orderNo)
+  if (outcome === 'already') {
+    console.warn(
+      `[refund] ${order.orderNo}: gateway refund event arrived after the books were already reversed.`,
+    )
+  }
 }
 
 /**
@@ -582,6 +786,22 @@ export async function refundOrder(brand: Brand, id: string): Promise<OrderDetail
  * text, not a relation: admin identity lives in the `platform` schema, which a
  * brand's Prisma client cannot reach, so a foreign key is not expressible.
  *
+ * ── Granting also TELLS her ─────────────────────────────────────────────────
+ * The control renders on the customer's own order page, behind a sign-in, on a
+ * page she has no reason to open again after paying. So a grant on its own was
+ * an act with no observable effect: the window opened, she never learned it
+ * had, and the parcel stayed unshippable until somebody phoned her. The send
+ * runs OUTSIDE the update and never throws — a Meta outage or an unverified
+ * mail identity must not undo a grant that is already written, nor turn the
+ * click into a 500 that has an operator re-clicking a button that worked.
+ *
+ * `notified` therefore comes back with the grant, and its `unreachable` flag is
+ * the one an operator must act on: a customer with no email and no phone on
+ * file exists, and for her the only remaining channel is the telephone. It is
+ * null on a revoke, and also when there was nothing to tell her about — see
+ * `sendAddressChangeRequest` for the cases, of which a GUEST order (no user
+ * row, so no session can ever own it) is the one that surprises people.
+ *
  * Returns null when no such order exists, so the route answers 404 rather than
  * reporting success for an order it never touched.
  */
@@ -590,23 +810,36 @@ export async function setOrderAddressEditGrant(
   id: string,
   granted: boolean,
   grantedBy: string,
-): Promise<{ orderNo: string; grantedAt: Date | null; usedAt: Date | null } | null> {
+): Promise<{
+  orderNo: string
+  grantedAt: Date | null
+  usedAt: Date | null
+  notified: AddressChangeNotifyResult | null
+} | null> {
   const prisma = dbFor(brand)
+  let updated
   try {
-    const updated = await prisma.order.update({
+    updated = await prisma.order.update({
       where: { id },
       data: granted
         ? { addressEditGrantedAt: new Date(), addressEditGrantedBy: grantedBy, addressEditUsedAt: null }
         : { addressEditGrantedAt: null, addressEditGrantedBy: null },
       select: { orderNo: true, addressEditGrantedAt: true, addressEditUsedAt: true },
     })
-    return {
-      orderNo: updated.orderNo,
-      grantedAt: updated.addressEditGrantedAt,
-      usedAt: updated.addressEditUsedAt,
-    }
   } catch {
     // Prisma throws P2025 for a missing row; the caller only needs "not found".
     return null
+  }
+
+  // Only on the way OPEN. A revoke has nothing to announce, and "you may no
+  // longer change your address" is a message that invites the call it would be
+  // sent to prevent.
+  const notified = granted ? await sendAddressChangeRequest(brand, updated.orderNo) : null
+
+  return {
+    orderNo: updated.orderNo,
+    grantedAt: updated.addressEditGrantedAt,
+    usedAt: updated.addressEditUsedAt,
+    notified,
   }
 }

@@ -433,6 +433,12 @@ variable "whatsapp_template_language" {
   default     = ""
 }
 
+variable "whatsapp_address_change_template" {
+  description = "Name of the approved WhatsApp template that asks a customer to correct her delivery address. Empty = not approved yet, which the app reads as 'send the email only' rather than as an error. It must be approved BODY-ONLY with exactly three variables in this order: first name, order number, order-page link — a different count fails at send time, and the same count in a different order sends and renders the link where the name goes. Approve it and set this; no deploy is needed. Until then the phone-only customers this message exists for hear nothing, because they have no email address."
+  type        = string
+  default     = ""
+}
+
 variable "femi9_email_from" {
   description = "Femi9's verified transactional sender, e.g. Femi9 <login@femi9.in>."
   type        = string

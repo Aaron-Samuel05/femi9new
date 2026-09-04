@@ -261,6 +261,51 @@ cancelled. `NotificationLog.dedupeKey` is the second line of defence, not the
 first. There is no WhatsApp template for `shipped` — dispatch stays email-only,
 and the delivered one must not be repurposed for it.
 
+**Opening the ADDRESS CHANGE window messages her too**, and that is the only
+thing that makes the grant do anything. The control renders on the customer's
+own order page, behind a sign-in, on a page she has no reason to reopen after
+paying — so before this, support opened a window nobody ever learned about and
+the parcel sat unshippable. `setOrderAddressEditGrant` now sends on the way OPEN
+only (a revoke has nothing to announce) and returns `notified`, which the order
+screen renders. Three things about it are worth knowing before you touch it:
+the WhatsApp half is inert until `WHATSAPP_ADDRESS_CHANGE_TEMPLATE` names an
+approved template, so today most grants go out by email alone — and a phone-only
+account has no email, which is the `unreachable` case that needs a phone call;
+the link is built from the BRAND (`storefrontOrigin`) and never from
+`NEXT_PUBLIC_SITE_URL`, because this console serves both brands from one
+container; and a **guest order can never use the flow at all** — the edit is
+scoped by `userId` and a guest checkout has no user row — so no message is sent
+and `order_address_change_guest_order` is logged.
+
+**Cancelling a PAID order does not return the money, and never did.** The
+cancel path restores stock and gives the coupon back; it touches neither the
+gateway nor the `Payment` row. `refundOrder`'s guard was `status === 'paid'`
+and the Refund button was drawn on `current === 'paid'`, so once an operator
+picked "cancelled" on a paid order the money was stranded — unreturnable
+through this console, on an order whose books already said the sale was
+reversed, with the customer still holding her loyalty points and the creator
+still holding the commission. Recovering it meant a refund by hand in the
+Razorpay dashboard plus a database correction, and nothing said so anywhere.
+
+`refundableFrom()` in `services/admin/orders.ts` is now the ONE definition of
+what may be refunded — `paid`, or `cancelled` while a payment reached capture —
+and `OrderDetail.refundable` is what draws the button, so the control and the
+service cannot disagree again. Two things about it: a refund from `cancelled`
+must NOT restore stock (the cancel already did), which is why
+`reverseBooksForRefund` takes the origin status rather than inferring it; and a
+cancelled order counts a `refunded` payment as still-refundable, because that is
+the resume marker for a refund that died after the money went back.
+
+**A refund taken in the Razorpay DASHBOARD now reaches the database.**
+`refund.processed` → `recordGatewayRefund`, from both storefront webhooks. It
+was unhandled, so such a refund left the order `paid`, the payment `captured`,
+the points unreversed and every sales figure counting a reversed sale — with
+nothing wrong on any screen. It books a reversal only from the two states the
+console itself can refund from; for a `processing`/`shipped`/`delivered` order it
+marks the payment refunded, logs loudly and leaves the rest for a human, because
+whether the goods can come back is not something a webhook payload knows.
+**Subscribe the endpoint to `refund.processed`** or none of this fires.
+
 **The platform Prisma client has a custom output path** (`generated/`, gitignored).
 Two generators writing to `node_modules/@prisma/client` would overwrite each
 other, so the brand client keeps the default and this one does not. Any fresh

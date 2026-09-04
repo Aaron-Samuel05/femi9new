@@ -1,7 +1,13 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { prisma, resetDb, seedSettings, makeProduct, cartWith } from '../helpers/db'
 import { placeOrder, markOrderPaid, type CheckoutCustomer } from '@femi9/core/services/checkout'
-import { refundOrder, NotRefundableError } from '@femi9/core/services/admin/orders'
+import {
+  getOrder,
+  recordGatewayRefund,
+  refundOrder,
+  updateOrderStatus,
+  NotRefundableError,
+} from '@femi9/core/services/admin/orders'
 
 /**
  * Refund integration tests.
@@ -209,5 +215,208 @@ describe('refund', () => {
     expect(await stockOf(variant.id)).toBe(initialStock)
     expect(await pointsSum(order.userId!)).toBe(0)
     expect(await prisma.pointsLedger.count({ where: { delta: -expectedPoints } })).toBe(1)
+  })
+})
+
+/**
+ * A PAID order that gets cancelled.
+ *
+ * Not a corner case: it is what the console produced every time an operator
+ * picked "cancelled" from the status dropdown on an order that had been paid
+ * for. The cancel restores stock and gives the coupon back, and touches neither
+ * the gateway nor the payment row — so the money stayed with us, on an order
+ * whose books already said the sale was reversed. `refundOrder`'s guard was
+ * `status === 'paid'` and the console only drew the Refund button on a paid
+ * order, so there was no way back through this system: it took a refund by hand
+ * in the Razorpay dashboard plus a manual database correction, and nothing
+ * anywhere said so.
+ *
+ * The rule these pin down is the one that is a STOCK bug when it is got wrong.
+ * The cancel already gave the stock and the coupon back, so refunding from
+ * `cancelled` must not do it a second time — while the loyalty points, which
+ * the cancel never touched, must still be reversed.
+ */
+describe('refund after cancel', () => {
+  beforeEach(async () => {
+    await resetDb()
+    await seedSettings()
+  })
+
+  it('cancelling a paid order gives the stock back and keeps the money', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    const expectedPoints = Math.round(order.total * POINTS_PER_RUPEE) + FIRST_ORDER_BONUS
+
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(after.status).toBe('cancelled')
+    // Stock came back...
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    // ...and the money did not. That is the whole problem.
+    const payments = await prisma.payment.findMany({ where: { orderId: order.id } })
+    expect(payments.every((p) => p.status === 'captured')).toBe(true)
+    // She is also still holding the points for a purchase that was undone.
+    expect(await pointsSum(order.userId!)).toBe(expectedPoints)
+  })
+
+  it('refunds a cancelled order whose money was never returned', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    const detail = await refundOrder('femi9', order.id)
+    expect(detail).not.toBeNull()
+    expect(detail!.status).toBe('refunded')
+
+    const payments = await prisma.payment.findMany({ where: { orderId: order.id } })
+    expect(payments.every((p) => p.status === 'refunded')).toBe(true)
+    // The points the cancel left behind are reversed.
+    expect(await pointsSum(order.userId!)).toBe(0)
+    // And the stock is NOT restored twice — it came back at cancellation, and a
+    // second increment would invent inventory that does not exist.
+    expect(await stockOf(variant.id)).toBe(initialStock)
+  })
+
+  it('reports a cancelled order that still holds its money as refundable', async () => {
+    const { order } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    // What draws the console's Refund button. It used to be `status === 'paid'`
+    // in the page, which is exactly why the button was missing here.
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.refundable).toBe(true)
+
+    await refundOrder('femi9', order.id)
+    const settled = await getOrder('femi9', order.id)
+    expect(settled!.refundable).toBe(false)
+  })
+
+  it('refuses a cancelled order that was never paid for', async () => {
+    // No captured payment, so there is nothing to give back and the Refund
+    // button must not appear on it.
+    const { order, variant, initialStock } = await placeTestOrder()
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.refundable).toBe(false)
+    await expect(refundOrder('femi9', order.id)).rejects.toBeInstanceOf(NotRefundableError)
+    expect(await stockOf(variant.id)).toBe(initialStock)
+  })
+
+  it('resumes a cancelled-order refund that died after the money went back', async () => {
+    // The money moves before the books are reversed, so a crash in between
+    // leaves the payment `refunded` on an order that is still `cancelled`.
+    // For a PAID order the retry works because the guard reads the order's
+    // status, which the interruption did not touch. Guarding the cancelled case
+    // on a `captured` payment alone would refuse this retry and strand the
+    // order a second way — see refundableFrom.
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+    await prisma.payment.updateMany({
+      where: { orderId: order.id },
+      data: { status: 'refunded' },
+    })
+
+    const detail = await getOrder('femi9', order.id)
+    expect(detail!.refundable).toBe(true)
+
+    const resumed = await refundOrder('femi9', order.id)
+    expect(resumed!.status).toBe('refunded')
+    expect(await pointsSum(order.userId!)).toBe(0)
+    expect(await stockOf(variant.id)).toBe(initialStock)
+  })
+
+  it('refuses a second refund of a cancelled order', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    await refundOrder('femi9', order.id)
+    await expect(refundOrder('femi9', order.id)).rejects.toBeInstanceOf(NotRefundableError)
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+  })
+})
+
+/**
+ * A refund taken in the Razorpay DASHBOARD instead of in the console.
+ *
+ * Until `refund.processed` was handled, nothing in this database ever heard
+ * about it: the order stayed paid, the payment row stayed captured, the customer
+ * kept her points, the creator kept the commission, and every sales figure in
+ * the console counted a sale that had been reversed. Nothing on any screen
+ * looked wrong — the same shape as the unscheduled-cron failures.
+ */
+describe('recordGatewayRefund', () => {
+  beforeEach(async () => {
+    await resetDb()
+    await seedSettings()
+  })
+
+  it('books a dashboard refund on a paid order exactly as the console would', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(after.status).toBe('refunded')
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+  })
+
+  it('is idempotent under Razorpay redelivery', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+
+    // Razorpay redelivers until the event is acknowledged, and a partial refund
+    // raises one event per refund against the same payment.
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+    // One award and exactly one reversal — never a second.
+    expect(await prisma.pointsLedger.count()).toBe(2)
+  })
+
+  it('completes a cancelled order without restoring its stock again', async () => {
+    const { order, variant, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'cancelled')
+
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(after.status).toBe('refunded')
+    expect(await stockOf(variant.id)).toBe(initialStock)
+    expect(await pointsSum(order.userId!)).toBe(0)
+  })
+
+  it('marks the payment but leaves a shipped order alone, for a human', async () => {
+    // Whether the goods can come back depends on where the parcel physically is,
+    // which no webhook payload knows. Guessing would be worse than an alert:
+    // silently restoring stock for a box on a van is a phantom unit.
+    const { order, variant, qty, initialStock } = await placeTestOrder()
+    await markOrderPaid('femi9', captureArgs(order.orderNo))
+    await updateOrderStatus('femi9', order.id, 'shipped')
+
+    await recordGatewayRefund('femi9', 'pay_mock_1')
+
+    const after = await prisma.order.findUniqueOrThrow({ where: { id: order.id } })
+    expect(after.status).toBe('shipped')
+    const payments = await prisma.payment.findMany({ where: { orderId: order.id } })
+    expect(payments.every((p) => p.status === 'refunded')).toBe(true)
+    expect(await stockOf(variant.id)).toBe(initialStock - qty)
+  })
+
+  it('ignores a refund for a payment this brand has never seen', async () => {
+    // Both brands' webhooks call this and each only knows its own payments, so
+    // on the wrong brand a miss is the normal answer, not an error.
+    await expect(recordGatewayRefund('femi9', 'pay_not_ours')).resolves.toBeUndefined()
   })
 })

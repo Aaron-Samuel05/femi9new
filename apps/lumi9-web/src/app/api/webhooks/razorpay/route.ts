@@ -3,6 +3,7 @@ import { badRequest, ok, handle, serviceUnavailable } from '@femi9/core/api'
 import { webhookConfigured, verifyWebhookSignature } from '@femi9/core/razorpay'
 import { logger } from '@femi9/core/logger'
 import { markOrderPaid, orderNoForRazorpayOrderId } from '@femi9/core/services/checkout'
+import { recordGatewayRefund } from '@femi9/core/services/admin/orders'
 import {
   confirmMandate,
   recordSubscriptionCharge,
@@ -55,6 +56,11 @@ type RazorpayWebhookEvent = {
       entity?: { id?: string; order_id?: string; method?: string; amount?: number }
     }
     order?: { entity?: { id?: string } }
+    // `refund.processed` carries the refund entity, whose `payment_id` names
+    // what was returned. The payment entity rides along too, but the refund is
+    // the authoritative half — a partial refund raises one event per refund
+    // against the same payment.
+    refund?: { entity?: { id?: string; payment_id?: string; amount?: number } }
     subscription?: {
       entity?: { id?: string; status?: string; current_end?: number | null }
     }
@@ -138,6 +144,31 @@ export async function POST(req: NextRequest) {
 
     if (event.event?.startsWith('subscription.')) {
       await handleSubscriptionEvent(event)
+      return ok({ ok: true })
+    }
+
+    /*
+     * A refund issued in the Razorpay DASHBOARD rather than in the console.
+     *
+     * Nothing consumed this event until now, so the money went back and this
+     * database never heard: the order stayed `paid`, its Payment row stayed
+     * `captured`, the customer kept her loyalty points and every sales figure
+     * counted a sale that had been reversed. Nothing on any screen looked wrong
+     * — the same shape as the unscheduled-cron failures.
+     *
+     * Keyed on the REFUND entity's `payment_id`, not on the payment entity: a
+     * partial refund raises one event per refund against the same payment, and
+     * `recordGatewayRefund` is idempotent on the order's compare-and-swap
+     * rather than on the event, so a redelivery converges instead of reversing
+     * the books twice.
+     */
+    if (event.event === 'refund.processed') {
+      const paymentId = event.payload?.refund?.entity?.payment_id ?? event.payload?.payment?.entity?.id
+      if (paymentId) {
+        await recordGatewayRefund('lumi9', paymentId)
+      } else {
+        logger.error('[webhook] refund.processed without a payment id', { event: event.event })
+      }
       return ok({ ok: true })
     }
 
