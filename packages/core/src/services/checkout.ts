@@ -309,6 +309,44 @@ export class OrderNotPayableError extends Error {
   }
 }
 
+/**
+ * The basket came to ₹0, and there is no way to take a payment for that.
+ *
+ * ── Why this is an error and not a free order ───────────────────────────────
+ * Razorpay's minimum is ₹1: an Orders API call for 0 paise is refused. Before
+ * this guard the refusal happened LATE — after the order row was written, the
+ * stock reserved and (on Femi9) store credit already debited — and it surfaced
+ * to the shopper as an opaque gateway failure at the last step of checkout,
+ * with no indication that her discount code was the cause. The compensation
+ * path then deleted the order, so nobody could see afterwards that it had
+ * happened either.
+ *
+ * Reaching ₹0 is easy and does not need anything exotic: `couponDiscountFor`
+ * permits a percent coupon of exactly 100 (the admin schema allows it), a flat
+ * coupon is capped only at the subtotal, and `shippingFor` reads the
+ * PRE-discount subtotal — so a fully-discounted basket that clears the
+ * free-shipping threshold has nothing left to charge.
+ *
+ * Refusing early, before a single side effect, is the honest version of what
+ * already happened. It is NOT a free-order flow: giving away an order for
+ * nothing needs a settled-without-payment path that this platform does not
+ * have — `markOrderPaid` requires a payment intent, and the receipt and
+ * confirmation both assume a capture. See
+ * `apps/femi9-web/docs/money-flow-audit.md` §3.1 for what building that would
+ * involve, and §2.2 for the one route to ₹0 that is still open (store credit,
+ * Femi9 only).
+ */
+export class ZeroTotalOrderError extends Error {
+  constructor() {
+    super(
+      'This basket comes to ₹0, and we can only take payments of ₹1 or more. ' +
+        'Please remove the discount code or add an item — and do get in touch if ' +
+        'you were expecting this order to be free.',
+    )
+    this.name = 'ZeroTotalOrderError'
+  }
+}
+
 /** Shipping/customer details captured on the checkout form. */
 export interface CheckoutCustomer {
   name: string
@@ -596,6 +634,15 @@ export async function placeOrder(brand: Brand,
     }
     let total = Math.max(0, subtotal - discount + shipping)
 
+    // Refuse a ₹0 basket HERE, which is the last moment nothing has to be undone.
+    //
+    // Everything below this line commits something: the order row, the stock
+    // decrement, and on Femi9 the store-credit debit. The coupon's usedCount was
+    // already incremented above, but that is inside this transaction and rolls
+    // back with the throw — which is exactly why the guard sits at this line and
+    // not after the order is created. See ZeroTotalOrderError.
+    if (total <= 0) throw new ZeroTotalOrderError()
+
     // Reuse an address the customer already has rather than minting a new row on
     // every order. Three orders to the same flat used to leave three identical
     // "Home" cards in her address book, all of them undeletable because each was
@@ -820,12 +867,33 @@ export async function markOrderPaid(brand: Brand, {
   razorpayOrderId,
   signatureVerified,
   method,
+  capturedAmountPaise,
 }: {
   orderNo: string
   razorpayPaymentId: string
   razorpayOrderId?: string
   signatureVerified: boolean
   method?: string
+  /**
+   * What the GATEWAY says it actually captured, in paise.
+   *
+   * Everything else this function checks is our own data: `payment.amount` was
+   * written by our checkout and compared against our own `order.total`, which
+   * catches a stale intent but cannot catch a short capture. Nothing verified
+   * that the money Razorpay took matched the money we asked for.
+   *
+   * That gap is currently covered by Razorpay's own invariant — a payment
+   * against an Order must settle it in full — but that is an ACCOUNT SETTING
+   * (partial payments), not something this code enforces, and it is not ours to
+   * assume stays off. The webhook has the number and simply was not passing it.
+   *
+   * Optional because the synchronous verify path genuinely does not have it:
+   * Razorpay Checkout hands the browser an order id, a payment id and a
+   * signature, and no amount. The webhook always fires, so the check always
+   * runs eventually — and an order marked paid by the sync path is re-examined
+   * when the webhook lands, where a mismatch surfaces rather than being lost.
+   */
+  capturedAmountPaise?: number
 }): Promise<{ ok: true; status: 'paid'; alreadyPaid: boolean }> {
   const prisma = dbFor(brand)
   // Loyalty rate/bonus for the on-capture award. A plain config read — kept
@@ -857,6 +925,14 @@ export async function markOrderPaid(brand: Brand, {
     // The intent must have been opened for exactly what we charged; a mismatch is
     // a tampered/stale capture and must not flip the order to paid.
     if (payment.amount !== order.total) throw new PaymentAmountMismatchError(orderNo)
+
+    // And the GATEWAY must have taken that same amount. Rounded to whole rupees
+    // because that is the unit every total on this platform is stored in, and
+    // the gateway speaks paise. Only checked when the caller has the number —
+    // see the note on capturedAmountPaise.
+    if (capturedAmountPaise != null && Math.round(capturedAmountPaise / 100) !== order.total) {
+      throw new PaymentAmountMismatchError(orderNo)
+    }
 
     // Claim the pending order with a compare-and-set BEFORE updating the payment
     // or points. Sync verification and the webhook can arrive concurrently; the

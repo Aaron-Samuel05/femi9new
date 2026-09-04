@@ -6,7 +6,13 @@ import { getSession } from '@femi9/core/auth'
 import { getGuestToken } from '@/lib/session'
 import { clientIp, rateLimit, tooManyRequests } from '@femi9/core/rate-limit'
 import { orderToken } from '@femi9/core/order-token'
-import { EmptyCartError, InvalidCouponError, OutOfStockError, placeOrder } from '@femi9/core/services/checkout'
+import {
+  EmptyCartError,
+  InvalidCouponError,
+  OutOfStockError,
+  ZeroTotalOrderError,
+  placeOrder,
+} from '@femi9/core/services/checkout'
 import { ProviderConfigurationError } from '@femi9/core/runtime-mode'
 
 /**
@@ -71,6 +77,10 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       if (err instanceof EmptyCartError) return badRequest(err.message)
       if (err instanceof InvalidCouponError) return badRequest(err.message)
+      // A fully-discounted basket. 400 rather than 409: nothing raced, the basket
+      // simply has nothing left to charge, and the message names the discount
+      // code so she is not left staring at a gateway error.
+      if (err instanceof ZeroTotalOrderError) return badRequest(err.message)
       if (err instanceof OutOfStockError) return conflict(err.message)
       if (err instanceof ProviderConfigurationError) {
         return serviceUnavailable('Online payment is temporarily unavailable.')

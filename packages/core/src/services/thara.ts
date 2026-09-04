@@ -802,9 +802,14 @@ export async function applyTharaCredit(
  * references this order (an earned commission on the referrer, or a spent
  * credit on the buyer), write a mirror-signed reversal row.
  *
- * Because refundOrder gates on status === 'paid', it runs at most once per
- * order, so we can safely reverse every source row without re-checking for
- * prior reversals.
+ * It runs at most once per order, so it can safely reverse every source row
+ * without re-checking for prior reversals — but NOT for the reason this note
+ * used to give. It said "because refundOrder gates on status === 'paid'", and
+ * that gate has since widened: a cancelled order whose money was never returned
+ * is refundable too. The guarantee has always come from somewhere else, and
+ * still holds: `reverseBooksForRefund` reaches this only after a compare-and-
+ * swap flips the order to 'refunded', and an order can make that transition
+ * once. Widening the entry states does not widen the number of reversals.
  */
 export async function reverseTharaCreditForRefund(
   tx: Prisma.TransactionClient,

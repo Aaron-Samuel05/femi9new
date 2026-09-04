@@ -190,6 +190,11 @@ export async function POST(req: NextRequest) {
             razorpayOrderId,
             signatureVerified: true,
             method,
+            // What the gateway says it actually took. Everything else
+            // markOrderPaid checks is our own data, so without this a short
+            // capture would flip the order to paid. Absent on a bare
+            // `order.paid` with no payment entity, where the check is skipped.
+            capturedAmountPaise: paymentEntity?.amount,
           })
         }
       }
