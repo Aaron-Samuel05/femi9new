@@ -603,3 +603,70 @@
     flex: none;
   }
 }
+
+/* -----------------------------------------------------------------------------
+   Journal article body (rich HTML from Tiptap) — .article-html
+   Renders sanitised HTML produced by @femi9/core/blog-html. Mirrors the prose
+   scale of ArticleBody.tsx so a post authored in the editor reads at the same
+   measure as the legacy block-rendered posts.
+   ----------------------------------------------------------------------------- */
+.article-html {
+  font-family: var(--font-body), system-ui, sans-serif;
+  color: rgb(56 42 27);
+  line-height: 1.75;
+  font-size: clamp(1rem, 0.4vw + 0.95rem, 1.09rem);
+  max-width: 68ch;
+}
+.article-html > *:first-child { margin-top: 0; }
+.article-html > *:last-child { margin-bottom: 0; }
+.article-html p { margin: 0 0 1.15em; }
+.article-html h2 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.55rem, 2.5vw, 2rem);
+  line-height: 1.18;
+  letter-spacing: -0.012em;
+  margin: 2em 0 0.5em;
+  color: rgb(38 25 12);
+  text-wrap: balance;
+}
+.article-html h3 {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(1.25rem, 1.8vw, 1.5rem);
+  line-height: 1.25;
+  margin: 1.5em 0 0.4em;
+  color: rgb(38 25 12);
+  text-wrap: balance;
+}
+.article-html strong { font-weight: 700; color: rgb(38 25 12); }
+.article-html em { font-style: italic; }
+.article-html s { text-decoration: line-through; color: rgb(133 106 78); }
+.article-html ul, .article-html ol { padding-left: 1.5em; margin: 0 0 1.15em; }
+.article-html li { margin: 0.25em 0; }
+.article-html blockquote {
+  border-left: 3px solid var(--accent, rgb(232 155 59));
+  margin: 1.5em 0;
+  padding: 0.2em 0 0.2em 1em;
+  color: rgb(85 65 42);
+  font-style: italic;
+}
+.article-html a {
+  color: rgb(180 100 20);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.article-html a:hover { text-decoration-thickness: 2px; }
+.article-html img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 1.5em 0;
+  display: block;
+}
+.article-html hr {
+  border: 0;
+  border-top: 1px solid rgb(232 218 199);
+  margin: 2em 0;
+}

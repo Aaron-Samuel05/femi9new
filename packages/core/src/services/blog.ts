@@ -52,6 +52,10 @@ export interface BlogPostDTO {
   imageAlt: string
   featured?: boolean
   body: string[]
+  /** Sanitised HTML from the admin Tiptap editor. When present the storefront
+   *  renders this and ignores `body`. Null / empty for posts that haven't been
+   *  re-saved through the rich editor yet — the block renderer is the fallback. */
+  bodyHtml: string | null
   /** <title> for the article route. Falls back to `title`. */
   metaTitle: string
   keywords: string[]
@@ -116,6 +120,7 @@ function toPost(row: Row): BlogPostDTO {
     imageAlt: row.imageAlt || row.title,
     featured: row.featured,
     body: row.body,
+    bodyHtml: row.bodyHtml ?? null,
     metaTitle: row.metaTitle || row.title,
     keywords: row.keywords,
     cta: row.cta ?? '',

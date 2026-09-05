@@ -2,6 +2,7 @@ import 'server-only'
 import { z } from 'zod'
 import { dbFor, type Brand } from '@femi9/db'
 import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
+import { sanitizeBlogHtml } from '../../blog-html'
 
 /**
  * Admin blog/content service — the write-side CMS for BlogPost rows. Mirrors the
@@ -51,8 +52,12 @@ export const BlogPostInputSchema = z.object({
   featured: z.boolean().default(false),
   status: z.enum(['pending', 'approved', 'hidden']).default('approved'),
   // Raw textarea text — one block per BLANK-LINE-separated chunk; split into the
-  // String[] column below.
+  // String[] column below. Kept for legacy posts written before the rich editor.
   body: z.string().default(''),
+  // Rich HTML from the Tiptap editor. When non-empty, the storefronts render
+  // this and ignore `body`. Sanitised on write via sanitizeBlogHtml so an
+  // operator cannot inject <script>, event handlers, or off-origin <img> tags.
+  bodyHtml: z.string().default(''),
 
   // ── The <head> layer ─────────────────────────────────────────────────────
   // Optional everywhere: a post saved without them renders exactly as it did
@@ -237,6 +242,9 @@ function postColumns(input: BlogPostInput, slug: string) {
     featured: input.featured,
     status: input.status,
     body: splitBody(input.body),
+    // Sanitised HTML overrides `body` at read time. Empty string becomes NULL
+    // so the storefront's "has HTML?" check reads cleanly.
+    bodyHtml: sanitizeBlogHtml(input.bodyHtml || '') || null,
     metaTitle: input.metaTitle || null,
     imageAlt: input.imageAlt || null,
     keywords: input.keywords,
