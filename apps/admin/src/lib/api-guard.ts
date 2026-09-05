@@ -2,6 +2,8 @@ import 'server-only'
 import { NextResponse } from 'next/server'
 import { isBrand, type Brand } from '@femi9/db'
 import { getAdminSession, hasAtLeast, type AdminRole, type AdminSession } from '@femi9/core/admin-identity'
+import { roleCanOnModule, roleHasModule } from '@femi9/core/admin-policy'
+import type { AdminModule } from '@femi9/core/brands'
 
 /**
  * The guard every console API route calls.
@@ -39,9 +41,16 @@ export type ConsoleAuth =
   | { ok: true; brand: Brand; session: AdminSession }
   | { ok: false; response: NextResponse }
 
+/** Routes name a legacy tier (readonly/support/manager/owner) as their bar.
+ *  Business roles are consulted via the per-module policy when the caller
+ *  also passes a moduleName; otherwise `hasAtLeast` compares only against
+ *  the legacy tier and business roles fail closed (they have rank -1). */
+export type MinTier = 'owner' | 'manager' | 'support' | 'readonly'
+
 export async function requireConsoleApi(
   brandParam: string,
-  minRole: AdminRole = 'readonly',
+  minRole: MinTier = 'readonly',
+  moduleName?: AdminModule,
 ): Promise<ConsoleAuth> {
   if (!isBrand(brandParam)) {
     // Not a brand: 404, so the endpoint set is not enumerable by response code.
@@ -54,7 +63,27 @@ export async function requireConsoleApi(
       response: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }),
     }
   }
-  if (!hasAtLeast(session.role, minRole)) {
+  // When a route names its module, use the per-module policy (which handles
+  // both the tier check AND the no-access-at-all case for business roles like
+  // `finance`/`content_manager`). When a route doesn't name a module, fall
+  // back to the legacy linear tier — every existing call site stays valid.
+  if (moduleName) {
+    // Role-can-see-module first: matches the page guard's 404-not-403 stance
+    // so an endpoint doesn't confirm a module exists to a role that shouldn't
+    // know it does.
+    if (!roleHasModule(session.role, moduleName)) {
+      return { ok: false, response: new NextResponse(null, { status: 404 }) }
+    }
+    if (!roleCanOnModule(session.role, moduleName, minRole)) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { error: 'Your role does not allow this action.' },
+          { status: 403 },
+        ),
+      }
+    }
+  } else if (!hasAtLeast(session.role, minRole)) {
     return {
       ok: false,
       response: NextResponse.json(

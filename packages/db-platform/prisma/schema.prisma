@@ -25,10 +25,19 @@ enum Brand {
 }
 
 enum AdminRole {
+  // Legacy tiered roles, kept for back-compat. `owner` still means full access;
+  // manager/support/readonly still layer linearly. See admin-policy.ts for the
+  // per-module matrix that the new business roles use.
   owner
   manager
   support
   readonly
+
+  // Business roles, mapped through admin-policy.ts to per-module tiers.
+  super_admin      // same power as owner, explicit name for org-chart clarity
+  finance          // dashboard R · orders R · subs R · customers R · pricing W · coupons W · affiliates W
+  orders_manager   // dashboard R · orders W (incl. refund) · inventory W · products R · subs W · customers R
+  content_manager  // dashboard R · content W · reviews W · community W · parenting W · settings R
 }
 
 model AdminUser {
