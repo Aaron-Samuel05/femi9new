@@ -38,7 +38,7 @@ const PatchSchema = z.union([
 export async function GET(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const auth = await requireConsoleApi((await props.params).brand)
+    const auth = await requireConsoleApi((await props.params).brand, 'readonly', 'orders')
     if (!auth.ok) return auth.response
     const { brand } = auth
 
@@ -51,7 +51,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ brand: s
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const auth = await requireConsoleApi((await props.params).brand, 'manager')
+    const auth = await requireConsoleApi((await props.params).brand, 'manager', 'orders')
     if (!auth.ok) return auth.response
     const { brand, session } = auth
 

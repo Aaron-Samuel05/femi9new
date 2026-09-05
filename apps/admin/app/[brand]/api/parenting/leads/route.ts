@@ -18,7 +18,7 @@ import { moduleGate, requireConsoleApi } from '@/lib/api-guard'
  */
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'readonly', 'parenting')
   if (!auth.ok) return auth.response
   const gate = moduleGate(hasModule(auth.brand, 'parenting'))
   if (gate) return gate

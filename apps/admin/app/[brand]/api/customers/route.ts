@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic'
 /** GET /<brand>/api/customers?q=&page= — paginated customer list with aggregates. */
 export async function GET(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
   return handle(async () => {
-    const auth = await requireConsoleApi((await params).brand)
+    const auth = await requireConsoleApi((await params).brand, 'readonly', 'customers')
     if (!auth.ok) return auth.response
     const { brand } = auth
 

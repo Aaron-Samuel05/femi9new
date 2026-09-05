@@ -15,7 +15,7 @@ import {
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ brand: string }> }) {
   const { brand } = await ctx.params
-  const auth = await requireConsoleApi(brand)
+  const auth = await requireConsoleApi(brand, 'readonly', 'team')
   if (!auth.ok) return auth.response
   if (!canManageAdmins(auth.session.role)) {
     return new NextResponse(null, { status: 404 })
@@ -47,7 +47,7 @@ const InviteSchema = z.object({
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ brand: string }> }) {
   const { brand } = await ctx.params
-  const auth = await requireConsoleApi(brand)
+  const auth = await requireConsoleApi(brand, 'readonly', 'team')
   if (!auth.ok) return auth.response
   if (!canManageAdmins(auth.session.role)) {
     return new NextResponse(null, { status: 404 })

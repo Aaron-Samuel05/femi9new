@@ -26,7 +26,7 @@ export async function PATCH(
   props: { params: Promise<{ brand: string; id: string }> },
 ) {
   const params = await props.params
-  const auth = await requireConsoleApi(params.brand, 'manager')
+  const auth = await requireConsoleApi(params.brand, 'manager', 'catalog')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 

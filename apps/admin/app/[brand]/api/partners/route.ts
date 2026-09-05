@@ -14,7 +14,7 @@ import { listApplications } from '@femi9/core/services/admin/partners'
 const STATUSES: readonly PartnerStatus[] = ['new', 'contacted', 'onboarded', 'rejected']
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'readonly', 'partners')
   if (!auth.ok) return auth.response
   const { brand } = auth
 

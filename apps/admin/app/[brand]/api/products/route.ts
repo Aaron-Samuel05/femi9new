@@ -31,7 +31,7 @@ function mapPrismaError(err: unknown) {
 }
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'readonly', 'catalog')
   if (!auth.ok) return auth.response
   const { brand } = auth
 
@@ -39,7 +39,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ bra
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand, 'manager')
+  const auth = await requireConsoleApi((await params).brand, 'manager', 'catalog')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 

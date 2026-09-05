@@ -13,7 +13,7 @@ import { listReviews } from '@femi9/core/services/admin/reviews'
 const STATUSES: readonly ModerationStatus[] = ['pending', 'approved', 'hidden']
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'readonly', 'reviews')
   if (!auth.ok) return auth.response
   const { brand } = auth
 

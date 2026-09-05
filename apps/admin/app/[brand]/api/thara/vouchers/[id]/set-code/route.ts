@@ -16,7 +16,7 @@ const bodySchema = z.object({ amazonCode: z.string().min(1).max(200) })
 export async function POST(req: NextRequest, ctx: { params: Promise<{ brand: string; id: string }> }) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const auth = await requireConsoleApi((await ctx.params).brand, 'manager')
+    const auth = await requireConsoleApi((await ctx.params).brand, 'manager', 'thara')
     if (!auth.ok) return auth.response
     const { brand } = auth
     // THARA_ENABLED is a GLOBAL flag and this console serves both brands, so the

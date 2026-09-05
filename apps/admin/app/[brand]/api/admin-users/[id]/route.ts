@@ -31,7 +31,7 @@ export async function PATCH(
   ctx: { params: Promise<{ brand: string; id: string }> },
 ) {
   const { brand, id } = await ctx.params
-  const auth = await requireConsoleApi(brand)
+  const auth = await requireConsoleApi(brand, 'readonly', 'team')
   if (!auth.ok) return auth.response
   if (!canManageAdmins(auth.session.role)) {
     return new NextResponse(null, { status: 404 })
