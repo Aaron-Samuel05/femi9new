@@ -45,6 +45,9 @@ const SHARED: AdminModule[] = [
   'reviews',
   'affiliates',
   'settings',
+  // Team (admin user management) — both brands have the module; whether a
+  // given ROLE sees it is decided in admin-policy.ts (super_admin + owner only).
+  'team',
 ]
 
 describe('module gating', () => {

@@ -63,11 +63,13 @@ const PANEL_MODULE: Record<string, AdminModule> = {
   reviews: 'reviews',
   settings: 'settings',
   subscriptions: 'subscriptions',
+  team: 'team',
   thara: 'thara',
 }
 
 const API_MODULE: Record<string, AdminModule | null> = {
   affiliates: 'affiliates',
+  'admin-users': 'team',
   blog: 'content',
   coupons: 'coupons',
   customers: 'customers',

@@ -53,7 +53,7 @@ const HREF: Record<AdminModule, string> = {
   thara: '/thara',
   parenting: '/parenting',
   settings: '/settings',
-  team: '/settings/team',
+  team: '/team',
 }
 
 /**
