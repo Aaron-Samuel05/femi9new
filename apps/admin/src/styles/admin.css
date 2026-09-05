@@ -1060,6 +1060,62 @@ a.adm-chip {
 }
 
 /* -----------------------------------------------------------------------------
+   Login password field — bigger mask dots + show/hide toggle
+   ----------------------------------------------------------------------------- */
+
+.adm-auth-password {
+  position: relative;
+}
+
+/* The .adm-input token is 13px across the console; passwords render as tiny
+   dots at that size. Bump only the login card's password input, and only
+   when it's actually masked (type=password). Letter-spacing gives the dots
+   room to read as discrete characters. */
+.adm-auth-password-input[type="password"] {
+  font-size: 18px;
+  letter-spacing: 0.18em;
+  padding-right: 42px;
+}
+/* When the eye is toggled ON, the input flips to type=text — keep it in
+   proportion with the rest of the form (13px + no letter-spacing). */
+.adm-auth-password-input[type="text"] {
+  font-size: 13px;
+  letter-spacing: normal;
+  padding-right: 42px;
+}
+
+.adm-auth-password-toggle {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.adm-auth-password-toggle:hover:not(:disabled) {
+  color: var(--plum2);
+  background: var(--plum-tint);
+}
+.adm-auth-password-toggle:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+.adm-auth-password-toggle:focus-visible {
+  outline: 2px solid var(--plum2);
+  outline-offset: 1px;
+}
+
+/* -----------------------------------------------------------------------------
    Accessibility: always-visible keyboard focus
    ----------------------------------------------------------------------------- */
 .adm a:focus-visible,
