@@ -82,8 +82,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ brand: str
     // work without a per-env env var. Falls back to the service defaults
     // inside inviteAdmin when the header is missing.
     const origin = new URL(req.url).origin
+    // `invited=1` tells the login page to hide the brand toggle — the
+    // invitee holds a role on ONE console (the one they were invited to)
+    // and a toggle to somewhere they can't reach is noise.
+    // `next=/<brand>/change-password` lands them straight on the forced-
+    // change screen the proxy would corral them to anyway.
     const result = await inviteAdmin(auth.session.role, parsed.data, {
-      loginUrlFor: () => `${origin}/login`,
+      loginUrlFor: (b) => `${origin}/login?brand=${b}&invited=1&next=%2F${b}%2Fchange-password`,
     })
     return NextResponse.json(result, { status: 201 })
   } catch (e) {

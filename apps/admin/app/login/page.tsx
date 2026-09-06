@@ -18,13 +18,18 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ brand?: string; next?: string }>
+  searchParams: Promise<{ brand?: string; next?: string; invited?: string }>
 }) {
   const params = await searchParams
   const brand: Brand = isBrand(params.brand) ? params.brand : 'femi9'
   // `next` is validated again server-side after sign-in; passing it through
   // here only preselects the destination.
   const next = typeof params.next === 'string' && params.next.startsWith('/') ? params.next : null
+  // `invited=1` is set on the sign-in URL in an admin-invite email. The
+  // recipient was granted a role on ONE brand only (or already knows which
+  // console they're activating), so a toggle to a brand they can't sign into
+  // is noise at best and misleading at worst — hide it.
+  const invited = params.invited === '1'
 
-  return <LoginCard initialBrand={brand} next={next} />
+  return <LoginCard initialBrand={brand} next={next} lockBrand={invited} />
 }

@@ -20,7 +20,18 @@ import { safeNext } from '@/lib/safe-next'
 
 const REMEMBER_KEY = 'f9-admin-brand'
 
-export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: string | null }) {
+export function LoginCard({
+  initialBrand,
+  next,
+  lockBrand = false,
+}: {
+  initialBrand: Brand
+  next: string | null
+  /** When true, hide the brand toggle — the invitee arrived from an invite
+   *  email that already named the brand, and a toggle to another one just
+   *  confuses (or fails silently). */
+  lockBrand?: boolean
+}) {
   const router = useRouter()
   const [brand, setBrand] = useState<Brand>(initialBrand)
   const [email, setEmail] = useState('')
@@ -118,22 +129,24 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
           <span className="adm-auth-eyebrow">Ops</span>
         </div>
 
-        <div className="adm-chip-group" role="group" aria-label="Choose a brand">
-          {BRANDS.map((key) => {
-            const selected = key === brand
-            return (
-              <button
-                key={key}
-                type="button"
-                className={selected ? 'adm-chip is-active' : 'adm-chip'}
-                aria-pressed={selected}
-                onClick={() => chooseBrand(key)}
-              >
-                {BRAND_CONFIG[key].shortName}
-              </button>
-            )
-          })}
-        </div>
+        {!lockBrand && (
+          <div className="adm-chip-group" role="group" aria-label="Choose a brand">
+            {BRANDS.map((key) => {
+              const selected = key === brand
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  className={selected ? 'adm-chip is-active' : 'adm-chip'}
+                  aria-pressed={selected}
+                  onClick={() => chooseBrand(key)}
+                >
+                  {BRAND_CONFIG[key].shortName}
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         <h1 className="adm-auth-title">{config.name} admin</h1>
         <p className="adm-auth-sub">Sign in to continue.</p>
