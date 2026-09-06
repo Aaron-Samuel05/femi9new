@@ -45,7 +45,10 @@ function GalleryArrow({
       onClick={onClick}
       disabled={disabled}
       aria-label={side === "prev" ? "Previous image" : "Next image"}
-      className={`absolute top-1/2 z-2 grid size-[clamp(34px,4vw,40px)] -translate-y-1/2 cursor-pointer place-items-center rounded-pill border-0 bg-paper/85 text-midnight shadow-soft backdrop-blur-sm transition-opacity hover:bg-paper disabled:cursor-default disabled:opacity-0 ${
+      // `coarse:size-11` is the 44px target a thumb needs. The clamp is what a
+      // mouse gets: at 44px these two sit noticeably over the photograph, and a
+      // pointer that can hit 34px should not pay for one that cannot.
+      className={`absolute top-1/2 z-2 grid size-[clamp(34px,4vw,40px)] -translate-y-1/2 cursor-pointer place-items-center rounded-pill border-0 bg-paper/85 text-midnight shadow-soft backdrop-blur-sm transition-opacity coarse:size-11 hover:bg-paper disabled:cursor-default disabled:opacity-0 ${
         side === "prev" ? "left-3" : "right-3"
       }`}
     >
@@ -85,6 +88,10 @@ export function ProductBuyBox({
   const [qty, setQty] = useState(1);
   const [slide, setSlide] = useState(0);
   const railRef = useRef<HTMLDivElement>(null);
+  // Whether the real Add to cart has scrolled off the TOP of the screen, which
+  // is what arms the phone-only buy bar at the bottom of this component.
+  const [ctaPassed, setCtaPassed] = useState(false);
+  const ctaRef = useRef<HTMLDivElement>(null);
   const { add } = useCart();
 
   const pack = getPack(size, packCount);
@@ -182,6 +189,24 @@ export function ProductBuyBox({
     setSlide(0);
   }, [packCount]);
 
+  /**
+   * Arm the sticky buy bar once the real CTA is above the viewport.
+   *
+   * `boundingClientRect.top < 0` is the whole point: "not intersecting" is also
+   * true before she has scrolled to it at all, and a bar that appears over the
+   * first screen is covering the page to advertise a button six inches below
+   * that she has not been given a chance to press.
+   */
+  useEffect(() => {
+    const cta = ctaRef.current;
+    if (!cta) return;
+    const io = new IntersectionObserver(([entry]) => {
+      setCtaPassed(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+    });
+    io.observe(cta);
+    return () => io.disconnect();
+  }, []);
+
   return (
     <div className="grid grid-cols-1 items-start gap-stack md:grid-cols-[1.1fr_1fr]">
       {/* GALLERY */}
@@ -242,7 +267,7 @@ export function ProductBuyBox({
                     onClick={() => goTo(i)}
                     aria-label={`Show image ${i + 1} of ${slides.length}`}
                     aria-current={i === slide}
-                    className="grid size-6 cursor-pointer place-items-center border-0 bg-transparent p-0"
+                    className="grid size-6 cursor-pointer place-items-center border-0 bg-transparent p-0 coarse:size-9"
                   >
                     <span
                       className={`block size-1.5 rounded-pill transition-colors ${
@@ -353,14 +378,19 @@ export function ProductBuyBox({
                 href={`/product/${option.size.toLowerCase()}`}
                 scroll={false}
                 aria-current={selected ? "true" : undefined}
-                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-chip border-[1.5px] px-1 py-2.5 text-[clamp(13px,1.4vw,15px)] font-bold transition-colors ${
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-chip border-[1.5px] px-1 py-2.5 text-[clamp(14px,1.4vw,15px)] font-bold transition-colors ${
                   selected
                     ? "border-midnight bg-midnight text-butter"
                     : "border-moss-tint text-midnight hover:border-moss-soft"
                 }`}
               >
                 {option.size}
-                <span className="text-[clamp(10px,0.9vw,11px)] font-medium whitespace-nowrap opacity-70">{option.short}</span>
+                {/* Flat 11px, not `clamp(10px, .9vw, 11px)`. That clamp gave the
+                    desktop 11px and the PHONE 10px — and the weight range is the
+                    one thing a parent reads to pick a size, on the device most
+                    of them are holding. "12-17kg" at 11px is 42px inside a 60px
+                    chip, so nothing had to give to buy the extra pixel. */}
+                <span className="text-[11px] font-medium whitespace-nowrap opacity-70">{option.short}</span>
               </Link>
             );
           })}
@@ -382,12 +412,19 @@ export function ProductBuyBox({
           ))}
         </div>
 
-        {/* QTY + ADD */}
-        <div className="mb-4 flex flex-wrap items-stretch gap-[clamp(10px,1.4vw,14px)]">
+        {/* QTY + ADD.
+            `min-w-[60%]` is a DESKTOP floor now. On a 360px phone it exceeded
+            what was left beside the stepper, so the row wrapped and the stepper
+            sat alone on a line with half a screen of dead space next to it —
+            the layout reacting rather than one anybody chose. Below md the
+            button takes the rest of the row instead (`min-w-0` lets flex-1
+            actually shrink it), and `items-stretch` gives the two equal
+            height. */}
+        <div ref={ctaRef} className="mb-4 flex flex-wrap items-stretch gap-[clamp(10px,1.4vw,14px)]">
           <QtyStepper qty={qty} onChange={setQty} />
           <AddToCartButton
             onAdd={() => add(size.size, pack.count, qty)}
-            className="btn btn-dark min-w-[60%] flex-1 font-bold"
+            className="btn btn-dark min-w-0 flex-1 font-bold md:min-w-[60%]"
           >
             Add to cart - {inr(pack.price * qty)}
           </AddToCartButton>
@@ -413,6 +450,51 @@ export function ProductBuyBox({
         </div>
 
         <Accordion items={accordion} defaultOpen={0} />
+      </div>
+
+      {/* STICKY BUY BAR — phones only.
+          This page is ~5,200px tall on a 360px screen and the real CTA lives in
+          the first 1,600px of it, so from the feature band down there was no way
+          to buy without scrolling back to the top. Three full-width feature
+          stills, a size chart and a review rail all sit between a shopper and
+          the button she has already decided to press.
+
+          It MIRRORS the buy box rather than replacing it — same pack, same
+          quantity, the same `add` — so there is one source of truth for what is
+          being bought and the bar cannot quote a pack the page is not showing.
+          It is `md:hidden`: the desktop gallery is already `md:sticky` and the
+          buy column stays beside it.
+
+          Kept in the DOM and translated out of the way rather than unmounted, so
+          it can transition; `pointer-events-none` and `aria-hidden` while it is
+          down, so the hidden copy is neither tappable nor a second Add to cart
+          for a screen reader. z-80 puts it over the page and under every piece
+          of chrome — the nav scrim is z-90, the drawer z-120, the toast z-130 —
+          so adding to the cart is never covered by the thing you just opened. */}
+      <div
+        aria-hidden={!ctaPassed}
+        className={`fixed inset-x-0 bottom-0 z-80 border-t border-moss-tint bg-paper/95 backdrop-blur-sm transition-transform duration-300 ease-[var(--ease-reveal)] motion-reduce:transition-none md:hidden ${
+          ctaPassed ? "translate-y-0" : "pointer-events-none translate-y-full"
+        }`}
+      >
+        {/* The bottom pad takes the home indicator into account, so the button
+            is not sitting under the swipe area on a notched phone. */}
+        <div className="flex items-center gap-3 px-[max(var(--spacing-gutter),env(safe-area-inset-left))] pt-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+          <div className="min-w-0">
+            <div className="font-display text-[19px] leading-none text-midnight">
+              {inr(pack.price * qty)}
+            </div>
+            <div className="mt-1 truncate text-[11px] text-muted">
+              {size.name} · {pack.count} pcs{qty > 1 ? ` \u00d7 ${qty}` : ""}
+            </div>
+          </div>
+          <AddToCartButton
+            onAdd={() => add(size.size, pack.count, qty)}
+            className="btn btn-dark ml-auto min-h-11 flex-1 px-5 font-bold"
+          >
+            Add to cart
+          </AddToCartButton>
+        </div>
       </div>
     </div>
   );
