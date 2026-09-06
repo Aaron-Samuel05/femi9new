@@ -330,8 +330,8 @@ export function BlogBodyEditor({
             border-bottom: 1px solid var(--line);
             padding: 12px 20px;
           }
-          /* Tiptap's <EditorContent> renders a wrapper <div> between
-             `.adm-editor` and `.ProseMirror`. Flex only affects direct
+          /* Tiptap's EditorContent renders a wrapper div between
+             .adm-editor and .ProseMirror. Flex only affects direct
              children, so the wrapper — NOT the ProseMirror inside it — is
              what has to grow and scroll. Target every direct child that
              isn't the toolbar; the ProseMirror inside then fills its
