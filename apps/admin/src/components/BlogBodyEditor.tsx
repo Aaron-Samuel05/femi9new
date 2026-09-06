@@ -325,22 +325,30 @@ export function BlogBodyEditor({
             border: none;
           }
           .adm-editor.is-fullscreen .adm-editor-toolbar {
-            position: sticky;
-            top: 0;
+            flex: 0 0 auto;
             background: var(--surface, #fff);
             border-bottom: 1px solid var(--line);
             padding: 12px 20px;
-            z-index: 2;
+          }
+          /* Tiptap's <EditorContent> renders a wrapper <div> between
+             `.adm-editor` and `.ProseMirror`. Flex only affects direct
+             children, so the wrapper — NOT the ProseMirror inside it — is
+             what has to grow and scroll. Target every direct child that
+             isn't the toolbar; the ProseMirror inside then fills its
+             parent normally. */
+          .adm-editor.is-fullscreen > *:not(.adm-editor-toolbar) {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            min-height: 0;
           }
           .adm-editor.is-fullscreen .ProseMirror {
-            flex: 1;
-            overflow-y: auto;
             padding: clamp(24px, 6vw, 64px) clamp(20px, 8vw, 96px);
             max-width: 820px;
             width: 100%;
             margin: 0 auto;
             font-size: 17px;
             line-height: 1.7;
+            min-height: 100%;
           }
           .adm-editor.is-fullscreen .ProseMirror h2 {
             font-size: 28px;
