@@ -91,6 +91,7 @@ export async function signInAdmin(
       name: admin.name,
       brand,
       role: membership.role,
+      mustChangePassword: admin.mustChangePassword,
     },
   }
 }

@@ -49,6 +49,11 @@ model AdminUser {
   active       Boolean   @default(true)
   mfaSecret    String?
   lastLoginAt  DateTime?
+  // True when the current passwordHash is a temporary one sent by email (an
+  // invite). The proxy redirects such a session to /change-password on every
+  // request until they set their own — a temp password becomes useless as
+  // soon as it is used once. Cleared by the change-password endpoint.
+  mustChangePassword Boolean @default(false)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

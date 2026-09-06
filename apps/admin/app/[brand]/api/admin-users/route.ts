@@ -40,7 +40,6 @@ const MembershipSchema = z.object({
 const InviteSchema = z.object({
   email: z.string().trim().min(3).max(200),
   name: z.string().trim().min(1).max(120),
-  password: z.string().min(12).max(200),
   memberships: z.array(MembershipSchema).min(1, 'At least one brand must be selected'),
 })
 
@@ -78,8 +77,15 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ brand: str
     )
   }
   try {
-    const row = await inviteAdmin(auth.session.role, parsed.data)
-    return NextResponse.json({ row }, { status: 201 })
+    // Login URL for each brand is inferred from the request Host so the email
+    // points at the same origin the operator is on — dev/staging/prod all
+    // work without a per-env env var. Falls back to the service defaults
+    // inside inviteAdmin when the header is missing.
+    const origin = new URL(req.url).origin
+    const result = await inviteAdmin(auth.session.role, parsed.data, {
+      loginUrlFor: () => `${origin}/login`,
+    })
+    return NextResponse.json(result, { status: 201 })
   } catch (e) {
     if (e instanceof DuplicateEmailError) return NextResponse.json({ error: e.message }, { status: 409 })
     if (e instanceof EmptyMembershipsError) return NextResponse.json({ error: e.message }, { status: 400 })

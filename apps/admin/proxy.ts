@@ -67,7 +67,30 @@ export async function proxy(req: NextRequest) {
   const token = req.cookies.get(adminCookieName(brandSegment))?.value
   const session = await verifyAdminSession(token, brandSegment)
 
-  if (session) return NextResponse.next()
+  if (session) {
+    // A new admin whose current password is a temporary one from an invite
+    // email is corralled to /change-password — every page, every route,
+    // until they set their own. The auth API is exempt because they need to
+    // POST to change-password itself, and health is already out of the
+    // matcher above.
+    if (
+      session.mustChangePassword &&
+      rest[0] !== 'change-password' &&
+      !(rest[0] === 'api' && rest[1] === 'auth')
+    ) {
+      if (rest[0] === 'api') {
+        return NextResponse.json(
+          { error: 'Password change required', mustChangePassword: true },
+          { status: 403 },
+        )
+      }
+      const url = req.nextUrl.clone()
+      url.pathname = `/${brandSegment}/change-password`
+      url.search = ''
+      return NextResponse.redirect(url)
+    }
+    return NextResponse.next()
+  }
 
   // Unauthenticated. APIs get JSON; pages go to the login screen with the brand
   // preselected and the destination remembered.

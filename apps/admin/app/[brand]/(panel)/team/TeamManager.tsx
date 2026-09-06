@@ -298,16 +298,20 @@ function InviteModal({
 }) {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
-  const [password, setPassword] = useState('')
   const [femi9Enabled, setFemi9Enabled] = useState(true)
   const [femi9Role, setFemi9Role] = useState<Role>('content_manager')
   const [lumi9Enabled, setLumi9Enabled] = useState(false)
   const [lumi9Role, setLumi9Role] = useState<Role>('content_manager')
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [feedback, setFeedback] = useState<
+    | null
+    | { kind: 'sent'; to: string }
+    | { kind: 'existing'; to: string }
+    | { kind: 'send-failed'; to: string; reason: string }
+  >(null)
 
-  const canSubmit =
-    email.trim() && name.trim() && password.length >= 12 && (femi9Enabled || lumi9Enabled)
+  const canSubmit = email.trim() && name.trim() && (femi9Enabled || lumi9Enabled)
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -320,22 +324,94 @@ function InviteModal({
       const res = await fetch(`/${viewingBrand}/api/admin-users`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, password, memberships }),
+        body: JSON.stringify({ email, name, memberships }),
       })
       const body = await res.json().catch(() => ({}))
       if (!res.ok) {
         setErr(body.error || 'Could not invite.')
         return
       }
+      // Two outcomes worth telling the operator about:
+      //  - New account: temp password emailed, user must change on first login
+      //  - Existing account: just granted the extra brand membership; no email
+      //  - New account + email failed: account created but the operator needs
+      //    to hand credentials over manually. Rare — set-up problem, not a
+      //    bug in the invite. See the mail-identity docs.
+      if (!body.newAccount) {
+        setFeedback({ kind: 'existing', to: email })
+      } else if (body.emailSent) {
+        setFeedback({ kind: 'sent', to: email })
+      } else {
+        setFeedback({
+          kind: 'send-failed',
+          to: email,
+          reason: body.emailError || 'Unknown mail error',
+        })
+      }
+      // Refresh the parent's roster in the background — don't close the
+      // modal, the operator should see the feedback message.
       await onSaved()
     } finally {
       setBusy(false)
     }
   }
 
+  if (feedback) {
+    return (
+      <Modal title="Invite sent" onClose={onClose}>
+        {feedback.kind === 'sent' && (
+          <div style={{ padding: '8px 0 4px' }}>
+            <p style={{ fontSize: 15, margin: 0 }}>
+              An invite email is on its way to <strong>{feedback.to}</strong>.
+            </p>
+            <p className="adm-help" style={{ marginTop: 8 }}>
+              It contains a temporary password. They&rsquo;ll be asked to set their
+              own the first time they sign in.
+            </p>
+          </div>
+        )}
+        {feedback.kind === 'existing' && (
+          <div style={{ padding: '8px 0 4px' }}>
+            <p style={{ fontSize: 15, margin: 0 }}>
+              <strong>{feedback.to}</strong> already had an admin account.
+            </p>
+            <p className="adm-help" style={{ marginTop: 8 }}>
+              The new brand access was added to their existing account. Their
+              current password is unchanged; no email was sent.
+            </p>
+          </div>
+        )}
+        {feedback.kind === 'send-failed' && (
+          <div style={{ padding: '8px 0 4px' }}>
+            <p style={{ fontSize: 15, margin: 0, color: '#B23D3D' }}>
+              Account was created, but the invite email could not be sent.
+            </p>
+            <p className="adm-help" style={{ marginTop: 8 }}>
+              Reason: <code>{feedback.reason}</code>
+            </p>
+            <p className="adm-help" style={{ marginTop: 8 }}>
+              Send the login URL and a temporary password to <strong>{feedback.to}</strong> by
+              another channel, or ask an operator with mail-config access to look at the
+              mail provider setup.
+            </p>
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
+          <button type="button" className="adm-btn adm-btn--primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </Modal>
+    )
+  }
+
   return (
     <Modal title="Invite admin" onClose={onClose}>
       <form onSubmit={submit}>
+        <p className="adm-help" style={{ marginBottom: 16 }}>
+          A temporary password will be emailed to the invitee. They&rsquo;ll set their own
+          the first time they sign in.
+        </p>
         <label className="adm-field">
           <span className="adm-label">Email</span>
           <input
@@ -355,19 +431,6 @@ function InviteModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             disabled={busy}
-          />
-        </label>
-        <label className="adm-field">
-          <span className="adm-label">Temporary password (12+ chars)</span>
-          <input
-            className="adm-input"
-            type="text"
-            minLength={12}
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={busy}
-            placeholder="They should change this after first sign-in"
           />
         </label>
 

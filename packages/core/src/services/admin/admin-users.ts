@@ -1,8 +1,11 @@
 import 'server-only'
+import { randomBytes } from 'node:crypto'
 import { platformDb } from '@femi9/db-platform'
 import type { AdminRole, Brand } from '@femi9/db-platform'
 import { hashPassword } from '../../admin-password'
 import { canManageAdmins } from '../../admin-policy'
+import { sendAdminInviteEmail } from './invite-mail'
+import { MailSendError } from '../../mailer'
 
 /**
  * Admin user management service. Every mutation checks `canManageAdmins(callerRole)`
@@ -119,37 +122,67 @@ export interface InviteAdminInput {
   name: string
   /** One entry per brand this admin should have access to. Must be non-empty. */
   memberships: Membership[]
-  /** Initial password. Minimum 12 chars; guarded here AND at the route. */
-  password: string
+}
+
+/** Result of `inviteAdmin` — carries the created row AND enough about the
+ *  email attempt for the UI to say what happened. `emailError` is non-null when
+ *  the account was created but the invite email failed; the account works,
+ *  the operator can resend, and this is not a reason to hide the invite. */
+export interface InviteAdminResult {
+  row: AdminUserRow
+  /** True when this is a newly-created account (fresh invite email sent).
+   *  False when the email already belonged to an admin — we granted the
+   *  extra membership and did not touch their password. */
+  newAccount: boolean
+  emailSent: boolean
+  emailError?: string
 }
 
 /**
  * Create a new admin (or grant the given memberships to an existing account
  * without changing their password). Idempotent per-membership via upsert.
+ *
+ * For a NEW account: generates a temporary password, marks
+ * `mustChangePassword: true`, and emails the credentials + login URL to the
+ * invitee's address. The proxy will bounce every request to
+ * /change-password until they set their own — the temp is a one-shot.
+ *
+ * For an EXISTING account: NOT a fresh invite (nothing to email). Grants the
+ * new memberships, keeps the existing password, does not touch
+ * mustChangePassword. Same policy as `create-admin.ts` — granting a second
+ * brand role must not silently reset credentials.
  */
 export async function inviteAdmin(
   callerRole: AdminRole,
   input: InviteAdminInput,
-): Promise<AdminUserRow> {
+  ctx: { loginUrlFor: (brand: Brand) => string } = { loginUrlFor: defaultLoginUrl },
+): Promise<InviteAdminResult> {
   if (!canManageAdmins(callerRole)) throw new NotAllowedError()
   const email = input.email.trim().toLowerCase()
   if (!EMAIL_RE.test(email)) throw new Error('Invalid email.')
-  if (input.password.length < 12) throw new Error('Password must be at least 12 characters.')
   if (input.memberships.length === 0) throw new EmptyMembershipsError()
   dedupBrands(input.memberships)
 
   const db = platformDb()
-  const passwordHash = await hashPassword(input.password)
   const existing = await db.adminUser.findUnique({ where: { email } })
 
-  // Same policy as create-admin.ts: an existing account keeps its password on
-  // a re-invite — granting a new brand role must not silently reset creds.
-  const user = existing
-    ? await db.adminUser.update({
-        where: { id: existing.id },
-        data: { name: input.name, active: true },
-      })
-    : await db.adminUser.create({ data: { email, name: input.name, passwordHash } })
+  let user
+  let tempPassword: string | null = null
+  if (existing) {
+    // Existing account — grant memberships, keep password. This branch is not
+    // an "invite" in the credentials sense; the caller has already accepted
+    // that this is add-a-brand.
+    user = await db.adminUser.update({
+      where: { id: existing.id },
+      data: { name: input.name, active: true },
+    })
+  } else {
+    tempPassword = generateTempPassword()
+    const passwordHash = await hashPassword(tempPassword)
+    user = await db.adminUser.create({
+      data: { email, name: input.name, passwordHash, mustChangePassword: true },
+    })
+  }
 
   for (const m of input.memberships) {
     await db.adminBrandRole.upsert({
@@ -158,7 +191,59 @@ export async function inviteAdmin(
       create: { adminUserId: user.id, brand: m.brand, role: m.role },
     })
   }
-  return one(user.id)
+
+  const row = await one(user.id)
+  const isNewAccount = tempPassword !== null
+
+  // Send the invite email for a NEW account only. Existing accounts already
+  // know how to sign in — silently adding roles is fine (and the norm on any
+  // team system: a second brand grant is not a fresh invite).
+  if (isNewAccount) {
+    const primaryBrand = input.memberships[0].brand
+    try {
+      await sendAdminInviteEmail(primaryBrand, {
+        to: email,
+        name: input.name,
+        tempPassword: tempPassword as string,
+        loginUrl: ctx.loginUrlFor(primaryBrand),
+      })
+      return { row, newAccount: true, emailSent: true }
+    } catch (err) {
+      // Account still created — operator can resend from the console. Do NOT
+      // roll back: an invite whose email failed is a real state, and losing
+      // the row means the fix is "create again" which triggers our
+      // duplicate-email guard.
+      const message = err instanceof MailSendError ? err.message : 'Unknown mail error'
+      return { row, newAccount: true, emailSent: false, emailError: message }
+    }
+  }
+
+  return { row, newAccount: false, emailSent: false }
+}
+
+/**
+ * Cryptographically-random temporary password. 16 chars, base64 URL-safe minus
+ * padding — 96 bits of entropy, always well over the 12-char minimum enforced
+ * by the change-password endpoint. Never predictable from anything on the
+ * account. This is what the invite email carries.
+ */
+function generateTempPassword(): string {
+  return randomBytes(12).toString('base64url')
+}
+
+/**
+ * Fallback login URL when the caller supplies none. Uses env, falls back to
+ * the production hostname. Never returns an empty string — the invite email
+ * shows the URL to a human and a blank one is worse than a slightly-wrong
+ * one for an operator to correct.
+ */
+function defaultLoginUrl(brand: Brand): string {
+  const envBrand = brand === 'femi9' ? 'FEMI9' : 'LUMI9'
+  const explicit = process.env[`ADMIN_LOGIN_URL_${envBrand}`]
+  if (explicit) return explicit
+  const shared = process.env.ADMIN_LOGIN_URL
+  if (shared) return shared
+  return brand === 'femi9' ? 'https://admin.femi9.in/login' : 'https://admin.lumi9.in/login'
 }
 
 /**

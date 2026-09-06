@@ -24,6 +24,11 @@ export interface AdminSession {
   name: string
   brand: Brand
   role: AdminRole
+  /** True while the current password is a temporary one from an invite email
+   *  that has not been changed yet. The proxy redirects such a session to
+   *  /change-password on every non-exempt route. Cleared on the next login
+   *  after the password is changed. Absent claim / false → normal access. */
+  mustChangePassword?: boolean
 }
 
 /** 8 hours. Ops sessions are short on purpose — this console can refund money. */
@@ -51,6 +56,7 @@ export async function createAdminSession(session: AdminSession): Promise<string>
     name: session.name,
     brand: session.brand,
     role: session.role,
+    ...(session.mustChangePassword ? { mustChangePassword: true } : {}),
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(session.sub)
@@ -96,6 +102,7 @@ export async function verifyAdminSession(
       name: payload.name,
       brand,
       role: payload.role as AdminRole,
+      mustChangePassword: payload.mustChangePassword === true,
     }
   } catch {
     return null
