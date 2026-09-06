@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -62,6 +62,14 @@ export function BlogBodyEditor({
   // block BEFORE the one the operator meant. Symptom: "I put my cursor on
   // a new line, clicked H2, and the previous paragraph also became H2."
   const lastEmitted = useRef<string>(value || '')
+
+  // Force a re-render on selection / transaction updates so the toolbar's
+  // `active` state (isActive('heading', {level:2}) etc.) always reflects the
+  // current node under the caret. `useEditor` re-renders on document
+  // transactions but not always on pure selection changes — moving the caret
+  // without editing was leaving H2/H3 buttons showing stale "active" state,
+  // which mis-signals what the next click will do.
+  const [, forceRerender] = useReducer((n: number) => n + 1, 0)
 
   // Distraction-free writing mode. When true, the whole editor container is
   // moved to `position: fixed; inset: 0` with a solid backdrop, so the
@@ -158,6 +166,19 @@ export function BlogBodyEditor({
   useEffect(() => {
     if (editor) editor.setEditable(!disabled)
   }, [disabled, editor])
+
+  // Subscribe to selection updates. onUpdate already fires on doc changes,
+  // but selection-only moves (arrow keys, clicks) also change what the
+  // toolbar should reflect. Force a React render so isActive() reads fresh.
+  useEffect(() => {
+    if (!editor) return
+    editor.on('selectionUpdate', forceRerender)
+    editor.on('transaction', forceRerender)
+    return () => {
+      editor.off('selectionUpdate', forceRerender)
+      editor.off('transaction', forceRerender)
+    }
+  }, [editor])
 
   const promptLink = useCallback(() => {
     if (!editor) return
