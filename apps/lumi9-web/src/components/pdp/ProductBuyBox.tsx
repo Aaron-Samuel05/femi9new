@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Accordion } from "@/components/ui/Accordion";
 import { AddToCartButton } from "@/components/product/AddToCartButton";
 import { QtyStepper } from "@/components/ui/QtyStepper";
@@ -10,6 +10,7 @@ import { Icon, type IconName } from "@/components/ui/Icon";
 import { useCart } from "@/lib/cart";
 import { getPack, inr, leadPack, packDiscountPct, subscriptionPrice } from "@/lib/catalog";
 import { useCatalogData } from "@/lib/catalog-context";
+import { prefersReducedMotion } from "@/lib/motion";
 import { useQuote } from "@/lib/quote";
 import type { DbProductSize } from "@/lib/catalog.server";
 import { FEATURE_IMAGES, pdpPolicyAccordion } from "@/lib/content";
@@ -22,9 +23,40 @@ const TRUST: { icon: IconName; label: string }[] = [
 
 const FEATURE_THUMBS = [FEATURE_IMAGES.wetnessLock, FEATURE_IMAGES.softness, FEATURE_IMAGES.softAsCotton];
 
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
+/**
+ * Prev/next on the gallery. Disabled at the ends rather than wrapped: the rail is
+ * a real scroll container, and a wrap is a jump the finger's own gesture cannot
+ * make, so the two controls would disagree about what the gallery does.
+ */
+function GalleryArrow({
+  side,
+  disabled,
+  onClick,
+}: {
+  side: "prev" | "next";
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={side === "prev" ? "Previous image" : "Next image"}
+      className={`absolute top-1/2 z-2 grid size-[clamp(34px,4vw,40px)] -translate-y-1/2 cursor-pointer place-items-center rounded-pill border-0 bg-paper/85 text-midnight shadow-soft backdrop-blur-sm transition-opacity hover:bg-paper disabled:cursor-default disabled:opacity-0 ${
+        side === "prev" ? "left-3" : "right-3"
+      }`}
+    >
+      <Icon name={side === "prev" ? "arrowLeft" : "arrowRight"} size={18} />
+    </button>
+  );
+}
+
 /**
  * Sticky gallery + buy column. Size lives in the URL (`/product/m`) so packs and
- * prices are shareable; pack, quantity and the active image are local state.
+ * prices are shareable; pack, quantity and the gallery position are local state.
  */
 export function ProductBuyBox({
   size,
@@ -51,11 +83,11 @@ export function ProductBuyBox({
   // shop grid, so the two cannot quote different prices for one product.
   const [packCount, setPackCount] = useState(leadPack(size).count);
   const [qty, setQty] = useState(1);
-  const [mainImage, setMainImage] = useState<string | null>(null);
+  const [slide, setSlide] = useState(0);
+  const railRef = useRef<HTMLDivElement>(null);
   const { add } = useCart();
 
   const pack = getPack(size, packCount);
-  const activeImage = mainImage ?? pack.image;
 
   /**
    * The accordion, from the console.
@@ -80,68 +112,163 @@ export function ProductBuyBox({
     ...pdpPolicyAccordion(threshold),
   ];
 
-  // Pack thumbs SELECT a tier; the extras only change the picture. `images`
-  // beyond `packs.length` are photography the console uploaded that no tier
-  // owns - dropping them would silently discard most of a six-image product.
-  const thumbs = [
-    ...size.packs.map((option) => ({
-      // Not `src`: a product with fewer images than tiers gives every tier the
-      // same photo, and a src-keyed list would collide and mark all of them
-      // current at once. The variant id is unique whatever the images do.
-      id: option.variantId,
-      src: option.image,
-      alt: option.imageAlt,
-      onSelect: () => {
-        setPackCount(option.count);
-        setMainImage(option.image);
-      },
-    })),
+  /**
+   * The gallery, in order - one list driving the slides, the dots and the
+   * thumbnails, so the three cannot disagree about what is showing.
+   *
+   * Slide 0 is the SELECTED pack's photo and the only pack photo in the list.
+   * All three tiers used to sit in the rail together: three near-identical bags
+   * of which two were not what the page was quoting, and clicking one silently
+   * repriced the page from a thumbnail. The "Pack size" chips choose the tier
+   * now, and the gallery shows the tier that is chosen.
+   *
+   * `images` beyond `packs.length` are photography the console uploaded that no
+   * tier owns - dropping them would silently discard most of a six-image
+   * product - and the three feature stills close the rail.
+   *
+   * Ids are prefixed rather than taken from `src`: a product with fewer images
+   * than tiers gives every tier the same photo, and a src-keyed list would
+   * collide and mark all of them current at once.
+   */
+  const slides = [
+    { id: `pack-${pack.variantId}`, src: pack.image, alt: pack.imageAlt },
     ...size.images.slice(size.packs.length).map((extra, i) => ({
       id: `extra-${size.packs.length + i}`,
       src: extra.url,
       alt: extra.alt,
-      onSelect: () => setMainImage(extra.url),
     })),
     ...FEATURE_THUMBS.map((feature) => ({
-      id: feature.src,
+      id: `feature-${feature.src}`,
       src: feature.src,
       alt: feature.alt,
-      onSelect: () => setMainImage(feature.src),
     })),
   ];
+
+  /**
+   * Move the track. The rail is a real scroll container, so a swipe is the
+   * browser's own and costs nothing here; the arrows, the dots and the
+   * thumbnails only have to land on the same scrollLeft a finger would.
+   */
+  const goTo = useCallback((index: number) => {
+    const rail = railRef.current;
+    if (!rail) return;
+    const clamped = Math.max(0, Math.min(index, rail.children.length - 1));
+    rail.scrollTo({
+      left: clamped * rail.clientWidth,
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
+    setSlide(clamped);
+  }, []);
+
+  // Read the position back off the rail, so a swipe moves the dots and the
+  // thumbnail highlight too - not only a click, which is the one case that
+  // already knows where it is going.
+  const syncSlide = () => {
+    const rail = railRef.current;
+    if (!rail || rail.clientWidth === 0) return;
+    setSlide(Math.round(rail.scrollLeft / rail.clientWidth));
+  };
+
+  /**
+   * Changing pack replaces slide 0, so the rail returns to it. Without this a
+   * shopper who had swiped on to the feature stills would change pack and see
+   * nothing change at all: the new photo is behind her, off-screen to the left.
+   * Instant, not smooth - this is a new gallery, not a move within one.
+   */
+  useIsoLayoutEffect(() => {
+    const rail = railRef.current;
+    if (!rail) return;
+    rail.scrollTo({ left: 0, behavior: "auto" });
+    setSlide(0);
+  }, [packCount]);
 
   return (
     <div className="grid grid-cols-1 items-start gap-stack md:grid-cols-[1.1fr_1fr]">
       {/* GALLERY */}
       <div className="md:sticky md:top-24">
         <div className="relative aspect-square overflow-hidden rounded-media bg-shell shadow-deep">
-          <Image
-            key={activeImage}
-            src={activeImage}
-            alt={`Cloud Soft ${size.name}`}
-            fill
-            priority
-            sizes="(max-width: 768px) 92vw, 620px"
-            className="object-cover"
-          />
-          <span className="absolute top-3.5 left-3.5 rounded-pill bg-butter px-3 py-1.5 text-[clamp(11px,1.1vw,13px)] font-bold text-midnight">
+          {/*
+            A native scroll-snap track rather than a transform carousel: the
+            swipe, its momentum and the snap are the browser's, so a phone
+            behaves the way every other rail on this site does and the arrows
+            only have to write scrollLeft. `overscroll-x-contain` keeps a
+            vertical drag going to the PAGE, so the gallery cannot trap a
+            shopper scrolling past it.
+          */}
+          <div
+            ref={railRef}
+            onScroll={syncSlide}
+            role="group"
+            aria-label={`Cloud Soft ${size.name} images`}
+            className="no-scrollbar flex h-full w-full snap-x snap-mandatory overflow-x-auto overscroll-x-contain"
+          >
+            {slides.map((item, i) => (
+              <div key={item.id} className="relative h-full w-full flex-none snap-center">
+                <Image
+                  src={item.src}
+                  alt={item.alt}
+                  fill
+                  // Only the opening slide is worth blocking the LCP on. The
+                  // rest are a swipe away at the earliest.
+                  priority={i === 0}
+                  sizes="(max-width: 768px) 92vw, 620px"
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Over the track, so it must not eat the swipe that starts on it. */}
+          <span className="pointer-events-none absolute top-3.5 left-3.5 z-2 rounded-pill bg-butter px-3 py-1.5 text-[clamp(11px,1.1vw,13px)] font-bold text-midnight">
             Chemical-free
           </span>
+
+          {slides.length > 1 && (
+            <>
+              <GalleryArrow side="prev" disabled={slide === 0} onClick={() => goTo(slide - 1)} />
+              <GalleryArrow
+                side="next"
+                disabled={slide === slides.length - 1}
+                onClick={() => goTo(slide + 1)}
+              />
+
+              <div className="absolute bottom-3 left-1/2 z-2 flex -translate-x-1/2 items-center rounded-pill bg-paper/85 px-1.5 backdrop-blur-sm">
+                {slides.map((item, i) => (
+                  // The dot is 6px and the button is 24px around it: a target
+                  // the size of the dot is one a thumb cannot hit.
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => goTo(i)}
+                    aria-label={`Show image ${i + 1} of ${slides.length}`}
+                    aria-current={i === slide}
+                    className="grid size-6 cursor-pointer place-items-center border-0 bg-transparent p-0"
+                  >
+                    <span
+                      className={`block size-1.5 rounded-pill transition-colors ${
+                        i === slide ? "bg-midnight" : "bg-midnight/25"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="scroll-row mt-4 gap-[clamp(8px,1vw,12px)] max-md:-mx-[var(--spacing-gutter)] max-md:px-[var(--spacing-gutter)]">
-          {thumbs.map((thumb) => (
+          {slides.map((item, i) => (
             <button
-              key={thumb.id}
+              key={item.id}
               type="button"
-              onClick={thumb.onSelect}
-              aria-label={`View ${thumb.alt}`}
-              aria-current={activeImage === thumb.src}
+              onClick={() => goTo(i)}
+              aria-label={`View ${item.alt}`}
+              aria-current={i === slide}
               className={`relative size-[clamp(58px,7vw,78px)] cursor-pointer overflow-hidden rounded-chip bg-shell p-0 ${
-                activeImage === thumb.src ? "border-2 border-moss-deep" : "border-2 border-transparent"
+                i === slide ? "border-2 border-moss-deep" : "border-2 border-transparent"
               }`}
             >
-              <Image src={thumb.src} alt="" fill sizes="78px" className="object-cover" />
+              <Image src={item.src} alt="" fill sizes="78px" className="object-cover" />
             </button>
           ))}
         </div>
@@ -247,10 +374,7 @@ export function ProductBuyBox({
               key={option.count}
               type="button"
               aria-pressed={option.count === pack.count}
-              onClick={() => {
-                setPackCount(option.count);
-                setMainImage(option.image);
-              }}
+              onClick={() => setPackCount(option.count)}
               className="chip"
             >
               {option.count} pcs
