@@ -788,6 +788,14 @@ model Review {
   // review typed into the console isn't shown as unverified just because it
   // has no purchase trail. Nullable so nothing needs backfilling.
   verifiedOverride Boolean?
+  // Photos + short clips a shopper attached to their review. Stored as a JSON
+  // array of `{ url, kind }` — kind is "image" or "video". Uploaded to the
+  // shared uploads bucket before submit; the array carries the final URL, not
+  // the bytes. Kept as one column rather than a separate table because a
+  // review's media is always read with the review, edited never, and both the
+  // storefront and the admin queue want it inline. Null / empty array means
+  // no media, which is how every legacy row behaves.
+  media       Json?
   createdAt   DateTime         @default(now())
 
   votes ReviewVote[]

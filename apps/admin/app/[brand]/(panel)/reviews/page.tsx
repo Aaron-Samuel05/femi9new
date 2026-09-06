@@ -272,6 +272,64 @@ export default function ReviewsPage() {
                         <b style={{ display: 'block', color: 'var(--ink)', marginBottom: 2 }}>{r.title}</b>
                       )}
                       {excerpt(r.body)}
+                      {/* Media strip: a moderator approves the WHOLE row, so
+                          the images and videos have to be visible here. Click
+                          opens the raw asset in a new tab (no lightbox on the
+                          console — deliberately kept minimal). */}
+                      {r.media.length > 0 && (
+                        <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {r.media.map((m) => (
+                            <a
+                              key={m.url}
+                              href={m.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title={m.kind === 'video' ? 'Play video (new tab)' : 'Open photo (new tab)'}
+                              style={{
+                                display: 'inline-block',
+                                width: 44,
+                                height: 44,
+                                borderRadius: 6,
+                                overflow: 'hidden',
+                                border: '1px solid var(--line)',
+                                position: 'relative',
+                              }}
+                            >
+                              {m.kind === 'image' ? (
+                                <img
+                                  src={m.url}
+                                  alt=""
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <>
+                                  <video
+                                    src={m.url}
+                                    muted
+                                    preload="metadata"
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  />
+                                  <span
+                                    style={{
+                                      position: 'absolute',
+                                      inset: 0,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      color: 'white',
+                                      background: 'rgba(0,0,0,0.35)',
+                                      fontSize: 14,
+                                      textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                                    }}
+                                  >
+                                    ▶
+                                  </span>
+                                </>
+                              )}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </td>
                     <td data-label="Status">
                       <span className={`adm-badge ${STATUS_BADGE[r.status]}`}>{r.status}</span>

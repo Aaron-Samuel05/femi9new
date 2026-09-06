@@ -15,6 +15,11 @@ import { ProductNotFoundError, submitReview } from '@femi9/core/services/reviews
  * verified-buyer heuristic in getProduct).
  */
 
+/** Server-side allowlist for media URLs. Only what /api/reviews/upload emits.
+ *  Kept as a Zod refinement (not a plain regex) so a bad string returns the
+ *  same friendly error shape as every other field. */
+const REVIEW_MEDIA_URL = /^\/uploads\/lumi9\/reviews\/[a-z0-9._-]+$/i
+
 const bodySchema = z.object({
   productSlug: z.string().min(1).max(200),
   name: z.string().trim().min(1).max(80),
@@ -22,6 +27,18 @@ const bodySchema = z.object({
   body: z.string().trim().min(1).max(2000),
   place: z.string().trim().max(80).optional(),
   title: z.string().trim().max(120).optional(),
+  // Up to 5 attachments — matches the 4 image + 1 video budget in the modal,
+  // with slack. Each url must have come from our own upload endpoint (server
+  // enforces the shape); a shopper pasting an external URL is refused.
+  media: z
+    .array(
+      z.object({
+        url: z.string().regex(REVIEW_MEDIA_URL, 'Media must be uploaded through the review form'),
+        kind: z.enum(['image', 'video']),
+      }),
+    )
+    .max(5)
+    .optional(),
 })
 
 export async function POST(req: Request) {
@@ -34,13 +51,13 @@ export async function POST(req: Request) {
     const parsed = bodySchema.safeParse(await req.json().catch(() => null))
     if (!parsed.success) return badRequest('Invalid review', parsed.error.flatten())
 
-    const { productSlug, name, rating, body, place, title } = parsed.data
+    const { productSlug, name, rating, body, place, title, media } = parsed.data
     try {
       const session = await getSession('lumi9')
       await submitReview(
         'lumi9',
         productSlug,
-        { name, rating, body, place, title },
+        { name, rating, body, place, title, media },
         session?.sub,
       )
     } catch (err) {

@@ -65,6 +65,10 @@ export interface ProductReview {
   /** True only when this reviewer actually bought this product. The badge used
    *  to read "Verified Buyer" unconditionally on every card. */
   verified: boolean
+  /** Photos + short clips the shopper attached. Empty array when none — the
+   *  read layer normalises Review.media (null | []) to a consistent shape so
+   *  the storefront never has to null-check. */
+  media: { url: string; kind: 'image' | 'video' }[]
 }
 
 /**
@@ -225,7 +229,28 @@ export async function listReviews(
     helpfulDown: r.helpfulDown,
     date: r.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     verified: false,
+    media: normalizeReviewMedia(r.media),
   }))
+}
+
+/**
+ * `Review.media` is a Prisma `Json?` column so what we get back from Postgres
+ * is unknown-shape at compile time. Narrow it: null / not-an-array → `[]`, and
+ * every entry that isn't a `{ url: string, kind: 'image'|'video' }` shape is
+ * dropped. Never trust what a JSON column held, even when this codebase is the
+ * only writer.
+ */
+function normalizeReviewMedia(raw: unknown): { url: string; kind: 'image' | 'video' }[] {
+  if (!Array.isArray(raw)) return []
+  const out: { url: string; kind: 'image' | 'video' }[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const url = (entry as { url?: unknown }).url
+    const kind = (entry as { kind?: unknown }).kind
+    if (typeof url !== 'string' || (kind !== 'image' && kind !== 'video')) continue
+    out.push({ url, kind })
+  }
+  return out
 }
 
 export interface FullProduct {
@@ -418,6 +443,7 @@ export async function getProduct(brand: Brand, slug: string): Promise<FullProduc
     // userId+purchase heuristic because those reviews have no linked User row
     // and would otherwise always render as unverified.
     verified: r.verifiedOverride ?? Boolean(r.userId && buyerIds.has(r.userId)),
+    media: normalizeReviewMedia(r.media),
   }))
 
   return {

@@ -27,6 +27,10 @@ export type ReviewRow = {
   body: string
   status: ModerationStatus
   createdAt: string // ISO 8601 — Dates aren't JSON-serialisable to the client.
+  /** Photos + short clips the reviewer attached. Empty when they attached
+   *  none. Shown as thumbnails in the moderation queue so an operator does
+   *  not have to open a separate view to decide whether to approve. */
+  media: { url: string; kind: 'image' | 'video' }[]
 }
 
 // The exact query payload, so `toRow` stays type-checked against the include.
@@ -46,7 +50,23 @@ function toRow(r: ReviewWithProduct): ReviewRow {
     body: r.body,
     status: r.status,
     createdAt: r.createdAt.toISOString(),
+    media: normalizeMedia(r.media),
   }
+}
+
+/** Same shape guard as the storefront's normaliser — kept local rather than
+ *  re-exported to keep admin server code independent of the storefront service. */
+function normalizeMedia(raw: unknown): { url: string; kind: 'image' | 'video' }[] {
+  if (!Array.isArray(raw)) return []
+  const out: { url: string; kind: 'image' | 'video' }[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const url = (entry as { url?: unknown }).url
+    const kind = (entry as { kind?: unknown }).kind
+    if (typeof url !== 'string' || (kind !== 'image' && kind !== 'video')) continue
+    out.push({ url, kind })
+  }
+  return out
 }
 
 // ─────────────────────────────── Reads ──────────────────────────────────
@@ -87,6 +107,9 @@ export interface CreateReviewInput {
   rating: number      // 1–5, validated at the route boundary
   title?: string | null
   body: string
+  /** Optional attachments — same shape and same S3 prefix as customer
+   *  reviews. Empty / omitted means no media. */
+  media?: { url: string; kind: 'image' | 'video' }[]
 }
 
 export class ProductNotFoundError extends Error {
@@ -122,6 +145,7 @@ export async function createReview(brand: Brand, input: CreateReviewInput): Prom
       body: input.body,
       status: 'approved',
       verifiedOverride: true,
+      media: input.media && input.media.length > 0 ? (input.media as unknown as object[]) : undefined,
     },
     include: { product: { select: { name: true } } },
   })

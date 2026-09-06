@@ -10,6 +10,14 @@ import { dbFor, type Brand } from '@femi9/db'
  * side (list/approve/hide/delete) and must never be reachable from public code.
  */
 
+/** One photo or video the shopper attached with their review. Uploaded to the
+ *  shared uploads bucket by /api/reviews/upload before the review submit call,
+ *  which persists the array on Review.media. */
+export interface ReviewMedia {
+  url: string
+  kind: 'image' | 'video'
+}
+
 export interface ReviewInput {
   name: string
   place?: string
@@ -17,6 +25,8 @@ export interface ReviewInput {
   /** Optional one-line headline shown above the body on the product card. */
   title?: string
   body: string
+  /** Optional photos + short clips shown with the review once approved. */
+  media?: ReviewMedia[]
 }
 
 /**
@@ -66,6 +76,11 @@ export async function submitReview(brand: Brand, productSlug: string, input: Rev
         title: input.title,
         body: input.body,
         status: 'pending',
+        // Media rows arrive already uploaded (URLs pointing at
+        // /uploads/lumi9/reviews/…) — the service just persists the array.
+        // Null when the shopper submitted nothing; the storefront treats null
+        // and [] the same way.
+        media: input.media && input.media.length > 0 ? (input.media as unknown as object[]) : undefined,
       },
     })
     if (userId && purchased && !priorReview) {
