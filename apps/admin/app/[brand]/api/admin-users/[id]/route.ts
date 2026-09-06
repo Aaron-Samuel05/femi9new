@@ -3,26 +3,26 @@ import { z } from 'zod'
 import { requireConsoleApi } from '@/lib/api-guard'
 import { canManageAdmins } from '@femi9/core/admin-policy'
 import {
-  setBrandRole,
+  setMemberships,
   deactivateAdmin,
   activateAdmin,
   NotFoundError,
   NotAllowedError,
+  EmptyMembershipsError,
 } from '@femi9/core/services/admin/admin-users'
 
+const ROLES = [
+  'owner', 'manager', 'support', 'readonly',
+  'super_admin', 'finance', 'orders_manager', 'content_manager',
+] as const
+
+const MembershipSchema = z.object({
+  brand: z.enum(['femi9', 'lumi9']),
+  role: z.enum(ROLES),
+})
+
 const PatchSchema = z.object({
-  role: z
-    .enum([
-      'owner',
-      'manager',
-      'support',
-      'readonly',
-      'super_admin',
-      'finance',
-      'orders_manager',
-      'content_manager',
-    ])
-    .optional(),
+  memberships: z.array(MembershipSchema).optional(),
   active: z.boolean().optional(),
 })
 
@@ -45,10 +45,10 @@ export async function PATCH(
     )
   }
 
-  // Guard against self-lockout: a super admin who deactivates themselves or
-  // demotes themselves to a role without team-management access would be
-  // signed in with no way to reverse it. Refuse both edits on the caller's
-  // own row.
+  // Self-lockout: refuse edits that would strand the caller. Deactivate is
+  // easy (same-id + active:false). The "remove all admin access" case is
+  // harder: any incoming memberships array that leaves the caller without
+  // a canManageAdmins role on ANY brand is refused.
   if (id === auth.session.sub) {
     if (parsed.data.active === false) {
       return NextResponse.json(
@@ -56,18 +56,21 @@ export async function PATCH(
         { status: 400 },
       )
     }
-    if (parsed.data.role && !canManageAdmins(parsed.data.role)) {
-      return NextResponse.json(
-        { error: 'You cannot demote your own account below super admin.' },
-        { status: 400 },
-      )
+    if (parsed.data.memberships) {
+      const stillManages = parsed.data.memberships.some((m) => canManageAdmins(m.role))
+      if (!stillManages) {
+        return NextResponse.json(
+          { error: 'You cannot remove your own super admin role from every brand.' },
+          { status: 400 },
+        )
+      }
     }
   }
 
   try {
     let row
-    if (parsed.data.role) {
-      row = await setBrandRole(auth.session.role, id, auth.brand, parsed.data.role)
+    if (parsed.data.memberships) {
+      row = await setMemberships(auth.session.role, id, parsed.data.memberships)
     }
     if (parsed.data.active === false) {
       row = await deactivateAdmin(auth.session.role, id)
@@ -77,6 +80,8 @@ export async function PATCH(
     return NextResponse.json({ row })
   } catch (e) {
     if (e instanceof NotFoundError) return NextResponse.json({ error: e.message }, { status: 404 })
+    if (e instanceof EmptyMembershipsError)
+      return NextResponse.json({ error: e.message }, { status: 400 })
     if (e instanceof NotAllowedError) return new NextResponse(null, { status: 404 })
     if (e instanceof Error) return NextResponse.json({ error: e.message }, { status: 400 })
     throw e
