@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -49,6 +49,20 @@ export function BlogBodyEditor({
   placeholder,
   disabled,
 }: BlogBodyEditorProps) {
+  // Remembers the LAST value the editor itself emitted, so the sync effect
+  // below can tell "incoming value is my own state round-trip" from
+  // "incoming value is a genuinely new one from outside" (e.g. the parent
+  // called setBodyHtml directly, like the "Migrate to editor" button does).
+  //
+  // Without this the effect ran `setContent` on every keystroke — the
+  // parent's re-render fed `value` back down and any HTML canonicalisation
+  // drift made `value !== current`. `setContent` resets ProseMirror's
+  // selection, so the caret jumped mid-typing; a subsequent H2 click then
+  // targeted whatever block the selection landed in, which was often the
+  // block BEFORE the one the operator meant. Symptom: "I put my cursor on
+  // a new line, clicked H2, and the previous paragraph also became H2."
+  const lastEmitted = useRef<string>(value || '')
+
   const editor = useEditor({
     // StarterKit ships headings/lists/bold/italic/blockquote/undo/redo/etc.
     // No history extension separately — StarterKit already includes it.
@@ -89,7 +103,9 @@ export function BlogBodyEditor({
       // because it runs in the browser bundle and core's blog-html imports
       // server-only.
       const html = editor.getHTML()
-      onChange(isEmptyHtml(html) ? '' : html)
+      const emitted = isEmptyHtml(html) ? '' : html
+      lastEmitted.current = emitted
+      onChange(emitted)
     },
     editorProps: {
       attributes: {
@@ -98,13 +114,21 @@ export function BlogBodyEditor({
     },
   })
 
-  // Keep the editor content in sync when the parent swaps values (e.g. when
-  // the edit page finishes loading and populates the form). Guard against the
-  // no-op case so an in-progress edit isn't clobbered by an equal update.
+  // Sync ONLY when the incoming value came from outside — the parent's
+  // "Migrate to editor" button, or a fresh post being loaded. When the
+  // incoming value is the same one we just emitted (React re-render
+  // feeding our own onChange back down), skip: `setContent` reallocates
+  // the document and resets the caret, which caused the "H2 applied to
+  // the previous paragraph too" bug. See lastEmitted's declaration
+  // comment above for the full story.
   useEffect(() => {
     if (!editor) return
+    const incoming = value || ''
+    if (incoming === lastEmitted.current) return
     const current = editor.getHTML()
-    if (value && value !== current) editor.commands.setContent(value, false)
+    if (incoming === current) return
+    editor.commands.setContent(incoming, false)
+    lastEmitted.current = incoming
   }, [value, editor])
 
   useEffect(() => {
