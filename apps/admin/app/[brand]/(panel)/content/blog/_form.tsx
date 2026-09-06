@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
+import { BlogBodyEditor } from '@/components/BlogBodyEditor'
 
 /**
  * Shared blog-post editor used by both create (/content/blog/new) and edit
@@ -26,10 +27,12 @@ export interface BlogFormValues {
   image: string
   featured: boolean
   status: 'pending' | 'approved' | 'hidden'
-  // Already joined from the DB String[] by the edit page — with joinBody, which
-  // separates blocks by a BLANK line. Joining with a single newline instead
-  // collapses the whole article into one block on the next save.
+  // Legacy plain-text body kept on the form for backward compatibility with
+  // rows written before the rich editor. New/edited posts write bodyHtml
+  // instead; the storefront prefers bodyHtml when present.
   body: string
+  /** Rich HTML from the Tiptap editor. Empty on a fresh post. */
+  bodyHtml: string
   // ── The <head> layer ───────────────────────────────────────────────────
   // Optional everywhere: a post saved without them renders exactly as before,
   // because the storefront falls back to the title and the excerpt.
@@ -53,14 +56,6 @@ interface FaqRow {
 }
 
 type FieldErrors = Record<string, string[] | undefined>
-
-/** Blocks are separated by a BLANK line - see splitBody in blog-admin.ts. */
-const PLACEHOLDER_BODY = [
-  'One block per blank-line-separated chunk.',
-  '## Two hashes start a heading',
-  '> A chevron starts a pull-quote',
-  '\u2022 A bullet\n\u2022 and another, in the SAME block',
-].join('\n\n')
 
 let faqKeySeq = 0
 const nextKey = () => `faq-${++faqKeySeq}`
@@ -96,6 +91,7 @@ export default function PostForm({
     initial?.status ?? 'approved',
   )
   const [body, setBody] = useState(initial?.body ?? '')
+  const [bodyHtml, setBodyHtml] = useState(initial?.bodyHtml ?? '')
   const [metaTitle, setMetaTitle] = useState(initial?.metaTitle ?? '')
   const [imageAlt, setImageAlt] = useState(initial?.imageAlt ?? '')
   const [keywords, setKeywords] = useState(initial?.keywords ?? '')
@@ -187,6 +183,9 @@ export default function PostForm({
       status,
       // Raw textarea text — the service splits it into the String[] column.
       body,
+      // Sanitised on the server and stored on BlogPost.bodyHtml; the storefront
+      // prefers this when present.
+      bodyHtml,
       metaTitle: metaTitle.trim(),
       imageAlt: imageAlt.trim(),
       // Sent as typed; the service splits, trims and de-duplicates. One
@@ -484,26 +483,30 @@ export default function PostForm({
         </section>
       </div>
 
-      {/* Body — one block per line */}
+      {/* Body — rich Tiptap editor. Posts written before this editor existed
+          still carry the legacy `body` blocks; when they're re-saved through
+          the editor, the sanitised HTML goes to bodyHtml and the storefront
+          prefers it. */}
       <section className="adm-card" style={{ marginTop: 16 }}>
         <div className="adm-card-head">
           <h2 className="adm-card-title">Body</h2>
         </div>
         <div className="adm-field" style={{ marginBottom: 0 }}>
-          <label className="adm-label" htmlFor="b-body">Content</label>
-          <textarea
-            id="b-body"
-            className="adm-textarea"
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder={PLACEHOLDER_BODY}
-            style={{ minHeight: 260, fontFamily: 'var(--sans)' }}
+          <label className="adm-label">Content</label>
+          <BlogBodyEditor
+            value={bodyHtml}
+            onChange={setBodyHtml}
+            brand={brand}
+            placeholder="Start writing your article…"
+            disabled={saving || deleting}
           />
           <span className="adm-help">
-            Separate blocks with a BLANK LINE. Prefix a block with “## ” for a heading, “### ”
-            for a sub-heading or “&gt; ” for a pull-quote. A bullet list is ONE block: put every
-            “• ” on its own line with no blank line between them, or the storefront renders
-            each bullet as a list of its own.
+            Formatting toolbar: bold, italic, headings, lists, quote, link (paste any URL — the
+            preview shows it as an anchor), image (uploads via the same S3 path as the cover).
+            {initial?.body && !bodyHtml && (
+              <> Legacy content from this post is still saved in the old plain-text field —
+              re-paste it here (or type fresh) and save to migrate it to rich HTML.</>
+            )}
           </span>
         </div>
       </section>

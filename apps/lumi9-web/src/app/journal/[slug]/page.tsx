@@ -169,7 +169,19 @@ export default async function JournalPostPage(props: { params: Promise<{ slug: s
           style={{ "--accent": color } as React.CSSProperties}
         >
           <div className="mx-auto max-w-[740px]">
-            <ArticleBody blocks={post.body} />
+            {post.bodyHtml ? (
+              // Rich HTML from the admin's Tiptap editor. Server-sanitised in
+              // @femi9/core/blog-html on save — no <script>, no inline events,
+              // no off-origin <img>. Safe to inject as HTML here.
+              <div
+                className="article-html"
+                dangerouslySetInnerHTML={{ __html: post.bodyHtml }}
+              />
+            ) : (
+              // Legacy blocks — the old '## '/'> '/'• ' renderer, still used
+              // for posts written before the rich editor existed.
+              <ArticleBody blocks={post.body} />
+            )}
           </div>
         </div>
 

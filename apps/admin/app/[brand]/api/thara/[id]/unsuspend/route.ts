@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic'
 export async function POST(_req: Request, ctx: { params: Promise<{ brand: string; id: string }> }) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const auth = await requireConsoleApi((await ctx.params).brand, 'manager')
+    const auth = await requireConsoleApi((await ctx.params).brand, 'manager', 'thara')
     if (!auth.ok) return auth.response
     const { brand } = auth
     // THARA_ENABLED is a GLOBAL flag and this console serves both brands, so the

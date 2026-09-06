@@ -14,7 +14,7 @@ const ALLOWED: TharaStatus[] = ['purchase_pending', 'active', 'suspended', 'deac
 export async function GET(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
   return handle(async () => {
     if (!isTharaEnabled()) return notFound()
-    const auth = await requireConsoleApi((await params).brand)
+    const auth = await requireConsoleApi((await params).brand, 'readonly', 'thara')
     if (!auth.ok) return auth.response
     const { brand } = auth
     // THARA_ENABLED is a GLOBAL flag and this console serves both brands, so the

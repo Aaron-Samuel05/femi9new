@@ -25,7 +25,7 @@ const PatchSchema = z.object({ action: z.literal('cancel') })
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params
   return handle(async () => {
-    const auth = await requireConsoleApi(params.brand, 'manager')
+    const auth = await requireConsoleApi(params.brand, 'manager', 'subscriptions')
     if (!auth.ok) return auth.response
     const { brand, session } = auth
 

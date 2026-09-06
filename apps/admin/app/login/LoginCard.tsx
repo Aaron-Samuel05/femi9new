@@ -25,6 +25,7 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
   const [brand, setBrand] = useState<Brand>(initialBrand)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
@@ -153,16 +154,41 @@ export function LoginCard({ initialBrand, next }: { initialBrand: Brand; next: s
 
         <label className="adm-field">
           <span className="adm-label">Password</span>
-          <input
-            className="adm-input"
-            type="password"
-            name="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            disabled={busy}
-          />
+          <div className="adm-auth-password">
+            <input
+              className="adm-input adm-auth-password-input"
+              type={showPassword ? 'text' : 'password'}
+              name="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={busy}
+            />
+            <button
+              type="button"
+              className="adm-auth-password-toggle"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-pressed={showPassword}
+              tabIndex={-1}
+              disabled={busy}
+            >
+              {showPassword ? (
+                // eye-off
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a19.77 19.77 0 0 1 4.06-5.09M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a19.65 19.65 0 0 1-3.17 4.19M14.12 14.12A3 3 0 1 1 9.88 9.88"></path>
+                  <line x1="1" y1="1" x2="23" y2="23"></line>
+                </svg>
+              ) : (
+                // eye
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              )}
+            </button>
+          </div>
         </label>
 
         {/* aria-live so the failure is announced, not just drawn. The wrapper is

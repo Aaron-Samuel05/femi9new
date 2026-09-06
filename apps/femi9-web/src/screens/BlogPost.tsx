@@ -128,7 +128,16 @@ export function BlogPost({ post, related }: Props) {
       </div>
 
       <article className="wrap article-body" style={{ '--accent': color } as React.CSSProperties}>
-        <Body lines={post.body} />
+        {post.bodyHtml ? (
+          // Rich HTML from the admin's Tiptap editor. Sanitised server-side
+          // in @femi9/core/blog-html on save, so injecting as HTML here is
+          // safe (no <script>, no inline event handlers, no off-origin images).
+          <div className="article-html" dangerouslySetInnerHTML={{ __html: post.bodyHtml }} />
+        ) : (
+          // Legacy block-based renderer — still used for posts that predate
+          // the rich editor. They render exactly as before.
+          <Body lines={post.body} />
+        )}
       </article>
 
       <div className="wrap article-cta">

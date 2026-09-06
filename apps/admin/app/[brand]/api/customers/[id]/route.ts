@@ -11,7 +11,7 @@ import { z } from 'zod'
 export async function GET(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
   return handle(async () => {
-    const auth = await requireConsoleApi((await props.params).brand)
+    const auth = await requireConsoleApi((await props.params).brand, 'readonly', 'customers')
     if (!auth.ok) return auth.response
     const { brand } = auth
 
@@ -29,7 +29,7 @@ const MutationSchema = z.discriminatedUnion('action', [
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   return handle(async () => {
-    const auth = await requireConsoleApi((await props.params).brand, 'manager')
+    const auth = await requireConsoleApi((await props.params).brand, 'manager', 'customers')
     if (!auth.ok) return auth.response
     const { brand, session } = auth
     const parsed = MutationSchema.safeParse(await req.json().catch(() => null))

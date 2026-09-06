@@ -39,7 +39,7 @@ function mapZoneError(err: unknown) {
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'manager')
+  const auth = await requireConsoleApi((await props.params).brand, 'manager', 'pricing')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 
@@ -67,7 +67,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'manager')
+  const auth = await requireConsoleApi((await props.params).brand, 'manager', 'pricing')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 

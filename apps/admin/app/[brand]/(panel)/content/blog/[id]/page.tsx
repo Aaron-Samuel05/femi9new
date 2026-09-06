@@ -37,8 +37,11 @@ export default async function EditPostPage(props: { params: Promise<{ brand: str
     image: post.image ?? '',
     featured: post.featured,
     status: post.status,
-    // String[] column → blank-line-separated blocks for the textarea.
+    // String[] column → blank-line-separated blocks for the textarea (kept
+    // as a hidden fallback for legacy posts; the rich editor operates on
+    // bodyHtml).
     body: joinBody(post.body),
+    bodyHtml: post.bodyHtml ?? '',
     metaTitle: post.metaTitle ?? '',
     imageAlt: post.imageAlt ?? '',
     // string[] column → the comma-separated line the single input holds.

@@ -40,7 +40,7 @@ export async function PATCH(
 ) {
   const { brand, id } = await params
   // 'support': this changes a clinical date every parent using the tool reads.
-  const auth = await requireConsoleApi(brand, 'support')
+  const auth = await requireConsoleApi(brand, 'support', 'parenting')
   if (!auth.ok) return auth.response
   const gate = moduleGate(hasModule(auth.brand, 'parenting'))
   if (gate) return gate

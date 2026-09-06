@@ -31,6 +31,10 @@ export const ADMIN_MODULES = [
   // console screen for a feature that brand does not have.
   'parenting',
   'settings',
+  // Team (admin user management). Both brands have it; every role EXCEPT
+  // super_admin/owner has null in admin-policy.ts → the nav hides it + the
+  // page 404s for everyone else.
+  'team',
 ] as const
 
 export type AdminModule = (typeof ADMIN_MODULES)[number]
@@ -132,6 +136,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
       'partners',
       'thara',
       'settings',
+      'team',
     ],
   },
   lumi9: {
@@ -179,6 +184,7 @@ export const BRAND_CONFIG: Record<Brand, BrandConfig> = {
       // exist — so the module is Lumi9's alone and the route 404s over there.
       'parenting',
       'settings',
+      'team',
     ],
   },
 }

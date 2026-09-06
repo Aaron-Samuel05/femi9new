@@ -46,7 +46,7 @@ const DoseSchema = z.object({
 })
 
 export async function GET(_req: Request, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand)
+  const auth = await requireConsoleApi((await params).brand, 'readonly', 'parenting')
   if (!auth.ok) return auth.response
   const gate = moduleGate(hasModule(auth.brand, 'parenting'))
   if (gate) return gate
@@ -57,7 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ brand: 
 export async function POST(req: Request, { params }: { params: Promise<{ brand: string }> }) {
   // 'support', not the default 'readonly': this publishes a clinical date to
   // every parent using the tool.
-  const auth = await requireConsoleApi((await params).brand, 'support')
+  const auth = await requireConsoleApi((await params).brand, 'support', 'parenting')
   if (!auth.ok) return auth.response
   const gate = moduleGate(hasModule(auth.brand, 'parenting'))
   if (gate) return gate

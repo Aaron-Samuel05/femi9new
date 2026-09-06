@@ -39,7 +39,7 @@ function mapPrismaError(err: unknown) {
 
 export async function GET(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand)
+  const auth = await requireConsoleApi((await props.params).brand, 'readonly', 'catalog')
   if (!auth.ok) return auth.response
   const { brand } = auth
 
@@ -52,7 +52,7 @@ export async function GET(_req: NextRequest, props: { params: Promise<{ brand: s
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'manager')
+  const auth = await requireConsoleApi((await props.params).brand, 'manager', 'catalog')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 
@@ -91,7 +91,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'manager')
+  const auth = await requireConsoleApi((await props.params).brand, 'manager', 'catalog')
   if (!auth.ok) return auth.response
   const { brand, session } = auth
 

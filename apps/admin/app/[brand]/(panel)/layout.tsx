@@ -1,6 +1,7 @@
 import { requireConsole } from '@/lib/guard'
 import { brandConfig, type AdminModule } from '@femi9/core/brands'
 import { brandsFor } from '@femi9/core/admin-identity'
+import { roleHasModule, canManageAdmins } from '@femi9/core/admin-policy'
 import { AdminShell, type NavGroup } from './_shell'
 
 /**
@@ -31,6 +32,7 @@ const LABELS: Record<AdminModule, string> = {
   thara: 'Thara',
   parenting: 'Parenting tools',
   settings: 'Settings',
+  team: 'Team',
 }
 
 const HREF: Record<AdminModule, string> = {
@@ -51,6 +53,7 @@ const HREF: Record<AdminModule, string> = {
   thara: '/thara',
   parenting: '/parenting',
   settings: '/settings',
+  team: '/team',
 }
 
 /**
@@ -65,7 +68,7 @@ const GROUPS: { eyebrow: string; modules: AdminModule[] }[] = [
   { eyebrow: 'Growth', modules: ['affiliates', 'partners'] },
   { eyebrow: 'Programs', modules: ['thara', 'parenting'] },
   { eyebrow: 'Content', modules: ['content', 'reviews', 'community'] },
-  { eyebrow: 'Configure', modules: ['settings', 'pricing'] },
+  { eyebrow: 'Configure', modules: ['settings', 'pricing', 'team'] },
 ]
 
 export default async function PanelLayout({
@@ -85,7 +88,11 @@ export default async function PanelLayout({
   const groups: NavGroup[] = GROUPS.map((group) => ({
     eyebrow: group.eyebrow,
     items: group.modules
-      .filter((m) => has.has(m))
+      // Two gates: this brand must have the module AND this role must be
+      // allowed to see it. Legacy roles (owner/manager/support/readonly) see
+      // every module; the new business roles see only the ones their policy
+      // row lists.
+      .filter((m) => has.has(m) && roleHasModule(session.role, m))
       .map((m) => ({
         module: m,
         label: LABELS[m],

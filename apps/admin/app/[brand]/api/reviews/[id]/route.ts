@@ -17,7 +17,7 @@ const PatchSchema = z.object({
 
 export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'support')
+  const auth = await requireConsoleApi((await props.params).brand, 'support', 'reviews')
   if (!auth.ok) return auth.response
   const { brand } = auth
 
@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest, props: { params: Promise<{ brand: 
 
 export async function DELETE(_req: NextRequest, props: { params: Promise<{ brand: string; id: string }> }) {
   const params = await props.params;
-  const auth = await requireConsoleApi((await props.params).brand, 'support')
+  const auth = await requireConsoleApi((await props.params).brand, 'support', 'reviews')
   if (!auth.ok) return auth.response
   const { brand } = auth
 

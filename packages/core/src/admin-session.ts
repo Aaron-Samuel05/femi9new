@@ -102,8 +102,21 @@ export async function verifyAdminSession(
   }
 }
 
-/** Role ordering, strongest first. `readonly` may not mutate anything. */
-const RANK: Record<AdminRole, number> = { owner: 3, manager: 2, support: 1, readonly: 0 }
+/** Role ordering for LEGACY comparisons. `super_admin` maps identically to
+ *  `owner`; the other business roles get rank -1 so any code path that
+ *  compares them via `hasAtLeast` (which is module-blind) DENIES access. Every
+ *  business role that should have access to something has to declare it in
+ *  admin-policy.ts, per the module, or `requireConsoleApi` won't let it in. */
+const RANK: Record<AdminRole, number> = {
+  owner: 3,
+  manager: 2,
+  support: 1,
+  readonly: 0,
+  super_admin: 3,
+  finance: -1,
+  orders_manager: -1,
+  content_manager: -1,
+}
 
 export function hasAtLeast(role: AdminRole, required: AdminRole): boolean {
   return RANK[role] >= RANK[required]

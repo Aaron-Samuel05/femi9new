@@ -46,7 +46,11 @@ function maxBytesFor(ext: 'png' | 'jpg' | 'webp' | 'gif'): number {
 }
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ brand: string }> }) {
-  const auth = await requireConsoleApi((await params).brand, 'support')
+  // Upload is shared by the product form and blog cover/Tiptap image — allow
+  // via the `content` module so a content_manager can insert images. Every
+  // role with `content` also has `catalog` (owner/manager/super_admin), and
+  // orders_manager/finance don't need to upload.
+  const auth = await requireConsoleApi((await params).brand, 'support', 'content')
   if (!auth.ok) return auth.response
   const { brand } = auth
 

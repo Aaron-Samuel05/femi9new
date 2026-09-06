@@ -863,7 +863,9 @@ model BlogPost {
   image       String?
   featured    Boolean          @default(false)
   status      ModerationStatus @default(approved)
-  body        String[] // paragraphs / '## ' headings / '> ' pull-quotes
+  body        String[] // legacy paragraphs / '## ' headings / '> ' pull-quotes
+  bodyHtml    String? // rich HTML from Tiptap; when set, storefronts render this
+  //                     instead of splitting `body`. Sanitised on write.
   publishedAt DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 

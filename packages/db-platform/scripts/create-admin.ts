@@ -24,7 +24,22 @@ async function main() {
   const email = arg('email')?.trim().toLowerCase()
   const name = arg('name') ?? email
   const brand = arg('brand')
-  const role = (arg('role') ?? 'owner') as 'owner' | 'manager' | 'support' | 'readonly'
+  const role = (arg('role') ?? 'super_admin') as
+    | 'owner'
+    | 'manager'
+    | 'support'
+    | 'readonly'
+    | 'super_admin'
+    | 'finance'
+    | 'orders_manager'
+    | 'content_manager'
+  const VALID_ROLES = new Set([
+    'owner', 'manager', 'support', 'readonly',
+    'super_admin', 'finance', 'orders_manager', 'content_manager',
+  ])
+  if (!VALID_ROLES.has(role)) {
+    throw new Error(`Unknown role: ${role}. Try super_admin | finance | orders_manager | content_manager | manager | support | readonly.`)
+  }
   const password = process.env.ADMIN_SEED_PASSWORD
 
   if (!email || !brand) {

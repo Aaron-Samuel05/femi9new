@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { isBrand, type Brand } from '@femi9/db'
 import { getAdminSession, type AdminSession } from '@femi9/core/admin-identity'
 import { hasModule, type AdminModule } from '@femi9/core/brands'
+import { roleHasModule } from '@femi9/core/admin-policy'
 
 /**
  * The guard every console page calls.
@@ -24,9 +25,15 @@ export async function requireConsole(
   const session = await getAdminSession(brand)
   if (!session) redirect(`/login?brand=${brand}`)
 
-  // A module this brand does not have is 404, never 403: Lumi9's staff should
-  // not learn that Thara exists by guessing a URL, and 403 tells them it does.
-  if (moduleName && !hasModule(brand, moduleName)) notFound()
+  if (moduleName) {
+    // A module this brand does not have is 404, never 403: Lumi9's staff should
+    // not learn that Thara exists by guessing a URL.
+    if (!hasModule(brand, moduleName)) notFound()
+    // A module this ROLE cannot see is also 404 for the same reason — a Finance
+    // admin should not learn from a 403 that "Blog" is a real thing the console
+    // exposes, only that "there's no such page for me".
+    if (!roleHasModule(session.role, moduleName)) notFound()
+  }
 
   return { brand, session }
 }
