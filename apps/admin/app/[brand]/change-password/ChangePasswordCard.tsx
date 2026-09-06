@@ -197,7 +197,7 @@ export function ChangePasswordCard({
 
         <button
           type="submit"
-          className="adm-auth-submit"
+          className="adm-btn adm-btn--primary adm-auth-submit"
           disabled={busy || !current || !next || !confirm}
         >
           {busy ? 'Saving…' : forced ? 'Set password & continue' : 'Save new password'}
