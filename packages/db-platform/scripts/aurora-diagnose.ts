@@ -168,6 +168,7 @@ async function blogInventory(db: PrismaClient) {
     for (const r of rows) {
       const html = r.has_body_html === null ? 'n/a' : r.has_body_html ? `${r.html_chars ?? 0}c` : 'null'
       console.log(`    • ${r.slug.padEnd(45)}  body=${(r.body_blocks ?? 0).toString().padStart(2)}b/${(r.body_chars ?? 0).toString().padStart(5)}c  bodyHtml=${html}`)
+      console.log(`      title: ${r.title.slice(0, 100)}`)
     }
   } catch (e) {
     console.log('  full listing error: ' + (e instanceof Error ? e.message.slice(0, 140) : ''))
