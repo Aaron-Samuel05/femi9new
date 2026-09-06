@@ -64,9 +64,26 @@ export const BlogPostInputSchema = z.object({
   // before, because the read service falls back to `title` and `excerpt`.
   metaTitle: z.string().trim().default(''),
   imageAlt: z.string().trim().default(''),
-  // Accepts the array a JSON client sends OR the comma/newline-separated string
-  // the form's single input yields. One field, two spellings, one column.
+  // Legacy single bucket. Accepts the array a JSON client sends OR the
+  // comma/newline-separated string the old single input yielded. Kept for
+  // API back-compat and still carried on the row as a merged fallback for
+  // storefronts that read only this column.
   keywords: z
+    .union([z.array(z.string()), z.string()])
+    .default([])
+    .transform(splitKeywords),
+  // Three SEO buckets — primary target, secondary supporting, semantic /
+  // topical. Same union parser as `keywords` so the same server accepts a
+  // JSON array from a script and a chip-list from the form.
+  keywordsPrimary: z
+    .union([z.array(z.string()), z.string()])
+    .default([])
+    .transform(splitKeywords),
+  keywordsSecondary: z
+    .union([z.array(z.string()), z.string()])
+    .default([])
+    .transform(splitKeywords),
+  keywordsSemantic: z
     .union([z.array(z.string()), z.string()])
     .default([])
     .transform(splitKeywords),
@@ -90,6 +107,12 @@ export type BlogPostInput = z.infer<typeof BlogPostInputSchema>
 c'` → `['a','b','c']`, de-duplicated, order preserved. */
 function splitKeywords(value: string[] | string): string[] {
   const parts = Array.isArray(value) ? value : value.split(SPLIT_KEYWORDS)
+  return dedupeKeywords(parts)
+}
+
+/** Trim + drop empties + drop dupes, preserving order. Exported for reuse by
+ *  postColumns when it merges the three typed lists into the legacy column. */
+function dedupeKeywords(parts: string[]): string[] {
   const seen = new Set<string>()
   const out: string[] = []
   for (const part of parts) {
@@ -252,7 +275,19 @@ function postColumns(input: BlogPostInput, slug: string) {
     })(),
     metaTitle: input.metaTitle || null,
     imageAlt: input.imageAlt || null,
-    keywords: input.keywords,
+    // Legacy `keywords` is written as the union of the three typed lists PLUS
+    // anything the caller passed in the legacy field itself. Deduped so the
+    // storefront's meta tag never repeats a term. Old readers that only know
+    // about `keywords` still see the complete set.
+    keywords: dedupeKeywords([
+      ...input.keywords,
+      ...input.keywordsPrimary,
+      ...input.keywordsSecondary,
+      ...input.keywordsSemantic,
+    ]),
+    keywordsPrimary: input.keywordsPrimary,
+    keywordsSecondary: input.keywordsSecondary,
+    keywordsSemantic: input.keywordsSemantic,
     cta: input.cta || null,
   }
 }

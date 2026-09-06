@@ -39,8 +39,16 @@ export interface BlogFormValues {
   // because the storefront falls back to the title and the excerpt.
   metaTitle: string
   imageAlt: string
-  /** Comma-separated in the form; a string[] column in the database. */
+  /** Legacy comma-separated bucket. Kept here so an old draft loaded from
+   *  the DB still round-trips through the form — new posts don't populate
+   *  it, the three typed lists below drive the meta tag. */
   keywords: string
+  /** Three typed lists — each is an ordered, deduped chip set. Empty
+   *  arrays for a post that predates them; the read layer merges these
+   *  into `keywords` for the storefront. */
+  keywordsPrimary: string[]
+  keywordsSecondary: string[]
+  keywordsSemantic: string[]
   cta: string
   faqs: { question: string; answer: string }[]
 }
@@ -96,6 +104,9 @@ export default function PostForm({
   const [metaTitle, setMetaTitle] = useState(initial?.metaTitle ?? '')
   const [imageAlt, setImageAlt] = useState(initial?.imageAlt ?? '')
   const [keywords, setKeywords] = useState(initial?.keywords ?? '')
+  const [keywordsPrimary, setKeywordsPrimary] = useState<string[]>(initial?.keywordsPrimary ?? [])
+  const [keywordsSecondary, setKeywordsSecondary] = useState<string[]>(initial?.keywordsSecondary ?? [])
+  const [keywordsSemantic, setKeywordsSemantic] = useState<string[]>(initial?.keywordsSemantic ?? [])
   const [cta, setCta] = useState(initial?.cta ?? '')
   // Rows carry a stable key so React does not reorder inputs by index when one
   // is removed — the same reason the product form's variant rows have one.
@@ -192,6 +203,9 @@ export default function PostForm({
       // Sent as typed; the service splits, trims and de-duplicates. One
       // definition of "what a keyword list is", on the side that enforces it.
       keywords,
+      keywordsPrimary,
+      keywordsSecondary,
+      keywordsSemantic,
       cta: cta.trim(),
       // Half-filled rows are dropped by the service rather than refused — an
       // editor mid-thought should not be blocked from saving the rest.
@@ -591,19 +605,43 @@ export default function PostForm({
         </div>
 
         <div className="adm-field">
-          <label className="adm-label" htmlFor="b-keywords">Keywords</label>
-          <textarea
-            id="b-keywords"
-            className="adm-textarea"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            placeholder="baby diapers, breathable baby diapers, diaper pants for baby"
-            style={{ minHeight: 72 }}
-          />
-          <span className="adm-help">
-            Comma- or line-separated. Emitted as the keywords meta tag and in the article&rsquo;s
-            JSON-LD. Duplicates and blanks are dropped on save.
+          <label className="adm-label">Keywords</label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <TagInput
+              label="Primary"
+              helper="One or two head terms this article is trying to rank for."
+              values={keywordsPrimary}
+              onChange={setKeywordsPrimary}
+              placeholder="baby diapers"
+              tone="primary"
+            />
+            <TagInput
+              label="Secondary"
+              helper="Related supporting terms — variations and long-tails."
+              values={keywordsSecondary}
+              onChange={setKeywordsSecondary}
+              placeholder="breathable diapers, cloud soft diapers"
+              tone="secondary"
+            />
+            <TagInput
+              label="Semantic / topical"
+              helper="Adjacent concepts that reinforce topical relevance."
+              values={keywordsSemantic}
+              onChange={setKeywordsSemantic}
+              placeholder="diaper rash prevention, overnight comfort"
+              tone="semantic"
+            />
+          </div>
+          <span className="adm-help" style={{ marginTop: 8 }}>
+            Type + Enter (or comma) adds a tag. Click × to remove. All three lists merge into the
+            keywords meta tag and JSON-LD; duplicates are dropped on save.
           </span>
+          {initial?.keywords && (
+            <div className="adm-help" style={{ marginTop: 6, fontStyle: 'italic' }}>
+              Legacy keywords already on this post: <code>{initial.keywords}</code>. Move them into
+              the buckets above and save — the old field will keep working in parallel until you do.
+            </div>
+          )}
         </div>
 
         <div className="adm-field" style={{ marginBottom: 0 }}>
@@ -731,5 +769,151 @@ export default function PostForm({
         )}
       </div>
     </form>
+  )
+}
+
+// ─────────────────────────────── Tag input ───────────────────────────────
+
+/**
+ * Chip-style keyword input: shows current values as pills with a × remove,
+ * a single text input for adding new ones. Enter, Tab or comma commit. The
+ * `tone` prop tints the pill so a moderator can tell the three lists apart
+ * at a glance without reading the labels.
+ */
+function TagInput({
+  label,
+  helper,
+  values,
+  onChange,
+  placeholder,
+  tone,
+}: {
+  label: string
+  helper?: string
+  values: string[]
+  onChange: (next: string[]) => void
+  placeholder?: string
+  tone: 'primary' | 'secondary' | 'semantic'
+}) {
+  const [draft, setDraft] = useState('')
+
+  function addOne(raw: string) {
+    const trimmed = raw.trim().replace(/,+$/, '')
+    if (!trimmed) return
+    if (values.some((v) => v.toLowerCase() === trimmed.toLowerCase())) {
+      setDraft('')
+      return
+    }
+    onChange([...values, trimmed])
+    setDraft('')
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault()
+      addOne(draft)
+      return
+    }
+    if (e.key === 'Backspace' && draft === '' && values.length > 0) {
+      // Pop the last chip so the operator can correct a typo without reaching
+      // for the mouse. The delete key does NOT do this on purpose: that's the
+      // convention for "delete the character to the right", and there is no
+      // character to delete here — it should be a no-op.
+      e.preventDefault()
+      onChange(values.slice(0, -1))
+    }
+  }
+
+  function onBlur() {
+    if (draft.trim()) addOne(draft)
+  }
+
+  function removeAt(i: number) {
+    const next = values.slice()
+    next.splice(i, 1)
+    onChange(next)
+  }
+
+  const tint =
+    tone === 'primary'
+      ? { bg: 'var(--plum-tint, #EFEBFF)', ink: 'var(--plum, #5B3FDA)' }
+      : tone === 'secondary'
+        ? { bg: '#FDF3E7', ink: '#B8681E' }
+        : { bg: '#E8F3EE', ink: '#3D8B5C' }
+
+  return (
+    <div
+      style={{
+        border: '1px solid var(--line)',
+        borderRadius: 8,
+        padding: '10px 12px',
+        background: 'var(--surface)',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+        <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--ink)' }}>{label}</span>
+        {helper && (
+          <span className="adm-help" style={{ fontSize: 11, marginLeft: 12 }}>
+            {helper}
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+        {values.map((v, i) => (
+          <span
+            key={`${v}-${i}`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '3px 4px 3px 10px',
+              borderRadius: 999,
+              background: tint.bg,
+              color: tint.ink,
+              fontSize: 12.5,
+              fontWeight: 600,
+              lineHeight: 1.4,
+            }}
+          >
+            {v}
+            <button
+              type="button"
+              onClick={() => removeAt(i)}
+              aria-label={`Remove ${v}`}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'inherit',
+                fontSize: 14,
+                lineHeight: 1,
+                padding: '2px 6px',
+                borderRadius: 999,
+              }}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          className="adm-input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={onBlur}
+          placeholder={values.length === 0 ? placeholder : ''}
+          style={{
+            flex: 1,
+            minWidth: 140,
+            border: 'none',
+            background: 'transparent',
+            padding: '4px 2px',
+            outline: 'none',
+            boxShadow: 'none',
+            fontSize: 13,
+          }}
+        />
+      </div>
+    </div>
   )
 }

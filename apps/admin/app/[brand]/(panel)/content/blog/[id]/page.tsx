@@ -49,8 +49,13 @@ export default async function EditPostPage(props: { params: Promise<{ brand: str
     bodyHtml: isEmptyBlogHtml(post.bodyHtml) ? '' : (post.bodyHtml ?? ''),
     metaTitle: post.metaTitle ?? '',
     imageAlt: post.imageAlt ?? '',
-    // string[] column → the comma-separated line the single input holds.
+    // string[] column → the comma-separated line the legacy input holds.
     keywords: post.keywords.join(', '),
+    // Three typed lists — new columns; empty arrays for posts that predate
+    // them, which is fine because the form's TagInputs render as empty.
+    keywordsPrimary: post.keywordsPrimary ?? [],
+    keywordsSecondary: post.keywordsSecondary ?? [],
+    keywordsSemantic: post.keywordsSemantic ?? [],
     cta: post.cta ?? '',
     faqs: post.faqs.map((faq) => ({ question: faq.question, answer: faq.answer })),
   }

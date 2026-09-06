@@ -59,7 +59,17 @@ export interface BlogPostDTO {
   bodyHtml: string | null
   /** <title> for the article route. Falls back to `title`. */
   metaTitle: string
+  /** Every keyword the meta tag should carry — the three typed lists merged
+   *  with the legacy `keywords` column, deduped, order preserved. Storefront
+   *  uses this directly. */
   keywords: string[]
+  /** The three typed lists as the console authored them. Not usually
+   *  rendered directly — kept on the DTO so any surface that wants to know
+   *  which term is a primary target vs semantic backup can. Empty arrays
+   *  when no term of that class was set. */
+  keywordsPrimary: string[]
+  keywordsSecondary: string[]
+  keywordsSemantic: string[]
   /** The article's own closing call-to-action; empty means "use the generic one". */
   cta: string
   faqs: BlogFaqDTO[]
@@ -72,6 +82,21 @@ export interface BlogCategoryDTO {
 }
 
 // featured first, then newest — the order the storefront grid expects.
+/** Trim + drop empties + drop dupes, preserving order. Used to merge the
+ *  three typed keyword lists into one meta-tag string. */
+function dedupeStrings(parts: string[]): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of parts) {
+    const trimmed = raw.trim()
+    if (trimmed && !seen.has(trimmed)) {
+      seen.add(trimmed)
+      out.push(trimmed)
+    }
+  }
+  return out
+}
+
 const POST_ORDER = [{ featured: 'desc' }, { publishedAt: 'desc' }] as const
 
 /** Every relation `toPost` reads, in one place so the four queries below cannot
@@ -127,7 +152,20 @@ function toPost(row: Row): BlogPostDTO {
     // an empty Tiptap shell and hid the `body[]` fallback that had content.
     bodyHtml: isEmptyBlogHtml(row.bodyHtml) ? null : row.bodyHtml,
     metaTitle: row.metaTitle || row.title,
-    keywords: row.keywords,
+    // Merge primary + secondary + semantic + legacy `keywords`, dedupe,
+    // order preserved (primary first, secondary next, semantic last, then
+    // whatever old `keywords` still had). A post that has been re-saved
+    // through the new form has an empty legacy column and only the three
+    // typed lists contribute; a post that hasn't still gets its old bag.
+    keywords: dedupeStrings([
+      ...row.keywordsPrimary,
+      ...row.keywordsSecondary,
+      ...row.keywordsSemantic,
+      ...row.keywords,
+    ]),
+    keywordsPrimary: row.keywordsPrimary,
+    keywordsSecondary: row.keywordsSecondary,
+    keywordsSemantic: row.keywordsSemantic,
     cta: row.cta ?? '',
     faqs: row.faqs.map((faq) => ({ q: faq.question, a: faq.answer })),
   }

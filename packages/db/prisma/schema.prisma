@@ -894,7 +894,16 @@ model BlogPost {
   // storefront falls back to `title` and `excerpt` exactly as it did before.
   metaTitle String?
   imageAlt  String?
+  // Legacy single-bucket keywords. New posts write empty here and populate
+  // the three typed lists below instead. Read paths merge everything for
+  // the storefront's <meta name="keywords"> tag.
   keywords  String[]
+  // SEO strategy split: the primary target term(s), secondary supporting
+  // terms, and semantic / topical terms. Default empty so nothing needs
+  // backfilling.
+  keywordsPrimary   String[] @default([])
+  keywordsSecondary String[] @default([])
+  keywordsSemantic  String[] @default([])
   // The article's own closing call-to-action. Each SEO brief ends on wording
   // written for that reader; NULL means the page's generic block stands in.
   cta       String?

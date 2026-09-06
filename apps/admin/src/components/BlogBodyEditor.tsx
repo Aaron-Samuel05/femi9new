@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
@@ -62,6 +62,30 @@ export function BlogBodyEditor({
   // block BEFORE the one the operator meant. Symptom: "I put my cursor on
   // a new line, clicked H2, and the previous paragraph also became H2."
   const lastEmitted = useRef<string>(value || '')
+
+  // Distraction-free writing mode. When true, the whole editor container is
+  // moved to `position: fixed; inset: 0` with a solid backdrop, so the
+  // operator can compose a long article without the console chrome around
+  // them. Toggled by a toolbar button; Esc also exits. The parent form is
+  // NOT unmounted, so state (draft body, other fields) survives entering
+  // and leaving fullscreen exactly like a UI toggle should.
+  const [fullscreen, setFullscreen] = useState(false)
+
+  useEffect(() => {
+    if (!fullscreen) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFullscreen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    // Also lock body scroll so the underlying console can't scroll behind
+    // the fixed editor — a subtle mismatch that costs concentration.
+    const prevOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = prevOverflow
+    }
+  }, [fullscreen])
 
   const editor = useEditor({
     // StarterKit ships headings/lists/bold/italic/blockquote/undo/redo/etc.
@@ -207,7 +231,7 @@ export function BlogBodyEditor({
   )
 
   return (
-    <div className={`adm-editor${disabled ? ' is-disabled' : ''}`}>
+    <div className={`adm-editor${disabled ? ' is-disabled' : ''}${fullscreen ? ' is-fullscreen' : ''}`}>
       <div className="adm-editor-toolbar" role="toolbar" aria-label="Blog editor toolbar">
         <ToolBtn label="Bold" onClick={() => editor.chain().focus().toggleBold().run()} active={editor.isActive('bold')}>
           <b>B</b>
@@ -256,8 +280,78 @@ export function BlogBodyEditor({
         <ToolBtn label="Redo" onClick={() => editor.chain().focus().redo().run()} disabled={!canRedo}>
           ↷
         </ToolBtn>
+        <span className="adm-editor-sep" aria-hidden="true" />
+        <ToolBtn
+          label={fullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+          onClick={() => setFullscreen((v) => !v)}
+          active={fullscreen}
+        >
+          {fullscreen ? (
+            // Compress icon
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 14h6v6" />
+              <path d="M20 10h-6V4" />
+              <path d="M14 10l7-7" />
+              <path d="M3 21l7-7" />
+            </svg>
+          ) : (
+            // Expand icon
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 3h6v6" />
+              <path d="M9 21H3v-6" />
+              <path d="M21 3l-7 7" />
+              <path d="M3 21l7-7" />
+            </svg>
+          )}
+        </ToolBtn>
       </div>
       <EditorContent editor={editor} />
+      {/* Inline style block — scoped to only fire when fullscreen is on.
+          `.adm-editor.is-fullscreen` overrides the container's normal flow
+          box so it fills the viewport, sits above the console chrome (which
+          uses z-indexes up to ~100 for its own modals), and holds the
+          toolbar sticky at the top so it's always reachable. The editor
+          content itself gets a wider max-width for comfortable writing. */}
+      {fullscreen && (
+        <style jsx global>{`
+          .adm-editor.is-fullscreen {
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            background: var(--surface, #fff);
+            display: flex;
+            flex-direction: column;
+            border-radius: 0;
+            border: none;
+          }
+          .adm-editor.is-fullscreen .adm-editor-toolbar {
+            position: sticky;
+            top: 0;
+            background: var(--surface, #fff);
+            border-bottom: 1px solid var(--line);
+            padding: 12px 20px;
+            z-index: 2;
+          }
+          .adm-editor.is-fullscreen .ProseMirror {
+            flex: 1;
+            overflow-y: auto;
+            padding: clamp(24px, 6vw, 64px) clamp(20px, 8vw, 96px);
+            max-width: 820px;
+            width: 100%;
+            margin: 0 auto;
+            font-size: 17px;
+            line-height: 1.7;
+          }
+          .adm-editor.is-fullscreen .ProseMirror h2 {
+            font-size: 28px;
+            margin-top: 1.4em;
+          }
+          .adm-editor.is-fullscreen .ProseMirror h3 {
+            font-size: 22px;
+            margin-top: 1.2em;
+          }
+        `}</style>
+      )}
     </div>
   )
 }
