@@ -133,6 +133,45 @@ async function blogInventory(db: PrismaClient) {
   } catch (e) {
     console.log('  BlogPost inventory error: ' + (e instanceof Error ? e.message.slice(0, 140) : ''))
   }
+
+  // Also list EVERY blog post's shape — the user reports a post looks empty
+  // in the editor but not on the storefront, so a full row list per schema
+  // tells us at a glance which posts have body[] vs bodyHtml and by how much.
+  try {
+    const rows = await db.$queryRawUnsafe<{
+      slug: string
+      title: string
+      body_blocks: number | null
+      body_chars: number
+      has_body_html: boolean | null
+      html_chars: number | null
+    }[]>(
+      `SELECT slug, title,
+              array_length(body, 1) AS body_blocks,
+              COALESCE(length(array_to_string(body,'')),0)::int AS body_chars,
+              CASE
+                WHEN column_bodyhtml.exists THEN ("bodyHtml" IS NOT NULL)
+                ELSE NULL
+              END AS has_body_html,
+              CASE
+                WHEN column_bodyhtml.exists THEN length("bodyHtml")
+                ELSE NULL
+              END AS html_chars
+         FROM "BlogPost",
+              LATERAL (SELECT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                 WHERE table_name = 'BlogPost' AND column_name = 'bodyHtml'
+              ) AS exists) AS column_bodyhtml
+        ORDER BY "publishedAt" DESC NULLS LAST`,
+    )
+    console.log(`\n  All BlogPost rows (${rows.length}):`)
+    for (const r of rows) {
+      const html = r.has_body_html === null ? 'n/a' : r.has_body_html ? `${r.html_chars ?? 0}c` : 'null'
+      console.log(`    • ${r.slug.padEnd(45)}  body=${(r.body_blocks ?? 0).toString().padStart(2)}b/${(r.body_chars ?? 0).toString().padStart(5)}c  bodyHtml=${html}`)
+    }
+  } catch (e) {
+    console.log('  full listing error: ' + (e instanceof Error ? e.message.slice(0, 140) : ''))
+  }
 }
 
 async function main() {
