@@ -14,6 +14,7 @@ import type { BlogPostDTO } from '@femi9/core/services/blog'
 import { Footer } from '@/components/Footer'
 import { Nav } from '@/components/Nav'
 import { OptImg } from '@/components/OptImg'
+import { optImageBase } from '@/components/BlogCover'
 import { ProductCard } from '@/components/ProductCard'
 import { VideoTestimonials } from '@/components/VideoTestimonials'
 import { useMediaGate } from '@/components/useMediaGate'
@@ -409,15 +410,25 @@ function Journal({ posts }: { posts: BlogPostDTO[] }) {
             return (
             <Link className="fl-blog" to={post ? `/blog/${post.slug}` : '/blog'} key={post?.slug ?? item.title} style={{ '--blog-index': index } as CSSProperties}>
               <span className={`fl-blog__photo ${post?.image ? 'fl-blog__photo--dynamic' : `fl-blog__photo--${item.pos}`}`}>
-                {post?.image ? (
-                  // An editor-supplied URL, so there is no derivative ladder for
-                  // it — the most we can do is stop it blocking and reserve a box.
-                  <img src={post.image} alt="" width={1536} height={1024} loading="lazy" decoding="async" />
-                ) : (
-                  // The desktop crop scales this to ~313% of the card, hence the
-                  // deliberately large non-mobile `sizes`.
-                  <OptImg base="figma-home/blogs-imgImage18" sizes="(max-width: 900px) 92vw, 1350px" alt="" />
-                )}
+                {(() => {
+                  // Prefer the pre-built WebP ladder when the cover lives under
+                  // /assets/img/blogs/… — those raw PNGs are excluded from the
+                  // Docker image (see .dockerignore), so a plain <img src=…>
+                  // 404s in production. `optImageBase` returns null for an
+                  // editor-supplied absolute URL, and then we fall back to a
+                  // reservation-only <img> so the layout stays.
+                  const base = post?.image ? optImageBase(post.image) : null
+                  if (base) {
+                    return <OptImg base={base} sizes="(max-width: 900px) 92vw, 1350px" alt="" />
+                  }
+                  if (post?.image) {
+                    return <img src={post.image} alt="" width={1536} height={1024} loading="lazy" decoding="async" />
+                  }
+                  // No cover set — fall back to the Figma placeholder that ships
+                  // with the home page. Desktop crop scales it to ~313% of the
+                  // card, hence the deliberately large non-mobile `sizes`.
+                  return <OptImg base="figma-home/blogs-imgImage18" sizes="(max-width: 900px) 92vw, 1350px" alt="" />
+                })()}
               </span>
               <span className="fl-blog__shade" />
               <span className="fl-blog__meta">
