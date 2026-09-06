@@ -1,5 +1,6 @@
 import 'server-only'
 import { dbFor, type Brand } from '@femi9/db'
+import { isEmptyBlogHtml } from '../blog-html'
 
 /**
  * Blog service — the single seam between the database and the marketing pages.
@@ -120,7 +121,11 @@ function toPost(row: Row): BlogPostDTO {
     imageAlt: row.imageAlt || row.title,
     featured: row.featured,
     body: row.body,
-    bodyHtml: row.bodyHtml ?? null,
+    // Empty-ish HTML (`<p></p>`, `<p><br></p>`, whitespace) is treated the
+    // same as null — the storefront's `if (post.bodyHtml)` check has to be
+    // meaningful, not "was the column touched". Fixes legacy rows that stored
+    // an empty Tiptap shell and hid the `body[]` fallback that had content.
+    bodyHtml: isEmptyBlogHtml(row.bodyHtml) ? null : row.bodyHtml,
     metaTitle: row.metaTitle || row.title,
     keywords: row.keywords,
     cta: row.cta ?? '',

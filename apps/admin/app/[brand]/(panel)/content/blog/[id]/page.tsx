@@ -2,6 +2,7 @@ import { requireConsole } from '@/lib/guard'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPostAdmin, joinBody, listCategoriesAdmin } from '@femi9/core/services/admin/blog-admin'
+import { isEmptyBlogHtml } from '@femi9/core/blog-html'
 import PostForm, { type BlogFormValues } from '../_form'
 
 /**
@@ -41,7 +42,11 @@ export default async function EditPostPage(props: { params: Promise<{ brand: str
     // as a hidden fallback for legacy posts; the rich editor operates on
     // bodyHtml).
     body: joinBody(post.body),
-    bodyHtml: post.bodyHtml ?? '',
+    // Empty-ish HTML (`<p></p>` and friends — Tiptap's fresh-editor shell)
+    // becomes `''` so the legacy-content panel below can trigger from
+    // `initial.body`. Without this a post whose bodyHtml is an empty shell
+    // AND whose body[] has content shows a blank editor with no fallback.
+    bodyHtml: isEmptyBlogHtml(post.bodyHtml) ? '' : (post.bodyHtml ?? ''),
     metaTitle: post.metaTitle ?? '',
     imageAlt: post.imageAlt ?? '',
     // string[] column → the comma-separated line the single input holds.

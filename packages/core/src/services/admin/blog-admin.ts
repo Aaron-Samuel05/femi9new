@@ -2,7 +2,7 @@ import 'server-only'
 import { z } from 'zod'
 import { dbFor, type Brand } from '@femi9/db'
 import { isManagedImageUrl, MANAGED_IMAGE_URL_MESSAGE } from '../../image-url'
-import { sanitizeBlogHtml } from '../../blog-html'
+import { isEmptyBlogHtml, sanitizeBlogHtml } from '../../blog-html'
 
 /**
  * Admin blog/content service — the write-side CMS for BlogPost rows. Mirrors the
@@ -242,9 +242,14 @@ function postColumns(input: BlogPostInput, slug: string) {
     featured: input.featured,
     status: input.status,
     body: splitBody(input.body),
-    // Sanitised HTML overrides `body` at read time. Empty string becomes NULL
-    // so the storefront's "has HTML?" check reads cleanly.
-    bodyHtml: sanitizeBlogHtml(input.bodyHtml || '') || null,
+    // Sanitised HTML overrides `body` at read time. Empty-ish (`<p></p>`,
+    // `<p><br></p>`, whitespace) becomes NULL too — Tiptap emits `<p></p>` for
+    // a fresh empty editor, and storing that shell hid the `body[]` fallback
+    // on every affected post. `isEmptyBlogHtml` catches both cases.
+    bodyHtml: (() => {
+      const sanitised = sanitizeBlogHtml(input.bodyHtml || '')
+      return isEmptyBlogHtml(sanitised) ? null : sanitised
+    })(),
     metaTitle: input.metaTitle || null,
     imageAlt: input.imageAlt || null,
     keywords: input.keywords,

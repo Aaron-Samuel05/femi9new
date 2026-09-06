@@ -28,6 +28,32 @@ const ALLOWED_ATTR: Record<string, string[]> = {
   img: ['src', 'alt', 'width', 'height'],
 }
 
+/**
+ * True when a sanitised HTML string carries no meaningful reader-visible
+ * content — e.g. `<p></p>`, `<p><br></p>`, whitespace, or nothing. Tiptap
+ * emits `<p></p>` for an empty editor, and a save-with-nothing-typed used to
+ * persist that shell into `bodyHtml`, so the storefront's
+ * `if (post.bodyHtml)` check would run, render empty HTML, and hide the
+ * `body[]` fallback that had the actual content.
+ *
+ * Every read path treats "empty-ish" the same as null; every write path
+ * refuses to store it.
+ */
+export function isEmptyBlogHtml(html: string | null | undefined): boolean {
+  if (!html) return true
+  // Strip every tag and every HTML entity that renders as blank, then check
+  // whether ANY glyph survived. Cheap-and-correct: we do not need a parser
+  // for "is this basically empty", and a parser round-trip on every read
+  // would cost 10-100× more than a regex over ~1KB of text.
+  const stripped = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, '')
+    .replace(/&#160;/g, '')
+    .replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g, 'x') // real content — keep as a placeholder glyph
+    .trim()
+  return stripped.length === 0
+}
+
 export function sanitizeBlogHtml(input: string): string {
   const trimmed = input.trim()
   if (!trimmed) return ''
