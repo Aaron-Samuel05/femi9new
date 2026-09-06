@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { BlogBodyEditor } from '@/components/BlogBodyEditor'
+import { legacyBodyToHtml } from '@femi9/core/blog-legacy-to-html'
 
 /**
  * Shared blog-post editor used by both create (/content/blog/new) and edit
@@ -491,6 +492,66 @@ export default function PostForm({
         <div className="adm-card-head">
           <h2 className="adm-card-title">Body</h2>
         </div>
+
+        {/* Legacy content notice. A post written before the rich editor still
+            carries its content in `body[]` — the storefront falls back to it
+            and renders correctly, but the editor above starts empty because it
+            only reads `bodyHtml`. Show the plain text here so the writer can
+            see what's saved, and offer a one-click migration into the editor.
+            Nothing changes on the row until they hit Save. */}
+        {initial?.body && !bodyHtml && ((legacyBody) => (
+          <div
+            className="adm-field"
+            style={{
+              marginBottom: 16,
+              padding: 14,
+              background: 'var(--plum-tint, #F5F0FF)',
+              border: '1px solid var(--line, #E4DBEE)',
+              borderRadius: 8,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, marginBottom: 10 }}>
+              <div>
+                <strong style={{ fontSize: 13 }}>Legacy content on this post</strong>
+                <div className="adm-help" style={{ marginTop: 2 }}>
+                  Saved in the old plain-text format ({legacyBody.length.toLocaleString()} chars).
+                  The blog page still renders it. Click Migrate to load it into the rich editor
+                  above — nothing changes on the post until you press Save.
+                </div>
+              </div>
+              <button
+                type="button"
+                className="adm-btn adm-btn--primary adm-btn--sm"
+                onClick={() => {
+                  const blocks = legacyBody.split(/\r?\n\s*\r?\n/).filter((b) => b.trim())
+                  setBodyHtml(legacyBodyToHtml(blocks))
+                }}
+                disabled={saving || deleting}
+              >
+                Migrate to editor
+              </button>
+            </div>
+            <pre
+              style={{
+                maxHeight: 260,
+                overflowY: 'auto',
+                padding: '10px 12px',
+                background: 'white',
+                border: '1px solid var(--line, #E4DBEE)',
+                borderRadius: 6,
+                fontFamily: 'var(--sans, system-ui)',
+                fontSize: 13,
+                lineHeight: 1.55,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                margin: 0,
+              }}
+            >
+              {legacyBody}
+            </pre>
+          </div>
+        ))(initial.body)}
+
         <div className="adm-field" style={{ marginBottom: 0 }}>
           <label className="adm-label">Content</label>
           <BlogBodyEditor
@@ -503,10 +564,6 @@ export default function PostForm({
           <span className="adm-help">
             Formatting toolbar: bold, italic, headings, lists, quote, link (paste any URL — the
             preview shows it as an anchor), image (uploads via the same S3 path as the cover).
-            {initial?.body && !bodyHtml && (
-              <> Legacy content from this post is still saved in the old plain-text field —
-              re-paste it here (or type fresh) and save to migrate it to rich HTML.</>
-            )}
           </span>
         </div>
       </section>
