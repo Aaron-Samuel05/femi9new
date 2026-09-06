@@ -3,20 +3,20 @@ import Image from "next/image";
 import Link from "next/link";
 import { Nav, NAV_LINKS } from "@/components/site/Nav";
 import { Footer } from "@/components/site/Footer";
-import { Parallax } from "@/components/motion/Parallax";
+import { CursorScrubVideo } from "@/components/media/CursorScrubVideo";
+import { FloatyBlob, Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { LayerStack } from "@/components/home/LayerStack";
 import { ProductRange } from "@/components/home/ProductRange";
 import { SizeFinder } from "@/components/home/SizeFinder";
 import { WhyLumi9 } from "@/components/home/WhyLumi9";
-import { HeroStage } from "@/components/home/HeroStage";
 import { FeatureStrip } from "@/components/home/FeatureStrip";
 import { Testimonials } from "@/components/home/Testimonials";
 import { Moments } from "@/components/home/Moments";
 import { FeaturedJournal } from "@/components/home/FeaturedJournal";
 import { Scallop, WaveEdge } from "@/components/ui/Scallop";
-import { Em, SectionHeading } from "@/components/ui/bits";
-import { FEATURE_IMAGES, MARQUEE_ITEMS } from "@/lib/content";
+import { Em, SectionHeading, StatBlock } from "@/components/ui/bits";
+import { FEATURE_IMAGES, HERO_STATS, MARQUEE_ITEMS } from "@/lib/content";
 import { loadCatalog } from "@/lib/catalog.server";
 import { MASCOT_URL } from "@/lib/mascot";
 import { absoluteUrl, canonical, jsonLd, SITE_URL, og } from "@/lib/seo";
@@ -124,8 +124,102 @@ export default async function HomePage() {
       <Nav variant="home" links={NAV_LINKS} />
 
       <main>
-        {/* HERO - three offers behind one centred mascot. See HeroStage. */}
-        <HeroStage />
+        {/* HERO - clears the fixed nav by its measured height (--nav-h) */}
+        <header
+          id="top"
+          /* full-height hero, except on short viewports (landscape phones, split
+             screens) where it just wraps its content instead of overflowing */
+          className="px-safe relative flex min-h-[100svh] flex-col items-center gap-[clamp(12px,4vw,32px)] pb-[clamp(32px,6vw,60px)] pt-[calc(var(--nav-h,68px)+clamp(18px,4vw,44px))] md:flex-row md:gap-0 [@media(max-height:560px)]:min-h-0 [@media(max-height:560px)]:pt-[calc(var(--nav-h,68px)+14px)] [@media(max-height:560px)]:pb-8"
+          style={{ background: "radial-gradient(120% 90% at 78% 20%, #eef1e0 0%, #f7f5ea 55%)" }}
+        >
+          <FloatyBlob
+            factor={0.12}
+            className="absolute top-[12%] left-[6%] size-[clamp(90px,14vw,180px)]"
+            innerClassName="rounded-full bg-butter opacity-55 blur-[2px]"
+            duration="7s"
+          />
+          <FloatyBlob
+            factor={0.28}
+            className="absolute bottom-[14%] left-[18%] size-[clamp(48px,7vw,90px)]"
+            innerClassName="rounded-full bg-moss-soft opacity-40"
+            duration="5.5s"
+            delay=".6s"
+          />
+          <FloatyBlob
+            factor={0.2}
+            className="absolute top-[22%] right-[8%] size-[clamp(64px,9vw,120px)]"
+            innerClassName="rounded-full border-2 border-dashed border-moss opacity-35"
+            duration="8s"
+            delay=".3s"
+          />
+          <FloatyBlob
+            factor={0.35}
+            className="absolute right-[22%] bottom-[22%] size-[clamp(32px,4.5vw,56px)]"
+            innerClassName="rounded-full bg-gold opacity-50"
+            duration="6s"
+            delay="1s"
+          />
+
+          <div className="relative z-3 w-full max-w-[620px] flex-1">
+            <div className="mb-[clamp(16px,2.6vw,26px)] inline-flex max-w-full items-center gap-2 rounded-pill border border-moss-tint bg-canvas px-[15px] py-[7px] text-[clamp(12px,1.1vw,13px)] font-semibold text-moss-deep">
+              <span className="size-[7px] shrink-0 rounded-full bg-moss" aria-hidden />
+              Trusted by 40,000+ Indian families
+            </div>
+            {/* The page's one H1, and the only place the primary keyword
+                ("baby diapers") belongs at this weight. */}
+            <h1 className="m-0 mb-[clamp(14px,2vw,20px)] font-display text-[clamp(34px,8.6vw,78px)] font-normal leading-[1.0] md:text-[clamp(42px,5.4vw,78px)]">
+              CloudSoft Baby Diapers
+              <br />
+              Made for <Em>Happy</Em> Little Days
+            </h1>
+            <p className="m-0 mb-[clamp(20px,3.4vw,34px)] max-w-[54ch] text-lead leading-[1.55] text-muted md:leading-[1.6]">
+              From sleepy newborn cuddles to crawling, stretching and first little steps, Lumi9 baby diapers are
+              designed to move comfortably with your growing baby - soft cotton-like comfort, quick moisture
+              absorption, breathable protection and a flexible fit for playtime, naps and nighttime rest.
+            </p>
+            <div className="mb-[clamp(22px,4vw,40px)] flex flex-wrap gap-3">
+              <Link href="/shop" className="btn btn-dark max-[520px]:w-full">
+                Shop Baby Diapers →
+              </Link>
+              <Link href="#sizes" className="btn btn-ghost max-[520px]:w-full">
+                Find your baby’s size
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-x-[clamp(20px,3vw,30px)] gap-y-4">
+              {HERO_STATS.map((stat) => (
+                <StatBlock key={stat.label} value={stat.value} label={stat.label} />
+              ))}
+            </div>
+          </div>
+
+          <div className="relative z-2 flex w-full min-w-0 flex-1 items-center justify-center md:self-stretch">
+            {/* Warm, not sage: the glow now matches the video's own #f1e2d2
+                backdrop, so the clip's rectangle dissolves into the hero
+                instead of sitting on it as a visible tile. */}
+            <div
+              className="absolute aspect-square w-[min(78vw,600px)] rounded-full md:w-[min(48vw,600px)]"
+              style={{ background: "radial-gradient(circle, #f1e2d2 0%, rgba(241,226,210,0) 70%)" }}
+              aria-hidden
+            />
+            <CursorScrubVideo
+              src="/assets/lumi-scrub-v1.mp4"
+              poster="/assets/lumi-scrub-v1-poster.jpg"
+              label="Lumi, the Lumi9 avocado, waving hello"
+              hint="Move your cursor"
+              axis="horizontal"
+              /* window, not component: the character answers the moment the
+                 pointer moves anywhere in the hero, so the interaction is found
+                 without having to hover the right rectangle to discover it. */
+              trackingArea="window"
+              smoothing={0.16}
+              objectFit="cover"
+              loom={0.05}
+              feather
+              className="relative z-2 h-[min(52svh,360px)] w-full min-[420px]:h-[min(56svh,440px)] md:h-[min(78svh,720px)] [@media(max-height:560px)]:h-[min(70svh,260px)]"
+            />
+          </div>
+
+        </header>
 
         {/* CLAIM STRIP - what the product is for, before the first scroll */}
         <FeatureStrip />
