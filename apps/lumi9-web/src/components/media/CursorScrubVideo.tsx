@@ -10,6 +10,16 @@ export type ScrubObjectFit = "cover" | "contain" | "fill";
 export type CursorScrubVideoProps = {
   /** Video URL. See ENCODING below - a normal MP4 will stutter. */
   src: string;
+  /**
+   * Alternate encodings, offered in order; the browser takes the first it can
+   * play and `src` becomes the last resort.
+   *
+   * This exists for ALPHA. No single codec carries a transparent video to every
+   * browser: VP9-in-WebM is transparent everywhere except Safari, and
+   * HEVC-in-MP4 is transparent only on Safari. Offering both is the whole of
+   * the workaround, and each browser downloads exactly one of them.
+   */
+  sources?: readonly { src: string; type: string }[];
   /** First frame, shown while the file buffers. Keep it small; it is the LCP paint. */
   poster?: string;
   /** Which cursor axis drives the playhead. */
@@ -60,6 +70,7 @@ export type CursorScrubVideoProps = {
  */
 export function CursorScrubVideo({
   src,
+  sources,
   poster,
   axis = "horizontal",
   reverse = false,
@@ -98,7 +109,9 @@ export function CursorScrubVideo({
     return () => mq.removeEventListener("change", sync);
   }, []);
 
-  usePrime(videoRef, loopingRef, src);
+  // Prime on whichever URL the element will actually load. Passing `src` while
+  // <source> children win would re-prime on a file this browser never fetches.
+  usePrime(videoRef, loopingRef, sources?.[0]?.src ?? src);
 
   useScrub({
     hostRef,
@@ -123,7 +136,10 @@ export function CursorScrubVideo({
     >
       <video
         ref={videoRef}
-        src={src}
+        // `src` and <source> children are mutually exclusive: an element with
+        // both ignores the children, which would hand every browser the same
+        // file and defeat the point of offering two.
+        src={sources?.length ? undefined : src}
         poster={showPoster ? poster : undefined}
         aria-label={label}
         muted
@@ -147,7 +163,11 @@ export function CursorScrubVideo({
           WebkitMaskImage: feather ? "radial-gradient(ellipse closest-side at 50% 45%, #000 72%, rgba(0,0,0,0.6) 90%, transparent 100%)" : undefined,
         }}
         onCanPlayThrough={() => setReady(true)}
-      />
+      >
+        {sources?.map((s) => (
+          <source key={s.src} src={s.src} type={s.type} />
+        ))}
+      </video>
       {hint && scrubs && ready && !scrubbed && <ScrubHint text={hint} />}
     </div>
   );

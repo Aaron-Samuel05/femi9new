@@ -86,6 +86,29 @@ npm run typecheck
 
 `npm ci` only works at this root. There is no app-level `package-lock.json`.
 
+## Commits
+
+**Every commit is authored by the person who owns the work, and by nobody
+else.** No `Co-Authored-By: Claude`, no `Claude-Session:` link, no Anthropic
+address in a trailer, and no AI attribution in a PR body. The history of this
+repo is a record of who is accountable for a change, and a co-author line that
+names a tool makes that record wrong.
+
+Saying so in a CLAUDE.md is not enough on its own, and that is the part worth
+knowing: the trailer is appended by Claude Code from a SETTING, not from these
+instructions, so a session that has read this file will still emit it. The
+switch is `attribution` in `~/.claude/settings.json`:
+
+```json
+"attribution": { "commit": "", "pr": "", "sessionUrl": false }
+```
+
+Set on this machine. It is per-machine and NOT in the repo, so a new machine or
+a fresh checkout starts emitting the trailer again until it is set there too —
+check `git log -1 --format='%(trailers)'` after the first commit from anywhere
+new. `includeCoAuthoredBy: false` is the older key and still works; it does not
+cover the PR body or the session link, which is why it is not the one used.
+
 ## Things that will bite
 
 **Docker builds from THIS directory**, not from the app:
