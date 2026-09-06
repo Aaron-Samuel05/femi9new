@@ -74,6 +74,63 @@ export async function listReviews(brand: Brand, {
 // ─────────────────────────────── Writes ─────────────────────────────────
 
 /**
+ * Fields the admin's "New review" modal collects. Slug picks the product; the
+ * rest is the same shape as a customer submission except the review is
+ * created `approved` (no moderation self-loop) and gets the verified badge
+ * (`verifiedOverride = true`) — an ops-authored review is treated as
+ * authoritative, per the console's "always verified" toggle in the modal.
+ */
+export interface CreateReviewInput {
+  productSlug: string
+  name: string
+  place?: string | null
+  rating: number      // 1–5, validated at the route boundary
+  title?: string | null
+  body: string
+}
+
+export class ProductNotFoundError extends Error {
+  constructor(slug: string) {
+    super(`Product not found for slug ${slug}`)
+    this.name = 'ProductNotFoundError'
+  }
+}
+
+/**
+ * Admin-authored review. Straight to `approved` — the moderator IS the author,
+ * so making them re-approve their own row would be busywork. `verifiedOverride`
+ * is set explicitly so the storefront's "verified buyer" badge appears without
+ * the userId+purchase heuristic in `getProduct` (which would otherwise render
+ * an ops-authored review as unverified, since there is no linked User row).
+ * Bumps the product's aggregate rating + count in the same call.
+ */
+export async function createReview(brand: Brand, input: CreateReviewInput): Promise<ReviewRow> {
+  const prisma = dbFor(brand)
+  const product = await prisma.product.findUnique({
+    where: { slug: input.productSlug },
+    select: { id: true },
+  })
+  if (!product) throw new ProductNotFoundError(input.productSlug)
+
+  const created = await prisma.review.create({
+    data: {
+      productId: product.id,
+      name: input.name,
+      place: input.place ?? null,
+      rating: input.rating,
+      title: input.title ?? null,
+      body: input.body,
+      status: 'approved',
+      verifiedOverride: true,
+    },
+    include: { product: { select: { name: true } } },
+  })
+  await refreshProductRating(brand, created.productId)
+  return toRow(created)
+}
+
+
+/**
  * Set a review's moderation status. Returns the reconciled row so the queue can
  * update in place, or null when the id no longer exists (P2025 → 404 upstream).
  */

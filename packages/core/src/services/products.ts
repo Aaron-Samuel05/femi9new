@@ -414,7 +414,10 @@ export async function getProduct(brand: Brand, slug: string): Promise<FullProduc
     // "was this recent?" is the question a reader asks before trusting a vote
     // count — a month/year stamp cannot answer it.
     date: r.createdAt.toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    verified: Boolean(r.userId && buyerIds.has(r.userId)),
+    // Admin-authored reviews carry `verifiedOverride`; that wins over the
+    // userId+purchase heuristic because those reviews have no linked User row
+    // and would otherwise always render as unverified.
+    verified: r.verifiedOverride ?? Boolean(r.userId && buyerIds.has(r.userId)),
   }))
 
   return {

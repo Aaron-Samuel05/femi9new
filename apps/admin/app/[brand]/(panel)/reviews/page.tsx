@@ -1,7 +1,7 @@
 'use client'
 import { useParams } from 'next/navigation'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ModerationStatus } from '@prisma/client'
 import { IStar } from '@/components/AppIcons'
 // Type-only import: erased at compile time, so this client bundle never pulls in
@@ -66,6 +66,7 @@ export default function ReviewsPage() {
   const [loadError, setLoadError] = useState(false)
   const [pending, setPending] = useState<Set<string>>(new Set())
   const [toast, setToast] = useState<string | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
 
   const load = useCallback(async (f: Filter) => {
     setLoading(true)
@@ -169,29 +170,49 @@ export default function ReviewsPage() {
             Moderate customer reviews - approve, hide, or delete.
           </p>
         </div>
-        {/* Status filter chips (client buttons — the list refetches per filter). */}
-        <div className="adm-chip-group">
-          {FILTERS.map((c) => {
-            const active = c.value === filter
-            return (
-              <button
-                key={c.label}
-                type="button"
-                className="adm-chip"
-                aria-pressed={active}
-                onClick={() => setFilter(c.value)}
-                style={
-                  active
-                    ? { borderColor: 'var(--plum)', background: 'var(--plum-tint)', color: 'var(--plum)', fontWeight: 600, cursor: 'pointer' }
-                    : { cursor: 'pointer' }
-                }
-              >
-                {c.label}
-              </button>
-            )
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {/* Status filter chips (client buttons — the list refetches per filter). */}
+          <div className="adm-chip-group">
+            {FILTERS.map((c) => {
+              const active = c.value === filter
+              return (
+                <button
+                  key={c.label}
+                  type="button"
+                  className="adm-chip"
+                  aria-pressed={active}
+                  onClick={() => setFilter(c.value)}
+                  style={
+                    active
+                      ? { borderColor: 'var(--plum)', background: 'var(--plum-tint)', color: 'var(--plum)', fontWeight: 600, cursor: 'pointer' }
+                      : { cursor: 'pointer' }
+                  }
+                >
+                  {c.label}
+                </button>
+              )
+            })}
+          </div>
+          <button
+            type="button"
+            className="adm-btn adm-btn--primary"
+            onClick={() => setCreateOpen(true)}
+          >
+            + New review
+          </button>
         </div>
       </div>
+
+      {createOpen && (
+        <CreateReviewModal
+          brand={brand}
+          onClose={() => setCreateOpen(false)}
+          onCreated={async () => {
+            setCreateOpen(false)
+            await load(filter)
+          }}
+        />
+      )}
 
       {loading ? (
         <div className="adm-empty">
@@ -298,5 +319,265 @@ export default function ReviewsPage() {
         </div>
       )}
     </>
+  )
+}
+
+// ─────────────────────────────── New review modal ─────────────────────────
+
+type ProductPickerRow = { id: string; slug: string; name: string }
+
+/**
+ * "New review" — admin-authored, straight to approved, verified badge on.
+ *
+ * The product picker is fed by GET /<brand>/api/products (same list the
+ * catalogue table renders). Kept lightweight: the modal only needs id + slug
+ * + name off each row, and the API returns those alongside the fuller record.
+ */
+function CreateReviewModal({
+  brand,
+  onClose,
+  onCreated,
+}: {
+  brand: string
+  onClose: () => void
+  onCreated: () => Promise<void>
+}) {
+  const [products, setProducts] = useState<ProductPickerRow[]>([])
+  const [productSlug, setProductSlug] = useState('')
+  const [name, setName] = useState('')
+  const [place, setPlace] = useState('')
+  const [rating, setRating] = useState(5)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [loadingProducts, setLoadingProducts] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/${brand}/api/products`, { cache: 'no-store' })
+        const rows = await res.json().catch(() => [])
+        if (cancelled) return
+        const shaped: ProductPickerRow[] = Array.isArray(rows)
+          ? rows.map((r: { id: string; slug: string; name: string }) => ({
+              id: r.id,
+              slug: r.slug,
+              name: r.name,
+            }))
+          : []
+        setProducts(shaped)
+        if (shaped[0]) setProductSlug(shaped[0].slug)
+      } catch {
+        setErr('Could not load products.')
+      } finally {
+        if (!cancelled) setLoadingProducts(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [brand])
+
+  const canSubmit = useMemo(
+    () => Boolean(productSlug && name.trim() && body.trim() && rating >= 1 && rating <= 5),
+    [productSlug, name, body, rating],
+  )
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!canSubmit) return
+    setBusy(true)
+    setErr(null)
+    try {
+      const res = await fetch(`/${brand}/api/reviews`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          productSlug,
+          name: name.trim(),
+          place: place.trim() || undefined,
+          rating,
+          title: title.trim() || undefined,
+          body: body.trim(),
+        }),
+      })
+      const payload = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setErr((payload as { error?: string }).error || 'Could not create review.')
+        return
+      }
+      await onCreated()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(30, 22, 48, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 100,
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'white',
+          borderRadius: 12,
+          padding: '24px 28px',
+          width: '100%',
+          maxWidth: 560,
+          maxHeight: '90vh',
+          overflow: 'auto',
+          boxShadow: '0 20px 60px rgba(30,22,48,0.3)',
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: 'var(--serif)',
+            fontWeight: 500,
+            fontSize: 22,
+            margin: '0 0 4px',
+          }}
+        >
+          New review
+        </h2>
+        <p className="adm-help" style={{ marginBottom: 16 }}>
+          Publishes immediately as approved, with the verified-buyer badge.
+        </p>
+        <form onSubmit={submit}>
+          <label className="adm-field">
+            <span className="adm-label">Product</span>
+            <select
+              className="adm-select"
+              value={productSlug}
+              onChange={(e) => setProductSlug(e.target.value)}
+              disabled={busy || loadingProducts}
+              required
+            >
+              {loadingProducts && <option>Loading…</option>}
+              {!loadingProducts &&
+                products.map((p) => (
+                  <option key={p.id} value={p.slug}>
+                    {p.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <label className="adm-field">
+              <span className="adm-label">Reviewer name</span>
+              <input
+                className="adm-input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={80}
+                disabled={busy}
+              />
+            </label>
+            <label className="adm-field">
+              <span className="adm-label">Place (optional)</span>
+              <input
+                className="adm-input"
+                value={place}
+                onChange={(e) => setPlace(e.target.value)}
+                placeholder="Chennai, TN"
+                maxLength={80}
+                disabled={busy}
+              />
+            </label>
+          </div>
+
+          <div className="adm-field">
+            <span className="adm-label">Rating</span>
+            <div style={{ display: 'inline-flex', gap: 6, marginTop: 4 }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setRating(n)}
+                  disabled={busy}
+                  aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                  aria-pressed={rating === n}
+                  style={{
+                    padding: 6,
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: n <= rating ? 'var(--gold, #D9A400)' : 'var(--line, #E4DBEE)',
+                  }}
+                >
+                  <IStar style={{ width: 26, height: 26 }} />
+                </button>
+              ))}
+              <span style={{ marginLeft: 6, alignSelf: 'center', color: 'var(--muted)', fontSize: 13 }}>
+                {rating} / 5
+              </span>
+            </div>
+          </div>
+
+          <label className="adm-field">
+            <span className="adm-label">Title (optional)</span>
+            <input
+              className="adm-input"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Loved this combo"
+              maxLength={120}
+              disabled={busy}
+            />
+          </label>
+
+          <label className="adm-field">
+            <span className="adm-label">Review</span>
+            <textarea
+              className="adm-input"
+              rows={5}
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              required
+              maxLength={2000}
+              disabled={busy}
+              placeholder="What made this product work for the customer?"
+            />
+          </label>
+
+          {err && (
+            <div className="adm-auth-error" style={{ marginBottom: 8 }}>
+              <span className="adm-error">{err}</span>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
+            <button
+              type="button"
+              className="adm-btn adm-btn--ghost"
+              onClick={onClose}
+              disabled={busy}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="adm-btn adm-btn--primary"
+              disabled={busy || !canSubmit || loadingProducts}
+            >
+              {busy ? 'Publishing…' : 'Publish review'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }

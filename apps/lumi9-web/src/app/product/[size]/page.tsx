@@ -8,6 +8,7 @@ import { Parallax } from "@/components/motion/Parallax";
 import { Reveal } from "@/components/motion/Reveal";
 import { Em, QuoteCard, SectionHeading } from "@/components/ui/bits";
 import { ProductBuyBox } from "@/components/pdp/ProductBuyBox";
+import { ReviewSubmitForm } from "@/components/pdp/ReviewSubmitForm";
 import { storefrontNumbers } from "@/lib/settings.server";
 import { FEATURE_IMAGES } from "@/lib/content";
 import { listReviews } from "@femi9/core/services/products";
@@ -261,32 +262,40 @@ export default async function ProductPage({ params }: { params: Promise<{ size: 
         </div>
       </section>
 
-      {/* REVIEWS - the whole section is absent when nothing has been approved.
-          An empty grid under "Loved by 40,000+ families" reads as a site that is
-          broken, and the heading is a claim we should not print over nothing. */}
-      {reviews.length > 0 && (
-        <section className="px-safe bg-canvas py-section">
-          <div className="mx-auto max-w-[var(--page-max)]">
-            <Reveal className="eyebrow mb-[clamp(26px,4vw,44px)] text-center">
-              What parents say
-            </Reveal>
-            <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
-              {reviews.map((review) => (
-                <Reveal key={review.id}>
-                  <QuoteCard
-                    quote={`\u201c${review.body}\u201d`}
-                    name={review.name}
-                    role={review.place ?? `${review.rating}/5`}
-                    initial={review.name.trim().charAt(0).toUpperCase() || "\u2022"}
-                    surface="bg-paper"
-                    quoteSize="text-[clamp(16px,1.5vw,19px)]"
-                  />
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* REVIEWS - the whole heading + grid is absent when nothing has been
+          approved. An empty grid under "What parents say" reads as a site that
+          is broken, and the heading is a claim we should not print over
+          nothing. The submit form is ALWAYS rendered though: a shopper can be
+          the first to write about a size that has no approved reviews yet, and
+          moderation still gates what publishes. */}
+      <section className="px-safe bg-canvas py-section">
+        <div className="mx-auto max-w-[var(--page-max)]">
+          {reviews.length > 0 && (
+            <>
+              <Reveal className="eyebrow mb-[clamp(26px,4vw,44px)] text-center">
+                What parents say
+              </Reveal>
+              <div className="grid grid-cols-1 gap-[clamp(14px,1.8vw,22px)] sm:grid-cols-2 lg:grid-cols-3">
+                {reviews.map((review) => (
+                  <Reveal key={review.id}>
+                    <QuoteCard
+                      quote={`\u201c${review.body}\u201d`}
+                      name={review.name}
+                      role={review.place ?? `${review.rating}/5`}
+                      initial={review.name.trim().charAt(0).toUpperCase() || "\u2022"}
+                      surface="bg-paper"
+                      quoteSize="text-[clamp(16px,1.5vw,19px)]"
+                    />
+                  </Reveal>
+                ))}
+              </div>
+            </>
+          )}
+          <Reveal className={reviews.length > 0 ? "mt-[clamp(28px,3.6vw,44px)]" : ""}>
+            <ReviewSubmitForm productSlug={size.slug} />
+          </Reveal>
+        </div>
+      </section>
     </PageShell>
   );
 }

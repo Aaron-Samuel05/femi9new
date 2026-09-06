@@ -782,6 +782,12 @@ model Review {
   // to stop one visitor voting twice.
   helpfulUp   Int              @default(0)
   helpfulDown Int              @default(0)
+  // Overrides the derived "verified buyer" badge on the storefront. When set,
+  // it wins; when null, the read path falls back to the userId-plus-purchase
+  // heuristic in getProduct. Admin-authored reviews set this to `true` so a
+  // review typed into the console isn't shown as unverified just because it
+  // has no purchase trail. Nullable so nothing needs backfilling.
+  verifiedOverride Boolean?
   createdAt   DateTime         @default(now())
 
   votes ReviewVote[]
