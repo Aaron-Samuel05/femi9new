@@ -7,6 +7,7 @@ import { IStar } from '@/components/AppIcons'
 // Type-only import: erased at compile time, so this client bundle never pulls in
 // the `server-only` reviews service at runtime.
 import type { ReviewRow } from '@femi9/core/services/admin/reviews'
+import { BRAND_CONFIG, type Brand } from '@femi9/core/brands'
 
 /**
  * Reviews — the moderation queue.
@@ -382,7 +383,7 @@ export default function ReviewsPage() {
 
 // ─────────────────────────────── New review modal ─────────────────────────
 
-type ProductPickerRow = { id: string; slug: string; name: string }
+type ProductPickerRow = { id: string; slug: string; name: string; type: string; status: string }
 
 /**
  * "New review" — admin-authored, straight to approved, verified badge on.
@@ -418,12 +419,23 @@ function CreateReviewModal({
         const res = await fetch(`/${brand}/api/products`, { cache: 'no-store' })
         const rows = await res.json().catch(() => [])
         if (cancelled) return
+        // Defence against stray rows in the wrong brand's schema — the Zod
+        // guard on the /brand/api/products create path enforces this on write,
+        // but an old row imported before that guard existed can still be here.
+        // Filter to the brand's declared product types AND to active status,
+        // so a Femi9-shaped 'pad' row stranded in Lumi9's schema doesn't turn
+        // up in the picker.
+        const allowedTypes = new Set<string>(BRAND_CONFIG[brand as Brand]?.productTypes ?? [])
         const shaped: ProductPickerRow[] = Array.isArray(rows)
-          ? rows.map((r: { id: string; slug: string; name: string }) => ({
-              id: r.id,
-              slug: r.slug,
-              name: r.name,
-            }))
+          ? rows
+              .map((r: { id: string; slug: string; name: string; type?: string; status?: string }) => ({
+                id: r.id,
+                slug: r.slug,
+                name: r.name,
+                type: r.type ?? '',
+                status: r.status ?? 'active',
+              }))
+              .filter((r) => r.status === 'active' && (!r.type || allowedTypes.has(r.type)))
           : []
         setProducts(shaped)
         if (shaped[0]) setProductSlug(shaped[0].slug)
