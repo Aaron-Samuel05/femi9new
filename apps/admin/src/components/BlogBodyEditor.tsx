@@ -8,6 +8,22 @@ import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 
 /**
+ * Client-side twin of the server's `isEmptyBlogHtml` helper. Same rules,
+ * duplicated here because that module imports `server-only`. Kept trivial
+ * on purpose so drift is easy to spot.
+ */
+function isEmptyHtml(html: string): boolean {
+  if (!html) return true
+  const stripped = html
+    .replace(/<[^>]*>/g, '')
+    .replace(/&nbsp;/gi, '')
+    .replace(/&#160;/g, '')
+    .replace(/&amp;|&lt;|&gt;|&quot;|&#39;/g, 'x')
+    .trim()
+  return stripped.length === 0
+}
+
+/**
  * BlogBodyEditor — Tiptap-based rich text editor for the blog form's body.
  *
  * Emits sanitised-friendly HTML on every keystroke via `onChange`; sanitisation
@@ -64,7 +80,16 @@ export function BlogBodyEditor({
     editable: !disabled,
     immediatelyRender: false, // Next.js SSR-friendly
     onUpdate({ editor }) {
-      onChange(editor.getHTML())
+      // Tiptap normalises `content: ''` to `<p></p>` and fires this hook once
+      // on init. Emitting that shell to the parent makes `bodyHtml` state
+      // non-empty and — for the blog form — hides the legacy-content panel
+      // that keys on `!bodyHtml`. Coerce empty-ish HTML to '' so the parent's
+      // "has meaningful content" checks read cleanly. isEmptyHtml is a local
+      // duplicate of blog-html's helper — this file cannot import from core
+      // because it runs in the browser bundle and core's blog-html imports
+      // server-only.
+      const html = editor.getHTML()
+      onChange(isEmptyHtml(html) ? '' : html)
     },
     editorProps: {
       attributes: {
