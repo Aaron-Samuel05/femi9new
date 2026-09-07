@@ -28,7 +28,7 @@ import type { DoseRow, LeadRow } from '@femi9/core/services/admin/parenting'
 
 type Tab = 'schedule' | 'leads'
 
-type Stats = { doses: number; activeDoses: number; leads: number; babies: number }
+type Stats = { doses: number; activeDoses: number; leads: number; babies: number; families: number }
 
 const AGE_UNITS = ['weeks', 'months', 'years'] as const
 
@@ -181,7 +181,8 @@ export default function ParentingPage() {
       {stats && (
         <div className="adm-grid" style={{ marginBottom: 18 }}>
           <Stat label="Doses published" value={`${stats.activeDoses} of ${stats.doses}`} />
-          <Stat label="Babies on accounts" value={String(stats.babies)} />
+          <Stat label="Children on accounts" value={String(stats.babies)} />
+          <Stat label="Families" value={String(stats.families)} />
           <Stat label="Care plans requested" value={String(stats.leads)} />
         </div>
       )}

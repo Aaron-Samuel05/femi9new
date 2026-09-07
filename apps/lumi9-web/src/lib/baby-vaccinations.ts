@@ -31,44 +31,82 @@ export type VaccinationRecord = {
 
 export type VaccinationMap = Readonly<Record<string, VaccinationRecord>>;
 
-const KEY = "lumi9.babyVaccinations.v1";
-const EMPTY: VaccinationMap = Object.freeze({});
+/**
+ * Every child's ticks, keyed by baby id then by dose code.
+ *
+ * The flat `code -> record` map this replaced was the one-baby shape, and with
+ * siblings it is actively wrong: two children are on the same schedule at
+ * different dates, so a single map would have marked the younger one's doses
+ * given the moment the elder had them — on a vaccination list, which is the one
+ * place this page must never guess.
+ */
+export type VaccinationsByBaby = Readonly<Record<string, VaccinationMap>>;
 
-function read(): VaccinationMap {
+const KEY = "lumi9.babyVaccinations.v2";
+/** The flat, single-baby store. Migrated onto the first child, then removed. */
+const LEGACY_KEY = "lumi9.babyVaccinations.v1";
+const EMPTY: VaccinationMap = Object.freeze({});
+const EMPTY_ALL: VaccinationsByBaby = Object.freeze({});
+
+/** One child's map. Untrusted input: anything unrecognised is dropped. */
+function readMap(parsed: unknown): VaccinationMap {
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return EMPTY;
+  const out: Record<string, VaccinationRecord> = {};
+  for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
+    const record = value as Partial<VaccinationRecord>;
+    if (record?.status !== "given" && record?.status !== "skipped") continue;
+    out[code] = {
+      status: record.status,
+      givenOn: typeof record.givenOn === "string" ? record.givenOn : null,
+    };
+  }
+  return Object.freeze(out);
+}
+
+function read(legacyOwnerId: string | null): VaccinationsByBaby {
   try {
     const raw = window.localStorage.getItem(KEY);
-    if (!raw) return EMPTY;
-    const parsed = JSON.parse(raw) as unknown;
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return EMPTY;
-
-    // Stored blobs are untrusted: hand-editable, and they outlive any deploy
-    // that changes this shape. Anything that is not a recognised status is
-    // dropped rather than handed to a component that will render it.
-    const out: Record<string, VaccinationRecord> = {};
-    for (const [code, value] of Object.entries(parsed as Record<string, unknown>)) {
-      const record = value as Partial<VaccinationRecord>;
-      if (record?.status !== "given" && record?.status !== "skipped") continue;
-      out[code] = {
-        status: record.status,
-        givenOn: typeof record.givenOn === "string" ? record.givenOn : null,
-      };
+    if (raw) {
+      const parsed = JSON.parse(raw) as unknown;
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return EMPTY_ALL;
+      const out: Record<string, VaccinationMap> = {};
+      for (const [babyId, value] of Object.entries(parsed as Record<string, unknown>)) {
+        out[babyId] = readMap(value);
+      }
+      return Object.freeze(out);
     }
-    return Object.freeze(out);
+
+    /* The flat store. Its ticks belong to whichever child the one-baby store
+       held, so they are filed under the FIRST child — which the profile store's
+       own migration has already put in place. Without an owner to attribute
+       them to they are dropped rather than guessed at: attaching one child's
+       vaccination record to another is worse than losing it. */
+    const legacy = window.localStorage.getItem(LEGACY_KEY);
+    if (legacy) {
+      window.localStorage.removeItem(LEGACY_KEY);
+      if (legacyOwnerId) {
+        const migrated = Object.freeze({ [legacyOwnerId]: readMap(JSON.parse(legacy)) });
+        writeAll(migrated);
+        return migrated;
+      }
+    }
+    return EMPTY_ALL;
   } catch {
-    return EMPTY;
+    return EMPTY_ALL;
   }
 }
 
-function write(map: VaccinationMap) {
+function writeAll(all: VaccinationsByBaby) {
   try {
-    if (Object.keys(map).length === 0) window.localStorage.removeItem(KEY);
-    else window.localStorage.setItem(KEY, JSON.stringify(map));
+    const anyTicks = Object.values(all).some((m) => Object.keys(m).length > 0);
+    if (!anyTicks) window.localStorage.removeItem(KEY);
+    else window.localStorage.setItem(KEY, JSON.stringify(all));
   } catch {
     /* private mode, or site data blocked */
   }
 }
 
-let cache: VaccinationMap | undefined;
+let cache: VaccinationsByBaby | undefined;
 let origin: "device" | "account" = "device";
 const listeners = new Set<() => void>();
 
@@ -77,9 +115,23 @@ function subscribe(onChange: () => void) {
   return () => listeners.delete(onChange);
 }
 
-function getSnapshot(): VaccinationMap {
-  if (cache === undefined) cache = read();
+function getAll(): VaccinationsByBaby {
+  if (cache === undefined) cache = read(pendingLegacyOwner);
   return cache;
+}
+
+/**
+ * The id the flat v1 store's ticks belong to.
+ *
+ * Set by the provider from the profile store's first child before anything
+ * reads this, because the two migrations are one migration: the ticks have no
+ * owner recorded anywhere, and the only defensible owner is the single baby the
+ * single-baby store held.
+ */
+let pendingLegacyOwner: string | null = null;
+
+export function setLegacyVaccinationOwner(babyId: string | null): void {
+  pendingLegacyOwner = babyId;
 }
 
 /**
@@ -93,14 +145,25 @@ function getServerSnapshot(): VaccinationMap {
   return EMPTY;
 }
 
-function publish(map: VaccinationMap) {
-  cache = map;
-  write(map);
+function publish(all: VaccinationsByBaby) {
+  cache = all;
+  writeAll(all);
   for (const listener of listeners) listener();
 }
 
-export function useVaccinations(): VaccinationMap {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+/**
+ * One child's ticks.
+ *
+ * Takes the baby id rather than reading the selection itself, so the schedule
+ * component states which child it is showing and cannot drift out of step with
+ * the switcher above it.
+ */
+export function useVaccinations(babyId: string | null): VaccinationMap {
+  return useSyncExternalStore(
+    subscribe,
+    () => (babyId ? (getAll()[babyId] ?? EMPTY) : EMPTY),
+    getServerSnapshot,
+  );
 }
 
 /**
@@ -111,23 +174,38 @@ export function useVaccinations(): VaccinationMap {
  * a tick that was removed on another.
  *
  * A guest's existing ticks are pushed up when the account has none, so making an
- * account after using the tool does not silently discard the list.
+ * account after using the tool does not silently discard the list. `remap`
+ * carries the local ids the profile store just exchanged for real ones — a tick
+ * filed under `local_x` would otherwise be orphaned the moment its child got a
+ * database row.
  */
-export async function adoptAccountVaccinations(remote: VaccinationMap): Promise<void> {
+export async function adoptAccountVaccinations(
+  remote: VaccinationsByBaby,
+  remap: ReadonlyMap<string, string> = new Map(),
+): Promise<void> {
   origin = "account";
-  const local = getSnapshot();
+  const local = getAll();
 
-  if (Object.keys(remote).length > 0) {
+  if (Object.values(remote).some((m) => Object.keys(m).length > 0)) {
     publish(Object.freeze({ ...remote }));
     return;
   }
 
-  publish(local);
-  // Sequential, not `Promise.all`: each write is an upsert against the same
-  // baby row, and firing a dozen at once is a dozen concurrent transactions on
-  // one profile for a list nobody is waiting on.
-  for (const [code, record] of Object.entries(local)) {
-    await put(code, record.status, record.givenOn);
+  const moved: Record<string, VaccinationMap> = {};
+  for (const [babyId, map] of Object.entries(local)) {
+    moved[remap.get(babyId) ?? babyId] = map;
+  }
+  publish(Object.freeze(moved));
+
+  // Sequential, not `Promise.all`: each write is an upsert against one baby
+  // row, and firing a dozen at once is a dozen concurrent transactions for a
+  // list nobody is waiting on.
+  for (const [babyId, map] of Object.entries(moved)) {
+    // A child that never reached the server has no row to hang a tick on.
+    if (babyId.startsWith("local_")) continue;
+    for (const [code, record] of Object.entries(map)) {
+      await put(babyId, code, record.status, record.givenOn);
+    }
   }
 }
 
@@ -136,6 +214,7 @@ export function adoptDeviceVaccinations(): void {
 }
 
 async function put(
+  babyId: string,
   code: string,
   status: VaccinationStatus | null,
   givenOn: IsoDate | null,
@@ -144,7 +223,7 @@ async function put(
     const res = await fetch("/api/parenting/vaccinations", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ code, status, givenOn }),
+      body: JSON.stringify({ babyId, code, status, givenOn }),
     });
     return res.ok;
   } catch {
@@ -152,8 +231,17 @@ async function put(
   }
 }
 
+/** Drop a removed child's ticks, so they do not linger keyed to nothing. */
+export function forgetBabyVaccinations(babyId: string): void {
+  const all = getAll();
+  if (!(babyId in all)) return;
+  const next = { ...all };
+  delete next[babyId];
+  publish(Object.freeze(next));
+}
+
 /**
- * Tick, re-tick or untick one dose.
+ * Tick, re-tick or untick one dose, for one child.
  *
  * `status: null` REMOVES the record. Un-ticking a box a parent ticked by mistake
  * has to remove the claim, not store a third state meaning "actually no" — a
@@ -165,16 +253,18 @@ async function put(
  * behaviour this page had before it had a backend.
  */
 export async function setVaccination(
+  babyId: string,
   code: string,
   status: VaccinationStatus | null,
   givenOn: IsoDate | null = null,
 ): Promise<void> {
-  const current = getSnapshot();
+  const all = getAll();
+  const current = all[babyId] ?? EMPTY;
   const next = { ...current };
   if (status === null) delete next[code];
   else next[code] = { status, givenOn: status === "given" ? givenOn : null };
-  publish(Object.freeze(next));
+  publish(Object.freeze({ ...all, [babyId]: Object.freeze(next) }));
 
-  if (origin !== "account") return;
-  await put(code, status, givenOn);
+  if (origin !== "account" || babyId.startsWith("local_")) return;
+  await put(babyId, code, status, givenOn);
 }

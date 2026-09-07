@@ -27,6 +27,16 @@ const STATIC_ROUTES: { path: string; priority: number; changeFrequency: Metadata
   { path: "/shop", priority: 0.9, changeFrequency: "weekly" },
   { path: "/size-guide", priority: 0.8, changeFrequency: "monthly" },
   { path: "/parenting-tools", priority: 0.7, changeFrequency: "monthly" },
+  /* The tool pages themselves. Each carries its own title, description and
+     keywords and is built to rank for a question people actually search — and
+     none of them was listed here, so the hub was the only way in. */
+  { path: "/parenting-tools/diaper-planner", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/size-up", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/growth", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/vaccination", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/sleep", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/first-year-cost", priority: 0.6, changeFrequency: "monthly" },
+  { path: "/parenting-tools/first-foods", priority: 0.6, changeFrequency: "monthly" },
   { path: "/subscription", priority: 0.7, changeFrequency: "monthly" },
   { path: "/journal", priority: 0.7, changeFrequency: "weekly" },
   { path: "/about", priority: 0.6, changeFrequency: "yearly" },

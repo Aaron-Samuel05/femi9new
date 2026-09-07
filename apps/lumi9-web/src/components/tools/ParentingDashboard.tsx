@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ageInDays, ageInMonths, formatMonthYear } from "@/lib/baby-age";
 import { useBabyProfile } from "@/lib/baby-profile";
 import { useVaccinations } from "@/lib/baby-vaccinations";
+import { SectionHeading } from "@/components/ui/bits";
 import { useCatalogData } from "@/lib/catalog-context";
 import { defaultPerDay, planDiapers } from "@/lib/diaper-planning";
 import { scheduleFor } from "@/lib/immunisation-schedule";
@@ -31,7 +32,8 @@ export function ParentingDashboard() {
   const profile = useBabyProfile();
   // The published schedule and this parent's ticks, both from the backend.
   const { schedule: doses } = useParenting();
-  const records = useVaccinations();
+  // This child's ticks, not the account's: siblings share a schedule, not dates.
+  const records = useVaccinations(profile?.id ?? null);
   const { user } = useSession();
   // Tagged with the shopper it was fetched for, so signing out - or switching
   // accounts - falls back to null in render rather than needing the effect to
@@ -106,9 +108,9 @@ export function ParentingDashboard() {
 
   return (
     <section aria-label="Your dashboard" className="gap-stack flex flex-col">
-      <h2 className="m-0 font-display text-[clamp(20px,2.6vw,28px)] font-normal leading-tight">
+      <SectionHeading eyebrow="At a glance" size="sm">
         {profile.name ? `${profile.name}'s` : "Your"} dashboard
-      </h2>
+      </SectionHeading>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {/* Vaccinations */}
@@ -153,7 +155,10 @@ export function ParentingDashboard() {
             <p className="mt-4 text-sm text-muted">All caught up for now - nothing due.</p>
           )}
 
-          <Link href="/parenting-tools/vaccination" className="mt-auto pt-4 text-sm font-semibold text-moss-deep">
+          <Link
+            href="/parenting-tools/vaccination"
+            className="mt-auto inline-flex items-center pt-4 text-sm font-semibold text-moss-deep coarse:min-h-11"
+          >
             See the full schedule →
           </Link>
         </div>
@@ -193,7 +198,10 @@ export function ParentingDashboard() {
                   <>Your plan is active.</>
                 )}
               </p>
-              <Link href="/account?tab=subscription" className="mt-1 inline-block font-semibold text-moss-deep">
+              <Link
+                href="/account?tab=subscription"
+                className="mt-1 inline-flex items-center font-semibold text-moss-deep coarse:min-h-11"
+              >
                 Manage subscription →
               </Link>
             </div>
@@ -203,7 +211,10 @@ export function ParentingDashboard() {
                 At this rate a pack runs low every couple of weeks. Subscribe and the next one arrives
                 before you run out.
               </p>
-              <Link href="/subscription" className="mt-1 inline-block font-semibold text-moss-deep">
+              <Link
+                href="/subscription"
+                className="mt-1 inline-flex items-center font-semibold text-moss-deep coarse:min-h-11"
+              >
                 Set up auto-restock →
               </Link>
             </div>

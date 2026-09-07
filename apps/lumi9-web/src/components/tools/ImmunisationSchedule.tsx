@@ -31,7 +31,10 @@ import { ToolDisclaimer } from "./ToolDisclaimer";
 export function ImmunisationSchedule() {
   const profile = useBabyProfile();
   const { schedule, tracks, ready, signedIn } = useParenting();
-  const records = useVaccinations();
+  // This child's ticks. Siblings follow the same schedule on different
+  // dates, so a single account-wide map would mark the younger one's doses
+  // given the moment the elder had them.
+  const records = useVaccinations(profile?.id ?? null);
   const [track, setTrack] = useState<VaccineTrack>(tracks[0] ?? "UIP");
   const today = new Date().toISOString().slice(0, 10);
 
@@ -98,7 +101,12 @@ export function ImmunisationSchedule() {
               </p>
               <ul className="m-0 flex list-none flex-col gap-2 p-0">
                 {scheduleFor({ dob: profile.dob, today, track }, schedule).map((dose) => (
-                  <DoseRow key={dose.id} dose={dose} given={records[dose.id]?.status === "given"} />
+                  <DoseRow
+                    key={dose.id}
+                    babyId={profile.id}
+                    dose={dose}
+                    given={records[dose.id]?.status === "given"}
+                  />
                 ))}
               </ul>
             </>
@@ -127,7 +135,18 @@ export function ImmunisationSchedule() {
  * ticked at 00:01 should carry the later day, which is the one they would write
  * on the card.
  */
-function DoseRow({ dose, given }: { dose: ScheduledDose; given: boolean }) {
+function DoseRow({
+  babyId,
+  dose,
+  given,
+}: {
+  /* Passed in rather than read from the selection here: a tick is a claim about
+     ONE child, and a row that resolved the current child itself could write
+     against a different one than the list it is rendered in. */
+  babyId: string;
+  dose: ScheduledDose;
+  given: boolean;
+}) {
   return (
     <li
       className={`flex flex-wrap items-baseline justify-between gap-2 rounded-chip border px-4 py-3 transition-colors ${
@@ -144,6 +163,7 @@ function DoseRow({ dose, given }: { dose: ScheduledDose; given: boolean }) {
           checked={given}
           onChange={(e) =>
             void setVaccination(
+              babyId,
               dose.id,
               e.target.checked ? "given" : null,
               new Date().toISOString().slice(0, 10),

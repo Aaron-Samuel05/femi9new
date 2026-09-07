@@ -1,22 +1,30 @@
 import Link from "next/link";
 
-export type ToolIcon = "planner" | "sizeup" | "growth" | "vaccine";
+export type ToolIcon = "planner" | "sizeup" | "growth" | "vaccine" | "sleep" | "cost" | "food";
 
 /**
  * One tool, one card, one page. The parenting hub is a menu now: each card is
  * the whole tap target and opens the tool on its own route, so the page is
  * scannable instead of an endless scroll of stacked forms.
+ *
+ * `needs` is the one thing that distinguishes the four cards from each other,
+ * and it is information rather than decoration: it is exactly why a tool can
+ * open blank. A parent who filled in a birthday and nothing else can see, before
+ * tapping, that the growth chart is going to want a weight - which is the
+ * question the four identical cards used to leave them to discover inside.
  */
 export function ToolCard({
   href,
   title,
   blurb,
   icon,
+  needs,
 }: {
   href: string;
   title: string;
   blurb: string;
   icon: ToolIcon;
+  needs: string;
 }) {
   return (
     <Link
@@ -35,6 +43,9 @@ export function ToolCard({
         </h3>
         <p className="mt-1.5 mb-0 text-sm leading-relaxed text-muted">{blurb}</p>
       </div>
+      <span className="border-t border-moss-tint pt-3 text-[13px] leading-[1.5] text-muted">
+        Needs <b className="font-semibold text-midnight">{needs}</b>
+      </span>
       <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-moss-deep">
         Open
         <svg
@@ -93,6 +104,25 @@ function Glyph({ icon }: { icon: ToolIcon }) {
         <svg {...p}>
           <path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
           <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
+    case "sleep":
+      return (
+        <svg {...p}>
+          <path d="M20 14.5A8 8 0 019.5 4a8.5 8.5 0 1010.5 10.5z" />
+        </svg>
+      );
+    case "cost":
+      return (
+        <svg {...p}>
+          <path d="M7 5h10M7 9h10M15 5c0 4-3.2 5-6 5l7 9" />
+        </svg>
+      );
+    case "food":
+      return (
+        <svg {...p}>
+          <path d="M4 4v6a3 3 0 006 0V4M7 4v16" />
+          <path d="M17 4c-1.7 1.3-2.5 3.2-2.5 5.5S15.3 13 17 14v6" />
         </svg>
       );
   }

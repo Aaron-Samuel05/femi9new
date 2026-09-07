@@ -330,7 +330,7 @@ model User {
   notifications NotificationLog[]
 
   // Lumi9 only — the parenting tools. Femi9 has no page that writes either.
-  babyProfile    BabyProfile?
+  babyProfiles   BabyProfile[]
   parentingLeads ParentingLead[]
 
   tharaMembership       TharaMembership?
@@ -1322,9 +1322,18 @@ enum VaccinationStatus {
 /// are a real future ask and the fix is dropping this constraint plus a primary
 /// picker in the UI — not a `babyId` threaded through code that has no screen
 /// to choose one with today.
+/// One child. A parent has as many rows as they have children.
+///
+/// `userId` was `@unique` — one baby per account, enforced by the database — so
+/// a parent with a second child had to overwrite the first, taking that child's
+/// whole measurement series and vaccination record with them. Dropping the
+/// constraint is what makes a second child possible; the cost is that "this
+/// user's baby" stopped being a single row the database could point at, so
+/// every read is now keyed on the PAIR and `userId` is the authorisation half
+/// of it. A query that finds a child by `id` alone is a cross-account read.
 model BabyProfile {
   id     String @id @default(cuid())
-  userId String @unique
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   name             String?
@@ -1351,6 +1360,8 @@ model BabyProfile {
 
   measurements BabyMeasurement[]
   vaccinations BabyVaccination[]
+
+  @@index([userId])
 }
 
 /// Weight and height over time.

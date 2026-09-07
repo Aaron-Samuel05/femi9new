@@ -1,13 +1,20 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
-import { adoptAccountProfile, adoptDeviceProfile } from "@/lib/baby-profile";
+import {
+  adoptAccountBabies,
+  adoptDeviceProfile,
+  currentBabyIds,
+  firstLocalBabyId,
+} from "@/lib/baby-profile";
 import {
   adoptAccountVaccinations,
   adoptDeviceVaccinations,
+  setLegacyVaccinationOwner,
   type VaccinationMap,
 } from "@/lib/baby-vaccinations";
 import { availableTracks, type VaccineDose, type VaccineTrack } from "@/lib/immunisation-schedule";
+import type { BabyMeasurementDTO } from "@femi9/core/services/parenting";
 import type { ParentingPayload } from "@/lib/parenting.server";
 
 /**
@@ -40,6 +47,11 @@ interface ParentingData {
   ready: boolean;
   /** Whether this visitor has an account for a profile to be stored against. */
   signedIn: boolean;
+  /**
+   * Weight and height over time, oldest first, per child. Empty for a guest —
+   * see the note on `BabyRecord.measurements`.
+   */
+  measurementsByBaby: Readonly<Record<string, BabyMeasurementDTO[]>>;
 }
 
 const ParentingContext = createContext<ParentingData | null>(null);
@@ -69,16 +81,44 @@ export function ParentingProvider({
     adopted.current = true;
 
     if (!payload.signedIn) {
+      /* The flat v1 tick store has no owner recorded in it. Its ticks belong to
+         whichever child the single-baby store held, which — after that store's
+         own migration — is the first child on the device. Told BEFORE anything
+         reads the tick store, because the answer decides what it reads. */
+      setLegacyVaccinationOwner(firstLocalBabyId());
       adoptDeviceProfile();
       adoptDeviceVaccinations();
       return;
     }
 
-    const remote: VaccinationMap = Object.fromEntries(
-      payload.vaccinations.map((v) => [v.code, { status: v.status, givenOn: v.givenOn }]),
-    );
-    void adoptAccountProfile(payload.profile);
-    void adoptAccountVaccinations(remote);
+    void (async () => {
+      const before = currentBabyIds();
+      setLegacyVaccinationOwner(before[0] ?? null);
+
+      await adoptAccountBabies(payload.babies.map((b) => b.profile));
+
+      /* Which local ids became which server ids. A guest's ticks are filed
+         under `local_…`, and the profile adoption above has just exchanged
+         those for real rows — without this map every tick a guest recorded
+         would be orphaned under an id no child has any more. Positional,
+         because that push preserved order and a `local_` id is by definition
+         not something the server can echo back. */
+      const after = currentBabyIds();
+      const remap = new Map<string, string>();
+      if (before.length === after.length) {
+        before.forEach((id, i) => {
+          if (id !== after[i]) remap.set(id, after[i]);
+        });
+      }
+
+      const remote: Record<string, VaccinationMap> = {};
+      for (const baby of payload.babies) {
+        remote[baby.profile.id] = Object.fromEntries(
+          baby.vaccinations.map((v) => [v.code, { status: v.status, givenOn: v.givenOn }]),
+        );
+      }
+      await adoptAccountVaccinations(remote, remap);
+    })();
   }, [payload]);
 
   const value = useMemo<ParentingData>(
@@ -87,6 +127,9 @@ export function ParentingProvider({
       tracks: availableTracks(payload.schedule),
       ready: payload.schedule.length > 0,
       signedIn: payload.signedIn,
+      measurementsByBaby: Object.fromEntries(
+        payload.babies.map((b) => [b.profile.id, b.measurements]),
+      ),
     }),
     [payload],
   );

@@ -242,17 +242,29 @@ export async function parentingStats(brand: Brand): Promise<{
   doses: number
   activeDoses: number
   leads: number
+  /** Children — a parent with three siblings contributes three. */
   babies: number
+  /** Accounts that have at least one child. */
+  families: number
 }> {
   const prisma = dbFor(brand)
-  const [doses, activeDoses, leads, babies] = await Promise.all([
+  const [doses, activeDoses, leads, babies, families] = await Promise.all([
     prisma.vaccineDose.count(),
     prisma.vaccineDose.count({ where: { active: true } }),
     prisma.parentingLead.count(),
-    // How many shoppers have actually saved a baby. The one number that says
-    // whether the tools are used by people who came back, rather than by people
-    // who filled in a form once.
+    // Children, and separately the accounts they belong to.
+    //
+    // These were ONE number, commented as "how many shoppers have actually
+    // saved a baby" — true while `BabyProfile.userId` was unique and one row
+    // meant one family. It stopped being true the moment a parent could add a
+    // second child, and the number it had always meant (are the tools used by
+    // people who came back?) would have quietly inflated by however many
+    // siblings existed. Counting both keeps the old meaning available and adds
+    // the new one rather than silently redefining it.
     prisma.babyProfile.count(),
+    prisma.babyProfile
+      .findMany({ distinct: ['userId'], select: { userId: true } })
+      .then((rows) => rows.length),
   ])
-  return { doses, activeDoses, leads, babies }
+  return { doses, activeDoses, leads, babies, families }
 }

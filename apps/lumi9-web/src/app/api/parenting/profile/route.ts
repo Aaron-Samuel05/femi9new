@@ -6,8 +6,8 @@ import {
   // list the database enum can actually hold, and a route handler validating
   // against a copy is how a dropdown option ends up rejected at the API.
   BLOOD_GROUPS,
-  deleteBabyProfile,
-  getBabyProfile,
+  deleteBaby,
+  listBabies,
   saveBabyProfile,
 } from "@femi9/core/services/parenting";
 
@@ -15,17 +15,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 /**
- * The signed-in parent's baby.
+ * The signed-in parent's children.
  *
  * GET / PUT / DELETE, and every one of them 401s without a session. There is
- * deliberately no guest path: a signed-out parent's profile stays in
- * localStorage and never reaches this route, which is what lets the card go on
+ * deliberately no guest path: a signed-out parent's children stay in
+ * localStorage and never reach this route, which is what lets the card go on
  * promising that the details stay on the device for them.
  *
- * This is a child's date of birth, sex, weight and blood group. It is addressed
- * ONLY by the session — there is no `userId` in the body, no id in the path and
- * nothing to enumerate. `BabyProfile.userId` is unique, so "this parent's baby"
- * is a lookup, not a search that could be widened by a crafted request.
+ * This is a child's date of birth, sex, weight and blood group.
+ *
+ * **A `babyId` in the body is untrusted, and that is new.** The account used to
+ * hold exactly one baby — `BabyProfile.userId` was unique, so "this parent's
+ * baby" was a lookup with nothing to enumerate and no id anywhere in the
+ * request. Now that a parent has several, PUT and DELETE both carry an id, and
+ * an id is a thing a client can invent. Neither route resolves one on its own:
+ * the service filters on `{ id, userId }` together, so an id belonging to
+ * another family matches no row and comes back as `not-found` — the same answer
+ * an id that never existed gets, so the route never confirms that somebody
+ * else's child is real.
  */
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -45,6 +52,10 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
  *   changes which age the growth chart is read at.
  */
 const ProfileSchema = z.object({
+  /* Absent adds a child; present edits one. Validated only for SHAPE here —
+     whether this account owns it is the service's filter to answer, not a
+     check this handler could forget to make. */
+  id: z.string().min(1).max(64).nullish(),
   name: z.string().trim().max(80).nullish(),
   dob: z
     .string()
@@ -61,7 +72,7 @@ export async function GET() {
   return handle(async () => {
     const session = await requireUser("lumi9");
     if (!session) return unauthorized();
-    return ok({ profile: await getBabyProfile("lumi9", session.sub) });
+    return ok({ babies: await listBabies("lumi9", session.sub) });
   });
 }
 
@@ -92,6 +103,7 @@ export async function PUT(req: Request) {
       session.sub,
       {
         ...parsed.data,
+        id: parsed.data.id ?? null,
         // zod's `.nullish()` lets a key be absent OR null; the service takes
         // `null` to mean "clear this column", and absent has to mean the same
         // thing here or a save that drops the weight field would keep the old
@@ -117,19 +129,38 @@ export async function PUT(req: Request) {
       return unauthorized("Your session has expired. Sign in again to save to your account.");
     }
 
+    /* Deliberately the same 400 for "not yours" and "never existed". Telling
+       the two apart would turn this into an oracle for whether a given id is a
+       real child somewhere. */
+    if (result.status === "not-found") {
+      return badRequest("That child isn't on your account.");
+    }
+
+    if (result.status === "too-many") {
+      return badRequest("You've added as many children as this account holds.");
+    }
+
     return ok({ ok: true, profile: result.profile });
   });
 }
 
-export async function DELETE() {
+export async function DELETE(req: Request) {
   return handle(async () => {
     const session = await requireUser("lumi9");
     if (!session) return unauthorized();
 
-    // Measurements and vaccination records cascade. "Clear" on the card means
-    // clear — leaving a child's health history behind an absent profile is the
-    // kind of orphan nobody ever goes looking for.
-    await deleteBabyProfile("lumi9", session.sub);
+    const body = (await req.json().catch(() => null)) as { id?: unknown } | null;
+    const id = typeof body?.id === "string" && body.id.length > 0 ? body.id : null;
+    if (!id) return badRequest("Say which child to remove.");
+
+    /* Measurements and vaccination records cascade. "Remove" means remove —
+       leaving a child's health history behind an absent profile is the kind of
+       orphan nobody ever goes looking for.
+
+       Scoped to the session inside the service, and idempotent: an id this
+       account does not own deletes nothing and still answers ok, because a
+       distinct "that isn't yours" would say whether it exists. */
+    await deleteBaby("lumi9", session.sub, id);
     return ok({ ok: true });
   });
 }

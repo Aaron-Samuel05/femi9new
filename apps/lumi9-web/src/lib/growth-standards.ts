@@ -94,3 +94,56 @@ export function percentileFor(input: {
   if (!Number.isFinite(z) || Math.abs(z) > Z_DISPLAY_LIMIT) return { outOfRange: "extreme" };
   return { z, percentile: normalCdf(z) * 100 };
 }
+
+/**
+ * The LMS transformation, inverted: the measurement that sits at a given z.
+ *
+ * `zScore` answers "where does this reading fall"; a CHART needs the opposite
+ * question asked once per month — "what does a P50 baby weigh at 4 months" — so
+ * that the five reference curves can be drawn. Same formula solved for `value`,
+ * including the same defensive L = 0 branch, so the two cannot drift apart.
+ */
+export function valueForZ(z: number, row: LmsRow): number {
+  if (row.l === 0) return row.m * Math.exp(row.s * z);
+  return row.m * Math.pow(1 + row.l * row.s * z, 1 / row.l);
+}
+
+/**
+ * The five reference lines WHO's own percentile charts print.
+ *
+ * Fixed constants rather than an inverse-normal function: there are exactly five
+ * of them, these values are exact to more places than a chart can draw, and a
+ * probit approximation would be a second numerical method to justify and test
+ * for no gain. (`erf` above exists because the percentile READOUT genuinely
+ * needs a continuous CDF; this does not.)
+ */
+export const CHART_PERCENTILES = [
+  { percentile: 3, z: -1.88079 },
+  { percentile: 15, z: -1.03643 },
+  { percentile: 50, z: 0 },
+  { percentile: 85, z: 1.03643 },
+  { percentile: 97, z: 1.88079 },
+] as const;
+
+/**
+ * One reference curve, sampled monthly.
+ *
+ * Months past the end of the WHO table are dropped rather than extrapolated —
+ * `lookupLms` returns null there, and inventing a curve beyond five years would
+ * be drawing a standard that does not exist.
+ */
+export function percentileCurve(input: {
+  indicator: GrowthIndicator;
+  sex: BabySex;
+  z: number;
+  toMonth: number;
+}): { month: number; value: number }[] {
+  const out: { month: number; value: number }[] = [];
+  const last = Math.min(Math.ceil(input.toMonth), MAX_MONTH);
+  for (let month = 0; month <= last; month++) {
+    const row = lookupLms(input.indicator, input.sex, month);
+    if (!row) continue;
+    out.push({ month, value: valueForZ(input.z, row) });
+  }
+  return out;
+}

@@ -142,6 +142,8 @@ export interface BabyVaccinationDTO {
 }
 
 export interface SaveBabyProfileInput {
+  /** Absent creates a child; present edits one, if this account owns it. */
+  id?: string | null
   name?: string | null
   dob: IsoDate
   sex: BabySex
@@ -199,8 +201,36 @@ function toProfileDTO(row: {
   }
 }
 
-export async function getBabyProfile(brand: Brand, userId: string): Promise<BabyProfileDTO | null> {
-  const row = await dbFor(brand).babyProfile.findUnique({ where: { userId } })
+/**
+ * Every child on this account, oldest first.
+ *
+ * Ordered by date of birth rather than by when the row was written, so the list
+ * a parent reads is the order they would say their children's names in, and it
+ * does not reshuffle when they edit one.
+ */
+export async function listBabies(brand: Brand, userId: string): Promise<BabyProfileDTO[]> {
+  const rows = await dbFor(brand).babyProfile.findMany({
+    where: { userId },
+    orderBy: [{ dob: 'asc' }, { id: 'asc' }],
+  })
+  return rows.map(toProfileDTO)
+}
+
+/**
+ * One child, and ONLY if this account owns them.
+ *
+ * `userId` is in the filter, not checked afterwards. It is the authorisation
+ * half of the key: `BabyProfile.userId` used to be unique, so "this user's
+ * baby" was a single row the database could point at and a lookup by `id`
+ * alone was harmless. It is not any more — a `babyId` from another account is
+ * a valid cuid, and finding it by `id` would return another family's child.
+ */
+export async function getBaby(
+  brand: Brand,
+  userId: string,
+  babyId: string,
+): Promise<BabyProfileDTO | null> {
+  const row = await dbFor(brand).babyProfile.findFirst({ where: { id: babyId, userId } })
   return row ? toProfileDTO(row) : null
 }
 
@@ -233,6 +263,16 @@ export async function getBabyProfile(brand: Brand, userId: string): Promise<Baby
 export type SaveBabyProfileResult =
   | { status: 'ok'; profile: BabyProfileDTO }
   | { status: 'unknown-user' }
+  /** The `id` names a child this account does not own, or one that is gone. */
+  | { status: 'not-found' }
+  | { status: 'too-many' }
+
+/**
+ * A ceiling, so a scripted client cannot write unbounded rows against one
+ * account. It is deliberately well clear of any real family - this is a guard
+ * on the endpoint, not an opinion about how many children somebody has.
+ */
+export const MAX_CHILDREN = 12
 
 export async function saveBabyProfile(
   brand: Brand,
@@ -254,11 +294,27 @@ export async function saveBabyProfile(
 
   try {
     return await prisma.$transaction(async (tx) => {
-      const row = await tx.babyProfile.upsert({
-        where: { userId },
-        create: { userId, ...data },
-        update: data,
-      })
+      /* Not an upsert on `userId` any more — that WAS the one-child rule, and
+         it is what silently overwrote a first child when a second was added.
+         An `id` means "edit this one" and is scoped to the account before it is
+         trusted; no `id` means "add a child". `updateMany` rather than `update`
+         so the ownership filter is part of the write itself: `update` can only
+         be keyed on a unique field, which would put `userId` back outside the
+         query and turn authorisation into a separate check somebody can drop. */
+      let row
+      if (input.id) {
+        const owned = await tx.babyProfile.updateMany({
+          where: { id: input.id, userId },
+          data,
+        })
+        if (owned.count === 0) return { status: 'not-found' as const }
+        row = await tx.babyProfile.findFirstOrThrow({ where: { id: input.id, userId } })
+      } else {
+        if ((await tx.babyProfile.count({ where: { userId } })) >= MAX_CHILDREN) {
+          return { status: 'too-many' as const }
+        }
+        row = await tx.babyProfile.create({ data: { userId, ...data } })
+      }
 
       // Only when there is something to record. A profile saved with the weight
       // field left empty must not write a row of two nulls — that is an empty
@@ -310,25 +366,42 @@ function isUnknownUser(err: unknown): boolean {
  *
  * `deleteMany`, not `delete`: pressing Clear twice is not an error.
  */
-export async function deleteBabyProfile(brand: Brand, userId: string): Promise<void> {
-  await dbFor(brand).babyProfile.deleteMany({ where: { userId } })
+/**
+ * Remove one child, and only from the account that owns them.
+ *
+ * `deleteMany` with both keys: it is idempotent (pressing Clear twice is not an
+ * error) and the ownership filter is part of the statement rather than a check
+ * before it. Measurements and vaccinations cascade from the row.
+ */
+export async function deleteBaby(brand: Brand, userId: string, babyId: string): Promise<void> {
+  await dbFor(brand).babyProfile.deleteMany({ where: { id: babyId, userId } })
 }
 
-/** Weight and height over time, oldest first — the order a chart plots in. */
-export async function listMeasurements(
+/**
+ * Weight and height over time, oldest first — the order a chart plots in —
+ * for every child on the account, grouped by child.
+ *
+ * ONE query for the whole family rather than one per child: a parent with five
+ * children would otherwise cost five round trips on every page load of a hub
+ * that already makes three. `baby: { userId }` is the authorisation, same as
+ * everywhere else here.
+ */
+export async function listMeasurementsByBaby(
   brand: Brand,
   userId: string,
-): Promise<BabyMeasurementDTO[]> {
+): Promise<Map<string, BabyMeasurementDTO[]>> {
   const rows = await dbFor(brand).babyMeasurement.findMany({
     where: { baby: { userId } },
     orderBy: { takenOn: 'asc' },
-    select: { takenOn: true, weightKg: true, heightCm: true },
+    select: { babyId: true, takenOn: true, weightKg: true, heightCm: true },
   })
-  return rows.map((r) => ({
-    takenOn: toIso(r.takenOn) as IsoDate,
-    weightKg: r.weightKg,
-    heightCm: r.heightCm,
-  }))
+  const out = new Map<string, BabyMeasurementDTO[]>()
+  for (const r of rows) {
+    const list = out.get(r.babyId) ?? []
+    list.push({ takenOn: toIso(r.takenOn) as IsoDate, weightKg: r.weightKg, heightCm: r.heightCm })
+    out.set(r.babyId, list)
+  }
+  return out
 }
 
 // ── The schedule ─────────────────────────────────────────────────────────────
@@ -369,20 +442,29 @@ export async function getVaccineSchedule(brand: Brand): Promise<VaccineDoseDTO[]
   }))
 }
 
-/** What this parent has marked given or skipped. Empty when there is no baby. */
-export async function listVaccinations(
+/**
+ * What this parent has marked given or skipped, grouped by child.
+ *
+ * One query for the family, for the same reason `listMeasurementsByBaby` is.
+ * Ticks belong to a CHILD, not to an account: two siblings are on the same
+ * schedule at different dates, and a flat map keyed on dose code alone would
+ * have marked the younger one's doses given because the elder had them.
+ */
+export async function listVaccinationsByBaby(
   brand: Brand,
   userId: string,
-): Promise<BabyVaccinationDTO[]> {
+): Promise<Map<string, BabyVaccinationDTO[]>> {
   const rows = await dbFor(brand).babyVaccination.findMany({
     where: { baby: { userId } },
-    select: { status: true, givenOn: true, dose: { select: { code: true } } },
+    select: { babyId: true, status: true, givenOn: true, dose: { select: { code: true } } },
   })
-  return rows.map((r) => ({
-    code: r.dose.code,
-    status: r.status,
-    givenOn: toIso(r.givenOn),
-  }))
+  const out = new Map<string, BabyVaccinationDTO[]>()
+  for (const r of rows) {
+    const list = out.get(r.babyId) ?? []
+    list.push({ code: r.dose.code, status: r.status, givenOn: toIso(r.givenOn) })
+    out.set(r.babyId, list)
+  }
+  return out
 }
 
 /**
@@ -400,12 +482,14 @@ export async function listVaccinations(
 export async function setVaccination(
   brand: Brand,
   userId: string,
+  babyId: string,
   input: { code: string; status: VaccinationStatus | null; givenOn?: IsoDate | null },
 ): Promise<{ status: 'ok' } | { status: 'no-profile' } | { status: 'no-dose' }> {
   const prisma = dbFor(brand)
 
   const [baby, dose] = await Promise.all([
-    prisma.babyProfile.findUnique({ where: { userId }, select: { id: true } }),
+    // Both keys. A `babyId` on its own is another family's child.
+    prisma.babyProfile.findFirst({ where: { id: babyId, userId }, select: { id: true } }),
     prisma.vaccineDose.findUnique({ where: { code: input.code }, select: { id: true } }),
   ])
   if (!baby) return { status: 'no-profile' }
@@ -481,13 +565,27 @@ export async function recordParentingLead(
 
 // ── Everything the page needs, in one call ───────────────────────────────────
 
+/** One child and everything recorded about them. */
+export interface BabyRecordDTO {
+  profile: BabyProfileDTO
+  /** Weight and height over time, oldest first. */
+  measurements: BabyMeasurementDTO[]
+  /** What this parent marked given or skipped, for THIS child. */
+  vaccinations: BabyVaccinationDTO[]
+}
+
 export interface ParentingPayload {
   /** The published doses. Empty when the schedule has not been seeded. */
   schedule: VaccineDoseDTO[]
-  /** Null for a signed-out visitor — the browser store answers for them. */
-  profile: BabyProfileDTO | null
-  /** Empty for a signed-out visitor, for the same reason. */
-  vaccinations: BabyVaccinationDTO[]
+  /**
+   * Every child on the account, each with their own record.
+   *
+   * Empty for a signed-out visitor — that is NOT "no children", it means the
+   * browser store is the authority for them, and `signedIn` on the app's own
+   * payload is what says which. It replaced a single `profile`, which is the
+   * shape that made a second child overwrite the first.
+   */
+  babies: BabyRecordDTO[]
 }
 
 /**
@@ -502,10 +600,21 @@ export async function getParentingPayload(
   brand: Brand,
   userId: string | null,
 ): Promise<ParentingPayload> {
-  const [schedule, profile, vaccinations] = await Promise.all([
+  const [schedule, babies, measurements, vaccinations] = await Promise.all([
     getVaccineSchedule(brand),
-    userId ? getBabyProfile(brand, userId) : Promise.resolve(null),
-    userId ? listVaccinations(brand, userId) : Promise.resolve([]),
+    userId ? listBabies(brand, userId) : Promise.resolve([]),
+    // Grouped by child in one query each, so a parent with five children still
+    // costs four round trips rather than 1 + 2n.
+    userId ? listMeasurementsByBaby(brand, userId) : Promise.resolve(new Map()),
+    userId ? listVaccinationsByBaby(brand, userId) : Promise.resolve(new Map()),
   ])
-  return { schedule, profile, vaccinations }
+
+  return {
+    schedule,
+    babies: babies.map((profile) => ({
+      profile,
+      measurements: measurements.get(profile.id) ?? [],
+      vaccinations: vaccinations.get(profile.id) ?? [],
+    })),
+  }
 }

@@ -3,6 +3,7 @@ import { getSession } from "@femi9/core/auth";
 import {
   getParentingPayload,
   type BabyProfileDTO,
+  type BabyMeasurementDTO,
   type BabyVaccinationDTO,
   type VaccineDoseDTO,
 } from "@femi9/core/services/parenting";
@@ -54,6 +55,7 @@ function toDose(dto: VaccineDoseDTO): VaccineDose {
  */
 function toProfile(dto: BabyProfileDTO): BabyProfile {
   return {
+    id: dto.id,
     name: dto.name ?? undefined,
     dob: dto.dob,
     sex: dto.sex,
@@ -62,6 +64,22 @@ function toProfile(dto: BabyProfileDTO): BabyProfile {
     gestationalWeeks: dto.gestationalWeeks ?? undefined,
     bloodGroup: dto.bloodGroup ?? undefined,
   };
+}
+
+/** One child, with the two series that belong to them. */
+export interface BabyRecord {
+  profile: BabyProfile;
+  /**
+   * Weight and height over time, oldest first — the order the chart plots in.
+   *
+   * Always empty for a guest, and that is a property of where a guest's
+   * children live rather than an omission: the device store keeps the latest
+   * measurement per child, not a history. The chart says so instead of drawing
+   * a one-point line and calling it a trend.
+   */
+  measurements: BabyMeasurementDTO[];
+  /** Dose code → what the parent marked, for THIS child. */
+  vaccinations: BabyVaccinationDTO[];
 }
 
 export interface ParentingPayload {
@@ -74,15 +92,18 @@ export interface ParentingPayload {
    */
   schedule: VaccineDose[];
   /**
-   * This account's baby, or null.
+   * Every child on this account, each with their own record.
    *
-   * Null for a signed-out visitor is NOT "no baby" — it means the browser store
-   * is the authority for them, and the provider says which by way of `signedIn`.
-   * Collapsing the two would make a guest's profile disappear on every render.
+   * EMPTY for a signed-out visitor is not "no children" — it means the browser
+   * store is the authority for them, and `signedIn` below is what says which.
+   * Collapsing the two would make a guest's children disappear on every render.
+   *
+   * This replaced a single `profile`. One baby per account was enforced all the
+   * way down in the database, so adding a second child meant overwriting the
+   * first — and taking their entire measurement series and vaccination record
+   * with them, silently.
    */
-  profile: BabyProfile | null;
-  /** Dose code → what the parent marked. Empty for a guest. */
-  vaccinations: BabyVaccinationDTO[];
+  babies: BabyRecord[];
   /**
    * Whether there is a session at all.
    *
@@ -102,8 +123,11 @@ export async function loadParenting(): Promise<ParentingPayload> {
 
   return {
     schedule: payload.schedule.map(toDose),
-    profile: payload.profile ? toProfile(payload.profile) : null,
-    vaccinations: payload.vaccinations,
+    babies: payload.babies.map((b) => ({
+      profile: toProfile(b.profile),
+      measurements: b.measurements,
+      vaccinations: b.vaccinations,
+    })),
     signedIn: session !== null,
   };
 }

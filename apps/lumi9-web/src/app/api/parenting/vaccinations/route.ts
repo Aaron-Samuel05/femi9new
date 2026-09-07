@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { badRequest, handle, notFound, ok, unauthorized } from "@femi9/core/api";
 import { requireUser } from "@femi9/core/auth";
-import { listVaccinations, setVaccination } from "@femi9/core/services/parenting";
+import { listVaccinationsByBaby, setVaccination } from "@femi9/core/services/parenting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -16,6 +16,12 @@ export const dynamic = "force-dynamic";
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const SetSchema = z.object({
+  /**
+   * Which child. Untrusted — `setVaccination` filters on `{ id, userId }`, so an
+   * id from another account matches no row and answers `no-profile`, the same
+   * as an id that never existed.
+   */
+  babyId: z.string().trim().min(1).max(64),
   /**
    * The dose CODE ("penta-1"), never a database id. It is the key the schedule
    * seed upserts on, so re-seeding a corrected schedule leaves this parent's
@@ -39,7 +45,11 @@ export async function GET() {
   return handle(async () => {
     const session = await requireUser("lumi9");
     if (!session) return unauthorized();
-    return ok({ vaccinations: await listVaccinations("lumi9", session.sub) });
+    /* Keyed by child. A flat map of dose codes was the one-baby shape, and it
+       would have marked a younger sibling's doses given because the elder had
+       them — two children are on the same schedule at different dates. */
+    const byBaby = await listVaccinationsByBaby("lumi9", session.sub);
+    return ok({ vaccinations: Object.fromEntries(byBaby) });
   });
 }
 
@@ -51,7 +61,7 @@ export async function PUT(req: Request) {
     const parsed = SetSchema.safeParse(await req.json().catch(() => null));
     if (!parsed.success) return badRequest("Invalid request.", parsed.error.flatten());
 
-    const result = await setVaccination("lumi9", session.sub, {
+    const result = await setVaccination("lumi9", session.sub, parsed.data.babyId, {
       code: parsed.data.code,
       status: parsed.data.status,
       givenOn: parsed.data.givenOn ?? null,
