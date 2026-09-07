@@ -87,6 +87,18 @@ const API_MODULE: Record<string, AdminModule | null> = {
   // Not a module of its own: the image uploader serves the product form and the
   // blog cover field, and is reachable from any console that has either.
   upload: null,
+  // Neither of these can be brand-gated, and both were simply never classified
+  // — which is what this file's last test exists to catch, and it was failing
+  // on `lumi9` before this branch touched anything.
+  //
+  // `auth` is the console's own sign-in. A module gate asks "does THIS brand
+  // run that feature", and there is no brand yet: the session that names one is
+  // what these two routes mint.
+  //
+  // `health` answers a load balancer, which has no session and never will —
+  // the same reason `proxy.ts` excludes it from the console's guard.
+  auth: null,
+  health: null,
 }
 
 /** Every module at least one brand does NOT have — the ones a gate protects. */
