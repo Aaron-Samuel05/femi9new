@@ -3,6 +3,7 @@
 
 node_modules/
 .turbo/
+.local-pg-data/
 
 # Next.js build output, wherever it lands in the workspace
 .next/
@@ -67,3 +68,6 @@ out/
 # path holds nothing; committing them would pin megabytes of scratch artwork
 # into history for files no deployed image ever reads.
 /apps/*/public/uploads/
+ 
+*.zip
+!femi9-scrool.zip
