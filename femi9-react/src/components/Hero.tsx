@@ -1,68 +1,140 @@
+import { useEffect, useState } from 'react'
 import { ArrowRight, Bag, Leaf, Recycle } from './Icons'
+import { PRODUCTS } from '../data/products'
 
-const featureItems = [
-  { icon: Leaf, title: 'Certified', text: 'Organic Cotton' },
-  { icon: Leaf, title: 'Toxin-Free', text: '& Safe' },
-  { icon: Recycle, title: 'Breathable', text: 'Comfort' },
-  { icon: Recycle, title: 'Leak', text: 'Protection' },
-  { icon: Leaf, title: 'Skin-Friendly', text: 'pH Balanced' },
-  { icon: Bag, title: 'Made For', text: 'Everyday Movement' },
+const slides = [
+  {
+    id: 'p330dw',
+    eyebrow: 'Femi9 330mm Double Wings',
+    title: 'Periods.',
+    accent: 'But Softer, Brighter.',
+    note: 'Ultra-thin. Ultra-comfortable. Made for real life.',
+  },
+  {
+    id: 'p290l9',
+    eyebrow: 'Femi9 290mm Large',
+    title: 'Everyday.',
+    accent: 'Comfort, Reimagined.',
+    note: 'Light, breathable protection for your everyday cycle.',
+  },
+  {
+    id: 'p330cw',
+    eyebrow: 'Femi9 330mm Centre Wings',
+    title: 'Protection.',
+    accent: 'Without The Bulk.',
+    note: 'Extra length, secure wings and a soft cotton finish.',
+  },
+  {
+    id: 'p290l3',
+    eyebrow: 'Femi9 290mm Starter',
+    title: 'Try Femi9.',
+    accent: 'Feel The Difference.',
+    note: 'Three pads to discover a softer period-care routine.',
+  },
+]
+
+const features = [
+  { icon: Leaf, title: 'Organic cotton' },
+  { icon: Recycle, title: 'Breathable comfort' },
+  { icon: Bag, title: 'Made for movement' },
 ]
 
 export function Hero() {
+  const [active, setActive] = useState(0)
+  const slide = slides[active]
+  const product = PRODUCTS.find((item) => item.id === slide.id) ?? PRODUCTS[0]
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'ArrowRight') setActive((value) => (value + 1) % slides.length)
+      if (event.key === 'ArrowLeft') setActive((value) => (value - 1 + slides.length) % slides.length)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
-    <section className="hero hero-premium" aria-labelledby="hero-title">
-      <div className="hero-premium-glow hero-premium-glow-a" aria-hidden="true" />
-      <div className="hero-premium-glow hero-premium-glow-b" aria-hidden="true" />
-      <div className="hero-premium-ribbon hero-premium-ribbon-a" aria-hidden="true" />
-      <div className="hero-premium-ribbon hero-premium-ribbon-b" aria-hidden="true" />
+    <section className="hero hero-apple" aria-labelledby="hero-title">
+      <div className="hero-apple-bg" aria-hidden="true" />
+      <div className="hero-apple-glow hero-apple-glow-left" aria-hidden="true" />
+      <div className="hero-apple-glow hero-apple-glow-right" aria-hidden="true" />
+      <div className="hero-apple-wordmark" aria-hidden="true">Femi9</div>
 
-      <div className="wrap hero-premium-in">
-        <div className="hero-premium-heading">
-          <span className="hero-premium-kicker">F E M I 9&nbsp;&nbsp; S A N I T A R Y&nbsp;&nbsp; P A D S</span>
-          <h1 id="hero-title"><span>Periods.</span><strong>But Softer, Brighter.</strong></h1>
-          <p>Ultra-thin. Ultra-comfortable. Made for real life.</p>
-        </div>
+      <div className="hero-apple-inner">
+        <div className="hero-apple-stage">
+          <div className="hero-apple-kicker">{slide.eyebrow}</div>
 
-        <div className="hero-premium-stage">
-          <div className="hero-premium-wordmark" aria-hidden="true">Femi9</div>
+          <div className="hero-apple-product" key={product.id}>
+            <div className="hero-apple-product-halo" aria-hidden="true" />
+            <div className="hero-apple-product-shadow" aria-hidden="true" />
+            <img
+              src={product.img}
+              alt={`${product.name} Femi9 sanitary pads`}
+              width={1200}
+              height={800}
+              fetchPriority={active === 0 ? 'high' : 'auto'}
+            />
+          </div>
 
-          <div className="hero-premium-feature-column hero-premium-feature-left">
-            {featureItems.slice(0, 3).map(({ icon: Icon, title, text }) => (
-              <div className="hero-premium-feature" key={`${title}-${text}`}>
-                <span className="hero-premium-feature-icon"><Icon /></span>
-                <span><b>{title}</b><em>{text}</em></span>
-              </div>
+          <div className="hero-apple-features" aria-label="Femi9 benefits">
+            {features.map(({ icon: Icon, title }) => (
+              <span key={title}>
+                <Icon />
+                {title}
+              </span>
             ))}
           </div>
 
-          <div className="hero-premium-product">
-            <div className="hero-premium-product-shadow" aria-hidden="true" />
-            <div className="hero-premium-platform" aria-hidden="true" />
-            <img src="/assets/img/prod-330-double.jpg" alt="Femi9 330mm double-wing sanitary pad pack and pad" width={920} height={700} fetchPriority="high" />
+          <button
+            className="hero-apple-arrow hero-apple-arrow-prev"
+            type="button"
+            onClick={() => setActive((value) => (value - 1 + slides.length) % slides.length)}
+            aria-label="Previous product"
+          >
+            ‹
+          </button>
+          <button
+            className="hero-apple-arrow hero-apple-arrow-next"
+            type="button"
+            onClick={() => setActive((value) => (value + 1) % slides.length)}
+            aria-label="Next product"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="hero-apple-bottom">
+          <div className="hero-apple-copy">
+            <h1 id="hero-title">
+              <span>{slide.title}</span>
+              <strong>{slide.accent}</strong>
+            </h1>
+            <p>{slide.note}</p>
           </div>
 
-          <div className="hero-premium-feature-column hero-premium-feature-right">
-            <div className="hero-premium-handwritten" aria-hidden="true">Comfort<br />in every move ♡</div>
-            {featureItems.slice(3).map(({ icon: Icon, title, text }) => (
-              <div className="hero-premium-feature" key={`${title}-${text}`}>
-                <span className="hero-premium-feature-icon"><Icon /></span>
-                <span><b>{title}</b><em>{text}</em></span>
-              </div>
-            ))}
+          <div className="hero-apple-buybar">
+            <div>
+              <b>From Rs.{product.price.toLocaleString('en-IN')}</b>
+              <span>{product.meta} · {product.flow}</span>
+            </div>
+            <a href={`/product/${product.id}`} className="hero-apple-buy">Shop Now <ArrowRight /></a>
           </div>
         </div>
 
-        <div className="hero-premium-footer">
-          <div className="hero-premium-message">
-            <span>CONFIDENCE IN EVERY MOVE</span>
-            <h2>Made for her.<br />Made for every day.</h2>
-            <a href="#products" className="btn btn-primary">Shop Now <ArrowRight /></a>
+        <div className="hero-apple-controls">
+          <div className="hero-apple-dots" aria-label="Hero products">
+            {slides.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                className={index === active ? 'active' : ''}
+                onClick={() => setActive(index)}
+                aria-label={`Show ${item.eyebrow}`}
+                aria-current={index === active ? 'true' : undefined}
+              />
+            ))}
           </div>
-          <div className="hero-premium-dots" aria-label="Hero carousel">
-            <button className="active" aria-label="Slide 1" /><button aria-label="Slide 2" /><button aria-label="Slide 3" /><button aria-label="Slide 4" />
-          </div>
-          <div className="hero-premium-tomorrow"><span /><p>A BRIGHTER TOMORROW<br />FOR EVERY WOMAN</p></div>
+          <span className="hero-apple-availability">Available now · Free delivery over Rs.999</span>
         </div>
       </div>
     </section>
