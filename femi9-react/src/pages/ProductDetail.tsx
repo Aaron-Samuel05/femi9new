@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useParams, Link, Navigate } from 'react-router-dom'
 import { PRODUCTS, rupees } from '../data/products'
 import { EXTRAS, sampleReviews } from '../data/productDetail'
@@ -19,7 +19,7 @@ function Stars({ rating }: { rating: number }) {
   )
 }
 
-function Reveal({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+function Reveal({ children, className = '' }: { children: ReactNode; className?: string }) {
   const [visible, setVisible] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -39,7 +39,7 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
   return <div ref={ref} className={`pdp-reveal${visible ? ' in' : ''}${className ? ` ${className}` : ''}`}>{children}</div>
 }
 
-function Accordion({ title, children, openByDefault = false }: { title: string; children: React.ReactNode; openByDefault?: boolean }) {
+function Accordion({ title, children, openByDefault = false }: { title: string; children: ReactNode; openByDefault?: boolean }) {
   const [open, setOpen] = useState(openByDefault)
   return (
     <div className={`pdp-accordion-item${open ? ' open' : ''}`}>
@@ -155,7 +155,6 @@ export function ProductDetail() {
                 </div>
                 <button className="btn btn-primary pdp-add" onClick={addToBag}><Bag /> Add to Bag · {rupees(product.price * qty)}</button>
               </div>
-              <div className="pdp-inline-note" aria-live="polite" />
 
               <div className="pdp-trust-row">
                 <div className="pdp-trust"><b>Organic cotton</b><span>Top sheet</span></div>
