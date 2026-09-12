@@ -1,25 +1,47 @@
-/* ===== RESPONSIVE (loaded last so media queries win) ===== */
+/* ===== RESPONSIVE ===== */
 @media (max-width:1000px){
   .grid-products{grid-template-columns:repeat(2,1fr)}
   .footer-main{grid-template-columns:1fr 1fr 1fr}
   .footer-brand{grid-column:1 / -1;max-width:none;margin-bottom:12px}
 }
+
+/* ===== LIQUID GLASS HERO RESPONSIVE ===== */
+@media (min-width:861px){
+  .hero-apple-inner{width:min(100%,1600px)}
+  .hero-apple-stage{min-height:clamp(500px,69vh,760px)}
+  .hero-apple-product{width:min(82vw,1180px);height:min(68vh,700px)}
+  .hero-apple-product img{max-width:1120px}
+}
+
 @media (max-width:860px){
   .nav-links{display:none}.nav-cta{display:none}.burger{display:inline-flex}
   .hero-in{grid-template-columns:1fr;min-height:auto;text-align:center;padding-block:40px 20px}.hero-copy{max-width:none;margin-inline:auto}.hero-actions,.hero-meta{justify-content:center}.hero-art{order:-1;max-width:340px}
   .trust-in{grid-template-columns:1fr 1fr}.trust .t+.t{border-left:none}.trust .t:nth-child(2){border-left:1px solid rgba(255,255,255,.12)}.trust .t:nth-child(4){border-left:1px solid rgba(255,255,255,.12)}.trust .t:nth-child(3),.trust .t:nth-child(4){border-top:1px solid rgba(255,255,255,.12)}
   .bento{grid-template-columns:1fr 1fr}.cell-wide{grid-column:span 2}.cell-tall{grid-row:span 1}.story-in{grid-template-columns:1fr}.impact-in{grid-template-columns:1fr}
-}
-@media (max-width:560px){
-  .grid-products{grid-template-columns:1fr 1fr;gap:14px}.card-body{padding:14px}.card h3{font-size:1rem}.price b{font-size:1.15rem}.bento{grid-template-columns:1fr}.cell-wide{grid-column:span 1}.stats{grid-template-columns:1fr}.trust-in{grid-template-columns:1fr}.trust .t{border-left:none!important}.trust .t+.t{border-top:1px solid rgba(255,255,255,.12)}.footer-main{grid-template-columns:1fr 1fr}.nl-form{max-width:none}.footer-bottom{flex-direction:column;gap:8px}.sec-head{flex-direction:column;align-items:flex-start}
+  .hero-apple-inner{padding-inline:18px}
+  .hero-apple-product{width:110%;height:min(61vh,540px)}
+  .hero-apple-stage{min-height:0}
+  .hero-apple-bottom{margin-top:-8px}
 }
 
-/* Reference hero uses a wide editorial canvas rather than the app's 1200px content width. */
-@media (min-width:861px){
-  .hero-premium-in{max-width:1536px;padding-inline:clamp(30px,4.2vw,72px)}
-  .hero-premium-stage{grid-template-columns:minmax(230px,1fr) minmax(600px,2.4fr) minmax(230px,1fr);gap:clamp(18px,2.4vw,38px)}
-  .hero-premium-product{height:min(57vh,640px)}
-  .hero-premium-product img{width:min(100%,760px);height:min(100%,500px)}
-  .hero-premium-feature-icon{width:54px;height:54px}
-  .hero-premium-feature b{font-size:.88rem}.hero-premium-feature em{font-size:.82rem}
+@media (max-width:560px){
+  .grid-products{grid-template-columns:1fr;gap:14px}
+  .card-body{padding:15px}
+  .card h3{font-size:1.1rem}
+  .price b{font-size:.9rem}
+  .bento{grid-template-columns:1fr}.cell-wide{grid-column:span 1}.stats{grid-template-columns:1fr}
+  .trust-in{grid-template-columns:1fr}.trust .t{border-left:none!important}.trust .t+.t{border-top:1px solid rgba(255,255,255,.12)}
+  .footer-main{grid-template-columns:1fr 1fr}.nl-form{max-width:none}.footer-bottom{flex-direction:column;gap:8px}.sec-head{flex-direction:column;align-items:flex-start}
+  .hero-apple{min-height:calc(100svh - 70px)}
+  .hero-apple-inner{min-height:calc(100svh - 70px);padding:14px 14px 18px}
+  .hero-apple-product{width:116%;height:52vh}
+  .hero-apple-stage{flex:1;min-height:0}
+  .hero-apple-copy h1{font-size:clamp(2.7rem,13vw,4.3rem)}
+  .hero-apple-buybar{width:100%;min-width:0}
+}
+
+@media (max-width:430px){
+  .hero-apple-product{height:49vh}
+  .hero-apple-arrow{width:38px;height:38px;font-size:28px}
+  .hero-apple-copy h1{font-size:clamp(2.5rem,12.5vw,3.5rem)}
 }
