@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Fustat:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+html, body, button, input, textarea, select {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, .nav-logo, .display, .hero-apple-copy h1 {
+  font-family: 'Fustat', system-ui, sans-serif;
+}
+
+.hero-apple-copy h1 {
+  font-weight: 700;
+  letter-spacing: -0.055em;
+}
+
+.hero-apple-copy h1 strong {
+  font-weight: 700;
+}
+
+.nav-links a, .nav-cta, .hero-apple-buy, .hero-apple-price, .hero-apple-eyebrow,
+.hero-apple-tomorrow p, .eyebrow, .card-flow {
+  font-family: 'Inter', system-ui, sans-serif;
+}
