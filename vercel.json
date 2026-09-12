@@ -1,0 +1,8 @@
+{
+  "version": 2,
+  "framework": null,
+  "installCommand": "cd femi9-react && npm install",
+  "buildCommand": "cd femi9-react && npm run build",
+  "outputDirectory": "femi9-react/dist",
+  "cleanUrls": true
+}
