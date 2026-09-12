@@ -30,8 +30,8 @@ import './charts/charts.css'
 import './styles/app.css'
 import './styles/blog.css'
 import './styles/responsive.css'
-// Immersive layer last so its overrides (page transparency, editorial type) win.
 import './immersive/immersive.css'
+import './styles/product-detail.css'
 
 import App from './App'
 
