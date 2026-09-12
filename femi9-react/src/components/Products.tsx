@@ -1,21 +1,21 @@
 import { PRODUCTS } from '../data/products'
 import { Reveal } from './Reveal'
 import { ProductCard } from './ProductCard'
-import { Truck } from './Icons'
+import { Truck, ArrowRight } from './Icons'
 
 export function Products() {
   return (
-    <section className="section" id="products">
+    <section className="section products-showcase" id="products">
       <div className="wrap">
-        <Reveal className="sec-head">
+        <Reveal className="sec-head products-head">
           <div>
-            <span className="eyebrow">Find your fit</span>
-            <h2 style={{ marginTop: 14 }}>Different days, different needs.</h2>
+            <span className="eyebrow">FEMI9 PERIOD CARE</span>
+            <h2 style={{ marginTop: 14 }}>Find your<br />Femi9.</h2>
+            <p className="products-lead">Different days. Different needs. One softer standard.</p>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p className="ship-note">
-              <Truck /> Free shipping over Rs.999
-            </p>
+          <div className="products-head-right">
+            <p className="ship-note"><Truck /> Free shipping over Rs.999</p>
+            <a className="products-view-all" href="#products">Explore all products <ArrowRight /></a>
           </div>
         </Reveal>
 
