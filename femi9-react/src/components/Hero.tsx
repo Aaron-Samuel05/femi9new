@@ -2,14 +2,16 @@ import { ArrowRight } from './Icons'
 
 const HERO_PRODUCT = {
   name: 'Femi9 330mm Extra-Large Double Wings',
-  image: '/assets/img/femi9-hero-scene.svg',
-  alt: 'Femi9 330mm Extra-Large sanitary pads with double wings in a soft lavender product scene',
+  image: '/assets/img/prod-330-double.jpg',
+  alt: 'Femi9 330mm Extra-Large sanitary pads with double wings',
 }
 
 export function Hero() {
   return (
     <section className="hero hero-product-first hero-single-product" aria-labelledby="hero-title">
       <div className="hero-apple-atmosphere" aria-hidden="true" />
+      <div className="hero-apple-ribbon hero-apple-ribbon-left" aria-hidden="true" />
+      <div className="hero-apple-ribbon hero-apple-ribbon-right" aria-hidden="true" />
 
       <div className="hero-apple-inner">
         <div className="hero-single-copy">
@@ -39,8 +41,8 @@ export function Hero() {
             <img
               src={HERO_PRODUCT.image}
               alt={HERO_PRODUCT.alt}
-              width={874}
-              height={615}
+              width={1200}
+              height={800}
               fetchPriority="high"
               draggable={false}
             />
