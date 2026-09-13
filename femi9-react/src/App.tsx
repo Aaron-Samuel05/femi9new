@@ -4,6 +4,7 @@ import { CartProvider } from './store/cart'
 import { StoreLayout } from './app/StoreLayout'
 import { Home } from './pages/Home'
 import { ProductDetail } from './pages/ProductDetail'
+import { ProductOptions } from './pages/ProductOptions'
 import { Blog } from './pages/Blog'
 import { BlogPost } from './pages/BlogPost'
 import { UserDashboard } from './pages/UserDashboard'
@@ -42,6 +43,7 @@ export default function App() {
             <Routes>
               <Route element={<StoreLayout />}>
                 <Route path="/" element={<Home />} />
+                <Route path="/product-options/:id" element={<ProductOptions />} />
                 <Route path="/product/:id" element={<ProductDetail />} />
                 <Route path="/blog" element={<Blog />} />
                 <Route path="/blog/:slug" element={<BlogPost />} />
