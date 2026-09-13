@@ -14,13 +14,21 @@ interface Props {
 export const ProductCard = memo(function ProductCard({ product, delay }: Props) {
   const { add } = useCart()
   const { ref, inView } = useReveal<HTMLElement>()
-  const { id, name, price, img, meta, flow, desc, tag, tagClass } = product
+  const { id, name, price, img, fallbackImg, meta, flow, desc, tag, tagClass } = product
 
   return (
     <article ref={ref} className={revealClass(inView, delay, 'card')}>
       <Link to={`/product/${id}`} className="card-media" aria-label={name}>
         {tag && <span className={`tag${tagClass ? ` ${tagClass}` : ''}`}>{tag}</span>}
-        <img src={img} alt={`Femi9 ${name} pack`} loading="lazy" />
+        <img
+          src={img}
+          alt={`Femi9 ${name} pack`}
+          loading="lazy"
+          onError={(event) => {
+            const image = event.currentTarget
+            if (fallbackImg && image.src !== fallbackImg) image.src = fallbackImg
+          }}
+        />
       </Link>
       <div className="card-body">
         <span className="card-flow">{flow}</span>
