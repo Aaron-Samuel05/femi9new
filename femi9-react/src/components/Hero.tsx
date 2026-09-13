@@ -1,12 +1,44 @@
+import { useEffect, useRef } from 'react'
 import { ArrowRight } from './Icons'
 
 const HERO_PRODUCT = {
   name: 'Femi9 330mm Extra-Large Double Wings',
-  image: '/assets/img/prod-330-double.jpg',
-  alt: 'Femi9 330mm Extra-Large sanitary pads with double wings',
+  image: 'https://femi9.in/uploads/Product/1773300838_UAQ58ELzjr.webp',
+  alt: 'Femi9 330mm Extra-Large Double Wings sanitary pad',
 }
 
 export function Hero() {
+  const stageRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const stage = stageRef.current
+    if (!stage) return
+
+    const onPointerMove = (event: PointerEvent) => {
+      const rect = stage.getBoundingClientRect()
+      const x = (event.clientX - rect.left) / rect.width - 0.5
+      const y = (event.clientY - rect.top) / rect.height - 0.5
+      stage.style.setProperty('--px', `${x * 18}px`)
+      stage.style.setProperty('--py', `${y * 14}px`)
+      stage.style.setProperty('--rx', `${-y * 3.5}deg`)
+      stage.style.setProperty('--ry', `${x * 4.5}deg`)
+    }
+
+    const reset = () => {
+      stage.style.setProperty('--px', '0px')
+      stage.style.setProperty('--py', '0px')
+      stage.style.setProperty('--rx', '0deg')
+      stage.style.setProperty('--ry', '0deg')
+    }
+
+    stage.addEventListener('pointermove', onPointerMove)
+    stage.addEventListener('pointerleave', reset)
+    return () => {
+      stage.removeEventListener('pointermove', onPointerMove)
+      stage.removeEventListener('pointerleave', reset)
+    }
+  }, [])
+
   return (
     <section className="hero hero-product-first hero-single-product" aria-labelledby="hero-title">
       <div className="hero-apple-atmosphere" aria-hidden="true" />
@@ -34,19 +66,23 @@ export function Hero() {
           </div>
         </div>
 
-        <div className="hero-single-stage">
+        <div ref={stageRef} className="hero-single-stage hero-pad-parallax">
           <div className="hero-single-halo" aria-hidden="true" />
           <div className="hero-single-ground" aria-hidden="true" />
           <div className="hero-product-media">
-            <img
-              src={HERO_PRODUCT.image}
-              alt={HERO_PRODUCT.alt}
-              width={1200}
-              height={800}
-              fetchPriority="high"
-              draggable={false}
-            />
+            <div className="hero-pad-crop">
+              <img
+                src={HERO_PRODUCT.image}
+                alt={HERO_PRODUCT.alt}
+                width={750}
+                height={1000}
+                fetchPriority="high"
+                draggable={false}
+              />
+            </div>
           </div>
+          <span className="hero-pad-orbit orbit-one" aria-hidden="true" />
+          <span className="hero-pad-orbit orbit-two" aria-hidden="true" />
         </div>
 
         <div className="hero-single-benefits" aria-label="Femi9 product benefits">
