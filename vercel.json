@@ -6,9 +6,11 @@
   "outputDirectory": "femi9-react/dist",
   "cleanUrls": true,
   "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/product/:path*", "destination": "/index.html" },
+    { "source": "/product-options/:path*", "destination": "/index.html" },
+    { "source": "/blog/:path*", "destination": "/index.html" },
+    { "source": "/account", "destination": "/index.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/admin", "destination": "/index.html" }
   ]
 }
