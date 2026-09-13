@@ -3,9 +3,9 @@ import { ArrowRight } from './Icons'
 
 const HERO_PRODUCT = {
   name: 'Femi9 330mm Extra-Large Double Wings',
-  localImage: '/assets/img/prod-330-double.jpg',
-  remoteImage: 'https://femi9.in/uploads/Product/1773300828_jFWVIMppz1.webp',
-  alt: 'Femi9 330mm Extra-Large Double Wings sanitary pads',
+  image: 'https://femi9.in/uploads/Product/1773300828_jFWVIMppz1.webp',
+  fallback: '/assets/img/prod-330-double.jpg',
+  alt: 'Femi9 330mm Extra-Large Double Wings sanitary pad pack',
 }
 
 export function Hero() {
@@ -16,13 +16,14 @@ export function Hero() {
     if (!stage) return
 
     const onPointerMove = (event: PointerEvent) => {
+      if (window.matchMedia('(max-width: 900px)').matches) return
       const rect = stage.getBoundingClientRect()
       const x = (event.clientX - rect.left) / rect.width - 0.5
       const y = (event.clientY - rect.top) / rect.height - 0.5
-      stage.style.setProperty('--px', `${x * 14}px`)
-      stage.style.setProperty('--py', `${y * 10}px`)
-      stage.style.setProperty('--rx', `${-y * 4}deg`)
-      stage.style.setProperty('--ry', `${x * 6}deg`)
+      stage.style.setProperty('--px', `${x * 12}px`)
+      stage.style.setProperty('--py', `${y * 9}px`)
+      stage.style.setProperty('--rx', `${-y * 3}deg`)
+      stage.style.setProperty('--ry', `${x * 5}deg`)
     }
 
     const reset = () => {
@@ -75,15 +76,15 @@ export function Hero() {
             <div className="hero-product-card">
               <div className="hero-product-card-glass" aria-hidden="true" />
               <img
-                src={HERO_PRODUCT.localImage}
+                src={HERO_PRODUCT.image}
                 alt={HERO_PRODUCT.alt}
-                width={750}
-                height={1000}
+                width={1200}
+                height={800}
                 fetchPriority="high"
                 draggable={false}
                 onError={(event) => {
                   const image = event.currentTarget
-                  if (image.src !== HERO_PRODUCT.remoteImage) image.src = HERO_PRODUCT.remoteImage
+                  if (!image.src.endsWith(HERO_PRODUCT.fallback)) image.src = HERO_PRODUCT.fallback
                 }}
               />
               <span className="hero-product-badge">330mm XL · DOUBLE WINGS</span>
