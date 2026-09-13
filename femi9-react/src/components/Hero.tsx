@@ -3,8 +3,9 @@ import { ArrowRight } from './Icons'
 
 const HERO_PRODUCT = {
   name: 'Femi9 330mm Extra-Large Double Wings',
-  image: 'https://femi9.in/uploads/Product/1773300838_UAQ58ELzjr.webp',
-  alt: 'Femi9 330mm Extra-Large Double Wings sanitary pad',
+  localImage: '/assets/img/prod-330-double.jpg',
+  remoteImage: 'https://femi9.in/uploads/Product/1773300828_jFWVIMppz1.webp',
+  alt: 'Femi9 330mm Extra-Large Double Wings sanitary pads',
 }
 
 export function Hero() {
@@ -18,10 +19,10 @@ export function Hero() {
       const rect = stage.getBoundingClientRect()
       const x = (event.clientX - rect.left) / rect.width - 0.5
       const y = (event.clientY - rect.top) / rect.height - 0.5
-      stage.style.setProperty('--px', `${x * 18}px`)
-      stage.style.setProperty('--py', `${y * 14}px`)
-      stage.style.setProperty('--rx', `${-y * 3.5}deg`)
-      stage.style.setProperty('--ry', `${x * 4.5}deg`)
+      stage.style.setProperty('--px', `${x * 14}px`)
+      stage.style.setProperty('--py', `${y * 10}px`)
+      stage.style.setProperty('--rx', `${-y * 4}deg`)
+      stage.style.setProperty('--ry', `${x * 6}deg`)
     }
 
     const reset = () => {
@@ -70,15 +71,22 @@ export function Hero() {
           <div className="hero-single-halo" aria-hidden="true" />
           <div className="hero-single-ground" aria-hidden="true" />
           <div className="hero-product-media">
-            <div className="hero-pad-crop">
+            <div className="hero-product-aura" aria-hidden="true" />
+            <div className="hero-product-card">
+              <div className="hero-product-card-glass" aria-hidden="true" />
               <img
-                src={HERO_PRODUCT.image}
+                src={HERO_PRODUCT.localImage}
                 alt={HERO_PRODUCT.alt}
                 width={750}
                 height={1000}
                 fetchPriority="high"
                 draggable={false}
+                onError={(event) => {
+                  const image = event.currentTarget
+                  if (image.src !== HERO_PRODUCT.remoteImage) image.src = HERO_PRODUCT.remoteImage
+                }}
               />
+              <span className="hero-product-badge">330mm XL · DOUBLE WINGS</span>
             </div>
           </div>
           <span className="hero-pad-orbit orbit-one" aria-hidden="true" />
