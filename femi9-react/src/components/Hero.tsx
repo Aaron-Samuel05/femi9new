@@ -22,7 +22,7 @@ export function Hero() {
           </h1>
           <p className="hero-apple-note">Ultra-thin. Ultra-comfortable. Made for real life.</p>
           <div className="hero-single-action">
-            <a href="/product-options/p330dw" className="hero-buy-now">
+            <a href="/product/p330dw" className="hero-buy-now">
               Buy Now <span><ArrowRight /></span>
             </a>
           </div>
